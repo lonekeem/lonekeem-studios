@@ -1,0 +1,108 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useStore } from '../lib/store.jsx';
+import { SEED_EPISODES } from '../lib/seed.js';
+import { Icon, Sheet } from '../lib/ui.jsx';
+import EpisodePlayer from './EpisodePlayer.jsx';
+
+const REASONS = ['Inappropriate or sexual', 'Violence or harm', 'Hate or harassment', 'Uses a real person without consent', 'Spam or misleading', 'Copyright', 'Something else'];
+
+export default function Watch() {
+  const { state, toggleLike, report, block, notify } = useStore();
+  const [active, setActive] = useState(0);
+  const [reporting, setReporting] = useState(null);
+  const [reason, setReason] = useState('');
+  const [idle, setIdle] = useState(false);
+  const feedRef = useRef(null);
+
+  const items = useMemo(() => {
+    const mine = state.episodes
+      .filter((e) => e.published && e.clipIds.length)
+      .map((e) => {
+        const ser = state.series.find((s) => s.id === e.seriesId);
+        const n = state.episodes.filter((x) => x.seriesId === e.seriesId).indexOf(e) + 1;
+        return {
+          id: e.id, mine: true, series: ser?.title || 'Untitled series', ep: n, title: e.title,
+          handle: state.character.handle || 'you', likes: 0,
+          clips: e.clipIds.map((id) => state.clips.find((c) => c.id === id)?.url).filter(Boolean),
+        };
+      });
+    return [...mine, ...SEED_EPISODES].filter((it) => !state.blocked.includes(it.handle));
+  }, [state.episodes, state.series, state.clips, state.blocked, state.character.handle]);
+
+  useEffect(() => {
+    const root = feedRef.current;
+    if (!root) return;
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((en) => { if (en.isIntersecting) setActive(Number(en.target.dataset.idx)); }),
+      { root, threshold: 0.6 },
+    );
+    root.querySelectorAll('.feed-item').forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [items.length]);
+
+  // Optional "fade UI" preference: hide overlays after 3s without touch.
+  useEffect(() => {
+    if (!state.prefs.fadeUI) { setIdle(false); return; }
+    let t;
+    const wake = () => { setIdle(false); clearTimeout(t); t = setTimeout(() => setIdle(true), 3000); };
+    wake();
+    const el = feedRef.current;
+    ['pointerdown', 'scroll', 'mousemove'].forEach((ev) => el?.addEventListener(ev, wake, { passive: true }));
+    return () => { clearTimeout(t); ['pointerdown', 'scroll', 'mousemove'].forEach((ev) => el?.removeEventListener(ev, wake)); };
+  }, [state.prefs.fadeUI]);
+
+  const submitReport = () => {
+    report(reporting.id, reason);
+    notify('Thanks — our (demo) review team will take a look.');
+    setReporting(null); setReason('');
+  };
+
+  return (
+    <div className={'feed' + (idle ? ' ui-faded' : '')} ref={feedRef} data-testid="feed">
+      {items.map((it, idx) => {
+        const liked = !!state.likes[it.id];
+        const reported = !!state.reported[it.id];
+        return (
+          <section className="feed-item" key={it.id} data-idx={idx} data-testid="feed-item">
+            <EpisodePlayer clips={it.clips} active={idx === active} />
+            <div className="feed-shade" />
+            <span className="ai-badge"><Icon name="spark" size={14} fill /> AI-generated</span>
+            <div className="feed-info">
+              <div className="feed-series">{it.series} · Ep {it.ep}</div>
+              <h2>{it.title}</h2>
+              <div className="feed-handle">@{it.handle}{it.mine && <span className="chip">You</span>}</div>
+            </div>
+            <div className="feed-actions">
+              <button className={'act' + (liked ? ' liked' : '')} onClick={() => toggleLike(it.id)} aria-label="Like" data-testid="like">
+                <Icon name="heart" size={30} fill={liked} />
+                <span>{(it.likes + (liked ? 1 : 0)).toLocaleString()}</span>
+              </button>
+              <button className={'act' + (reported ? ' reported' : '')} onClick={() => setReporting(it)} aria-label="Report" data-testid="report">
+                <Icon name="flag" size={28} />
+                <span>{reported ? 'Reported' : 'Report'}</span>
+              </button>
+            </div>
+          </section>
+        );
+      })}
+      <div className="feed-end">You're all caught up. Make the next episode ✦</div>
+
+      <Sheet open={!!reporting} onClose={() => setReporting(null)} title="Report this episode">
+        <p className="muted">Why are you reporting <b>{reporting?.title}</b> by @{reporting?.handle}?</p>
+        <div className="radio-list">
+          {REASONS.map((r) => (
+            <label key={r} className={'radio' + (reason === r ? ' on' : '')}>
+              <input type="radio" name="reason" checked={reason === r} onChange={() => setReason(r)} /> {r}
+            </label>
+          ))}
+        </div>
+        <button className="btn primary wide" disabled={!reason} onClick={submitReport} data-testid="submit-report">Send report</button>
+        {reporting && !reporting.mine && (
+          <button className="btn ghost wide" onClick={() => { block(reporting.handle); notify(`Blocked @${reporting.handle}`); setReporting(null); }}>
+            Block @{reporting?.handle}
+          </button>
+        )}
+      </Sheet>
+    </div>
+  );
+}

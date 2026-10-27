@@ -1,0 +1,118 @@
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+
+const KEY = 'lks-demo-v1';
+export const START_CREDITS = 500;
+export const DAILY_TOPUP = 50;
+
+const today = () => new Date().toISOString().slice(0, 10);
+const uid = (p) => p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+const fresh = () => ({
+  credits: START_CREDITS,
+  lastTopUp: today(),
+  ledger: [{ t: Date.now(), amount: START_CREDITS, reason: 'Welcome demo credits' }],
+  character: { name: '', handle: '', look: '', avatar: '' },
+  clips: [],
+  series: [],
+  episodes: [],
+  likes: {},
+  reported: {},
+  blocked: [],
+  prefs: { language: 'en', fadeUI: false, notifications: false },
+  earned: {},
+  loggedOut: false,
+});
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return fresh();
+    return { ...fresh(), ...JSON.parse(raw) };
+  } catch {
+    return fresh();
+  }
+}
+
+const Ctx = createContext(null);
+
+export function StoreProvider({ children }) {
+  const [state, setState] = useState(load);
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch { setToast('Storage is full — try a smaller avatar image.'); }
+  }, [state]);
+
+  const notify = useCallback((msg) => {
+    setToast(msg);
+    clearTimeout(notify._t);
+    notify._t = setTimeout(() => setToast(null), 2600);
+  }, []);
+
+  // daily free top-up
+  useEffect(() => {
+    if (state.lastTopUp !== today()) {
+      setState((s) => ({
+        ...s,
+        credits: s.credits + DAILY_TOPUP,
+        lastTopUp: today(),
+        ledger: [{ t: Date.now(), amount: DAILY_TOPUP, reason: 'Daily free top-up' }, ...s.ledger].slice(0, 50),
+      }));
+      notify(`+${DAILY_TOPUP} daily credits added`);
+    }
+  }, []); // eslint-disable-line
+
+  const api = useMemo(() => {
+    const update = (fn) => setState((s) => ({ ...s, ...fn(s) }));
+    return {
+      state,
+      notify,
+      update,
+      addCredits: (amount, reason) =>
+        update((s) => ({ credits: s.credits + amount, ledger: [{ t: Date.now(), amount, reason }, ...s.ledger].slice(0, 50) })),
+      spendCredits: (amount, reason) => {
+        if (state.credits < amount) return false;
+        update((s) => ({ credits: s.credits - amount, ledger: [{ t: Date.now(), amount: -amount, reason }, ...s.ledger].slice(0, 50) }));
+        return true;
+      },
+      saveCharacter: (character) => update(() => ({ character })),
+      addClip: (clip) => update((s) => ({ clips: [clip, ...s.clips] })),
+      deleteClip: (id) =>
+        update((s) => ({
+          clips: s.clips.filter((c) => c.id !== id),
+          episodes: s.episodes.map((e) => ({ ...e, clipIds: e.clipIds.filter((x) => x !== id) })),
+        })),
+      createSeries: (title, desc = '') => {
+        const s1 = { id: uid('ser'), title, desc, createdAt: Date.now() };
+        update((s) => ({ series: [s1, ...s.series] }));
+        return s1.id;
+      },
+      deleteSeries: (id) =>
+        update((s) => ({ series: s.series.filter((x) => x.id !== id), episodes: s.episodes.filter((e) => e.seriesId !== id) })),
+      saveEpisode: (ep) =>
+        update((s) => {
+          if (ep.id && s.episodes.some((e) => e.id === ep.id))
+            return { episodes: s.episodes.map((e) => (e.id === ep.id ? { ...e, ...ep } : e)) };
+          return { episodes: [...s.episodes, { published: false, createdAt: Date.now(), ...ep, id: uid('ep') }] };
+        }),
+      deleteEpisode: (id) => update((s) => ({ episodes: s.episodes.filter((e) => e.id !== id) })),
+      toggleLike: (id) => update((s) => ({ likes: { ...s.likes, [id]: !s.likes[id] } })),
+      report: (id, reason) => update((s) => ({ reported: { ...s.reported, [id]: reason } })),
+      block: (handle) => update((s) => ({ blocked: s.blocked.includes(handle) ? s.blocked : [...s.blocked, handle] })),
+      unblock: (handle) => update((s) => ({ blocked: s.blocked.filter((h) => h !== handle) })),
+      setPref: (k, v) => update((s) => ({ prefs: { ...s.prefs, [k]: v } })),
+      markEarned: (k) => update((s) => ({ earned: { ...s.earned, [k]: true } })),
+      logOut: () => update(() => ({ loggedOut: true })),
+      logIn: () => update(() => ({ loggedOut: false })),
+      deleteAccount: () => {
+        localStorage.removeItem(KEY);
+        setState(fresh());
+      },
+    };
+  }, [state, notify]);
+
+  return <Ctx.Provider value={{ ...api, toast }}>{children}</Ctx.Provider>;
+}
+
+export const useStore = () => useContext(Ctx);
