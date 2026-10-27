@@ -3,11 +3,15 @@ import { useStore } from '../lib/store.jsx';
 import { SEED_EPISODES } from '../lib/seed.js';
 import { Icon, Sheet, Avatar } from '../lib/ui.jsx';
 import EpisodePlayer from './EpisodePlayer.jsx';
+import { RemixButton } from './Remix.jsx';
+import { Recap } from './Show.jsx';
+import { findSeries } from '../lib/catalog.js';
 
 const REASONS = ['Inappropriate or sexual', 'Violence or harm', 'Hate or harassment', 'Uses a real person without consent', 'Spam or misleading', 'Copyright', 'Something else'];
 
-export default function Watch() {
-  const { state, toggleLike, report, block, notify } = useStore();
+export default function Watch({ go }) {
+  const { state, toggleLike, report, block, notify, setProgress } = useStore();
+  const [recapFor, setRecapFor] = useState(null);
   const [active, setActive] = useState(0);
   const [reporting, setReporting] = useState(null);
   const [reason, setReason] = useState('');
@@ -21,7 +25,9 @@ export default function Watch() {
         const ser = state.series.find((s) => s.id === e.seriesId);
         const n = state.episodes.filter((x) => x.seriesId === e.seriesId).indexOf(e) + 1;
         return {
-          id: e.id, mine: true, series: ser?.title || 'Untitled series', ep: n, title: e.title,
+          id: e.id, mine: true, series: ser?.title || 'Untitled series', seriesKey: e.seriesId, ep: n, title: e.title,
+          prompt: e.scenes?.[0]?.prompt || state.clips.find((c) => c.id === e.clipIds[0])?.prompt || e.title,
+          remixOf: e.clipIds.map((id) => state.clips.find((c) => c.id === id)?.remixOf).find(Boolean) || null,
           handle: state.character.handle || 'you', likes: 0,
           clips: e.clipIds.map((id) => state.clips.find((c) => c.id === id)?.url).filter(Boolean),
         };
@@ -64,12 +70,16 @@ export default function Watch() {
         const reported = !!state.reported[it.id];
         return (
           <section className="feed-item" key={it.id} data-idx={idx} data-testid="feed-item">
-            <EpisodePlayer clips={it.clips} active={idx === active} />
+            <EpisodePlayer clips={it.clips} active={idx === active} onProgress={(p) => setProgress(it.id, p)} />
             <div className="feed-shade" />
             <span className="ai-badge"><Icon name="spark" size={14} fill /> AI-generated</span>
             <div className="feed-info">
-              <div className="feed-series">{it.series} · Ep {it.ep}</div>
+              <button className="feed-series" onClick={() => go('show/' + encodeURIComponent(it.seriesKey))} data-testid="feed-series">{it.series} · Ep {it.ep} <Icon name="back" size={12} className="flip" /></button>
               <h2>{it.title}</h2>
+              {it.ep > 1 && (
+                <button className="prev-chip glass" onClick={() => setRecapFor(it)} data-testid="prev-chip">Previously on… </button>
+              )}
+              {it.remixOf && <div className="remix-credit"><Icon name="remix" size={13} /> Remix of @{it.remixOf.handle}</div>}
               <div className="feed-handle"><Avatar character={it.mine ? state.character : { name: it.handle }} size={28} />@{it.handle}{it.mine && <span className="chip">You</span>}</div>
             </div>
             <div className="feed-actions">
@@ -77,6 +87,7 @@ export default function Watch() {
                 <Icon name="heart" size={30} fill={liked} />
                 <span>{(it.likes + (liked ? 1 : 0)).toLocaleString()}</span>
               </button>
+              <RemixButton item={it} go={go} feed />
               <button className={'act' + (reported ? ' reported' : '')} onClick={() => setReporting(it)} aria-label="Report" data-testid="report">
                 <Icon name="flag" size={28} />
                 <span>{reported ? 'Reported' : 'Report'}</span>
@@ -86,6 +97,20 @@ export default function Watch() {
         );
       })}
       <div className="feed-end">You're all caught up. Make the next episode ✦</div>
+
+      <Sheet open={!!recapFor} onClose={() => setRecapFor(null)} title="Catch up">
+        {recapFor && (() => {
+          const ser = findSeries(state, recapFor.seriesKey);
+          if (!ser) return null;
+          const idx = ser.episodes.findIndex((e) => e.id === recapFor.id);
+          return (
+            <>
+              <Recap series={ser} idx={idx} compact />
+              <button className="btn ghost wide" onClick={() => go('show/' + encodeURIComponent(ser.key))}>Open the series</button>
+            </>
+          );
+        })()}
+      </Sheet>
 
       <Sheet open={!!reporting} onClose={() => setReporting(null)} title="Report this episode">
         <p className="muted">Why are you reporting <b>{reporting?.title}</b> by @{reporting?.handle}?</p>

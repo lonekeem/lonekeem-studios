@@ -4,6 +4,7 @@ import { MODELS, LENGTHS, QUALITIES, ADDONS, creditCost } from '../lib/models.js
 import { generateClip, IS_DEMO } from '../lib/generateClip.js';
 import { Icon, Sheet, Toggle, Avatar } from '../lib/ui.jsx';
 import Dance from './Dance.jsx';
+import Storyboard from './Storyboard.jsx';
 
 const IDEAS = [
   'My character sneaks through a neon night market looking for a lost robot',
@@ -15,20 +16,26 @@ const IDEAS = [
 export default function Create({ mode, go }) {
   return (
     <div className="page">
-      <div className="seg">
-        <button className={mode !== 'dance' ? 'on' : ''} onClick={() => go('create')}>Scene</button>
+      <div className="seg seg-anim" style={{ '--i': mode === 'board' ? 1 : mode === 'dance' ? 2 : 0, '--n': 3 }}>
+        <span className="seg-thumb" />
+        <button className={!mode ? 'on' : ''} onClick={() => go('create')} data-testid="scene-tab">Scene</button>
+        <button className={mode === 'board' ? 'on' : ''} onClick={() => go('create/board')} data-testid="board-tab">Storyboard</button>
         <button className={mode === 'dance' ? 'on' : ''} onClick={() => go('create/dance')} data-testid="dance-tab">
-          Dance copy <span className="soon">soon</span>
+          Dance <span className="soon">soon</span>
         </button>
       </div>
-      {mode === 'dance' ? <Dance /> : <SceneCreator go={go} />}
+      {mode === 'dance' ? <Dance /> : mode === 'board' ? <Storyboard go={go} /> : <SceneCreator go={go} />}
     </div>
   );
 }
 
 function SceneCreator({ go }) {
-  const { state, spendCredits, addCredits, addClip, notify } = useStore();
-  const [prompt, setPrompt] = useState('');
+  const { state, spendCredits, addCredits, addClip, notify, setRemix } = useStore();
+  // A remix handed over from the feed: prefill the scene, lock the character in.
+  const [remix] = useState(() => state.remix);
+  React.useEffect(() => { if (state.remix) setRemix(null); }, []); // eslint-disable-line
+  const [remixOf, setRemixOf] = useState(remix ? { handle: remix.handle, title: remix.title, series: remix.series } : null);
+  const [prompt, setPrompt] = useState(remix ? `${state.character.name || 'My character'} steps into this scene: ${remix.prompt}` : '');
   const [model, setModel] = useState('auto');
   const [length, setLength] = useState(5);
   const [quality, setQuality] = useState('480p');
@@ -63,8 +70,9 @@ function SceneCreator({ go }) {
         options: { ...opts, coStarName: opts.coStar ? coStarName : '' },
         onProgress: setJob, signal: ac.signal,
       });
-      addClip(clip);
-      setResult(clip);
+      const c = remixOf ? { ...clip, remixOf } : clip;
+      addClip(c);
+      setResult(c);
     } catch (e) {
       addCredits(cost, 'Refund · cancelled clip');
       notify(e.name === 'AbortError' ? 'Cancelled — credits refunded.' : e.message);
@@ -94,6 +102,7 @@ function SceneCreator({ go }) {
           <span className="ai-badge"><Icon name="spark" size={14} fill /> AI-generated</span>
         </div>
         <p className="prompt-echo">“{result.prompt}”</p>
+        {result.remixOf && <p className="remix-credit center"><Icon name="remix" size={14} /> Remix of @{result.remixOf.handle} · “{result.remixOf.title}”</p>}
         {result.demo && <p className="hint">Demo mode: this is a sample clip, not a real render of your prompt.</p>}
         <div className="row">
           <button className="btn ghost" onClick={() => setResult(null)}>Make another</button>
@@ -105,6 +114,13 @@ function SceneCreator({ go }) {
 
   return (
     <div className="create">
+      {remixOf && (
+        <div className="remix-banner glass" data-testid="remix-banner">
+          <Icon name="remix" size={20} />
+          <span className="grow"><b>Remix of @{remixOf.handle}</b><span className="hint">“{remixOf.title}”{remixOf.series ? ` · ${remixOf.series}` : ''} — credited on your clip</span></span>
+          <button className="icon-btn sm" onClick={() => setRemixOf(null)} aria-label="Remove remix credit"><Icon name="x" size={16} /></button>
+        </div>
+      )}
       <button className="char-strip" onClick={() => go(hasChar ? 'character' : 'creator/look')}>
         <Avatar character={ch} size={38} />
         <span>

@@ -2,10 +2,23 @@ import React, { useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { Icon, Sheet, Toggle } from '../lib/ui.jsx';
 import EpisodePlayer from './EpisodePlayer.jsx';
+import { buildCatalog, continueWatching } from '../lib/catalog.js';
 
-export default function Series({ go }) {
+function Thumb({ src, children, className = '' }) {
+  const [ready, setReady] = useState(false);
+  return (
+    <div className={'thumb ' + className + (ready ? '' : ' skel')}>
+      {src && <video src={src + '#t=1.2'} muted playsInline preload="metadata" onLoadedData={() => setReady(true)} />}
+      {!src && <Icon name="film" size={28} />}
+      {children}
+    </div>
+  );
+}
+
+export default function Series({ go, sub }) {
   const { state, createSeries, deleteSeries, saveEpisode, deleteEpisode, deleteClip, notify } = useStore();
-  const [openId, setOpenId] = useState(null);
+  const openId = sub || null;
+  const setOpenId = (id) => go(id ? 'series/' + id : 'series');
   const [newSeries, setNewSeries] = useState(false);
   const [title, setTitle] = useState('');
   const [editing, setEditing] = useState(null); // episode draft
@@ -43,7 +56,7 @@ export default function Series({ go }) {
     const allClips = eps.flatMap((e) => e.clipIds.map(clipUrl)).filter(Boolean);
     return (
       <div className="page">
-        <button className="back" onClick={() => setOpenId(null)}><Icon name="back" size={18} /> All series</button>
+        <button className="back" onClick={() => go('show/' + ser.id)}><Icon name="back" size={18} /> Series page</button>
         <h1 className="page-title">{ser.title}</h1>
         <div className="row">
           <button className="btn primary" disabled={!allClips.length} onClick={() => setPlaying({ title: ser.title, clips: allClips })} data-testid="play-series">
@@ -82,9 +95,60 @@ export default function Series({ go }) {
   }
 
   // ── Overview ──
+  const catalog = buildCatalog(state);
+  const cw = continueWatching(state, catalog);
+  const discover = catalog.filter((s) => !s.mine);
+  const followed = discover.filter((s) => state.follows?.[s.key]);
+  const openShow = (key, idx) => go('show/' + encodeURIComponent(key) + (idx != null ? '/' + idx : ''));
   return (
     <div className="page">
-      <h1 className="page-title">My series</h1>
+      <h1 className="page-title">Series</h1>
+
+      <div className="section-head"><h3>Continue watching</h3></div>
+      {!cw.length ? (
+        <div className="empty-card static" data-testid="cw-empty">
+          <Icon name="play" /> <span>Nothing in progress yet. Start any series below — we'll keep your place.</span>
+        </div>
+      ) : (
+        <div className="cw-row" data-testid="cw-row">
+          {cw.map((c) => (
+            <button key={c.series.key} className="cw-tile" onClick={() => openShow(c.series.key, c.idx)} data-testid="cw-tile">
+              <Thumb src={c.ep.clips[0]}>
+                <span className="cw-badge">{c.kind === 'resume' ? 'Resume' : c.kind === 'next' ? 'Up next' : 'New for you'}</span>
+                <span className="ep-prog"><span style={{ width: `${Math.round(c.p * 100)}%` }} /></span>
+              </Thumb>
+              <b>{c.series.title}</b>
+              <span className="hint">Ep {c.ep.n} · {c.ep.title}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {followed.length > 0 && (
+        <>
+          <div className="section-head"><h3>Following</h3></div>
+          <div className="show-row">
+            {followed.map((s) => (
+              <button key={s.key} className="show-tile" onClick={() => openShow(s.key)}>
+                <Thumb src={s.episodes[0]?.clips[0]} className="tall" />
+                <b>{s.title}</b><span className="hint">@{s.handle}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="section-head"><h3>Discover series</h3></div>
+      <div className="show-row" data-testid="discover-row">
+        {discover.map((s) => (
+          <button key={s.key} className="show-tile" onClick={() => openShow(s.key)} data-testid="show-tile">
+            <Thumb src={s.episodes[s.episodes.length - 1]?.clips[0]} className="tall">
+              <span className="cw-badge">{s.episodes.length} ep</span>
+            </Thumb>
+            <b>{s.title}</b><span className="hint">@{s.handle}</span>
+          </button>
+        ))}
+      </div>
 
       <div className="section-head"><h3>My clips</h3><button className="link" onClick={() => go('create')}>+ New clip</button></div>
       {!state.clips.length ? (
@@ -102,14 +166,16 @@ export default function Series({ go }) {
         </div>
       )}
 
-      <div className="section-head"><h3>Series</h3><button className="link" onClick={() => setNewSeries(true)} data-testid="new-series">+ New series</button></div>
-      {!state.series.length && <p className="empty-note">Group your clips into episodes, and episodes into a series.</p>}
+      <div className="section-head"><h3>My series</h3><span className="row-tight"><button className="link" onClick={() => go('create/board')} data-testid="to-board">Storyboard</button><button className="link" onClick={() => setNewSeries(true)} data-testid="new-series">+ New series</button></span></div>
+      {!state.series.length && (
+        <button className="empty-card" onClick={() => go('create/board')}><Icon name="board" /> Storyboard your first episode — it builds the series for you</button>
+      )}
       <div className="series-grid">
         {state.series.map((s) => {
           const eps = epsOf(s.id);
           const first = clipUrl(eps[0]?.clipIds[0]);
           return (
-            <button key={s.id} className="series-card" onClick={() => setOpenId(s.id)} data-testid="series-card">
+            <button key={s.id} className="series-card" onClick={() => openShow(s.id)} data-testid="series-card">
               <div className="series-cover">{first ? <video src={first + '#t=1'} muted playsInline preload="metadata" /> : <Icon name="film" size={30} />}</div>
               <b>{s.title}</b>
               <span className="hint">{eps.length} episode{eps.length === 1 ? '' : 's'}</span>

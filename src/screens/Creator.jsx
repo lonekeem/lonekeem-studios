@@ -3,7 +3,7 @@ import { useStore, LORE_FIELDS } from '../lib/store.jsx';
 import { drawPortrait, shrinkImage, STYLES, ASPECTS } from '../lib/portrait.js';
 import { speak, VOICE_STYLES, VOICE_IDEAS, ttsSupported } from '../lib/voice.js';
 import { SEED_EPISODES } from '../lib/seed.js';
-import { Icon, Sheet } from '../lib/ui.jsx';
+import { Icon, Sheet, Monogram } from '../lib/ui.jsx';
 
 export const LOOK_COST = 45;
 export const VOICE_COST = 30;
@@ -42,8 +42,9 @@ function useFakeJob() {
 export function Welcome({ onStart, onSkip }) {
   return (
     <div className="welcome fancy" data-testid="welcome">
-      <div className="brand-mark big" />
+      <Monogram size={84} className="glow-mark" />
       <h1>Welcome to <span className="grad-text">Lone Keem Studios</span></h1>
+      <p className="tagline">Your character. Your series.</p>
       <ul className="welcome-steps">
         <li><span>1</span> Design how your character looks</li>
         <li><span>2</span> Give them a voice and a backstory</li>

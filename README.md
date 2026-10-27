@@ -9,15 +9,32 @@ returns one of the bundled sample clips.
 
 ## What's in the demo
 
+*Your character. Your series.* The violet **LKS** monogram is the brand mark.
+
 | Screen | What works |
 | --- | --- |
-| **Watch** | Vertical swipe feed, auto-plays the visible episode, multi-clip episodes play in order, like, report (with reasons) + block, "AI-generated" label on every video |
-| **Create** | Scene prompt, model picker (Auto recommended + choose your own, labelled by strength), length 5/10 s (15/20/25 s locked), quality 480p (720p/1080p locked), character lock / voice lock / co-star toggles, live credit cost, fake progress, cancel = refund |
-| **Dance copy** | *Coming soon* demo: pick a reference video (stays on device), audio-removed notice, consent checkbox |
-| **Character** | Name, @handle, look description, optional avatar photo (resized and stored locally) |
-| **My series** | Clip library, create series, build episodes from clips (reorder), publish to the Watch feed, play an episode or a whole series in order |
-| **Settings** | Earn credits (notifications, invite a friend, join the community — each once), Rate us (no reward), language, fade UI, blocked users, Free plan, merge accounts, feedback/terms/privacy placeholders, log out, delete account |
-| **Credits** | 500 demo credits to start, +50 free every day, history in the credits sheet |
+| **Welcome + Creator** | First-run welcome, then a creator with four tabs: **Look** (describe and generate a portrait, 45 credits, or upload a photo with consent), **Voice** (browser voices with a waveform preview, 30 credits), **Lore** (Origin Story, Core Identity, Personality, Social World, Territory, Current State chips, plus a chat to build them and an editable Lore panel) and **Details** (name, unique @handle, up to 3 traits, bio, collab setting). +100 welcome bonus. You can edit any of it later. |
+| **Watch** | Vertical swipe feed with auto-play, multi-clip episodes, like/report/block and an "AI-generated" label. Tap the series name to open its page, use **Previously on…** on episode 2+ for a quick catch-up, and **Remix** to put your own character in the scene |
+| **Create → Scene** | Prompt, model picker, length, quality, character/voice lock, co-star, live credit cost, cancel = refund. Remixes show a credit banner and save "Remix of @creator" on the clip |
+| **Create → Storyboard** | Director mode: 3–6 scenes (Opening → Build → Twist → Cliffhanger), each with its own prompt, length, camera and mood. Reorder by dragging the grip (works with touch) or with arrows. "Outline it for me" fills empty scenes. **Generate all** renders every scene and builds and publishes the episode into a new or existing series |
+| **Series** | **Continue watching** (resume, next episode, or new from series you follow), Following, Discover, My clips and My series. Each series page has a cover, a follow button, Play/Continue and an episode list with progress bars |
+| **Episode viewer** | Episode 2+ starts with a "Previously on…" recap (skippable). At the end there's an "Up next" card, and watch progress is saved |
+| **Character** | Profile, versions, **Share card**: a 1080×1350 card (portrait, name, @handle, traits, bio) you can download or send with the phone's share sheet |
+| **Remix rules** | Each creator's collab setting is respected: **Allow** = remix right away, **Request** = send a request, **Private** = remixes off |
+| **Settings** | Earn credits, language, fade UI, blocked users, plan, feedback, log out, delete account |
+| **Polish** | Skeleton loaders, page transitions, haptic taps (on phones that support it) and friendly empty states |
+
+### What's demo / fake
+
+- Clips are bundled sample videos; no AI model runs.
+- Portraits are drawn on a canvas from your description.
+- The voice is your browser's built-in text-to-speech.
+- Lore chat replies come from templates.
+- Credits aren't real money.
+- Remix requests auto-approve after 4 seconds.
+- Recaps are put together from episode prompts.
+- Other creators and series are seed data.
+- Nothing leaves your device.
 
 Everything is stored in the browser's `localStorage` (key `lks-demo-v1`).
 

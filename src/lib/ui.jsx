@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 const P = {
   play: 'M8 5v14l11-7z',
@@ -28,6 +29,11 @@ const P = {
   gem: 'M6 3h12l3 6-9 12L3 9zM3 9h18M9 3l-1.5 6L12 21l4.5-12L15 3',
   stop: 'M7 7h10v10H7z',
   mic: 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3',
+  remix: 'M4 9a7 7 0 0 1 12.5-3.5L19 8M19 4v4h-4M20 15a7 7 0 0 1-12.5 3.5L5 16M5 20v-4h4',
+  grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
+  camera: 'M3 8h3l2-3h8l2 3h3v11H3zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  download: 'M12 4v12M7 11l5 5 5-5M4 20h16',
+  board: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
   edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
 };
 
@@ -43,7 +49,7 @@ export function Icon({ name, size = 22, fill = false, stroke = 2, className = ''
 
 export function Sheet({ open, onClose, title, children }) {
   if (!open) return null;
-  return (
+  return createPortal(
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-grip" />
@@ -53,7 +59,8 @@ export function Sheet({ open, onClose, title, children }) {
         </div>
         <div className="sheet-body">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -78,3 +85,22 @@ export function Avatar({ character, size = 40 }) {
     <span className="avatar avatar-letter" style={{ width: size, height: size, fontSize: size * 0.42 }}>{letter}</span>
   );
 }
+
+// LKS monogram — the studio's own mark.
+export function Monogram({ size = 28, className = '' }) {
+  return (
+    <svg className={'monogram ' + className} width={size} height={size} viewBox="0 0 64 64" aria-label="LKS" role="img">
+      <defs>
+        <linearGradient id="lksg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#d946ef" /><stop offset="1" stopColor="#7c3aed" /></linearGradient>
+      </defs>
+      <rect x="2" y="2" width="60" height="60" rx="18" fill="url(#lksg)" />
+      <rect x="2.75" y="2.75" width="58.5" height="58.5" rx="17.25" fill="none" stroke="rgba(255,255,255,.35)" strokeWidth="1.5" />
+      <path d="M13 19v26h10" stroke="#fff" strokeWidth="5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M28 19v26M28 33l10-14M31 30l8 15" stroke="#fff" strokeWidth="5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M53 22.5c-1.4-2.4-3.6-3.5-6-3.5-3.3 0-5.5 2-5.5 5 0 6.5 12 4.5 12 11.5 0 3.3-2.6 5.5-6.3 5.5-2.8 0-5.2-1.3-6.4-3.8" stroke="#fff" strokeWidth="4.2" fill="none" strokeLinecap="round" transform="translate(0 2)" />
+    </svg>
+  );
+}
+
+// Light "haptic" tick on supported phones.
+export const tick = () => { try { navigator.vibrate?.(8); } catch {} };

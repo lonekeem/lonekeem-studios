@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StoreProvider, useStore, DAILY_TOPUP } from './lib/store.jsx';
-import { Icon, Sheet } from './lib/ui.jsx';
+import { Icon, Sheet, Monogram, tick } from './lib/ui.jsx';
 import { IS_DEMO } from './lib/generateClip.js';
 import Watch from './screens/Watch.jsx';
 import Create from './screens/Create.jsx';
@@ -8,6 +8,7 @@ import Character from './screens/Character.jsx';
 import Series from './screens/Series.jsx';
 import Settings from './screens/Settings.jsx';
 import Creator, { Welcome } from './screens/Creator.jsx';
+import Show from './screens/Show.jsx';
 
 const TABS = [
   { id: 'watch', label: 'Watch', icon: 'home' },
@@ -36,12 +37,19 @@ function Shell() {
   const [tab, sub] = route.split('/');
   const firstRun = !state.onboarded;
 
+  // Haptic-feel presses: a tiny vibration on buttons (phones that support it).
+  useEffect(() => {
+    const on = (e) => { if (e.target.closest?.('.btn, .act, .tab, .pill, .tool')) tick(); };
+    document.addEventListener('pointerdown', on, { passive: true });
+    return () => document.removeEventListener('pointerdown', on);
+  }, []);
+
   if (state.loggedOut) {
     return (
       <div className="welcome">
-        <div className="brand-mark big" />
+        <Monogram size={84} />
         <h1>Lone Keem Studios</h1>
-        <p className="muted">Make your character. Star in your own short series.</p>
+        <p className="tagline">Your character. Your series.</p>
         <button className="btn primary wide" onClick={logIn} data-testid="login">Continue in demo mode</button>
         <p className="hint">Demo only — no account, no sign-up. Your data stays in this browser.</p>
       </div>
@@ -63,7 +71,7 @@ function Shell() {
   return (
     <div className={'app' + (isWatch ? ' on-watch' : '')}>
       <header className="topbar">
-        <a className="brand" href="#/watch"><span className="brand-mark" />Lone Keem <b>Studios</b></a>
+        <a className="brand" href="#/watch"><Monogram size={28} /><span className="brand-word">Lone Keem <b>Studios</b></span></a>
         {IS_DEMO && <span className="demo-pill">DEMO</span>}
         <button className="credit-pill" onClick={() => setCreditsOpen(true)} data-testid="credits">
           <Icon name="gem" size={18} /> <span data-testid="credit-balance">{state.credits}</span>
@@ -71,17 +79,18 @@ function Shell() {
       </header>
 
       <main className="screen">
-        {tab === 'watch' && <Watch />}
+        {tab === 'watch' && <Watch go={go} />}
         {tab === 'create' && <Create mode={sub} go={go} />}
         {tab === 'character' && <Character go={go} />}
-        {tab === 'series' && <Series go={go} />}
+        {tab === 'series' && <Series go={go} sub={sub} />}
+        {tab === 'show' && <Show key={route} id={sub} play={route.split('/')[2]} go={go} />}
         {tab === 'settings' && <Settings go={go} />}
-        {!TABS.some((t) => t.id === tab) && <Watch />}
+        {!TABS.some((t) => t.id === tab) && tab !== 'show' && <Watch go={go} />}
       </main>
 
       <nav className="tabbar">
         {TABS.map((t) => (
-          <button key={t.id} className={'tab' + (tab === t.id ? ' active' : '') + (t.id === 'create' ? ' tab-create' : '')}
+          <button key={t.id} className={'tab' + (tab === t.id || (tab === 'show' && t.id === 'series') ? ' active' : '') + (t.id === 'create' ? ' tab-create' : '')}
             onClick={() => go(t.id)} data-testid={'tab-' + t.id} aria-label={t.label}>
             {t.id === 'create' ? <span className="create-bubble"><Icon name="plus" size={26} stroke={2.6} /></span> : <Icon name={t.icon} />}
             <span>{t.label}</span>

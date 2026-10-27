@@ -5,7 +5,7 @@ export const START_CREDITS = 500;
 export const DAILY_TOPUP = 50;
 
 const today = () => new Date().toISOString().slice(0, 10);
-const uid = (p) => p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+export const uid = (p) => p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
 export const LORE_FIELDS = [
   { id: 'origin', label: 'Origin Story' },
@@ -40,6 +40,11 @@ const fresh = () => ({
   blocked: [],
   prefs: { language: 'en', fadeUI: false, notifications: false },
   earned: {},
+  progress: {}, // episodeKey -> { p: 0..1, t }
+  follows: {}, // seriesKey -> true
+  remix: null, // draft handed from the feed to Create
+  remixRequests: {}, // seriesKey -> 'sent' | 'approved'
+  board: null, // storyboard draft
   loggedOut: false,
 });
 
@@ -124,7 +129,7 @@ export function StoreProvider({ children }) {
         update((s) => {
           if (ep.id && s.episodes.some((e) => e.id === ep.id))
             return { episodes: s.episodes.map((e) => (e.id === ep.id ? { ...e, ...ep } : e)) };
-          return { episodes: [...s.episodes, { published: false, createdAt: Date.now(), ...ep, id: uid('ep') }] };
+          return { episodes: [...s.episodes, { published: false, createdAt: Date.now(), ...ep, id: ep.id || uid('ep') }] };
         }),
       deleteEpisode: (id) => update((s) => ({ episodes: s.episodes.filter((e) => e.id !== id) })),
       toggleLike: (id) => update((s) => ({ likes: { ...s.likes, [id]: !s.likes[id] } })),
@@ -132,6 +137,16 @@ export function StoreProvider({ children }) {
       block: (handle) => update((s) => ({ blocked: s.blocked.includes(handle) ? s.blocked : [...s.blocked, handle] })),
       unblock: (handle) => update((s) => ({ blocked: s.blocked.filter((h) => h !== handle) })),
       setPref: (k, v) => update((s) => ({ prefs: { ...s.prefs, [k]: v } })),
+      setProgress: (key, p) => update((s) => {
+        const prev = s.progress[key]?.p || 0;
+        // never move a finished episode back to "in progress" just because it looped
+        const next = prev >= 0.95 && p < 0.95 ? prev : p;
+        return { progress: { ...s.progress, [key]: { p: Math.min(1, next), t: Date.now() } } };
+      }),
+      toggleFollow: (key) => update((s) => ({ follows: { ...s.follows, [key]: !s.follows[key] } })),
+      setRemix: (remix) => update(() => ({ remix })),
+      setRemixRequest: (key, v) => update((s) => ({ remixRequests: { ...s.remixRequests, [key]: v } })),
+      setBoard: (board) => update((s) => ({ board: typeof board === 'function' ? board(s.board) : board })),
       markEarned: (k) => update((s) => ({ earned: { ...s.earned, [k]: true } })),
       logOut: () => update(() => ({ loggedOut: true })),
       logIn: () => update(() => ({ loggedOut: false })),
