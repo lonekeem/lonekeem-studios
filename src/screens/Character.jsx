@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { drawCard, cardBlob } from '../lib/card.js';
 import { useStore, LORE_FIELDS } from '../lib/store.jsx';
 import { Avatar, Icon, Sheet } from '../lib/ui.jsx';
+import { isNative, shareFile, saveFile } from '../lib/native.js';
 
 const COLLAB = { allow: 'Collabs: open to all', request: 'Collabs: on request', private: 'Collabs: private' };
 
@@ -70,13 +71,23 @@ function CardPreview({ ch, notify }) {
     return () => { alive = false; if (objUrl) URL.revokeObjectURL(objUrl); };
   }, [ch]);
   const fileName = `${ch.handle || 'character'}-card.png`;
-  const download = () => {
+  const download = async () => {
+    if (isNative) {
+      try { await saveFile(blob, fileName); notify('Card saved to Documents › Lone Keem Studios'); }
+      catch { try { await shareFile(blob, fileName, `${ch.name} · Lone Keem Studios`, ''); } catch { notify('Couldn\'t save the card on this phone'); } }
+      return;
+    }
     const a = document.createElement('a');
     a.href = url; a.download = fileName;
     document.body.appendChild(a); a.click(); a.remove();
     notify('Card saved to your downloads');
   };
   const share = async () => {
+    if (isNative) {
+      try { await shareFile(blob, fileName, `${ch.name} · Lone Keem Studios`, `Meet ${ch.name} (@${ch.handle}). Your character. Your series.`); }
+      catch (e) { if (!/cancel/i.test(e?.message || '')) notify('Couldn\'t open the share sheet'); }
+      return;
+    }
     const file = new File([blob], fileName, { type: 'image/png' });
     const data = { files: [file], title: `${ch.name} · Lone Keem Studios`, text: `Meet ${ch.name} (@${ch.handle}). Your character. Your series.` };
     if (navigator.canShare?.(data)) {

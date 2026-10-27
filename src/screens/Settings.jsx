@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { Icon, Sheet, Toggle, Avatar } from '../lib/ui.jsx';
+import { isNative, shareText } from '../lib/native.js';
 
 const EARN = [
   { id: 'notifications', icon: 'bell', title: 'Turn on notifications', reward: 30 },
@@ -31,9 +32,10 @@ export default function Settings({ go }) {
       setPref('notifications', true);
     }
     if (t.id === 'invite') {
-      const url = window.location.href.split('#')[0];
+      const url = isNative ? 'https://lonekeem.github.io/lonekeem-studios/' : window.location.href.split('#')[0];
       try {
-        if (navigator.share) await navigator.share({ title: 'Lone Keem Studios', text: 'Make your own AI short series with me', url });
+        if (isNative) await shareText('Lone Keem Studios', 'Make your own AI short series with me', url);
+        else if (navigator.share) await navigator.share({ title: 'Lone Keem Studios', text: 'Make your own AI short series with me', url });
         else { await navigator.clipboard?.writeText(url); notify('Invite link copied'); }
       } catch { /* share sheet dismissed — still reward in demo */ }
     }

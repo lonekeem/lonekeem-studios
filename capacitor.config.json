@@ -1,0 +1,24 @@
+{
+  "appId": "com.lonekeemstudios.app",
+  "appName": "Lone Keem Studios",
+  "webDir": "dist",
+  "backgroundColor": "#0f0a1a",
+  "android": {
+    "backgroundColor": "#0f0a1a",
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "launchAutoHide": false,
+      "backgroundColor": "#0f0a1a",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "backgroundColor": "#0f0a1a",
+      "style": "DARK",
+      "overlaysWebView": false
+    }
+  }
+}

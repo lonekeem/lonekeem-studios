@@ -3,3 +3,10 @@ dist
 .env
 .env.*
 !.env.example
+
+# Android signing secrets: never commit (they live in /workspace/lonekeem-studios-keys/ on the build box)
+*.jks
+*.keystore
+keystore.properties
+lonekeem-studios-keys/
+android/app/release/

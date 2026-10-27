@@ -57,6 +57,11 @@ export default function Storyboard({ go }) {
   };
   const onDrag = (e) => {
     if (drag.current == null) return;
+    // Near either edge of the strip, scroll it so a frame can travel the whole timeline.
+    const strip = listRef.current.closest('.filmstrip') || listRef.current;
+    const sr = strip.getBoundingClientRect();
+    if (e.clientX < sr.left + 36) strip.scrollLeft -= 14;
+    else if (e.clientX > sr.right - 36) strip.scrollLeft += 14;
     const cards = [...listRef.current.querySelectorAll('.scene-card')];
     let j = cards.findIndex((c) => { const r = c.getBoundingClientRect(); return e.clientX < r.left + r.width / 2; });
     if (j === -1) j = cards.length - 1;

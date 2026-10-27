@@ -40,6 +40,27 @@ returns one of the bundled sample clips.
 
 Everything is stored in the browser's `localStorage` (key `lks-demo-v1`).
 
+## Android app (Capacitor)
+
+The same app ships as an Android app (`com.lonekeemstudios.app`, "Lone Keem Studios") using [Capacitor](https://capacitorjs.com). It works offline: the web build is bundled inside the app.
+
+- **Look:** purple LKS adaptive icon and splash (sources in `assets/`, generated with `@capacitor/assets`), dark purple status and navigation bars, portrait only.
+- **Back button:** closes the open sheet or player first, then steps up a screen (an episode goes back to Library, sub-screens to their tab, other tabs to Showing). On Showing it exits the app.
+- **Sharing:** the character card uses Android's share sheet, and Download saves it to *Documents › Lone Keem Studios*.
+- The native build uses base `/`, while the website keeps `/lonekeem-studios/`.
+
+Needs Node 22+, JDK 21 and the Android SDK (`ANDROID_HOME`):
+
+```bash
+npm run android:debug     # → android/app/build/outputs/apk/debug/app-debug.apk
+npm run android:release   # → android/app/build/outputs/bundle/release/app-release.aab (signed)
+npx cap open android      # optional: open in Android Studio
+```
+
+**Release signing.** `android/app/build.gradle` reads an upload keystore from a `keystore.properties` file *outside the repo* (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`). Set `LKS_KEYSTORE_PROPS=/path/to/keystore.properties` to point at it. Keystores and `keystore.properties` are git-ignored, so never commit them. Without the file, `bundleRelease` produces an unsigned bundle.
+
+To regenerate icons and splash after editing `assets/`: `npx capacitor-assets generate --android --iconBackgroundColor '#0f0a1a' --splashBackgroundColor '#0f0a1a' --splashBackgroundColorDark '#0f0a1a'`.
+
 ## Run locally
 
 ```bash
