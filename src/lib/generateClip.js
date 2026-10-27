@@ -5,12 +5,18 @@
 //   generateClip({ prompt, model, length, quality, character, options, onProgress })
 //     → Promise<{ id, url, prompt, model, length, quality, createdAt, demo }>
 //
-// Modes (set at build time via VITE_GEN_MODE):
+// Signed in (params.server = true): the take runs on the hosted API
+//   (POST /api/generate → poll /api/status). The server deducts reels, applies
+//   the daily limit, and decides demo vs real (real only for owner accounts).
+//
+// Signed out, modes (set at build time via VITE_GEN_MODE):
 //   demo (default) – fakes a few seconds of "rendering" and returns a bundled
 //                    sample clip. No network, no keys, no cost.
 //   real           – POSTs to your serverless backend (VITE_API_BASE), which
 //                    holds the provider key (fal.ai / xAI) and returns a job.
 // ─────────────────────────────────────────────────────────────────────────────
+
+import { api, absUrl } from './supabase.js';
 
 const BASE = import.meta.env.BASE_URL;
 const MODE = import.meta.env.VITE_GEN_MODE || 'demo';
@@ -68,8 +74,32 @@ async function realGenerate({ prompt, model, length, quality, character, options
   }
 }
 
+const SERVER_STAGES = { queued: 'In the queue', running: 'Rendering frames', done: 'Finishing up' };
+
+// Hosted API: start the take, then poll until it's in the can.
+async function serverGenerate({ prompt, model, length, onProgress, onStarted, signal }) {
+  const start = await api('/api/generate', { method: 'POST', body: { prompt, model, length, aspect_ratio: '9:16' }, signal });
+  onStarted?.(start);
+  const id = start.clip.id;
+  const t0 = Date.now();
+  const expected = start.mode === 'real' ? 90000 : 9000;
+  onProgress?.({ progress: 0.05, stage: SERVER_STAGES.queued });
+  for (;;) {
+    await new Promise((r, j) => {
+      const t = setTimeout(r, 3000);
+      signal?.addEventListener('abort', () => { clearTimeout(t); j(new DOMException('Cancelled', 'AbortError')); }, { once: true });
+    });
+    const s = await api(`/api/status?id=${encodeURIComponent(id)}`, { signal });
+    const c = s.clip;
+    if (c.status === 'done') return { url: absUrl(c.video_url), demo: !!c.demo || s.mode === 'demo', serverId: c.id, model: c.model, length: c.length };
+    if (c.status === 'failed') throw Object.assign(new Error(c.refunded ? 'That take failed. Reels refunded.' : 'That take failed.'), { refunded: !!c.refunded });
+    const guess = Math.min(0.95, 0.05 + (Date.now() - t0) / expected);
+    onProgress?.({ progress: guess, stage: SERVER_STAGES[c.status] || 'Rendering frames' });
+  }
+}
+
 export async function generateClip(params) {
-  const out = await (IS_DEMO ? demoGenerate(params) : realGenerate(params));
+  const out = await (params.server ? serverGenerate(params) : IS_DEMO ? demoGenerate(params) : realGenerate(params));
   return {
     id: 'clip_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     url: out.url,
@@ -80,5 +110,6 @@ export async function generateClip(params) {
     characterName: params.character?.name || '',
     createdAt: Date.now(),
     demo: out.demo,
+    ...(out.serverId ? { serverId: out.serverId } : {}),
   };
 }

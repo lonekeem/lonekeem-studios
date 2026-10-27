@@ -1,7 +1,7 @@
 // Model catalogue (names are plain text only — no logos). Costs are demo reels
 // per 5 seconds at 480p. Tune these to match your real provider pricing later.
 export const MODELS = [
-  { id: 'auto', name: "Director's pick", tag: 'Matched to your scene', blurb: 'The studio matches a camera to what you wrote.', base: 20, lens: 'AUTO' },
+  { id: 'auto', name: 'House lens', tag: 'Studio matches your scene', blurb: 'The studio reads your scene and chooses the lens for you.', base: 20, lens: 'AUTO' },
   { lens: '35mm', id: 'seedance', name: 'Seedance', tag: 'Strongest overall', blurb: 'Top motion quality and prompt following.', base: 32 },
   { lens: '50mm', id: 'grok-imagine', name: 'Grok Imagine', tag: 'Native audio', blurb: 'Generates sound together with the video.', base: 28 },
   { lens: '16mm', id: 'wan', name: 'Wan', tag: 'Fast & cheapest', blurb: 'Quick drafts for testing ideas.', base: 10 },
@@ -25,9 +25,9 @@ export const QUALITIES = [
 ];
 
 export const ADDONS = {
-  characterLock: { label: 'Lock my lead', hint: 'Your character looks the same in every shot', cost: 5 },
-  voiceLock: { label: 'Lock the voice', hint: 'Same voice across every scene', cost: 8 },
-  coStar: { label: 'Cast a co-star', hint: 'Bring a second character into the shot', cost: 10 },
+  characterLock: { label: 'Lead continuity', hint: 'Your lead keeps the same face and wardrobe from shot to shot', cost: 5 },
+  voiceLock: { label: 'Voice continuity', hint: 'Your lead sounds the same in every scene', cost: 8 },
+  coStar: { label: 'Second billing', hint: 'Write a co-star into the shot', cost: 10 },
 };
 
 export function creditCost({ model, length, quality, characterLock, voiceLock, coStar }) {
@@ -39,3 +39,13 @@ export function creditCost({ model, length, quality, characterLock, voiceLock, c
   if (coStar) cost += ADDONS.coStar.cost;
   return Math.round(cost);
 }
+
+// Lens cards for the hosted API's models (signed-in users). Prices come from /api/models.
+export const SERVER_LENS = {
+  fast: { lens: '16mm', name: 'Quick Take', tag: 'Fastest, lowest cost', blurb: 'Rapid drafts. Good for blocking out an idea.' },
+  seedance: { lens: '35mm', name: 'Seedance', tag: 'Strong all-rounder', blurb: 'Clean motion that follows the scene closely.' },
+  seedance2: { lens: '50mm', name: 'Seedance 2', tag: 'Premium look', blurb: 'Richer detail for hero shots.' },
+  wan: { lens: '28mm', name: 'Wan 2.5', tag: 'Detailed scenes', blurb: 'Busy, detailed set pieces.' },
+  hailuo: { lens: '85mm', name: 'Hailuo', tag: 'Sharper 768p', blurb: 'Higher-resolution frames, 6s or 10s takes.' },
+  kling: { lens: 'ANA', name: 'Kling', tag: 'Action & stunts', blurb: 'Chases, fights and big camera moves.' },
+};

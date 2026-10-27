@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { Icon, Sheet, Toggle, Avatar } from '../lib/ui.jsx';
 import { isNative, shareText } from '../lib/native.js';
+import { useAuth } from '../lib/auth.jsx';
 
 const EARN = [
   { id: 'notifications', icon: 'bell', title: 'Turn on notifications', reward: 30 },
@@ -13,13 +14,14 @@ const LANGS = [['en', 'English'], ['es', 'Español'], ['fr', 'Français'], ['pt'
 
 const DOCS = {
   terms: ['Terms of Service', 'Placeholder. This is a demo build — real terms will be published before launch. Content you create must follow the community rules: no sexual content, no real people without consent, no harassment, no illegal content.'],
-  privacy: ['Privacy Policy', 'Placeholder. In this demo everything (your character, avatar, clips list, reels) is stored only in your browser’s localStorage. Nothing is uploaded and there are no accounts or trackers.'],
-  merge: ['Merge accounts', 'Coming later: sign in on two devices and merge reels, characters and series into one account. Not available in the demo because there are no accounts.'],
+  privacy: ['Privacy Policy', 'Placeholder. Signed out, everything (your character, avatar, clips list, reels) is stored only on this device. If you sign in, your email, reel balance and the takes you shoot are stored on the studio servers (Supabase). No ads or trackers.'],
+  merge: ['Merge accounts', 'Coming later: bring the characters and series you made on this device into your studio account.'],
   sub: ['Subscription', 'You are on the Free plan. Paid plans (longer clips, 720p/1080p, more reels) are not available in this demo and nothing can be purchased.'],
 };
 
 export default function Settings({ go }) {
   const { state, addCredits, markEarned, setPref, unblock, notify, logOut, deleteAccount } = useStore();
+  const auth = useAuth();
   const [doc, setDoc] = useState(null);
   const [feedback, setFeedback] = useState(false);
   const [fbText, setFbText] = useState('');
@@ -93,7 +95,20 @@ export default function Settings({ go }) {
       </div>
 
       <h3 className="group-title">Account</h3>
-      <div className="card list">
+      <div className="card list" data-testid="account-card">
+        {auth.signedIn ? (
+          <>
+            <div className="list-row static" data-testid="account-email">
+              <Icon name="ticket" /><span className="grow">{auth.user?.email}<span className="hint">{auth.me ? `@${auth.me.profile?.handle || 'studio'} · ${auth.me.balance} reels${auth.me.owner ? ' · owner' : ''}` : auth.meError || 'Loading your account…'}</span></span>
+              {auth.realOn && <span className="real-badge" data-testid="real-badge-settings"><Icon name="spark" size={12} fill /> Real AI</span>}
+            </div>
+            <button className="list-row" onClick={async () => { await auth.signOut(); notify('Signed out. Back to the local demo.'); }} data-testid="signout"><span className="grow">Sign out of studio pass</span></button>
+          </>
+        ) : (
+          <button className="list-row" onClick={auth.openSignIn} data-testid="settings-signin">
+            <Icon name="ticket" /><span className="grow">Sign in<span className="hint">Keep reels on an account and claim daily reels</span></span><Icon name="back" size={16} className="flip" />
+          </button>
+        )}
         <button className="list-row" onClick={() => setDoc('sub')}><span className="grow">Subscription</span><span className="plan">Free plan</span></button>
         <button className="list-row" onClick={() => setDoc('merge')}><span className="grow">Merge accounts</span><Icon name="back" size={16} className="flip" /></button>
       </div>
@@ -103,14 +118,14 @@ export default function Settings({ go }) {
         <button className="list-row" onClick={() => setFeedback(true)}><span className="grow">Send feedback</span><Icon name="back" size={16} className="flip" /></button>
         <button className="list-row" onClick={() => setDoc('terms')}><span className="grow">Terms of Service</span><Icon name="back" size={16} className="flip" /></button>
         <button className="list-row" onClick={() => setDoc('privacy')}><span className="grow">Privacy Policy</span><Icon name="back" size={16} className="flip" /></button>
-        <div className="list-row static"><span className="grow">Version</span><span className="hint">0.1 demo</span></div>
+        <div className="list-row static"><span className="grow">Version</span><span className="hint">1.0.1</span></div>
       </div>
 
       <div className="card list">
-        <button className="list-row" onClick={logOut} data-testid="logout"><span className="grow">Log out</span></button>
+        <button className="list-row" onClick={async () => { if (auth.signedIn) await auth.signOut(); logOut(); }} data-testid="logout"><span className="grow">Log out</span></button>
         <button className="list-row danger" onClick={() => setConfirmDelete(true)} data-testid="delete-account"><span className="grow">Delete account</span></button>
       </div>
-      <p className="hint center">Lone Keem Studios · demo build · all data stays on this device</p>
+      <p className="hint center">Lone Keem Studios · {auth.signedIn ? 'signed in · reels on your account' : 'demo mode · all data stays on this device'}</p>
 
       <Sheet open={!!doc} onClose={() => setDoc(null)} title={doc ? DOCS[doc][0] : ''}>
         <p className="muted">{doc && DOCS[doc][1]}</p>

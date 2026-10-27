@@ -266,3 +266,16 @@ h1, h2, h3, .page-title, .group-title, .welcome h1, .profile-card h1, .gen-card 
 .frame-cell.scene-card.dragging { transform: none; box-shadow: none; }
 .casting .creator-top { background: linear-gradient(180deg, #0f0a1a 80%, rgba(15,10,26,0)); margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
 .frame-editor .scene-num { background: none; -webkit-text-fill-color: currentColor; width: auto; height: auto; box-shadow: none; border: 0; padding: 0; }
+
+/* ── Studio pass (accounts) + Real AI badge ── */
+.pass-btn { margin-left: auto; white-space: nowrap; font-family: var(--display); letter-spacing: .1em; text-transform: uppercase; font-size: 11px; padding: 6px 10px;
+  border: 1px solid rgba(196,181,253,.45); border-radius: 2px; color: #e2d7ff; background: rgba(139,92,246,.12); }
+.pass-btn + .credit-pill { margin-left: 8px; }
+.real-badge { display: inline-flex; align-items: center; gap: 4px; font-family: var(--display); letter-spacing: .12em; text-transform: uppercase;
+  font-size: 10px; padding: 3px 7px; border-radius: 2px; color: #1a0f2e; background: linear-gradient(90deg, #f5d36b, #e9a8ff); vertical-align: middle; }
+.real-badge.top { margin-left: 2px; }
+.field-label .real-badge { margin-left: 6px; }
+.signin-form { display: grid; gap: 10px; }
+.signin-sent { display: grid; gap: 10px; justify-items: center; text-align: center; }
+.welcome-signin { width: 100%; max-width: 360px; display: grid; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(196,181,253,.18); }
+.welcome-signin > .hint { text-align: center; }

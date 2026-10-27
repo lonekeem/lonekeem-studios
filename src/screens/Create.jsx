@@ -1,6 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
-import { MODELS, LENGTHS, QUALITIES, ADDONS, creditCost } from '../lib/models.js';
+import { MODELS, LENGTHS, QUALITIES, ADDONS, SERVER_LENS, creditCost } from '../lib/models.js';
+import { useAuth } from '../lib/auth.jsx';
+import { friendlyError, ApiError } from '../lib/supabase.js';
 import { generateClip, IS_DEMO } from '../lib/generateClip.js';
 import { Icon, Sheet, Toggle, Avatar } from '../lib/ui.jsx';
 import Dance from './Dance.jsx';
@@ -57,27 +59,82 @@ export default function Create({ mode, go }) {
 
 function SceneCreator({ go }) {
   const { state, spendCredits, addCredits, addClip, notify, setRemix } = useStore();
+  const auth = useAuth();
+  const server = auth.signedIn && !!auth.me; // signed in: reels + takes live on the hosted API
+  const realOn = server && auth.realOn;
   // A remix handed over from the feed: prefill the scene, lock the character in.
   const [remix] = useState(() => state.remix);
   React.useEffect(() => { if (state.remix) setRemix(null); }, []); // eslint-disable-line
   const [remixOf, setRemixOf] = useState(remix ? { handle: remix.handle, title: remix.title, series: remix.series } : null);
   const [prompt, setPrompt] = useState(remix ? `${state.character.name || 'My character'} steps into this scene: ${remix.prompt}` : '');
-  const [model, setModel] = useState('auto');
+  const [localModel, setLocalModel] = useState('auto');
+  const [serverModel, setServerModel] = useState('fast');
   const [length, setLength] = useState(5);
   const [quality, setQuality] = useState('480p');
   const [opts, setOpts] = useState({ characterLock: true, voiceLock: false, coStar: false });
   const [coStarName, setCoStarName] = useState('');
-    const [job, setJob] = useState(null); // {progress, stage}
+  const [job, setJob] = useState(null); // {progress, stage}
   const [result, setResult] = useState(null);
   const abortRef = useRef(null);
 
-  const cost = creditCost({ model, length, quality, ...opts });
-  const m = MODELS.find((x) => x.id === model);
+  // Lens list: the local demo catalogue, or the API's models when signed in.
+  const realModels = auth.me?.real?.models || ['fast', 'seedance', 'kling'];
+  const serverModels = (auth.catalog?.models || [])
+    .filter((x) => (realOn ? realModels.includes(x.id) : true))
+    .map((x) => ({ ...x, ...(SERVER_LENS[x.id] || { lens: x.id.slice(0, 4).toUpperCase(), name: x.label, tag: x.quality, blurb: x.label }), base: x.price_reels[Math.min(...x.lengths)] }));
+  const lenses = server ? serverModels : MODELS;
+  const model = server ? (serverModels.some((x) => x.id === serverModel) ? serverModel : serverModels[0]?.id || 'fast') : localModel;
+  const setModel = server ? setServerModel : setLocalModel;
+  const m = lenses.find((x) => x.id === model) || { id: model, name: SERVER_LENS[model]?.name || model, blurb: '', lengths: [5], price_reels: {}, quality: '480p' };
+  const lengths = server ? (realOn ? [{ s: 5, locked: false }] : (m.lengths || [5]).map((s) => ({ s, locked: false }))) : LENGTHS;
+  const takeLength = lengths.some((l) => l.s === length && !l.locked) ? length : lengths[0].s;
+  const takeQuality = server ? (m.quality || '480p') : quality;
+  const cost = server ? (m.price_reels?.[takeLength] ?? 0) : creditCost({ model, length, quality, ...opts });
+  const balance = server ? (auth.me.balance ?? 0) : state.credits;
   const ch = state.character;
   const hasChar = !!ch.name;
   const lockedTap = (what) => notify(`${what} is a paid-plan feature (locked in this demo).`);
 
+  const character = () => (opts.characterLock && hasChar ? {
+    name: ch.name, handle: ch.handle, look: ch.look, style: ch.style, image: ch.avatar,
+    voice: opts.voiceLock ? ch.voice : null, lore: ch.lore, traits: ch.traits,
+  } : null);
+
+  const runServer = async () => {
+    if (!prompt.trim()) return notify('Describe your scene first.');
+    if (cost > balance) return notify('Not enough reels. Claim your daily reels from the reels menu.');
+    setResult(null);
+    setJob({ progress: 0, stage: 'Sending to the studio' });
+    const ac = new AbortController();
+    abortRef.current = ac;
+    let started = false;
+    try {
+      // Lead goes into the prompt text so the server-side model sees who is starring.
+      const lead = opts.characterLock && hasChar ? `${ch.name}${ch.look ? ` (${ch.look})` : ''}: ` : '';
+      const clip = await generateClip({
+        server: true, prompt: (lead + prompt.trim()).slice(0, 1500), model, length: takeLength, quality: takeQuality,
+        character: character(), options: { ...opts, coStarName: opts.coStar ? coStarName : '' },
+        onStarted: (st) => { started = true; auth.setBalance(st.balance); },
+        onProgress: setJob, signal: ac.signal,
+      });
+      const c = { ...clip, prompt: prompt.trim(), ...(remixOf ? { remixOf } : {}) };
+      addClip(c);
+      setResult(c);
+    } catch (e) {
+      if (e.name === 'AbortError') notify(started ? 'Cut! The take may still finish on the server; those reels were already spent.' : 'Cut!');
+      else {
+        if (e instanceof ApiError && typeof e.body?.balance === 'number') auth.setBalance(e.body.balance);
+        notify(e instanceof ApiError ? friendlyError(e) : e.message);
+        if (e instanceof ApiError && e.status === 401) { await auth.signOut(); auth.openSignIn(); }
+      }
+    } finally {
+      setJob(null);
+      auth.refreshMe();
+    }
+  };
+
   const run = async () => {
+    if (server) return runServer();
     if (!prompt.trim()) return notify('Describe your scene first.');
     if (!spendCredits(cost, `Clip · ${m.name} · ${length}s`)) return notify('Not enough reels. Grab free reels in Studio.');
     setResult(null);
@@ -88,10 +145,7 @@ function SceneCreator({ go }) {
       const clip = await generateClip({
         prompt: prompt.trim(), model, length, quality,
         // Only what a real model needs — not the whole version history.
-        character: opts.characterLock && hasChar ? {
-          name: ch.name, handle: ch.handle, look: ch.look, style: ch.style, image: ch.avatar,
-          voice: opts.voiceLock ? ch.voice : null, lore: ch.lore, traits: ch.traits,
-        } : null,
+        character: character(),
         options: { ...opts, coStarName: opts.coStar ? coStarName : '' },
         onProgress: setJob, signal: ac.signal,
       });
@@ -111,9 +165,10 @@ function SceneCreator({ go }) {
       <div className="gen-card" data-testid="generating">
         <div className="gen-orb"><span style={{ '--p': job.progress }} /></div>
         <h2>Rolling…</h2>
+        {realOn && <span className="real-badge" data-testid="real-badge-job"><Icon name="spark" size={12} fill /> Real AI</span>}
         <p className="muted">{job.stage}</p>
         <div className="progress"><span style={{ width: `${Math.round(job.progress * 100)}%` }} /></div>
-        <p className="hint">{Math.round(job.progress * 100)}% · {m.name} · {length}s · {quality}{IS_DEMO && ' · demo render'}</p>
+        <p className="hint">{Math.round(job.progress * 100)}% · {m.name} · {takeLength}s · {takeQuality}{(server ? !realOn : IS_DEMO) && ' · demo render'}</p>
         <button className="btn ghost" onClick={() => abortRef.current?.abort()}>Cancel</button>
       </div>
     );
@@ -153,7 +208,7 @@ function SceneCreator({ go }) {
         <Avatar character={ch} size={38} />
         <span>
           {hasChar ? <><span className="billing">Starring</span> <b>{ch.name}</b> <span className="muted">@{ch.handle}</span></> : <b>Cast your lead</b>}
-          <span className="hint">{hasChar ? `${opts.characterLock ? 'Lead locked' : 'Lead not locked'} · ${ch.voice.style} voice${opts.voiceLock ? ' (locked)' : ''}` : 'So you can star in your own scenes'}</span>
+          <span className="hint">{hasChar ? `${opts.characterLock ? 'Continuity on' : 'Continuity off'} · ${ch.voice.style} voice${opts.voiceLock ? ' (kept)' : ''}` : 'So you can star in your own scenes'}</span>
         </span>
         <Icon name="back" size={18} className="flip" />
       </button>
@@ -169,26 +224,30 @@ function SceneCreator({ go }) {
       </div>
 
       <div className="field">
-        <span className="field-label">Pick your camera</span>
+        <span className="field-label">Shoot on {realOn && <span className="real-badge" data-testid="real-badge"><Icon name="spark" size={12} fill /> Real AI</span>}</span>
         <div className="lens-grid" data-testid="lens-grid">
-          {MODELS.map((x) => (
+          {lenses.map((x) => (
             <button key={x.id} className={'lens-card' + (x.id === model ? ' on' : '') + (x.id === 'auto' ? ' pick' : '')} data-testid={`model-${x.id}`}
               onClick={() => setModel(x.id)} aria-pressed={x.id === model}>
               <span className="lens-ring"><span>{x.lens}</span></span>
               <b>{x.name}</b>
               <span className="lens-tag">{x.tag}</span>
-              <span className="lens-price"><Icon name="reel" size={12} />{x.base}<small>/5s</small></span>
+              <span className="lens-price"><Icon name="reel" size={12} />{x.base}<small>/{x.lengths ? Math.min(...x.lengths) : 5}s</small></span>
             </button>
           ))}
         </div>
-        <p className="hint" data-testid="lens-blurb">{m.blurb} Model names are shown for comparison only. In demo mode every camera returns a sample clip.</p>
+        <p className="hint" data-testid="lens-blurb">{m.blurb} {realOn
+          ? `Real AI render · 5s max · ${auth.me?.real?.used_24h ?? 0}/${auth.me?.real?.cap ?? 5} real takes used today.`
+          : server ? 'Signed in: reels come from your studio account. Takes are demo renders for now (a sample clip).'
+          : 'Model names are shown for comparison only. In demo mode every lens returns a sample clip.'}</p>
+        {server && !auth.catalog && <p className="hint">Loading lenses…</p>}
       </div>
 
       <div className="field">
         <span className="field-label">Running time</span>
         <div className="pills">
-          {LENGTHS.map((l) => (
-            <button key={l.s} className={'pill' + (length === l.s ? ' on' : '') + (l.locked ? ' locked' : '')}
+          {lengths.map((l) => (
+            <button key={l.s} className={'pill' + (takeLength === l.s ? ' on' : '') + (l.locked ? ' locked' : '')}
               onClick={() => (l.locked ? lockedTap(`${l.s}s clips`) : setLength(l.s))} data-testid={`len-${l.s}`}>
               {l.locked && <Icon name="lock" size={13} />}{l.s}s
             </button>
@@ -199,8 +258,8 @@ function SceneCreator({ go }) {
       <div className="field">
         <span className="field-label">Film stock</span>
         <div className="pills">
-          {QUALITIES.map((q) => (
-            <button key={q.id} className={'pill' + (quality === q.id ? ' on' : '') + (q.locked ? ' locked' : '')}
+          {(server ? [{ id: takeQuality, locked: false }] : QUALITIES).map((q) => (
+            <button key={q.id} className={'pill' + (takeQuality === q.id ? ' on' : '') + (q.locked ? ' locked' : '')}
               onClick={() => (q.locked ? lockedTap(q.id) : setQuality(q.id))} data-testid={`q-${q.id}`}>
               {q.locked && <Icon name="lock" size={13} />}{q.id}
             </button>
@@ -210,22 +269,22 @@ function SceneCreator({ go }) {
 
       <div className="card">
         {Object.entries(ADDONS).map(([k, a]) => (
-          <Toggle key={k} label={`${a.label} · +${a.cost}`} hint={a.hint} checked={opts[k]} testid={`opt-${k}`}
+          <Toggle key={k} label={server ? a.label : `${a.label} · +${a.cost}`} hint={a.hint} checked={opts[k]} testid={`opt-${k}`}
             onChange={(v) => setOpts((o) => ({ ...o, [k]: v }))} />
         ))}
         {opts.coStar && (
           <input className="input" placeholder="Co-star name or @handle" value={coStarName} onChange={(e) => setCoStarName(e.target.value)} />
         )}
-        {opts.characterLock && !hasChar && <p className="hint warn">Lock my lead works best once you've cast your character.</p>}
+        {opts.characterLock && !hasChar && <p className="hint warn">Lead continuity works best once you've cast your character.</p>}
       </div>
 
       <div className="cost-bar">
         <div>
           <span className="hint">Budget</span>
           <b data-testid="cost"><Icon name="reel" size={16} /> {cost}</b>
-          <span className="hint">You have {state.credits}</span>
+          <span className="hint">You have {balance}{server ? ' · account' : ''}</span>
         </div>
-        <button className="btn primary" onClick={run} disabled={!prompt.trim() || cost > state.credits} data-testid="generate">
+        <button className="btn primary" onClick={run} disabled={!prompt.trim() || cost > balance || (server && !auth.catalog)} data-testid="generate">
           <Icon name="clapper" size={18} /> Action!
         </button>
       </div>

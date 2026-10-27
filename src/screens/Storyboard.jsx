@@ -4,6 +4,8 @@ import { creditCost } from '../lib/models.js';
 import { generateClip, IS_DEMO } from '../lib/generateClip.js';
 import { Icon, Avatar, tick } from '../lib/ui.jsx';
 import { Slate } from './Create.jsx';
+import { useAuth } from '../lib/auth.jsx';
+import { friendlyError, ApiError } from '../lib/supabase.js';
 
 export const CAMERAS = ['Close-up', 'Medium', 'Wide', 'Tracking', 'Low angle', 'Overhead', 'Handheld'];
 export const MOODS = ['Epic', 'Tense', 'Dreamy', 'Funny', 'Cozy', 'Eerie', 'Hopeful'];
@@ -26,6 +28,13 @@ export default function Storyboard({ go }) {
   const board = state.board || newBoard();
   const ch = state.character;
   const hasChar = !!ch.name;
+  const auth = useAuth();
+  const server = auth.signedIn && !!auth.me; // signed in: scenes render through the hosted API
+  const realOn = server && auth.realOn;
+  const fast = auth.catalog?.models?.find((x) => x.id === 'fast');
+  const sceneLen = (sc) => (realOn ? 5 : sc.length);
+  const costFor = (sc) => (server ? (fast?.price_reels?.[sceneLen(sc)] ?? sceneLen(sc)) : sceneCost(sc, hasChar));
+  const balance = server ? (auth.me.balance ?? 0) : state.credits;
   const [job, setJob] = useState(null); // { statuses: [...], i }
   const [done, setDone] = useState(null);
   const [dragging, setDragging] = useState(null);
@@ -44,7 +53,7 @@ export default function Storyboard({ go }) {
     set({ scenes: sc });
     setSel(to);
   };
-  const total = board.scenes.reduce((a, s) => a + sceneCost(s, hasChar), 0);
+  const total = board.scenes.reduce((a, s) => a + costFor(s), 0);
   const seconds = board.scenes.reduce((a, s) => a + s.length, 0);
   const ready = board.scenes.every((s) => s.prompt.trim().length > 2);
   const charName = ch.name || 'The hero';
@@ -79,7 +88,7 @@ export default function Storyboard({ go }) {
   const generateAll = async () => {
     if (!ready) return notify('Every scene needs a short description.');
     if (board.seriesId === 'new' && !board.newSeries.trim() && !board.title.trim()) return notify('Name the episode or the series first.');
-    if (!spendCredits(total, `Storyboard · ${board.scenes.length} scenes`)) return notify('Not enough reels for every scene. Cut one, or grab free reels in Studio.');
+    if (server ? total > balance : !spendCredits(total, `Storyboard · ${board.scenes.length} scenes`)) return notify('Not enough reels for every scene. Cut one, or claim free reels.');
     const scenes = board.scenes;
     const statuses = scenes.map(() => ({ state: 'queued', progress: 0 }));
     setJob({ statuses: [...statuses] });
@@ -93,7 +102,8 @@ export default function Storyboard({ go }) {
         setJob({ statuses: [...statuses], i });
         const clip = await generateClip({
           prompt: `${sc.prompt.trim()} — ${sc.camera.toLowerCase()} shot, ${sc.mood.toLowerCase()} mood`,
-          model: 'auto', length: sc.length, quality: '480p',
+          server, model: server ? 'fast' : 'auto', length: sceneLen(sc), quality: '480p',
+          onStarted: (st) => auth.setBalance(st.balance),
           character: hasChar ? { name: ch.name, handle: ch.handle, look: ch.look, style: ch.style, image: ch.avatar, lore: ch.lore, traits: ch.traits } : null,
           options: { characterLock: hasChar, camera: sc.camera, mood: sc.mood, scene: i + 1 },
           onProgress: (p) => { statuses[i] = { state: 'rendering', ...p }; setJob({ statuses: [...statuses], i }); },
@@ -120,11 +130,18 @@ export default function Storyboard({ go }) {
       setBoard(null);
       notify('Episode built from your storyboard');
     } catch (e) {
-      const left = scenes.slice(clips.length).reduce((a, s) => a + sceneCost(s, hasChar), 0);
-      if (left) addCredits(left, 'Refund · storyboard stopped');
-      notify(e.name === 'AbortError' ? `Cut! ${clips.length} clip(s) kept in your library, ${left} reels refunded.` : e.message);
+      if (server) {
+        if (e instanceof ApiError && typeof e.body?.balance === 'number') auth.setBalance(e.body.balance);
+        notify(e.name === 'AbortError' ? `Cut! ${clips.length} clip(s) kept in your library.` : `${friendlyError(e)} ${clips.length} clip(s) kept.`);
+        if (e instanceof ApiError && e.status === 401) { await auth.signOut(); auth.openSignIn(); }
+      } else {
+        const left = scenes.slice(clips.length).reduce((a, s) => a + sceneCost(s, hasChar), 0);
+        if (left) addCredits(left, 'Refund · storyboard stopped');
+        notify(e.name === 'AbortError' ? `Cut! ${clips.length} clip(s) kept in your library, ${left} reels refunded.` : e.message);
+      }
     } finally {
       setJob(null);
+      if (server) auth.refreshMe();
     }
   };
 
@@ -133,7 +150,7 @@ export default function Storyboard({ go }) {
     return (
       <div className="board-job" data-testid="board-job">
         <h2>Rolling all scenes…</h2>
-        <p className="muted">Scene {Math.min(doneCount + 1, job.statuses.length)} of {job.statuses.length}{IS_DEMO && ' · demo renders'}</p>
+        <p className="muted">Scene {Math.min(doneCount + 1, job.statuses.length)} of {job.statuses.length}{(server ? !realOn : IS_DEMO) && ' · demo renders'}{realOn && ' · Real AI'}</p>
         <div className="progress"><span style={{ width: `${((doneCount + (job.statuses[job.i]?.progress || 0) * (job.statuses[job.i]?.state === 'rendering' ? 1 : 0)) / job.statuses.length) * 100}%` }} /></div>
         <ol className="board-status">
           {board.scenes.map((sc, i) => {
@@ -164,7 +181,7 @@ export default function Storyboard({ go }) {
         </div>
         <h2>“{done.title}” is ready</h2>
         <p className="muted">{done.clips.length} scenes stitched into one episode{board.publish !== false ? '' : ''}.</p>
-        {IS_DEMO && <p className="hint">Demo mode: scenes are sample clips, not real renders of your prompts.</p>}
+        {(server ? !realOn : IS_DEMO) && <p className="hint">Demo mode: scenes are sample clips, not real renders of your prompts.</p>}
         <div className="row">
           <button className="btn ghost" onClick={() => setDone(null)}>New storyboard</button>
           <button className="btn primary" onClick={() => go(`show/${done.seriesId}/${done.idx}`)} data-testid="board-watch"><Icon name="play" size={18} fill /> Watch it</button>
@@ -186,7 +203,7 @@ export default function Storyboard({ go }) {
         extra={(
           <div className="slate-foot">
             <Avatar character={ch} size={26} />
-            <span className="grow hint">{hasChar ? `Starring ${ch.name}, lead locked for every scene` : 'Tip: cast a character to star in every scene'}</span>
+            <span className="grow hint">{hasChar ? `Starring ${ch.name}, continuity on for every scene` : 'Tip: cast a character to star in every scene'}</span>
             <button className="btn ghost small" onClick={outline} data-testid="board-outline"><Icon name="wand" size={16} /> Outline it</button>
           </div>
         )} />
@@ -267,9 +284,9 @@ export default function Storyboard({ go }) {
         <div>
           <span className="hint">Budget · {n} scenes</span>
           <b data-testid="board-cost"><Icon name="reel" size={16} /> {total}</b>
-          <span className="hint">You have {state.credits}</span>
+          <span className="hint">You have {balance}{server ? ' · account' : ''}{realOn ? ' · 5s real takes' : ''}</span>
         </div>
-        <button className="btn primary" onClick={generateAll} disabled={!ready || total > state.credits} data-testid="generate-all">
+        <button className="btn primary" onClick={generateAll} disabled={!ready || total > balance} data-testid="generate-all">
           <Icon name="clapper" size={18} /> Roll all scenes
         </button>
       </div>

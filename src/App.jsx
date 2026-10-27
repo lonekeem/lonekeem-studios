@@ -9,6 +9,8 @@ import Series from './screens/Series.jsx';
 import Settings from './screens/Settings.jsx';
 import Creator, { Welcome } from './screens/Creator.jsx';
 import Show from './screens/Show.jsx';
+import { AuthProvider, useAuth } from './lib/auth.jsx';
+import SignInSheet, { SignInForm } from './screens/SignIn.jsx';
 
 const TABS = [
   { id: 'watch', label: 'Showing', icon: 'ticket' },
@@ -17,6 +19,8 @@ const TABS = [
   { id: 'character', label: 'Cast', icon: 'cast' },
   { id: 'settings', label: 'Studio', icon: 'gear' },
 ];
+
+const LEDGER_LABEL = { signup_bonus: 'Welcome reels', daily_claim: 'Daily reels', generation: 'Take', refund: 'Refund', admin: 'Studio adjustment', purchase: 'Purchase' };
 
 function useHashRoute() {
   const get = () => (window.location.hash.replace(/^#\/?/, '') || 'watch');
@@ -30,9 +34,21 @@ function useHashRoute() {
 }
 
 function Shell() {
-  const { state, toast, logIn } = useStore();
-  const [route, go] = useHashRoute();
+  const { state, toast, logIn, notify } = useStore();
+  const auth = useAuth();
   const [creditsOpen, setCreditsOpen] = useState(false);
+  const server = auth.signedIn && !!auth.me;
+  const [serverLedger, setServerLedger] = useState([]);
+  const [claiming, setClaiming] = useState(false);
+  useEffect(() => { if (creditsOpen && server) auth.ledger().then(setServerLedger).catch(() => {}); }, [creditsOpen, server, auth.me?.balance]); // eslint-disable-line
+  useEffect(() => { if (auth.authNotice) { notify(auth.authNotice); auth.clearNotice(); } }, [auth.authNotice]); // eslint-disable-line
+  const claim = async () => {
+    setClaiming(true);
+    const r = await auth.claimDaily();
+    setClaiming(false);
+    notify(r.ok ? `+${r.granted} daily reels` : r.message);
+  };
+  const [route, go] = useHashRoute();
   const [introSeen, setIntroSeen] = useState(false);
   const [tab, sub] = route.split('/');
   const firstRun = !state.onboarded;
@@ -51,7 +67,9 @@ function Shell() {
         <h1>Lone Keem Studios</h1>
         <p className="tagline">Your character. Your series.</p>
         <button className="btn primary wide" onClick={logIn} data-testid="login">Continue in demo mode</button>
-        <p className="hint">Demo only — no account, no sign-up. Your data stays in this browser.</p>
+        <p className="hint">Demo mode needs no account. Your data stays in this browser.</p>
+        {!auth.signedIn && <div className="welcome-signin"><span className="hint">Or get a studio pass</span><SignInForm /></div>}
+        {toast && <div className="toast" role="status">{toast}</div>}
       </div>
     );
   }
@@ -72,9 +90,11 @@ function Shell() {
     <div className={'app' + (isWatch ? ' on-watch' : '')}>
       <header className="topbar">
         <a className="brand" href="#/watch"><Monogram size={28} /><span className="brand-word">Lone Keem <b>Studios</b></span></a>
-        {IS_DEMO && <span className="demo-pill">DEMO</span>}
+        {auth.realOn ? <span className="real-badge top" data-testid="real-badge-top"><Icon name="spark" size={12} fill /> Real AI</span>
+          : (server || IS_DEMO) && <span className="demo-pill">DEMO</span>}
+        {!auth.signedIn && auth.ready && <button className="pass-btn" onClick={auth.openSignIn} data-testid="open-signin">Sign in</button>}
         <button className="credit-pill reel-pill" onClick={() => setCreditsOpen(true)} data-testid="credits" aria-label="Reels">
-          <Icon name="reel" size={18} className="spin-reel" /> <span data-testid="credit-balance">{state.credits}</span>
+          <Icon name="reel" size={18} className="spin-reel" /> <span data-testid="credit-balance">{server ? auth.me.balance : state.credits}</span>
         </button>
       </header>
 
@@ -104,22 +124,38 @@ function Shell() {
       </nav>
 
       <Sheet open={creditsOpen} onClose={() => setCreditsOpen(false)} title="Your reels">
-        <div className="credit-big"><Icon name="reel" size={30} /> {state.credits}</div>
-        <p className="muted">Reels are what you spend to shoot scenes. Demo reels aren't real money, and you get <b>{DAILY_TOPUP}</b> free every day you open the app.</p>
-        <button className="btn ghost wide" onClick={() => { setCreditsOpen(false); go('settings'); }}>Free reels</button>
+        <div className="credit-big"><Icon name="reel" size={30} /> {server ? auth.me.balance : state.credits}</div>
+        {server ? (
+          <>
+            <p className="muted">These reels live on your studio account ({auth.me.user?.email}). They aren't real money. Claim <b>50</b> free once a day.</p>
+            <button className="btn primary wide" onClick={claim} disabled={claiming || !auth.me.daily_claim_available} data-testid="claim-daily">
+              {auth.me.daily_claim_available ? (claiming ? 'Claiming…' : 'Claim daily reels (+50)') : 'Daily reels claimed. Back tomorrow'}
+            </button>
+            <p className="hint">{auth.me.generations_used_24h}/{auth.me.daily_limit} takes used in the last 24h{auth.realOn && auth.me.real ? ` · Real AI ${auth.me.real.used_24h ?? 0}/${auth.me.real.cap}` : ''}</p>
+          </>
+        ) : (
+          <>
+            <p className="muted">Reels are what you spend to shoot scenes. Demo reels aren't real money, and you get <b>{DAILY_TOPUP}</b> free every day you open the app.</p>
+            <button className="btn ghost wide" onClick={() => { setCreditsOpen(false); go('settings'); }}>Free reels</button>
+            {!auth.signedIn && <button className="btn ghost wide" onClick={() => { setCreditsOpen(false); auth.openSignIn(); }}>Sign in to keep reels on an account</button>}
+          </>
+        )}
         <h4>Recent activity</h4>
         <ul className="ledger">
-          {state.ledger.slice(0, 12).map((l, i) => (
+          {server ? serverLedger.map((l, i) => (
+            <li key={i}><span>{LEDGER_LABEL[l.reason] || l.reason}</span><b className={l.delta > 0 ? 'pos' : 'neg'}>{l.delta > 0 ? '+' : ''}{l.delta}</b></li>
+          )) : state.ledger.slice(0, 12).map((l, i) => (
             <li key={i}><span>{l.reason}</span><b className={l.amount > 0 ? 'pos' : 'neg'}>{l.amount > 0 ? '+' : ''}{l.amount}</b></li>
           ))}
         </ul>
       </Sheet>
 
+      <SignInSheet />
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>
   );
 }
 
 export default function App() {
-  return <StoreProvider><Shell /></StoreProvider>;
+  return <AuthProvider><StoreProvider><Shell /></StoreProvider></AuthProvider>;
 }
