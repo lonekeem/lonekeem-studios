@@ -7,6 +7,7 @@ import Create from './screens/Create.jsx';
 import Character from './screens/Character.jsx';
 import Series from './screens/Series.jsx';
 import Settings from './screens/Settings.jsx';
+import Creator, { Welcome } from './screens/Creator.jsx';
 
 const TABS = [
   { id: 'watch', label: 'Watch', icon: 'home' },
@@ -31,7 +32,9 @@ function Shell() {
   const { state, toast, logIn } = useStore();
   const [route, go] = useHashRoute();
   const [creditsOpen, setCreditsOpen] = useState(false);
+  const [introSeen, setIntroSeen] = useState(false);
   const [tab, sub] = route.split('/');
+  const firstRun = !state.onboarded;
 
   if (state.loggedOut) {
     return (
@@ -45,6 +48,17 @@ function Shell() {
     );
   }
 
+  // First run: short (skippable) welcome, then the character creator before the feed.
+  if (firstRun && !state.loggedOut) {
+    if (!introSeen && tab !== 'creator') {
+      return <div className="app solo"><Welcome onStart={() => { setIntroSeen(true); go('creator/look'); }} onSkip={() => { setIntroSeen(true); go('creator/look'); }} />{toast && <div className="toast" role="status">{toast}</div>}</div>;
+    }
+    return <div className="app solo"><Creator tab={tab === 'creator' ? sub : 'look'} go={go} firstRun />{toast && <div className="toast" role="status">{toast}</div>}</div>;
+  }
+  if (tab === 'creator') {
+    return <div className="app solo"><Creator tab={sub} go={go} />{toast && <div className="toast" role="status">{toast}</div>}</div>;
+  }
+
   const isWatch = tab === 'watch';
   return (
     <div className={'app' + (isWatch ? ' on-watch' : '')}>
@@ -52,7 +66,7 @@ function Shell() {
         <a className="brand" href="#/watch"><span className="brand-mark" />Lone Keem <b>Studios</b></a>
         {IS_DEMO && <span className="demo-pill">DEMO</span>}
         <button className="credit-pill" onClick={() => setCreditsOpen(true)} data-testid="credits">
-          <Icon name="coin" size={18} /> <span data-testid="credit-balance">{state.credits}</span>
+          <Icon name="gem" size={18} /> <span data-testid="credit-balance">{state.credits}</span>
         </button>
       </header>
 
@@ -76,7 +90,7 @@ function Shell() {
       </nav>
 
       <Sheet open={creditsOpen} onClose={() => setCreditsOpen(false)} title="Credits">
-        <div className="credit-big"><Icon name="coin" size={30} /> {state.credits}</div>
+        <div className="credit-big"><Icon name="gem" size={30} /> {state.credits}</div>
         <p className="muted">Demo credits — not real money. You get <b>{DAILY_TOPUP}</b> free every day you open the app.</p>
         <button className="btn ghost wide" onClick={() => { setCreditsOpen(false); go('settings'); }}>Earn more credits</button>
         <h4>Recent activity</h4>

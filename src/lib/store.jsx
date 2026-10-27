@@ -7,11 +7,31 @@ export const DAILY_TOPUP = 50;
 const today = () => new Date().toISOString().slice(0, 10);
 const uid = (p) => p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
+export const LORE_FIELDS = [
+  { id: 'origin', label: 'Origin Story' },
+  { id: 'identity', label: 'Core Identity' },
+  { id: 'personality', label: 'Personality' },
+  { id: 'social', label: 'Social World' },
+  { id: 'territory', label: 'Territory' },
+  { id: 'current', label: 'Current State' },
+  { id: 'goals', label: 'Goals' },
+  { id: 'fears', label: 'Fears' },
+];
+
+export const emptyCharacter = () => ({
+  name: '', handle: '', look: '', avatar: '',
+  versions: [], versionIdx: 0, style: 'Portrait', aspect: '3:4',
+  voice: { style: 'Natural', pace: 50, desc: '', generated: false },
+  lore: Object.fromEntries(LORE_FIELDS.map((f) => [f.id, ''])),
+  age: '', traits: [], bio: '', socials: { x: '', instagram: '', tiktok: '', youtube: '' }, collabs: 'request',
+});
+
 const fresh = () => ({
   credits: START_CREDITS,
   lastTopUp: today(),
   ledger: [{ t: Date.now(), amount: START_CREDITS, reason: 'Welcome demo credits' }],
-  character: { name: '', handle: '', look: '', avatar: '' },
+  character: emptyCharacter(),
+  onboarded: false,
   clips: [],
   series: [],
   episodes: [],
@@ -27,7 +47,15 @@ function load() {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return fresh();
-    return { ...fresh(), ...JSON.parse(raw) };
+    const saved = JSON.parse(raw);
+    const base = fresh();
+    const character = { ...base.character, ...(saved.character || {}) };
+    character.voice = { ...base.character.voice, ...(saved.character?.voice || {}) };
+    character.lore = { ...base.character.lore, ...(saved.character?.lore || {}) };
+    character.socials = { ...base.character.socials, ...(saved.character?.socials || {}) };
+    // people from the first demo who already saved a character skip first-run
+    const onboarded = saved.onboarded ?? !!saved.character?.name;
+    return { ...base, ...saved, character, onboarded };
   } catch {
     return fresh();
   }
@@ -77,6 +105,8 @@ export function StoreProvider({ children }) {
         return true;
       },
       saveCharacter: (character) => update(() => ({ character })),
+      patchCharacter: (patch) => update((s) => ({ character: { ...s.character, ...(typeof patch === 'function' ? patch(s.character) : patch) } })),
+      finishOnboarding: () => update(() => ({ onboarded: true })),
       addClip: (clip) => update((s) => ({ clips: [clip, ...s.clips] })),
       deleteClip: (id) =>
         update((s) => ({

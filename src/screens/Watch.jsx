@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../lib/store.jsx';
 import { SEED_EPISODES } from '../lib/seed.js';
-import { Icon, Sheet } from '../lib/ui.jsx';
+import { Icon, Sheet, Avatar } from '../lib/ui.jsx';
 import EpisodePlayer from './EpisodePlayer.jsx';
 
 const REASONS = ['Inappropriate or sexual', 'Violence or harm', 'Hate or harassment', 'Uses a real person without consent', 'Spam or misleading', 'Copyright', 'Something else'];
@@ -70,7 +70,7 @@ export default function Watch() {
             <div className="feed-info">
               <div className="feed-series">{it.series} · Ep {it.ep}</div>
               <h2>{it.title}</h2>
-              <div className="feed-handle">@{it.handle}{it.mine && <span className="chip">You</span>}</div>
+              <div className="feed-handle"><Avatar character={it.mine ? state.character : { name: it.handle }} size={28} />@{it.handle}{it.mine && <span className="chip">You</span>}</div>
             </div>
             <div className="feed-actions">
               <button className={'act' + (liked ? ' liked' : '')} onClick={() => toggleLike(it.id)} aria-label="Like" data-testid="like">

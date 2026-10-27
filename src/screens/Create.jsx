@@ -55,7 +55,11 @@ function SceneCreator({ go }) {
     try {
       const clip = await generateClip({
         prompt: prompt.trim(), model, length, quality,
-        character: opts.characterLock && hasChar ? ch : null,
+        // Only what a real model needs — not the whole version history.
+        character: opts.characterLock && hasChar ? {
+          name: ch.name, handle: ch.handle, look: ch.look, style: ch.style, image: ch.avatar,
+          voice: opts.voiceLock ? ch.voice : null, lore: ch.lore, traits: ch.traits,
+        } : null,
         options: { ...opts, coStarName: opts.coStar ? coStarName : '' },
         onProgress: setJob, signal: ac.signal,
       });
@@ -101,11 +105,11 @@ function SceneCreator({ go }) {
 
   return (
     <div className="create">
-      <button className="char-strip" onClick={() => go('character')}>
+      <button className="char-strip" onClick={() => go(hasChar ? 'character' : 'creator/look')}>
         <Avatar character={ch} size={38} />
         <span>
           {hasChar ? <><b>{ch.name}</b> <span className="muted">@{ch.handle}</span></> : <b>Create your character</b>}
-          <span className="hint">{hasChar ? 'Starring in this clip' : 'So you can star in your clips'}</span>
+          <span className="hint">{hasChar ? `${opts.characterLock ? 'Locked in' : 'Not locked'} · ${ch.voice.style} voice${opts.voiceLock ? ' (locked)' : ''}` : 'So you can star in your clips'}</span>
         </span>
         <Icon name="back" size={18} className="flip" />
       </button>
@@ -166,7 +170,7 @@ function SceneCreator({ go }) {
       <div className="cost-bar">
         <div>
           <span className="hint">Cost</span>
-          <b data-testid="cost"><Icon name="coin" size={16} /> {cost}</b>
+          <b data-testid="cost"><Icon name="gem" size={16} /> {cost}</b>
           <span className="hint">You have {state.credits}</span>
         </div>
         <button className="btn primary" onClick={run} disabled={!prompt.trim() || cost > state.credits} data-testid="generate">
@@ -186,7 +190,7 @@ function SceneCreator({ go }) {
                   <span className="tag">{x.tag}</span>
                   <span className="hint">{x.blurb}</span>
                 </span>
-                <span className="price"><Icon name="coin" size={14} />{x.base}<small>/5s</small></span>
+                <span className="price"><Icon name="gem" size={14} />{x.base}<small>/5s</small></span>
               </button>
             </React.Fragment>
           ))}

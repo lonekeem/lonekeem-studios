@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../lib/store.jsx';
-import { Icon, Sheet, Toggle } from '../lib/ui.jsx';
+import { Icon, Sheet, Toggle, Avatar } from '../lib/ui.jsx';
 
 const EARN = [
   { id: 'notifications', icon: 'bell', title: 'Turn on notifications', reward: 30 },
@@ -17,7 +17,7 @@ const DOCS = {
   sub: ['Subscription', 'You are on the Free plan. Paid plans (longer clips, 720p/1080p, more credits) are not available in this demo and nothing can be purchased.'],
 };
 
-export default function Settings() {
+export default function Settings({ go }) {
   const { state, addCredits, markEarned, setPref, unblock, notify, logOut, deleteAccount } = useStore();
   const [doc, setDoc] = useState(null);
   const [feedback, setFeedback] = useState(false);
@@ -46,6 +46,15 @@ export default function Settings() {
   return (
     <div className="page settings">
       <h1 className="page-title">Settings</h1>
+
+      <h3 className="group-title">Character</h3>
+      <div className="card list">
+        <button className="list-row" onClick={() => go(state.character.name ? 'character' : 'creator/look')} data-testid="settings-character">
+          <Avatar character={state.character} size={44} />
+          <span className="grow">{state.character.name || 'Create your character'}<span className="hint">{state.character.handle ? '@' + state.character.handle + ' · ' + state.character.voice.style + ' voice' : 'Look, voice, lore & details'}</span></span>
+          <span className="link">Edit</span>
+        </button>
+      </div>
 
       <h3 className="group-title">Earn credits</h3>
       <div className="card list">

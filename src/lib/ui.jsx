@@ -24,6 +24,11 @@ const P = {
   people: 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-6 9a6 6 0 0 1 12 0M17 11a3 3 0 1 0 0-6M21 20a6 6 0 0 0-4-5.6',
   star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z',
   upload: 'M12 16V4M7 9l5-5 5 5M4 20h16',
+  bulb: 'M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z',
+  gem: 'M6 3h12l3 6-9 12L3 9zM3 9h18M9 3l-1.5 6L12 21l4.5-12L15 3',
+  stop: 'M7 7h10v10H7z',
+  mic: 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3',
+  edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
 };
 
 export function Icon({ name, size = 22, fill = false, stroke = 2, className = '' }) {
