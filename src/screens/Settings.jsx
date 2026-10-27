@@ -118,7 +118,7 @@ export default function Settings({ go }) {
         <button className="list-row" onClick={() => setFeedback(true)}><span className="grow">Send feedback</span><Icon name="back" size={16} className="flip" /></button>
         <button className="list-row" onClick={() => setDoc('terms')}><span className="grow">Terms of Service</span><Icon name="back" size={16} className="flip" /></button>
         <button className="list-row" onClick={() => setDoc('privacy')}><span className="grow">Privacy Policy</span><Icon name="back" size={16} className="flip" /></button>
-        <div className="list-row static"><span className="grow">Version</span><span className="hint">1.0.1</span></div>
+        <div className="list-row static"><span className="grow">Version</span><span className="hint">1.0.2</span></div>
       </div>
 
       <div className="card list">
