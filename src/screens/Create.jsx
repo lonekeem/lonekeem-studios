@@ -13,16 +13,42 @@ const IDEAS = [
   'A tense standoff in a rainy alley, dramatic lighting',
 ];
 
+const FORMATS = [
+  { id: '', route: 'create', label: 'Single shot', sub: 'One scene', icon: 'camera', testid: 'scene-tab' },
+  { id: 'board', route: 'create/board', label: 'Storyboard', sub: '3–6 scenes', icon: 'slate', testid: 'board-tab' },
+  { id: 'dance', route: 'create/dance', label: 'Dance', sub: 'Coming soon', icon: 'dance', testid: 'dance-tab' },
+];
+
+// The clapperboard at the top of every shoot: production, scene, take.
+export function Slate({ prod, scene, take, roll, extra }) {
+  const d = new Date();
+  return (
+    <div className="slate" data-testid="slate">
+      <div className="slate-sticks" aria-hidden="true"><i /><i /><i /><i /><i /><i /></div>
+      <div className="slate-grid">
+        <div className="slate-cell wide"><span>Production</span><b data-testid="slate-prod">{prod}</b></div>
+        <div className="slate-cell"><span>Roll</span><b>{roll}</b></div>
+        <div className="slate-cell"><span>Scene</span><b data-testid="slate-scene">{scene}</b></div>
+        <div className="slate-cell"><span>Take</span><b data-testid="slate-take">{take}</b></div>
+        <div className="slate-cell"><span>Date</span><b>{String(d.getMonth() + 1).padStart(2, '0')}·{String(d.getDate()).padStart(2, '0')}</b></div>
+      </div>
+      {extra}
+    </div>
+  );
+}
+
 export default function Create({ mode, go }) {
+  const cur = mode === 'board' ? 'board' : mode === 'dance' ? 'dance' : '';
   return (
     <div className="page">
-      <div className="seg seg-anim" style={{ '--i': mode === 'board' ? 1 : mode === 'dance' ? 2 : 0, '--n': 3 }}>
-        <span className="seg-thumb" />
-        <button className={!mode ? 'on' : ''} onClick={() => go('create')} data-testid="scene-tab">Scene</button>
-        <button className={mode === 'board' ? 'on' : ''} onClick={() => go('create/board')} data-testid="board-tab">Storyboard</button>
-        <button className={mode === 'dance' ? 'on' : ''} onClick={() => go('create/dance')} data-testid="dance-tab">
-          Dance <span className="soon">soon</span>
-        </button>
+      <div className="formats" role="tablist" aria-label="What are you shooting?">
+        {FORMATS.map((f) => (
+          <button key={f.testid} role="tab" aria-selected={cur === f.id} className={'format' + (cur === f.id ? ' on' : '')} onClick={() => go(f.route)} data-testid={f.testid}>
+            <Icon name={f.icon} size={20} />
+            <b>{f.label}</b>
+            <span>{f.sub}</span>
+          </button>
+        ))}
       </div>
       {mode === 'dance' ? <Dance /> : mode === 'board' ? <Storyboard go={go} /> : <SceneCreator go={go} />}
     </div>
@@ -41,8 +67,7 @@ function SceneCreator({ go }) {
   const [quality, setQuality] = useState('480p');
   const [opts, setOpts] = useState({ characterLock: true, voiceLock: false, coStar: false });
   const [coStarName, setCoStarName] = useState('');
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [job, setJob] = useState(null); // {progress, stage}
+    const [job, setJob] = useState(null); // {progress, stage}
   const [result, setResult] = useState(null);
   const abortRef = useRef(null);
 
@@ -54,7 +79,7 @@ function SceneCreator({ go }) {
 
   const run = async () => {
     if (!prompt.trim()) return notify('Describe your scene first.');
-    if (!spendCredits(cost, `Clip · ${m.name} · ${length}s`)) return notify('Not enough credits — earn more in Settings.');
+    if (!spendCredits(cost, `Clip · ${m.name} · ${length}s`)) return notify('Not enough reels. Grab free reels in Studio.');
     setResult(null);
     setJob({ progress: 0, stage: 'Queued' });
     const ac = new AbortController();
@@ -75,7 +100,7 @@ function SceneCreator({ go }) {
       setResult(c);
     } catch (e) {
       addCredits(cost, 'Refund · cancelled clip');
-      notify(e.name === 'AbortError' ? 'Cancelled — credits refunded.' : e.message);
+      notify(e.name === 'AbortError' ? 'Cut! Reels refunded.' : e.message);
     } finally {
       setJob(null);
     }
@@ -85,7 +110,7 @@ function SceneCreator({ go }) {
     return (
       <div className="gen-card" data-testid="generating">
         <div className="gen-orb"><span style={{ '--p': job.progress }} /></div>
-        <h2>Making your clip…</h2>
+        <h2>Rolling…</h2>
         <p className="muted">{job.stage}</p>
         <div className="progress"><span style={{ width: `${Math.round(job.progress * 100)}%` }} /></div>
         <p className="hint">{Math.round(job.progress * 100)}% · {m.name} · {length}s · {quality}{IS_DEMO && ' · demo render'}</p>
@@ -112,8 +137,11 @@ function SceneCreator({ go }) {
     );
   }
 
+  const takes = state.clips.filter((c) => (c.prompt || '').trim() === prompt.trim()).length;
   return (
     <div className="create">
+      <Slate prod={(hasChar ? ch.name : 'Untitled') + (remixOf ? ' × @' + remixOf.handle : '')} roll={String(Math.floor(state.clips.length / 9) + 1).padStart(2, '0')}
+        scene={String(state.clips.length + 1).padStart(2, '0')} take={String(takes + 1).padStart(2, '0')} />
       {remixOf && (
         <div className="remix-banner glass" data-testid="remix-banner">
           <Icon name="remix" size={20} />
@@ -124,14 +152,14 @@ function SceneCreator({ go }) {
       <button className="char-strip" onClick={() => go(hasChar ? 'character' : 'creator/look')}>
         <Avatar character={ch} size={38} />
         <span>
-          {hasChar ? <><b>{ch.name}</b> <span className="muted">@{ch.handle}</span></> : <b>Create your character</b>}
-          <span className="hint">{hasChar ? `${opts.characterLock ? 'Locked in' : 'Not locked'} · ${ch.voice.style} voice${opts.voiceLock ? ' (locked)' : ''}` : 'So you can star in your clips'}</span>
+          {hasChar ? <><span className="billing">Starring</span> <b>{ch.name}</b> <span className="muted">@{ch.handle}</span></> : <b>Cast your lead</b>}
+          <span className="hint">{hasChar ? `${opts.characterLock ? 'Lead locked' : 'Lead not locked'} · ${ch.voice.style} voice${opts.voiceLock ? ' (locked)' : ''}` : 'So you can star in your own scenes'}</span>
         </span>
         <Icon name="back" size={18} className="flip" />
       </button>
 
       <label className="field">
-        <span className="field-label">Scene</span>
+        <span className="field-label">Action</span>
         <textarea rows={4} maxLength={600} value={prompt} onChange={(e) => setPrompt(e.target.value)}
           placeholder="What happens in this clip? e.g. I race a hoverbike through a canyon at dawn" data-testid="prompt" />
         <span className="counter">{prompt.length}/600</span>
@@ -141,15 +169,23 @@ function SceneCreator({ go }) {
       </div>
 
       <div className="field">
-        <span className="field-label">Model</span>
-        <button className="model-btn" onClick={() => setPickerOpen(true)} data-testid="model-btn">
-          <span><b>{m.name}{m.id === 'auto' && ' (recommended)'}</b><span className="hint">{m.tag} · {m.blurb}</span></span>
-          <span className="muted">Change</span>
-        </button>
+        <span className="field-label">Pick your camera</span>
+        <div className="lens-grid" data-testid="lens-grid">
+          {MODELS.map((x) => (
+            <button key={x.id} className={'lens-card' + (x.id === model ? ' on' : '') + (x.id === 'auto' ? ' pick' : '')} data-testid={`model-${x.id}`}
+              onClick={() => setModel(x.id)} aria-pressed={x.id === model}>
+              <span className="lens-ring"><span>{x.lens}</span></span>
+              <b>{x.name}</b>
+              <span className="lens-tag">{x.tag}</span>
+              <span className="lens-price"><Icon name="reel" size={12} />{x.base}<small>/5s</small></span>
+            </button>
+          ))}
+        </div>
+        <p className="hint" data-testid="lens-blurb">{m.blurb} Model names are shown for comparison only. In demo mode every camera returns a sample clip.</p>
       </div>
 
       <div className="field">
-        <span className="field-label">Length</span>
+        <span className="field-label">Running time</span>
         <div className="pills">
           {LENGTHS.map((l) => (
             <button key={l.s} className={'pill' + (length === l.s ? ' on' : '') + (l.locked ? ' locked' : '')}
@@ -161,7 +197,7 @@ function SceneCreator({ go }) {
       </div>
 
       <div className="field">
-        <span className="field-label">Quality</span>
+        <span className="field-label">Film stock</span>
         <div className="pills">
           {QUALITIES.map((q) => (
             <button key={q.id} className={'pill' + (quality === q.id ? ' on' : '') + (q.locked ? ' locked' : '')}
@@ -180,39 +216,20 @@ function SceneCreator({ go }) {
         {opts.coStar && (
           <input className="input" placeholder="Co-star name or @handle" value={coStarName} onChange={(e) => setCoStarName(e.target.value)} />
         )}
-        {opts.characterLock && !hasChar && <p className="hint warn">Character lock works best once you create your character.</p>}
+        {opts.characterLock && !hasChar && <p className="hint warn">Lock my lead works best once you've cast your character.</p>}
       </div>
 
       <div className="cost-bar">
         <div>
-          <span className="hint">Cost</span>
-          <b data-testid="cost"><Icon name="gem" size={16} /> {cost}</b>
+          <span className="hint">Budget</span>
+          <b data-testid="cost"><Icon name="reel" size={16} /> {cost}</b>
           <span className="hint">You have {state.credits}</span>
         </div>
         <button className="btn primary" onClick={run} disabled={!prompt.trim() || cost > state.credits} data-testid="generate">
-          <Icon name="spark" size={18} fill /> Generate
+          <Icon name="clapper" size={18} /> Action!
         </button>
       </div>
 
-      <Sheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="Choose a model">
-        <div className="model-list">
-          {MODELS.map((x, idx) => (
-            <React.Fragment key={x.id}>
-              {idx === 1 && <div className="list-label">Choose your own</div>}
-              <button className={'model-opt' + (x.id === model ? ' on' : '')} data-testid={`model-${x.id}`}
-                onClick={() => { setModel(x.id); setPickerOpen(false); }}>
-                <span>
-                  <b>{x.name}{x.id === 'auto' && ' (recommended)'}</b>
-                  <span className="tag">{x.tag}</span>
-                  <span className="hint">{x.blurb}</span>
-                </span>
-                <span className="price"><Icon name="gem" size={14} />{x.base}<small>/5s</small></span>
-              </button>
-            </React.Fragment>
-          ))}
-        </div>
-        <p className="hint">Model names are shown for comparison only. In demo mode every model returns a sample clip.</p>
-      </Sheet>
     </div>
   );
 }

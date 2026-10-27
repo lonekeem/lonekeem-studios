@@ -63,8 +63,8 @@ export default function Creator({ tab = 'look', go, firstRun }) {
   const { state, patchCharacter, finishOnboarding, addCredits, markEarned, notify } = store;
   const ch = state.character;
   const t = TABS.includes(tab) ? tab : 'look';
-  const idx = TABS.indexOf(t);
-  const setTab = (x) => go('creator/' + x);
+  const [jump, setJump] = useState(0);
+  const setTab = (x) => { go('creator/' + x); setJump((n) => n + 1); };
 
   const handle = cleanHandle(ch.handle);
   const taken = useMemo(() => new Set([...SEED_EPISODES.map((e) => e.handle), ...RESERVED]), []);
@@ -74,7 +74,7 @@ export default function Creator({ tab = 'look', go, firstRun }) {
   const done = () => {
     if (!ready) { setTab('details'); notify('Add a name and an available @username to finish.'); return; }
     patchCharacter({ name: ch.name.trim(), handle });
-    if (!state.earned.welcome) { markEarned('welcome'); addCredits(WELCOME_BONUS, 'Welcome bonus — character created'); notify(`Character ready! +${WELCOME_BONUS} bonus credits`); }
+    if (!state.earned.welcome) { markEarned('welcome'); addCredits(WELCOME_BONUS, 'Welcome bonus · lead cast'); notify(`You're cast! +${WELCOME_BONUS} bonus reels`); }
     else notify('Character saved');
     finishOnboarding();
     go(firstRun ? 'watch' : 'character');
@@ -82,32 +82,67 @@ export default function Creator({ tab = 'look', go, firstRun }) {
 
   const later = () => { finishOnboarding(); go(firstRun ? 'watch' : 'character'); };
 
+  // Each route (creator/look …) jumps to its section of the casting file.
+  useEffect(() => {
+    const el = document.getElementById('sec-' + t);
+    if (el && (t !== 'look' || jump)) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }, [t, jump]);
+
+  const fileNo = String(((handle || 'x').split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 7) % 9000 + 1000);
+  const SECS = [
+    { id: 'look', n: '01', title: 'Headshot', sub: 'How your lead looks on camera' },
+    { id: 'voice', n: '02', title: 'Voice reel', sub: 'How they sound' },
+    { id: 'lore', n: '03', title: 'Backstory', sub: 'Who they are when the camera is off' },
+    { id: 'details', n: '04', title: 'Profile', sub: 'Name, billing and collab rules' },
+  ];
+  const doneSec = { look: ch.versions.length > 0, voice: !!ch.voice.generated, lore: Object.values(ch.lore).some((x) => x?.trim()), details: !!ready };
+  const body = { look: <LookTab />, voice: <VoiceTab />, lore: <LoreTab />, details: <DetailsTab handle={handle} handleOk={handleOk} taken={taken.has(handle)} /> };
+
   return (
-    <div className="creator" data-testid="creator">
+    <div className="creator casting" data-testid="creator">
       <header className="creator-top">
         <button className="icon-btn" onClick={later} aria-label="Close" data-testid="creator-close">
           {firstRun ? <span className="later">Later</span> : <Icon name="x" />}
         </button>
-        <div className="creator-title">{firstRun ? 'Create your character' : 'Edit character'}
-          <span className="mini-credits" data-testid="creator-credits"><Icon name="gem" size={13} />{state.credits}</span></div>
+        <div className="creator-title">{firstRun ? 'Casting call' : 'Casting file'}
+          <span className="mini-credits" data-testid="creator-credits"><Icon name="reel" size={13} />{state.credits}</span></div>
         <button className="btn primary small" onClick={done} data-testid="creator-done">Done</button>
       </header>
-      <div className="seg seg-anim" style={{ '--i': idx, '--n': TABS.length }}>
-        <span className="seg-thumb" />
-        {TABS.map((x) => (
-          <button key={x} className={t === x ? 'on' : ''} onClick={() => setTab(x)} data-testid={'ctab-' + x}>{TAB_LABEL[x]}</button>
-        ))}
-      </div>
-      <div className="creator-body" key={t}>
-        {t === 'look' && <LookTab />}
-        {t === 'voice' && <VoiceTab />}
-        {t === 'lore' && <LoreTab />}
-        {t === 'details' && <DetailsTab handle={handle} handleOk={handleOk} taken={taken.has(handle)} />}
-        <div className="creator-next">
-          {idx < TABS.length - 1
-            ? <button className="btn ghost wide" onClick={() => setTab(TABS[idx + 1])} data-testid="creator-next">Next: {TAB_LABEL[TABS[idx + 1]]} →</button>
-            : <button className="btn primary wide" onClick={done} data-testid="creator-finish">Finish{!state.earned.welcome && ` · +${WELCOME_BONUS} bonus`}</button>}
+
+      <div className="file-cover">
+        <div className="file-tab">Casting file · No. {fileNo}</div>
+        <div className="file-id">
+          <div className="file-photo">{ch.avatar ? <img src={ch.avatar} alt="" /> : <Icon name="user" size={30} />}</div>
+          <div className="grow">
+            <span className="file-label">Talent</span>
+            <b className="file-name">{ch.name || 'Unnamed lead'}</b>
+            <span className="file-handle">{handle ? '@' + handle : '@ not set'}</span>
+          </div>
+          <span className={'stamp' + (ready ? ' ok' : '')}>{ready ? 'Cast' : 'Draft'}</span>
         </div>
+        <ol className="file-index">
+          {SECS.map((x) => (
+            <li key={x.id}>
+              <button onClick={() => setTab(x.id)} className={(t === x.id ? 'on ' : '') + (doneSec[x.id] ? 'done' : '')} data-testid={'ctab-' + x.id}>
+                <span className="idx-n">{x.n}</span><span className="grow">{x.title}</span>{doneSec[x.id] ? <Icon name="check" size={14} /> : <span className="idx-dots" />}
+              </button>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {SECS.map((x) => (
+        <section key={x.id} id={'sec-' + x.id} className="file-sec" data-testid={'sec-' + x.id}>
+          <div className="sec-head">
+            <span className="sec-n">{x.n}</span>
+            <div><h3>{x.title}</h3><span className="hint">{x.sub}</span></div>
+          </div>
+          <div className="sec-body">{body[x.id]}</div>
+        </section>
+      ))}
+
+      <div className="creator-next">
+        <button className="btn primary wide" onClick={done} data-testid="creator-finish">{firstRun ? 'Sign the casting file' : 'Save casting file'}{!state.earned.welcome && ` · +${WELCOME_BONUS} reels`}</button>
       </div>
     </div>
   );
@@ -164,7 +199,7 @@ function LookTab() {
   };
 
   const generate = async () => {
-    if (!spendCredits(LOOK_COST, 'Character look')) return notify('Not enough credits.');
+    if (!spendCredits(LOOK_COST, 'Character look')) return notify('Not enough reels.');
     const base = ref || v.find((x) => x.kind === 'photo')?.img || null;
     const [img] = await Promise.all([
       drawPortrait({ seed: Date.now(), style: ch.style, name: ch.name || ch.handle, prompt: ch.look, aspect: ch.aspect, baseImage: base }),
@@ -186,10 +221,6 @@ function LookTab() {
         {cur ? <img src={cur.img} alt="Character portrait" /> : (
           <div className="portrait-empty"><Icon name="user" size={54} /><span>Describe your look below and tap Generate — or upload a photo.</span></div>
         )}
-        <button className="style-tag glass" onClick={() => setStyleOpen(true)} data-testid="style-tag">{ch.style} ▾</button>
-        <button className="glass icon-btn upload-btn" onClick={() => fileRef.current.click()} aria-label="Upload your own image" data-testid="upload-own">
-          <Icon name="upload" size={18} />
-        </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={pick('photo')} data-testid="upload-input" />
         {v.length > 1 && (
           <>
@@ -197,13 +228,18 @@ function LookTab() {
             <button className="nav-arrow right glass" onClick={() => select((i + 1) % v.length)} aria-label="Next version" data-testid="ver-next"><Icon name="back" size={20} className="flip" /></button>
           </>
         )}
-        {v.length > 0 && <span className="ver-count glass" data-testid="ver-count">{i + 1} / {v.length}{cur?.kind === 'photo' ? ' · your photo' : ''}</span>}
+        <span className="crop tl" /><span className="crop tr" /><span className="crop bl" /><span className="crop br" />
         {job && (
           <div className="portrait-job glass" data-testid="look-job">
             <div className="ring" style={{ '--p': job.progress }}><span>{Math.round(job.progress * 100)}%</span></div>
             <span>{job.stage}…</span>
           </div>
         )}
+      </div>
+      <div className="headshot-bar">
+        <button className="ticket-btn" onClick={() => setStyleOpen(true)} data-testid="style-tag"><Icon name="lens" size={14} /> {ch.style}</button>
+        <span className="ver-count" data-testid="ver-count">{v.length > 0 ? `Take ${i + 1} of ${v.length}${cur?.kind === 'photo' ? ' · your photo' : ''}` : 'No takes yet'}</span>
+        <button className="ticket-btn" onClick={() => fileRef.current.click()} aria-label="Upload your own image" data-testid="upload-own"><Icon name="upload" size={14} /> Photo</button>
       </div>
       <p className="content-note">{CONTENT_NOTE}</p>
 
@@ -217,7 +253,7 @@ function LookTab() {
           <button className="tool" onClick={() => patchCharacter({ look: LOOK_IDEAS[Math.floor(Math.random() * LOOK_IDEAS.length)] })} aria-label="Idea" title="Give me an idea" data-testid="look-idea"><Icon name="bulb" size={18} /></button>
           <button className="tool aspect" onClick={() => patchCharacter({ aspect: aspects[(aspects.indexOf(ch.aspect) + 1) % aspects.length] })} title="Format" data-testid="aspect">{ch.aspect}</button>
           <button className="btn primary gen" disabled={!!job || state.credits < LOOK_COST} onClick={generate} data-testid="look-generate">
-            Generate <span className="cost-chip"><Icon name="gem" size={14} />{LOOK_COST}</span>
+            Generate <span className="cost-chip"><Icon name="reel" size={14} />{LOOK_COST}</span>
           </button>
         </div>
       </div>
@@ -257,7 +293,7 @@ function VoiceTab() {
   };
 
   const generate = async () => {
-    if (!spendCredits(VOICE_COST, 'Character voice')) return notify('Not enough credits.');
+    if (!spendCredits(VOICE_COST, 'Character voice')) return notify('Not enough reels.');
     await runJob(2000, ['Listening to your description', 'Tuning pitch', 'Matching pace']);
     setVo({ generated: true, savedAt: Date.now() });
     notify('Voice saved');
@@ -266,18 +302,18 @@ function VoiceTab() {
 
   return (
     <div className="voice">
-      <div className="portrait voice-card" style={{ aspectRatio: '4 / 5' }}>
-        {ch.avatar ? <img src={ch.avatar} alt="" /> : <div className="portrait-empty"><Icon name="user" size={54} /></div>}
-        <div className="voice-panel glass">
+      <div className={'reel-deck' + (playing ? ' rolling' : '')} data-testid="voice-deck">
+        <span className="tape-reel l" aria-hidden="true" /><span className="tape-reel r" aria-hidden="true" />
+        <div className="deck-row">
           <button className={'play-btn' + (playing ? ' on' : '')} onClick={play} aria-label={playing ? 'Stop' : 'Play voice'} data-testid="voice-play">
             <Icon name={playing ? 'stop' : 'play'} size={22} fill />
           </button>
           <div className={'wave' + (playing ? ' playing' : '')} data-testid="wave">
-            {Array.from({ length: 22 }, (_, k) => <span key={k} style={{ '--d': `${(k * 53) % 400}ms`, '--h': `${30 + ((k * 37) % 70)}%` }} />)}
+            {Array.from({ length: 26 }, (_, k) => <span key={k} style={{ '--d': `${(k * 53) % 400}ms`, '--h': `${30 + ((k * 37) % 70)}%` }} />)}
           </div>
-          <span className="style-tag static">{vo.style}</span>
         </div>
-        {job && <div className="portrait-job glass"><div className="ring" style={{ '--p': job.progress }}><span>{Math.round(job.progress * 100)}%</span></div><span>{job.stage}…</span></div>}
+        <div className="deck-label"><span>Take 1 · {ch.name || 'Your lead'}</span><span>{vo.style}</span></div>
+        {job && <div className="deck-job"><div className="progress"><span style={{ width: `${Math.round(job.progress * 100)}%` }} /></div><span className="hint">{job.stage}… {Math.round(job.progress * 100)}%</span></div>}
       </div>
 
       <div className="field"><span className="field-label">Style</span>
@@ -298,7 +334,7 @@ function VoiceTab() {
           <button className="tool" onClick={() => setVo({ desc: VOICE_IDEAS[Math.floor(Math.random() * VOICE_IDEAS.length)] })} title="Give me an idea" data-testid="voice-idea"><Icon name="bulb" size={18} /></button>
           <span className="grow hint">{vo.generated ? '✓ Voice saved' : 'Play is free · Generate saves it'}</span>
           <button className="btn primary gen" disabled={!!job || state.credits < VOICE_COST} onClick={generate} data-testid="voice-generate">
-            Generate <span className="cost-chip"><Icon name="gem" size={14} />{VOICE_COST}</span>
+            Generate <span className="cost-chip"><Icon name="reel" size={14} />{VOICE_COST}</span>
           </button>
         </div>
       </div>
@@ -318,103 +354,59 @@ const LORE_Q = {
   goals: 'What am I chasing? What do I want most?',
   fears: 'What scares me, even if I’d never admit it?',
 };
-const LORE_REPLY = [
-  (l) => `Ooh, I like that. Added to my ${l}.`,
-  (l) => `Noted — that’s part of my ${l} now.`,
-  (l) => `That explains a lot. Saved under ${l}.`,
-  (l) => `Got it. My ${l} just got more interesting.`,
-];
-const guessField = (txt) => {
-  const s = txt.toLowerCase();
-  if (/afraid|scared|fear|terrif|nightmare/.test(s)) return 'fears';
-  if (/\bwant|dream|goal|someday|plan to|wish/.test(s)) return 'goals';
-  if (/friend|sister|brother|mom|dad|rival|crew|partner|family|love/.test(s)) return 'social';
-  if (/born|grew up|raised|came from|origin|childhood/.test(s)) return 'origin';
-  if (/city|town|lives in|live in|district|island|planet|home base|turf/.test(s)) return 'territory';
-  if (/right now|currently|lately|these days|today/.test(s)) return 'current';
-  if (/funny|joke|sarcas|shy|loud|habit|always says/.test(s)) return 'personality';
-  return 'identity';
+// "Punch up": a demo stand-in for an AI writing pass. It adds one vivid, specific line per tap.
+const PUNCH = {
+  origin: ['{n} was born during a city-wide blackout, the only light a neon sign that never turned off.', 'Raised above a noodle shop that never closed, {n} learned to read people before reading books.', 'Nobody knows the real story, and {n} likes it that way.'],
+  identity: ['{n} never breaks a promise, even a bad one.', 'Underneath the attitude, {n} is the one who always comes back for people.', '{n} believes every story deserves a better ending.'],
+  personality: ['Talks fast when nervous, goes dead quiet when angry.', 'Has a nickname for everyone and never explains it.', 'Laughs at the worst possible moments.'],
+  social: ['One best friend who knows everything, and one rival who knows too much.', 'A crew of misfits who meet every Friday on the same rooftop.', 'An older sibling {n} is still trying to impress.'],
+  territory: ['A rain-soaked district where the trains run all night.', 'The last open diner on the edge of town, booth by the window.', 'Rooftops, alleys and anywhere with a good view of the skyline.'],
+  current: ['Right now, {n} is hiding something that could change everything.', 'Just quit a job nobody else would have dared to quit.', 'Has 48 hours to fix a mistake nobody knows about yet.'],
+  goals: ['Wants to be remembered, not famous.', 'Wants to find the person who left a message only {n} could read.', 'Wants one perfect day with nothing going wrong.'],
+  fears: ['Deep water, and being forgotten.', 'Silence. Real, total silence.', 'Becoming exactly like the person who raised them.'],
 };
 
 function LoreTab() {
   const { state, patchCharacter, notify } = useStore();
   const ch = state.character;
-  const label = (id) => LORE_FIELDS.find((f) => f.id === id)?.label;
-  const [msgs, setMsgs] = useState([{ who: 'char', text: 'Hey. Want to change anything about my story?' }]);
-  const [topic, setTopic] = useState(null);
-  const [text, setText] = useState('');
-  const [panel, setPanel] = useState(false);
-  const [listening, setListening] = useState(false);
-  const listRef = useRef(null);
-  const SR = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
-
-  useEffect(() => { listRef.current?.scrollTo(0, listRef.current.scrollHeight); }, [msgs]);
-
-  const chooseTopic = (id) => { setTopic(id); setMsgs((m) => [...m, { who: 'char', text: LORE_Q[id], topic: id }]); };
-
-  const send = () => {
-    const t = text.trim();
-    if (!t) return;
-    const field = topic || guessField(t);
-    patchCharacter((c) => {
-      const prev = c.lore[field]?.trim();
-      const sentence = /[.!?]$/.test(t) ? t : t + '.';
-      return { lore: { ...c.lore, [field]: prev ? `${prev} ${sentence}` : sentence } };
-    });
-    const reply = LORE_REPLY[msgs.length % LORE_REPLY.length](label(field));
-    setMsgs((m) => [...m, { who: 'me', text: t }, { who: 'char', text: reply, saved: field }]);
-    setText(''); setTopic(null);
-  };
-
-  const mic = () => {
-    if (!SR) return notify('Voice typing isn’t supported in this browser.');
-    const rec = new SR();
-    rec.lang = 'en-US'; rec.interimResults = false;
-    rec.onresult = (e) => setText((x) => (x ? x + ' ' : '') + e.results[0][0].transcript);
-    rec.onend = () => setListening(false);
-    rec.onerror = () => { setListening(false); notify('Couldn’t hear you — try again.'); };
-    setListening(true); rec.start();
-  };
-
+  const [busy, setBusy] = useState(null);
   const filled = LORE_FIELDS.filter((f) => ch.lore[f.id]?.trim()).length;
-
+  const name = ch.name || 'My lead';
+  const setField = (id, v) => patchCharacter((c) => ({ lore: { ...c.lore, [id]: v } }));
+  const punch = (id) => {
+    setBusy(id);
+    setTimeout(() => {
+      patchCharacter((c) => {
+        const prev = c.lore[id]?.trim() || '';
+        const opts = PUNCH[id] || PUNCH.identity;
+        const pickLine = opts.find((o) => !prev.includes(o.replace(/\{n\}/g, name))) || opts[0];
+        const line = pickLine.replace(/\{n\}/g, name);
+        return { lore: { ...c.lore, [id]: prev ? `${prev} ${line}` : line } };
+      });
+      setBusy(null);
+      notify('Punched up (demo writing pass)');
+    }, 650);
+  };
   return (
-    <div className="lore">
-      <div className="chip-scroll lore-chips" data-testid="lore-chips">
-        {LORE_FIELDS.map((f) => (
-          <button key={f.id} className={'pill' + (topic === f.id ? ' on' : '') + (ch.lore[f.id] ? ' has' : '')} onClick={() => chooseTopic(f.id)} data-testid={'lore-' + f.id}>
-            {f.label}
-          </button>
+    <div className="lore qa" data-testid="lore-qa">
+      <div className="qa-progress"><span className="hint">{filled} of {LORE_FIELDS.length} answered</span>
+        <div className="progress thin"><span style={{ width: `${(filled / LORE_FIELDS.length) * 100}%` }} /></div></div>
+      <ol className="qa-list">
+        {LORE_FIELDS.map((f, k) => (
+          <li key={f.id} className={'qa-item' + (ch.lore[f.id]?.trim() ? ' has' : '')} data-testid={'lore-' + f.id}>
+            <div className="qa-q"><span className="qa-n">Q{k + 1}</span><span><b>{f.label}</b><span className="hint">{LORE_Q[f.id]}</span></span></div>
+            <textarea rows={2} maxLength={1200} value={ch.lore[f.id]} placeholder="Your answer…" data-testid={'lorefield-' + f.id}
+              onChange={(e) => setField(f.id, e.target.value)} />
+            <div className="qa-tools">
+              <button className="btn ghost small punch" onClick={() => punch(f.id)} disabled={busy === f.id} data-testid={'punch-' + f.id}>
+                <Icon name="wand" size={15} /> {busy === f.id ? 'Writing…' : ch.lore[f.id]?.trim() ? 'Punch it up' : 'Write one for me'}
+              </button>
+              {ch.lore[f.id]?.trim() && <button className="link small" onClick={() => setField(f.id, '')}>Clear</button>}
+            </div>
+          </li>
         ))}
-      </div>
-      <div className="chat" ref={listRef} data-testid="lore-chat">
-        {msgs.map((m, k) => (
-          <div key={k} className={'bubble-row ' + m.who}>
-            {m.who === 'char' && (ch.avatar ? <img className="avatar" src={ch.avatar} alt="" style={{ width: 30, height: 30 }} /> : <span className="avatar avatar-letter" style={{ width: 30, height: 30, fontSize: 13 }}>{(ch.name || '?')[0].toUpperCase()}</span>)}
-            <div className="bubble">{m.text}{m.saved && <button className="saved-tag" onClick={() => setPanel(true)}>✓ {label(m.saved)}</button>}</div>
-          </div>
-        ))}
-      </div>
+      </ol>
       <p className="content-note">{CONTENT_NOTE}</p>
-      <div className="chat-input">
-        <button className="tool" onClick={() => chooseTopic(LORE_FIELDS[Math.floor(Math.random() * LORE_FIELDS.length)].id)} title="Ask me a lore question" aria-label="New lore question"><Icon name="plus" size={18} /></button>
-        <button className="tool lore-btn" onClick={() => setPanel(true)} data-testid="lore-panel-btn">Lore{filled ? ` · ${filled}` : ''}</button>
-        <input className="input" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()}
-          placeholder={topic ? `About my ${label(topic)}…` : 'Tell me something about me…'} data-testid="lore-input" />
-        <button className={'tool' + (listening ? ' rec' : '')} onClick={mic} aria-label="Speak" title={SR ? 'Voice typing' : 'Voice typing not supported here'} data-testid="lore-mic"><Icon name="mic" size={18} /></button>
-        <button className="tool send" onClick={send} disabled={!text.trim()} aria-label="Send" data-testid="lore-send"><Icon name="up" size={18} /></button>
-      </div>
-
-      <Sheet open={panel} onClose={() => setPanel(false)} title="Saved lore">
-        <p className="hint">Everything your character knows about themself. Edit freely.</p>
-        {LORE_FIELDS.map((f) => (
-          <label key={f.id} className="field lore-field">
-            <span className="field-label">{f.label}</span>
-            <textarea rows={2} maxLength={1200} value={ch.lore[f.id]} placeholder={LORE_Q[f.id]} data-testid={'lorefield-' + f.id}
-              onChange={(e) => patchCharacter((c) => ({ lore: { ...c.lore, [f.id]: e.target.value } }))} />
-          </label>
-        ))}
-      </Sheet>
     </div>
   );
 }

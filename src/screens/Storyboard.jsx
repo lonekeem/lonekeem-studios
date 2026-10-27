@@ -3,6 +3,7 @@ import { useStore, uid } from '../lib/store.jsx';
 import { creditCost } from '../lib/models.js';
 import { generateClip, IS_DEMO } from '../lib/generateClip.js';
 import { Icon, Avatar, tick } from '../lib/ui.jsx';
+import { Slate } from './Create.jsx';
 
 export const CAMERAS = ['Close-up', 'Medium', 'Wide', 'Tracking', 'Low angle', 'Overhead', 'Handheld'];
 export const MOODS = ['Epic', 'Tense', 'Dreamy', 'Funny', 'Cozy', 'Eerie', 'Hopeful'];
@@ -28,6 +29,7 @@ export default function Storyboard({ go }) {
   const [job, setJob] = useState(null); // { statuses: [...], i }
   const [done, setDone] = useState(null);
   const [dragging, setDragging] = useState(null);
+  const [sel, setSel] = useState(0);
   const abortRef = useRef(null);
   const listRef = useRef(null);
   const drag = useRef(null);
@@ -40,6 +42,7 @@ export default function Storyboard({ go }) {
     const [x] = sc.splice(from, 1);
     sc.splice(to, 0, x);
     set({ scenes: sc });
+    setSel(to);
   };
   const total = board.scenes.reduce((a, s) => a + sceneCost(s, hasChar), 0);
   const seconds = board.scenes.reduce((a, s) => a + s.length, 0);
@@ -54,8 +57,8 @@ export default function Storyboard({ go }) {
   };
   const onDrag = (e) => {
     if (drag.current == null) return;
-    const cards = [...listRef.current.children];
-    let j = cards.findIndex((c) => { const r = c.getBoundingClientRect(); return e.clientY < r.top + r.height / 2; });
+    const cards = [...listRef.current.querySelectorAll('.scene-card')];
+    let j = cards.findIndex((c) => { const r = c.getBoundingClientRect(); return e.clientX < r.left + r.width / 2; });
     if (j === -1) j = cards.length - 1;
     else if (j > drag.current) j -= 1;
     if (j !== drag.current) { move(drag.current, j); drag.current = j; setDragging(j); tick(); }
@@ -71,7 +74,7 @@ export default function Storyboard({ go }) {
   const generateAll = async () => {
     if (!ready) return notify('Every scene needs a short description.');
     if (board.seriesId === 'new' && !board.newSeries.trim() && !board.title.trim()) return notify('Name the episode or the series first.');
-    if (!spendCredits(total, `Storyboard · ${board.scenes.length} scenes`)) return notify('Not enough credits for every scene — remove one or earn more in Settings.');
+    if (!spendCredits(total, `Storyboard · ${board.scenes.length} scenes`)) return notify('Not enough reels for every scene. Cut one, or grab free reels in Studio.');
     const scenes = board.scenes;
     const statuses = scenes.map(() => ({ state: 'queued', progress: 0 }));
     setJob({ statuses: [...statuses] });
@@ -114,7 +117,7 @@ export default function Storyboard({ go }) {
     } catch (e) {
       const left = scenes.slice(clips.length).reduce((a, s) => a + sceneCost(s, hasChar), 0);
       if (left) addCredits(left, 'Refund · storyboard stopped');
-      notify(e.name === 'AbortError' ? `Stopped — ${clips.length} clip(s) kept in My clips, ${left} credits refunded.` : e.message);
+      notify(e.name === 'AbortError' ? `Cut! ${clips.length} clip(s) kept in your library, ${left} reels refunded.` : e.message);
     } finally {
       setJob(null);
     }
@@ -124,7 +127,7 @@ export default function Storyboard({ go }) {
     const doneCount = job.statuses.filter((s) => s.state === 'done').length;
     return (
       <div className="board-job" data-testid="board-job">
-        <h2>Directing your episode…</h2>
+        <h2>Rolling all scenes…</h2>
         <p className="muted">Scene {Math.min(doneCount + 1, job.statuses.length)} of {job.statuses.length}{IS_DEMO && ' · demo renders'}</p>
         <div className="progress"><span style={{ width: `${((doneCount + (job.statuses[job.i]?.progress || 0) * (job.statuses[job.i]?.state === 'rendering' ? 1 : 0)) / job.statuses.length) * 100}%` }} /></div>
         <ol className="board-status">
@@ -165,16 +168,23 @@ export default function Storyboard({ go }) {
     );
   }
 
+  const n = board.scenes.length;
+  const si = Math.min(sel, n - 1);
+  const cur = board.scenes[si];
+  const seriesName = board.seriesId === 'new' ? (board.newSeries || 'New series') : (state.series.find((x) => x.id === board.seriesId)?.title || 'Series');
+  const addScene = () => { set({ scenes: [...board.scenes, newScene(n)] }); setSel(n); };
+  const removeScene = (i) => { set({ scenes: board.scenes.filter((_, k) => k !== i) }); setSel(Math.max(0, i - 1)); };
+
   return (
     <div className="board" data-testid="board">
-      <div className="board-head card">
-        <Avatar character={ch} size={40} />
-        <div className="grow">
-          <b>Director mode</b>
-          <span className="hint">{hasChar ? `${ch.name} is locked in for every scene` : 'Tip: create a character to star in every scene'}</span>
-        </div>
-        <button className="tool" onClick={outline} data-testid="board-outline" title="Fill empty scenes"><Icon name="bulb" size={18} /></button>
-      </div>
+      <Slate prod={seriesName} roll="A1" scene={`${String(si + 1).padStart(2, '0')}/${String(n).padStart(2, '0')}`} take="01"
+        extra={(
+          <div className="slate-foot">
+            <Avatar character={ch} size={26} />
+            <span className="grow hint">{hasChar ? `Starring ${ch.name}, lead locked for every scene` : 'Tip: cast a character to star in every scene'}</span>
+            <button className="btn ghost small" onClick={outline} data-testid="board-outline"><Icon name="wand" size={16} /> Outline it</button>
+          </div>
+        )} />
 
       <div className="grid2">
         <label className="field"><span className="field-label">Episode title</span>
@@ -183,7 +193,7 @@ export default function Storyboard({ go }) {
         <label className="field"><span className="field-label">Series</span>
           <select className="input" value={board.seriesId} onChange={(e) => set({ seriesId: e.target.value })} data-testid="board-series">
             <option value="new">+ New series</option>
-            {state.series.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+            {state.series.map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}
           </select>
         </label>
       </div>
@@ -191,50 +201,71 @@ export default function Storyboard({ go }) {
         <input className="input" value={board.newSeries} maxLength={50} placeholder={`New series name (e.g. ${charName}: Season 1)`} onChange={(e) => set({ newSeries: e.target.value })} data-testid="board-newseries" />
       )}
 
-      <ol className="scene-list" ref={listRef} onPointerMove={onDrag} onPointerUp={onDrop} onPointerCancel={onDrop}>
-        {board.scenes.map((sc, i) => (
-          <li key={sc.id} className={'scene-card' + (dragging === i ? ' dragging' : '')} data-testid="scene-card">
-            <div className="scene-top">
-              <button className="grip" onPointerDown={(e) => onGrab(e, i)} aria-label="Drag to reorder" data-testid="scene-grip"><Icon name="grip" size={20} stroke={3} /></button>
-              <span className="scene-num">{i + 1}</span>
-              <span className="scene-beat">{beatName(i, board.scenes.length)}</span>
-              <span className="grow" />
-              <button className="icon-btn sm" onClick={() => move(i, i - 1)} disabled={i === 0} aria-label="Move up" data-testid="scene-up"><Icon name="up" size={16} /></button>
-              <button className="icon-btn sm" onClick={() => move(i, i + 1)} disabled={i === board.scenes.length - 1} aria-label="Move down" data-testid="scene-down"><Icon name="down" size={16} /></button>
-              <button className="icon-btn sm" onClick={() => set({ scenes: board.scenes.filter((_, k) => k !== i) })} disabled={board.scenes.length <= MIN} aria-label="Remove scene"><Icon name="x" size={16} /></button>
-            </div>
-            <textarea rows={2} maxLength={300} value={sc.prompt} placeholder={OUTLINE[beatName(i, board.scenes.length)](charName)}
-              onChange={(e) => setScene(i, { prompt: e.target.value })} data-testid="scene-prompt" />
-            <div className="scene-opts">
-              <div className="seg mini">
-                {[5, 10].map((l) => <button key={l} className={sc.length === l ? 'on' : ''} onClick={() => setScene(i, { length: l })}>{l}s</button>)}
+      <div className="strip-head">
+        <span className="field-label">Timeline · {n} scenes · {seconds}s</span>
+        <span className="hint">Drag a frame by its handle to reorder</span>
+      </div>
+      <div className="filmstrip" data-testid="filmstrip">
+        <ol className="strip-track" ref={listRef} onPointerMove={onDrag} onPointerUp={onDrop} onPointerCancel={onDrop}>
+          {board.scenes.map((sc, i) => (
+            <li key={sc.id} className={'scene-card frame-cell' + (i === si ? ' sel' : '') + (dragging === i ? ' dragging' : '')} data-testid="scene-card"
+              onClick={() => setSel(i)} data-prompt={sc.prompt}>
+              <div className="frame-pic" style={{ '--h': (i * 47 + 260) % 360 }}>
+                <span className="frame-no">{String(i + 1).padStart(2, '0')}</span>
+                <button className="grip" onPointerDown={(e) => onGrab(e, i)} onClick={(e) => e.stopPropagation()} aria-label="Drag to reorder" data-testid="scene-grip"><Icon name="grip" size={18} stroke={3} /></button>
+                <span className="frame-beat">{beatName(i, n)}</span>
+                <span className="frame-text">{sc.prompt || 'Empty frame'}</span>
               </div>
-              <label className="mini-select"><Icon name="camera" size={14} />
-                <select value={sc.camera} onChange={(e) => setScene(i, { camera: e.target.value })} data-testid="scene-camera">{CAMERAS.map((c) => <option key={c}>{c}</option>)}</select>
-              </label>
-              <label className="mini-select"><Icon name="spark" size={14} />
-                <select value={sc.mood} onChange={(e) => setScene(i, { mood: e.target.value })} data-testid="scene-mood">{MOODS.map((m) => <option key={m}>{m}</option>)}</select>
-              </label>
+              <span className="frame-meta">{sc.camera} · {sc.length}s</span>
+            </li>
+          ))}
+          {n < MAX && (
+            <li className="frame-add">
+              <button onClick={addScene} data-testid="scene-add" aria-label="Add scene"><Icon name="plus" size={22} /><span>Add frame</span><small>{n}/{MAX}</small></button>
+            </li>
+          )}
+        </ol>
+      </div>
+
+      {cur && (
+        <div className="frame-editor" key={cur.id} data-testid="frame-editor">
+          <div className="scene-top">
+            <span className="scene-num">{String(si + 1).padStart(2, '0')}</span>
+            <span className="scene-beat">{beatName(si, n)}</span>
+            <span className="grow" />
+            <button className="icon-btn sm" onClick={() => move(si, si - 1)} disabled={si === 0} aria-label="Move earlier" data-testid="scene-up"><Icon name="back" size={16} /></button>
+            <button className="icon-btn sm" onClick={() => move(si, si + 1)} disabled={si === n - 1} aria-label="Move later" data-testid="scene-down"><Icon name="back" size={16} className="flip" /></button>
+            <button className="icon-btn sm" onClick={() => removeScene(si)} disabled={n <= MIN} aria-label="Remove scene" data-testid="scene-remove"><Icon name="trash" size={16} /></button>
+          </div>
+          <textarea rows={3} maxLength={300} value={cur.prompt} placeholder={OUTLINE[beatName(si, n)](charName)}
+            onChange={(e) => setScene(si, { prompt: e.target.value })} data-testid="scene-prompt" />
+          <div className="scene-opts">
+            <div className="stock-toggle" role="group" aria-label="Length">
+              {[5, 10].map((l) => <button key={l} className={cur.length === l ? 'on' : ''} onClick={() => setScene(si, { length: l })}>{l}s</button>)}
             </div>
-          </li>
-        ))}
-      </ol>
-      {board.scenes.length < MAX
-        ? <button className="btn ghost wide dashed" onClick={() => set({ scenes: [...board.scenes, newScene(board.scenes.length)] })} data-testid="scene-add"><Icon name="plus" size={18} /> Add scene ({board.scenes.length}/{MAX})</button>
-        : <p className="hint center">Six scenes max — keep it short and punchy.</p>}
+            <label className="mini-select"><Icon name="camera" size={14} />
+              <select value={cur.camera} onChange={(e) => setScene(si, { camera: e.target.value })} data-testid="scene-camera">{CAMERAS.map((c) => <option key={c}>{c}</option>)}</select>
+            </label>
+            <label className="mini-select"><Icon name="spark" size={14} />
+              <select value={cur.mood} onChange={(e) => setScene(si, { mood: e.target.value })} data-testid="scene-mood">{MOODS.map((m) => <option key={m}>{m}</option>)}</select>
+            </label>
+          </div>
+        </div>
+      )}
+      {n >= MAX && <p className="hint center">Six scenes max. Keep it short and punchy.</p>}
 
       <label className="check-row">
-        <input type="checkbox" checked={board.publish} onChange={(e) => set({ publish: e.target.checked })} /> Publish to Watch when it's done (this device only)
+        <input type="checkbox" checked={board.publish} onChange={(e) => set({ publish: e.target.checked })} /> Premiere it on Showing when it's done (this device only)
       </label>
 
       <div className="cost-bar">
         <div>
-          <span className="hint">{board.scenes.length} scenes · {seconds}s</span>
-          <b data-testid="board-cost"><Icon name="gem" size={16} /> {total}</b>
+          <span className="hint">Budget · {n} scenes</span>
+          <b data-testid="board-cost"><Icon name="reel" size={16} /> {total}</b>
           <span className="hint">You have {state.credits}</span>
         </div>
         <button className="btn primary" onClick={generateAll} disabled={!ready || total > state.credits} data-testid="generate-all">
-          <Icon name="spark" size={18} fill /> Generate all
+          <Icon name="clapper" size={18} /> Roll all scenes
         </button>
       </div>
     </div>

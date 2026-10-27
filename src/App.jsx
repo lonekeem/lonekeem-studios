@@ -11,11 +11,11 @@ import Creator, { Welcome } from './screens/Creator.jsx';
 import Show from './screens/Show.jsx';
 
 const TABS = [
-  { id: 'watch', label: 'Watch', icon: 'home' },
-  { id: 'series', label: 'My series', icon: 'film' },
-  { id: 'create', label: 'Create', icon: 'plus' },
-  { id: 'character', label: 'Character', icon: 'user' },
-  { id: 'settings', label: 'Settings', icon: 'gear' },
+  { id: 'watch', label: 'Showing', icon: 'ticket' },
+  { id: 'series', label: 'Library', icon: 'library' },
+  { id: 'create', label: 'Action', icon: 'clapper' },
+  { id: 'character', label: 'Cast', icon: 'cast' },
+  { id: 'settings', label: 'Studio', icon: 'gear' },
 ];
 
 function useHashRoute() {
@@ -73,8 +73,8 @@ function Shell() {
       <header className="topbar">
         <a className="brand" href="#/watch"><Monogram size={28} /><span className="brand-word">Lone Keem <b>Studios</b></span></a>
         {IS_DEMO && <span className="demo-pill">DEMO</span>}
-        <button className="credit-pill" onClick={() => setCreditsOpen(true)} data-testid="credits">
-          <Icon name="gem" size={18} /> <span data-testid="credit-balance">{state.credits}</span>
+        <button className="credit-pill reel-pill" onClick={() => setCreditsOpen(true)} data-testid="credits" aria-label="Reels">
+          <Icon name="reel" size={18} className="spin-reel" /> <span data-testid="credit-balance">{state.credits}</span>
         </button>
       </header>
 
@@ -88,20 +88,25 @@ function Shell() {
         {!TABS.some((t) => t.id === tab) && tab !== 'show' && <Watch go={go} />}
       </main>
 
-      <nav className="tabbar">
+      <nav className="tabbar dock">
         {TABS.map((t) => (
           <button key={t.id} className={'tab' + (tab === t.id || (tab === 'show' && t.id === 'series') ? ' active' : '') + (t.id === 'create' ? ' tab-create' : '')}
-            onClick={() => go(t.id)} data-testid={'tab-' + t.id} aria-label={t.label}>
-            {t.id === 'create' ? <span className="create-bubble"><Icon name="plus" size={26} stroke={2.6} /></span> : <Icon name={t.icon} />}
+            onClick={() => go(t.id)} data-testid={'tab-' + t.id} aria-label={t.id === 'create' ? 'Create' : t.label}>
+            {t.id === 'create' ? (
+              <span className="clap-btn" aria-hidden="true">
+                <span className="clap-top"><i /><i /><i /><i /></span>
+                <span className="clap-body"><span className="rec-dot" /></span>
+              </span>
+            ) : <Icon name={t.icon} />}
             <span>{t.label}</span>
           </button>
         ))}
       </nav>
 
-      <Sheet open={creditsOpen} onClose={() => setCreditsOpen(false)} title="Credits">
-        <div className="credit-big"><Icon name="gem" size={30} /> {state.credits}</div>
-        <p className="muted">Demo credits — not real money. You get <b>{DAILY_TOPUP}</b> free every day you open the app.</p>
-        <button className="btn ghost wide" onClick={() => { setCreditsOpen(false); go('settings'); }}>Earn more credits</button>
+      <Sheet open={creditsOpen} onClose={() => setCreditsOpen(false)} title="Your reels">
+        <div className="credit-big"><Icon name="reel" size={30} /> {state.credits}</div>
+        <p className="muted">Reels are what you spend to shoot scenes. Demo reels aren't real money, and you get <b>{DAILY_TOPUP}</b> free every day you open the app.</p>
+        <button className="btn ghost wide" onClick={() => { setCreditsOpen(false); go('settings'); }}>Free reels</button>
         <h4>Recent activity</h4>
         <ul className="ledger">
           {state.ledger.slice(0, 12).map((l, i) => (

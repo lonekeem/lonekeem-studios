@@ -35,6 +35,14 @@ const P = {
   download: 'M12 4v12M7 11l5 5 5-5M4 20h16',
   board: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
   edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
+  reel: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 13.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM12 8.2a1.6 1.6 0 1 0 0-.1M12 15.8a1.6 1.6 0 1 0 0 .1M8.2 12a1.6 1.6 0 1 0-.1 0M15.8 12a1.6 1.6 0 1 0 .1 0',
+  clapper: 'M4 10h16v10H4zM4 10l1-5 15 2-1 3M8.5 5.6l2 4M13.5 6.3l2 3.7',
+  ticket: 'M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4zM14 7v10',
+  library: 'M5 4v16M9 4v16M13 5l4 15M19 4v16',
+  cast: 'M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20a5 5 0 0 1 10 0M14 4h7v9h-7zM16 7h3M16 10h3',
+  slate: 'M3 5h18v14H3zM3 9h18M8 5l-2 4M13 5l-2 4M18 5l-2 4',
+  wand: 'M5 19l10-10M14 4v3M19 9h-3M17.5 5.5l-2 2M4 4l1.5 1.5',
+  lens: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 3v5M21 12h-5M12 21v-5M3 12h5',
 };
 
 export function Icon({ name, size = 22, fill = false, stroke = 2, className = '' }) {

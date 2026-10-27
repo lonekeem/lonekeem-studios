@@ -12,9 +12,9 @@ const LANGS = [['en', 'English'], ['es', 'Español'], ['fr', 'Français'], ['pt'
 
 const DOCS = {
   terms: ['Terms of Service', 'Placeholder. This is a demo build — real terms will be published before launch. Content you create must follow the community rules: no sexual content, no real people without consent, no harassment, no illegal content.'],
-  privacy: ['Privacy Policy', 'Placeholder. In this demo everything (your character, avatar, clips list, credits) is stored only in your browser’s localStorage. Nothing is uploaded and there are no accounts or trackers.'],
-  merge: ['Merge accounts', 'Coming later: sign in on two devices and merge credits, characters and series into one account. Not available in the demo because there are no accounts.'],
-  sub: ['Subscription', 'You are on the Free plan. Paid plans (longer clips, 720p/1080p, more credits) are not available in this demo and nothing can be purchased.'],
+  privacy: ['Privacy Policy', 'Placeholder. In this demo everything (your character, avatar, clips list, reels) is stored only in your browser’s localStorage. Nothing is uploaded and there are no accounts or trackers.'],
+  merge: ['Merge accounts', 'Coming later: sign in on two devices and merge reels, characters and series into one account. Not available in the demo because there are no accounts.'],
+  sub: ['Subscription', 'You are on the Free plan. Paid plans (longer clips, 720p/1080p, more reels) are not available in this demo and nothing can be purchased.'],
 };
 
 export default function Settings({ go }) {
@@ -40,7 +40,7 @@ export default function Settings({ go }) {
     if (t.id === 'community') notify('Community link coming soon (demo).');
     markEarned(t.id);
     addCredits(t.reward, t.title);
-    notify(`+${t.reward} credits`);
+    notify(`+${t.reward} reels`);
   };
 
   return (
@@ -56,7 +56,7 @@ export default function Settings({ go }) {
         </button>
       </div>
 
-      <h3 className="group-title">Earn credits</h3>
+      <h3 className="group-title">Free reels</h3>
       <div className="card list">
         {EARN.map((t) => (
           <button key={t.id} className="list-row" onClick={() => earn(t)} disabled={state.earned[t.id]} data-testid={`earn-${t.id}`}>
@@ -121,7 +121,7 @@ export default function Settings({ go }) {
       </Sheet>
 
       <Sheet open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete account?">
-        <p className="muted">This wipes your character, clips, series and credits from this device. It can’t be undone.</p>
+        <p className="muted">This wipes your character, clips, series and reels from this device. It can’t be undone.</p>
         <button className="btn danger wide" onClick={() => { deleteAccount(); setConfirmDelete(false); window.location.hash = '/watch'; }} data-testid="confirm-delete">Delete everything</button>
         <button className="btn ghost wide" onClick={() => setConfirmDelete(false)}>Cancel</button>
       </Sheet>

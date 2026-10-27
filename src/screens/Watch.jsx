@@ -69,34 +69,49 @@ export default function Watch({ go }) {
         const liked = !!state.likes[it.id];
         const reported = !!state.reported[it.id];
         return (
-          <section className="feed-item" key={it.id} data-idx={idx} data-testid="feed-item">
-            <EpisodePlayer clips={it.clips} active={idx === active} onProgress={(p) => setProgress(it.id, p)} />
-            <div className="feed-shade" />
-            <span className="ai-badge"><Icon name="spark" size={14} fill /> AI-generated</span>
-            <div className="feed-info">
-              <button className="feed-series" onClick={() => go('show/' + encodeURIComponent(it.seriesKey))} data-testid="feed-series">{it.series} · Ep {it.ep} <Icon name="back" size={12} className="flip" /></button>
-              <h2>{it.title}</h2>
+          <section className="feed-item cine" key={it.id} data-idx={idx} data-testid="feed-item">
+            <header className="marquee">
+              <span className="bulbs" aria-hidden="true" />
+              <span className="now-showing">Now showing</span>
+              <button className="feed-series" onClick={() => go('show/' + encodeURIComponent(it.seriesKey))} data-testid="feed-series">
+                {it.series} <Icon name="back" size={12} className="flip" />
+              </button>
+              <span className="ep-code" data-testid="ep-code">S{it.season || 1} · E{it.ep}</span>
+            </header>
+            <div className="frame">
+              <EpisodePlayer clips={it.clips} active={idx === active} onProgress={(p) => setProgress(it.id, p)} />
+              <div className="grain" aria-hidden="true" />
+              <span className="ai-badge"><Icon name="spark" size={14} fill /> AI-generated</span>
               {it.ep > 1 && (
-                <button className="prev-chip glass" onClick={() => setRecapFor(it)} data-testid="prev-chip">Previously on… </button>
+                <button className="prev-chip" onClick={() => setRecapFor(it)} data-testid="prev-chip">Previously on…</button>
               )}
-              {it.remixOf && <div className="remix-credit"><Icon name="remix" size={13} /> Remix of @{it.remixOf.handle}</div>}
-              <div className="feed-handle"><Avatar character={it.mine ? state.character : { name: it.handle }} size={28} />@{it.handle}{it.mine && <span className="chip">You</span>}</div>
             </div>
-            <div className="feed-actions">
-              <button className={'act' + (liked ? ' liked' : '')} onClick={() => toggleLike(it.id)} aria-label="Like" data-testid="like">
-                <Icon name="heart" size={30} fill={liked} />
-                <span>{(it.likes + (liked ? 1 : 0)).toLocaleString()}</span>
-              </button>
-              <RemixButton item={it} go={go} feed />
-              <button className={'act' + (reported ? ' reported' : '')} onClick={() => setReporting(it)} aria-label="Report" data-testid="report">
-                <Icon name="flag" size={28} />
-                <span>{reported ? 'Reported' : 'Report'}</span>
-              </button>
-            </div>
+            <footer className="feed-info credits-roll">
+              <h2>{it.title}</h2>
+              <div className="feed-meta">
+                <span className="feed-handle"><Avatar character={it.mine ? state.character : { name: it.handle }} size={22} />@{it.handle}{it.mine && <span className="chip">You</span>}</span>
+                {it.remixOf && <span className="remix-credit"><Icon name="remix" size={13} /> Remix of @{it.remixOf.handle}</span>}
+              </div>
+              <div className="feed-actions action-bar">
+                <button className={'act' + (liked ? ' liked' : '')} onClick={() => toggleLike(it.id)} aria-label="Like" data-testid="like">
+                  <Icon name="heart" size={22} fill={liked} />
+                  <span>{(it.likes + (liked ? 1 : 0)).toLocaleString()}</span>
+                </button>
+                <RemixButton item={it} go={go} feed />
+                <button className="act" onClick={() => go('show/' + encodeURIComponent(it.seriesKey))} aria-label="Episodes">
+                  <Icon name="film" size={22} />
+                  <span>Episodes</span>
+                </button>
+                <button className={'act' + (reported ? ' reported' : '')} onClick={() => setReporting(it)} aria-label="Report" data-testid="report">
+                  <Icon name="flag" size={22} />
+                  <span>{reported ? 'Reported' : 'Report'}</span>
+                </button>
+              </div>
+            </footer>
           </section>
         );
       })}
-      <div className="feed-end">You're all caught up. Make the next episode ✦</div>
+      <div className="feed-end">That's a wrap. Shoot the next episode.</div>
 
       <Sheet open={!!recapFor} onClose={() => setRecapFor(null)} title="Catch up">
         {recapFor && (() => {

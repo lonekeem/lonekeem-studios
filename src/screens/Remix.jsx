@@ -35,7 +35,7 @@ export function RemixButton({ item, go, wide = false, feed = false }) {
     <>
       {feed ? (
         <button className={'act' + (collab === 'private' ? ' muted-act' : '')} onClick={start} aria-label="Remix with my character" data-testid="remix">
-          <Icon name={icon} size={28} /><span>{text}</span>
+          <Icon name={icon} size={22} /><span>{text}</span>
         </button>
       ) : (
         <button className={'btn ghost remix-btn' + (wide ? ' wide' : '')} onClick={start} data-testid="remix">

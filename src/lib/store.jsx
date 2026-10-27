@@ -29,7 +29,7 @@ export const emptyCharacter = () => ({
 const fresh = () => ({
   credits: START_CREDITS,
   lastTopUp: today(),
-  ledger: [{ t: Date.now(), amount: START_CREDITS, reason: 'Welcome demo credits' }],
+  ledger: [{ t: Date.now(), amount: START_CREDITS, reason: 'Welcome demo reels' }],
   character: emptyCharacter(),
   onboarded: false,
   clips: [],
@@ -92,7 +92,7 @@ export function StoreProvider({ children }) {
         lastTopUp: today(),
         ledger: [{ t: Date.now(), amount: DAILY_TOPUP, reason: 'Daily free top-up' }, ...s.ledger].slice(0, 50),
       }));
-      notify(`+${DAILY_TOPUP} daily credits added`);
+      notify(`+${DAILY_TOPUP} daily reels added`);
     }
   }, []); // eslint-disable-line
 
