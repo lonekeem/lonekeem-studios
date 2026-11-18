@@ -90,3 +90,8 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - **Characters**: every character (Keem, Nia, Dad, townspeople, zombies, raiders, bosses) uses the same stylized-avatar look: bigger heads, large glossy eyes, chunkier shoes, warm rim light. Built from original procedural geometry on the CC0 Quaternius rig — gameplay, hitboxes and levels are untouched. Review the cast with `npm run dev` → `/tools/lineup.html`.
 - **Movement**: eased acceleration (same top speeds) and a Walk↔Jog↔Sprint blend tree whose cycle advances with real ground speed (no foot sliding; backpedal plays the cycle in reverse while aiming).
 - **Settings → Control scheme, layout & sensitivity…**: Classic twin-stick or Simple (tap/hold to shoot + strong aim assist + optional auto-fire), floating/fixed joystick, left/right-handed layout, button size/opacity, look sensitivity, controller stick speed/dead-zone, invert-Y. Keyboard+mouse and gamepad work as before. Everything is saved in `atq3.settings`; defaults reproduce the previous behaviour (aim assist off).
+
+### v2.0.1 — touch layout, interiors, gear
+- Touch buttons sit in thumb arcs (fire/aim/reload/jump/roll/interact/swap/grenade on the right, run/crouch + move stick on the left), are ≥44 px on phones, and multitouch works (move + look + fire together). Aim: tap = toggle, hold = aim while held.
+- Settings → Controls → *Move & resize buttons…*: drag any button, resize it, red outline warns about overlaps, *Reset to default*. Layout is saved with your settings and mirrors for left-handed mode.
+- Keem's house now has a furnished, abandoned interior (decor only; no new collision) and all weapons/pickups use new realistic, logo-free procedural models.

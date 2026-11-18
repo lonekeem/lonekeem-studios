@@ -38,7 +38,8 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
   <div id="touch" class="hidden">
     <div id="lbtns"><button id="tRun" class="rb">RUN</button><button id="tCrouch" class="rb">CRCH</button></div>
     <div id="stickZone"><div id="stickBase"><div id="stickKnob"></div></div></div>
-    <div id="tbtns"><button id="tUse" class="rb">✋</button><button id="tJump" class="rb">JUMP</button><button id="tRoll" class="rb">ROLL</button><button id="tReload" class="rb">⟳</button><button id="tAtk" class="rb big">HIT</button><button id="tAim" class="rb">⌖</button></div>
+    <div id="tbtns"><button id="tUse" class="rb">USE</button><button id="tJump" class="rb">JUMP</button><button id="tRoll" class="rb">ROLL</button><button id="tReload" class="rb">⟳</button><button id="tAtk" class="rb big">FIRE</button><button id="tAim" class="rb">AIM</button><button id="tSwap" class="rb">⇄</button><button id="tGren" class="rb">💣<small id="grenN2">0</small></button></div>
+    <div id="lookRing"><i></i></div>
   </div>
   <div id="dlg"><div><div id="who"></div><div id="line"></div></div></div>
   <div id="toast"></div>
@@ -112,6 +113,7 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
       <label class="chk"><input type="checkbox" id="cInv"> Invert look Y (up/down)</label>
     </div>
     <p class="small" id="cPadState">Keyboard + mouse (web): WASD, mouse, click to fire. Plug in or pair a controller to use it automatically.</p>
+    <button id="btnLayEdit" class="primary">Move &amp; resize buttons…</button>
     <button id="btnCtlRef">Controls reference (keys / buttons)</button>
     <button id="btnCtlReset">Reset control settings</button>
     <button class="back2 primary">Done</button>

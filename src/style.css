@@ -133,13 +133,7 @@ body.snap .layer{transition:none!important}
 #hudr .rb{width:44px;height:44px;font-size:16px}
 #touch{position:absolute;inset:0;z-index:5;pointer-events:none}
 #stickZone{position:absolute;left:0;bottom:0;width:42%;height:62%;pointer-events:auto}
-#stickBase{position:absolute;left:max(40px,env(safe-area-inset-left));bottom:28px;width:120px;height:120px;border-radius:50%;border:2px solid rgba(220,235,225,.5);background:rgba(10,20,14,.25)}
 #stickKnob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(220,235,225,.55)}
-#lbtns{position:absolute;left:max(12px,env(safe-area-inset-left));top:120px;display:flex;flex-direction:column;gap:10px;pointer-events:auto;z-index:4}
-#tbtns{position:absolute;right:max(14px,env(safe-area-inset-right));bottom:26px;width:240px;height:220px;pointer-events:none}
-#tbtns .rb{position:absolute;pointer-events:auto}
-#tAtk{right:40px;bottom:40px}#tAim{right:0;bottom:-8px;width:44px!important;height:44px!important}
-#tReload{right:140px;bottom:20px}#tRoll{right:132px;bottom:84px}#tJump{right:82px;bottom:140px}#tUse{right:12px;bottom:150px}
 #dlg{position:absolute;left:50%;bottom:18%;transform:translateX(-50%);z-index:6;display:flex;gap:10px;align-items:center;max-width:min(720px,70vw);opacity:0;transition:opacity .3s;pointer-events:auto}
 #dlg.on{opacity:1}#dlg #line{font-size:clamp(15px,2vw,22px)}
 #portrait{width:52px;height:52px}
@@ -165,8 +159,7 @@ body.snap .layer{transition:none!important}
 #drive .dl { left: calc(22px + env(safe-area-inset-left)); } #drive .dr { right: calc(22px + env(safe-area-inset-right)); align-items: flex-end; }
 #drive .dbtn { width: 84px; height: 84px; font-size: 18px; font-weight: 800; touch-action: none; }
 #drive .gas { width: 96px; height: 120px; background: rgba(40,140,70,.45); } #drive .dbtn.on { background: rgba(255,255,255,.35); }
-body.driving #stickZone, body.driving #lbtns, body.driving #tbtns > :not(#tUse), body.driving #btnGren { display: none !important; }
-body.driving #tbtns { bottom: 150px; }
+body.driving #stickZone, body.driving #lbtns, body.driving #tbtns > :not(#tUse), body.driving #btnGren, body.driving #lookRing { display: none !important; }
 
 /* v1.4 customizer */
 .panel.cust{max-width:1000px;width:96vw;max-height:96vh;overflow:auto}
@@ -185,8 +178,6 @@ body.driving #tbtns { bottom: 150px; }
 
 /* v1.9.1 UI fixes */
 #pages{display:none}
-#lbtns{gap:26px;top:112px}
-@media (max-height:420px){#lbtns{gap:22px;top:104px}}
 #dead{gap:18px}
 #dead #deadMsg{font-size:clamp(17px,2.6vw,22px);line-height:1.55;max-width:min(680px,84vw);text-align:center;margin:6px 0 10px;letter-spacing:.02em;color:#f2dede}
 #rld{position:absolute;left:50%;top:calc(50% + 34px);transform:translateX(-50%);width:120px;height:20px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:4}
@@ -199,11 +190,48 @@ body.driving #tbtns { bottom: 150px; }
 .panel select{max-width:60%;font:inherit;font-size:14px}
 body{--tbs:1;--tbo:1}
 #touch #tbtns,#touch #lbtns{opacity:var(--tbo)}#touch #stickBase{opacity:calc(var(--tbo) * .9)}
-#tbtns{transform:scale(var(--tbs));transform-origin:bottom right}
-#lbtns{transform:scale(var(--tbs));transform-origin:top left}
 #stickBase.idle{opacity:calc(var(--tbo) * .45)}
 body.lefty #stickZone{left:auto;right:0}
-body.lefty #stickBase{left:auto;right:max(40px,env(safe-area-inset-right))}
-body.lefty #tbtns{right:auto;left:max(14px,env(safe-area-inset-left));transform-origin:bottom left}
-body.lefty #lbtns{left:auto;right:max(12px,env(safe-area-inset-right));transform-origin:top right}
 body.simple #tAim{display:none}
+
+/* v2.0.1 thumb-friendly layout: every touch button is positioned from --x/--y (fraction of the screen) and sized from --bu * --s; users can move/resize them in Settings */
+body{--bu:56px}
+#tbtns,#lbtns{position:absolute;inset:0;width:auto;height:auto;transform:none;pointer-events:none;display:block}
+#touch .rb,#layEdit .rb{position:absolute;left:calc(var(--x,.5) * 100%);top:calc(var(--y,.5) * 100%);width:calc(var(--bu) * var(--s,1));height:calc(var(--bu) * var(--s,1));margin:0;transform:translate(-50%,-50%);font-size:calc(var(--bu) * var(--s,1) * .25);line-height:1;pointer-events:auto;-webkit-tap-highlight-color:transparent;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .06s,background .06s,box-shadow .06s}
+#touch .rb.big,#layEdit .rb.big{font-size:calc(var(--bu) * var(--s,1) * .21);background:rgba(120,20,20,.42)}
+#tReload,#layEdit .ed_tReload{font-size:calc(var(--bu) * var(--s,1) * .5)!important}
+#touch .rb small{font-size:calc(var(--bu) * var(--s,1) * .2)}
+#touch .rb.down,#layEdit .rb.sel{background:rgba(127,212,154,.55);border-color:#c8f7d6;box-shadow:0 0 0 3px rgba(127,212,154,.35),0 0 16px rgba(127,212,154,.65)}
+#touch .rb.down{transform:translate(-50%,-50%) scale(.92)}
+#touch .rb.on{background:rgba(127,212,154,.5);border-color:#c8f7d6;box-shadow:0 0 0 3px rgba(127,212,154,.3),0 0 14px rgba(127,212,154,.5)}
+#touch .rb.big.down{background:rgba(220,60,60,.65);border-color:#ffd0d0;box-shadow:0 0 0 3px rgba(255,120,120,.35),0 0 18px rgba(255,80,80,.7)}
+#hud .rb.down{background:rgba(127,212,154,.55);border-color:#c8f7d6;transform:scale(.92)}
+#touch #tAim.on::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:2px dashed rgba(127,212,154,.8)}
+#touch #stickBase{position:fixed;left:calc(var(--x,.11) * 100%);top:calc(var(--y,.78) * 100%);right:auto;bottom:auto;margin:-60px 0 0 -60px;transform:scale(var(--ss,1))}
+body.simple #touch #tAim{display:none}
+body.driving #touch #tUse{left:50%;top:80%}
+@media (pointer:coarse){#btnSwap,#btnGren{display:none}}
+@media (pointer:fine){#tSwap,#tGren{display:none}}
+#lookRing{position:fixed;width:84px;height:84px;margin:-42px 0 0 -42px;border-radius:50%;border:2px solid rgba(220,235,225,.35);background:rgba(10,20,14,.12);pointer-events:none;opacity:0;transition:opacity .25s;z-index:4}
+#lookRing.on{opacity:1;transition:none}
+#lookRing i{position:absolute;left:27px;top:27px;width:30px;height:30px;border-radius:50%;background:rgba(220,235,225,.5)}
+/* layout editor */
+#layEdit{position:fixed;inset:0;z-index:45;background:rgba(3,8,5,.9);touch-action:none;user-select:none;-webkit-user-select:none;color:#cfe;font:12px system-ui}
+#layEdit.hidden{display:none}
+#layEdit .ghost{position:absolute;border:1.5px dashed rgba(200,220,210,.35);color:rgba(200,220,210,.5);display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;pointer-events:none;border-radius:8px}
+#layEdit .ghost.round{border-radius:50%}
+#layEdit .look{right:0;top:20%;width:46%;height:48%;border-style:dotted}
+#layEdit .rb{background:rgba(10,20,14,.7);font-weight:700;cursor:grab}
+#layEdit .rb.bad{border-color:#ff5a5a;box-shadow:0 0 0 3px rgba(255,70,70,.35)}
+#layEdit .rb.stk{width:calc(var(--bu) * var(--s,1) * 2.14);height:calc(var(--bu) * var(--s,1) * 2.14);font-size:12px}
+#layEdit .ledbar{position:absolute;left:50%;top:6px;transform:translateX(-50%);display:flex;gap:8px;align-items:center;background:rgba(0,0,0,.75);border:1px solid #2a4a38;border-radius:10px;padding:6px 10px;z-index:3;white-space:nowrap}
+#layEdit .ledbar button{font:inherit;font-weight:700;color:#e8f5ec;background:rgba(20,50,34,.9);border:1px solid #4a8a64;border-radius:8px;padding:9px 12px;min-height:40px}
+#layEdit .ledbar button.primary{background:#2a7a4a}
+#layEdit .ledbar input{width:130px}
+#layEdit .hint{position:absolute;left:50%;top:62px;transform:translateX(-50%);opacity:.75;text-align:center;pointer-events:none}
+
+#dlg:not(.on){pointer-events:none}#dlg{z-index:4}
+#stickBase{width:120px;height:120px;border-radius:50%;border:2px solid rgba(220,235,225,.5);background:rgba(10,20,14,.25)}
+#layEdit .rb{display:flex;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;border:2px solid rgba(220,235,225,.55);border-radius:50%;color:#e8f5ec}
+#layEdit .ledbar{width:max-content;max-width:96vw}#layEdit .ledbar b{min-width:92px}
+#layEdit .hint{top:64px;max-width:60vw}

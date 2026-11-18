@@ -622,7 +622,7 @@ export class Game {
     $('#hpb i').style.width = (this.hp / this.maxHp * 100) + '%'; $('#hpTxt').textContent = `Health : ${Math.ceil(this.hp)}  ·  Lv ${s.level}  ·  $${s.cash}  ·  Med ${s.meds}${s.pages.length ? `  ·  Pages ${s.pages.length}/20` : ''}`;
     { const st = this.state, rl = $('#rld'); if (rl) { const on = st && st.reload > 0 && !this.dying; rl.classList.toggle('on', !!on); if (on) rl.firstChild.style.width = Math.round((1 - st.reload / (this.ws.reload || 1)) * 100) + '%'; } }
     $('#ammoTxt').textContent = w.type === 'gun' ? `${w.name}  ·  Ammo : ${s.mags[s.cur] || 0} / ${s.ammo[w.ammo] || 0}${this.state.reload > 0 ? '  (reloading)' : ''}` : w.name;
-    $('#grenN').textContent = s.grenades; $('#tAtk').textContent = w.type === 'gun' ? 'FIRE' : 'HIT'; $('#pages').textContent = '';
+    $('#grenN').textContent = s.grenades; { const gn = $('#grenN2'); if (gn) gn.textContent = s.grenades; } $('#tAtk').textContent = w.type === 'gun' ? 'FIRE' : 'HIT'; $('#pages').textContent = '';
     $('#lowhp').style.opacity = this.dying ? 1 : clamp(1 - this.hp / this.maxHp * 2.2, 0, .9); const cb = $('#combo'); if (this.state.combo >= 2) { cb.textContent = `x${this.state.combo} COMBO`; cb.classList.add('on'); } else cb.classList.remove('on');
     const n = this.nearUse(); $('#prompt').textContent = n && !this.cut ? `✋ ${n.label}` : (this.truck.driving ? 'GAS / BRAKE + ◀ ▶ · W/S + A/D · RT/LT' : '');
     if (this.boss) { $('#boss').classList.remove('hidden'); $('#bossb i').style.width = Math.max(0, this.boss.hp / (this.boss.maxHp || 1) * 100) + '%'; }
