@@ -60,7 +60,7 @@ export class Game {
     const sc = moon.shadow.camera; sc.left = sc.bottom = -26; sc.right = sc.top = 26; sc.near = 1; sc.far = 140; moon.shadow.bias = -0.0005; moon.shadow.normalBias = 0.03; scene.add(moon, moon.target);
     const CK = ['sedan', 'suv', 'truck', 'police', 'van', 'taxi', 'hatchback-sports', 'suv-luxury', 'ambulance', 'debris-tire', 'debris-door', 'debris-bumper']; const CM = {};
     await Promise.all(CK.map(k => new GLTFLoader().loadAsync(base + 'models/cars/' + k + '.glb').then(g => { CM[k] = g.scene; }).catch(() => { })));
-    this.world = buildWorld(scene, Q, tl, base, CM);
+    this.world = buildWorld(scene, Q, tl, base, CM); if (this.world.env && !/[?&]sky=0/.test(location.search)) { scene.background = null; scene.fog.color.copy(this.world.env.fogColor); } // v2.1 procedural sky dome + matching fog
     this.lib = new CharLib(gltf); this.lib.rigs = await loadRigs(base);
     await new Promise(res => { if (mgr.itemsLoaded >= mgr.itemsTotal) res(); else { mgr.onLoad = res; setTimeout(res, 15000); } });
     // drive buttons (touch / mouse)
