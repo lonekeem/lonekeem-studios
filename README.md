@@ -50,6 +50,10 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.8
+- Real 3D characters: Keem, Nia, Dad, the raiders and the zombies are now smooth, textured cartoon models (with clean mitten hands) instead of the old block mannequins. They are driven by the existing animation skeleton, so movement, aiming, shooting, melee, death and every other behaviour are unchanged. Biscuit the rabbit is a new model too. Custom-creator characters and townspeople keep the previous look for now.
+- Slightly brighter character lighting; `?rig=0` in the URL switches back to the old mannequins (for comparison).
+
 ### v1.9.7
 - Boss kills play out: ~1.3s slow-mo, the full death/collapse, then "BOSS DOWN" and a few seconds of free control before any dialogue, fade, cutscene or chapter-end screen. Applies to all 11 bosses (raider bosses included).
 - Cleared fights wait ~2s for the last death to finish before "Area clear" appears; the Chapter 11 rooftop waves no longer cut straight to the final boss.
@@ -85,3 +89,13 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Zombies/Keem no longer pass through bridge barriers; corpses separate; hit-react before death ragdoll.
 - Perf: shader/FX prewarm (no first-shot or grenade compile freeze), 1.5s grace after dialogue, actor disposal on retry.
 - HUD: pages in health line, spaced RUN/CRCH, bigger death hint, reload bar.
+
+## v2.0 (work in progress) — character art + controls
+- **Characters**: every character (Keem, Nia, Dad, townspeople, zombies, raiders, bosses) uses the same stylized-avatar look: bigger heads, large glossy eyes, chunkier shoes, warm rim light. Built from original procedural geometry on the CC0 Quaternius rig — gameplay, hitboxes and levels are untouched. Review the cast with `npm run dev` → `/tools/lineup.html`.
+- **Movement**: eased acceleration (same top speeds) and a Walk↔Jog↔Sprint blend tree whose cycle advances with real ground speed (no foot sliding; backpedal plays the cycle in reverse while aiming).
+- **Settings → Control scheme, layout & sensitivity…**: Classic twin-stick or Simple (tap/hold to shoot + strong aim assist + optional auto-fire), floating/fixed joystick, left/right-handed layout, button size/opacity, look sensitivity, controller stick speed/dead-zone, invert-Y. Keyboard+mouse and gamepad work as before. Everything is saved in `atq3.settings`; defaults reproduce the previous behaviour (aim assist off).
+
+### v2.0.1 — touch layout, interiors, gear
+- Touch buttons sit in thumb arcs (fire/aim/reload/jump/roll/interact/swap/grenade on the right, run/crouch + move stick on the left), are ≥44 px on phones, and multitouch works (move + look + fire together). Aim: tap = toggle, hold = aim while held.
+- Settings → Controls → *Move & resize buttons…*: drag any button, resize it, red outline warns about overlaps, *Reset to default*. Layout is saved with your settings and mirrors for left-handed mode.
+- Keem's house now has a furnished, abandoned interior (decor only; no new collision) and all weapons/pickups use new realistic, logo-free procedural models.

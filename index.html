@@ -38,7 +38,8 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
   <div id="touch" class="hidden">
     <div id="lbtns"><button id="tRun" class="rb">RUN</button><button id="tCrouch" class="rb">CRCH</button></div>
     <div id="stickZone"><div id="stickBase"><div id="stickKnob"></div></div></div>
-    <div id="tbtns"><button id="tUse" class="rb">✋</button><button id="tJump" class="rb">JUMP</button><button id="tRoll" class="rb">ROLL</button><button id="tReload" class="rb">⟳</button><button id="tAtk" class="rb big">HIT</button><button id="tAim" class="rb">⌖</button></div>
+    <div id="tbtns"><button id="tUse" class="rb">USE</button><button id="tJump" class="rb">JUMP</button><button id="tRoll" class="rb">ROLL</button><button id="tReload" class="rb">⟳</button><button id="tAtk" class="rb big">FIRE</button><button id="tAim" class="rb">AIM</button><button id="tSwap" class="rb">⇄</button><button id="tGren" class="rb">💣<small id="grenN2">0</small></button></div>
+    <div id="lookRing"><i></i></div>
   </div>
   <div id="dlg"><div><div id="who"></div><div id="line"></div></div></div>
   <div id="toast"></div>
@@ -71,7 +72,7 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
     <button id="btnControls">Controls</button>
     <button id="btnCredits">Credits</button>
   </div>
-  <div class="foot">v1.9.7 · Story Mode · Chapters 1–11 · Swan Song</div>
+  <div class="foot">v1.9.8 · Story Mode · Chapters 1–11 · Swan Song</div>
 </div>
 <div id="settings" class="screen hidden">
   <div class="panel">
@@ -91,7 +92,31 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
     <label class="chk"><input type="checkbox" id="sQte"> Easier fights (more health)</label>
     <label class="chk"><input type="checkbox" id="sHints"> Hints &amp; tutorial</label>
     <label class="chk"><input type="checkbox" id="sMotion"> Reduce camera motion</label>
+    <button id="btnCtlSet">Control scheme, layout &amp; sensitivity…</button>
     <button class="back primary">Done</button>
+  </div>
+</div>
+<div id="ctlset" class="screen hidden">
+  <div class="panel wide">
+    <h2>Control Settings</h2>
+    <div class="cgrid">
+      <label>Control scheme <select id="cCtl"><option value="twin">Classic twin-stick (move / look / fire button)</option><option value="simple">Simple: tap to shoot + strong aim assist</option></select></label>
+      <label class="chk"><input type="checkbox" id="cAuto"> Auto-fire when an enemy is under the crosshair</label>
+      <label>Aim assist <input type="range" id="cAssist" min="0" max="1" step="0.05"></label>
+      <label>Joystick <select id="cStick"><option value="float">Floating (appears where you touch)</option><option value="fixed">Fixed position</option></select></label>
+      <label>Button layout <select id="cHand"><option value="right">Right-handed (stick left, buttons right)</option><option value="left">Left-handed (stick right, buttons left)</option></select></label>
+      <label>Button size <input type="range" id="cBtn" min="0.8" max="1.4" step="0.05"></label>
+      <label>Button opacity <input type="range" id="cOp" min="0.3" max="1" step="0.05"></label>
+      <label>Look sensitivity (touch / mouse) <input type="range" id="cSens" min="0.3" max="2" step="0.1"></label>
+      <label>Controller stick speed <input type="range" id="cPad" min="0.5" max="2" step="0.1"></label>
+      <label>Controller dead-zone <input type="range" id="cDead" min="0.05" max="0.35" step="0.01"></label>
+      <label class="chk"><input type="checkbox" id="cInv"> Invert look Y (up/down)</label>
+    </div>
+    <p class="small" id="cPadState">Keyboard + mouse (web): WASD, mouse, click to fire. Plug in or pair a controller to use it automatically.</p>
+    <button id="btnLayEdit" class="primary">Move &amp; resize buttons…</button>
+    <button id="btnCtlRef">Controls reference (keys / buttons)</button>
+    <button id="btnCtlReset">Reset control settings</button>
+    <button class="back2 primary">Done</button>
   </div>
 </div>
 <div id="controls" class="screen hidden">

@@ -13,6 +13,10 @@ Lone Keem Studios · created by Keem
 | Engine / tools | three.js (MIT), Vite (MIT), Capacitor (MIT) | MIT |
 | Voiced dialogue & shouts (`public/sfx/v/`) | Text-to-speech with Kokoro-82M (hexgrad, Apache-2.0) stock synthetic voices, rendered offline by `tools/make_audio.py` (lightly pitch-tuned). No real person's voice was cloned or imitated. Subtitles stay on; voices can be turned off in Settings. | Model: Apache-2.0 · Audio: © Lone Keem Studios |
 
+## v2.0.0 character art pass
+- Stylized-avatar look for every character (big expressive eyes, larger heads, chunky sneakers/boots, new outfits: Varsity "B", Purple Hoodie, Red Flannel, Raider mask/goggles, rectangular glasses, short jaw beard, backwards cap, cargo pants). All faces, outfits, decals (the "B" patch, the hoodie bunny) and accessories are original procedural geometry / canvas drawings made in-repo (`src/game/looks.js`, `src/game/chars.js`) — no third-party character models, textures, or reference images are used. Rig and animations remain the CC0 Quaternius set.
+- `tools/lineup.html` is a dev-only studio lineup page for reviewing the cast.
+
 ## v1.8.0 audio additions
 - New/rewritten lines for Ch10–11 and the dialogue pass, Kokoro stock voices (Dr. Vance: af_nicole).
 
