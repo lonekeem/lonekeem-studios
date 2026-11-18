@@ -12,6 +12,7 @@ import { CAST, randomLook, raiderLook, DEFAULT_LOOK } from './looks.js';
 import { bossProp, wrap, walkie } from './props.js';
 import { CharLib, Char, backpack, weaponMesh, makeDog, makeRabbit } from './chars.js';
 import { buildPickup } from './gear.js';
+import { loadRigs } from './avatar.js';
 import { WEAPONS, WEAPON_ORDER, stat, perk, xpFor, PERKS, writeSave } from './data.js';
 import { V3, clamp, lerp, rnd, angLerp, bloodTex } from './util.js';
 import { Input } from './input.js';
@@ -33,7 +34,7 @@ export function langLine(raw, mode) { const re = /\{([^|}]*)\|([^}]*)\}/g; const
   const sub = mode === 'bleep' ? raw.replace(re, (m, a) => a.replace(/[A-Za-z]/g, (ch, i) => (i === 0 || !/[A-Za-z]/.test(a[i - 1] || '') ? ch : '*'))) : voice;
   const bleeps = []; if (mode === 'bleep') { let pos = 0, out = 0; raw.replace(re, (m, a, b, off) => { const st = off - pos + out; bleeps.push([st, st + a.trimEnd().length]); out = st + a.length; pos = off + m.length; return m; });
     const len = voice.length || 1; bleeps.forEach(b => { b[0] /= len; b[1] /= len; }); } return { sub, voice, bleeps }; }
-export function playerLook() { try { const l = JSON.parse(localStorage.getItem('atq3.look') || 'null'); if (l && l.hair) return Object.assign({}, DEFAULT_LOOK, l); } catch (e) { } return DEFAULT_LOOK; }
+export function playerLook() { try { const l = JSON.parse(localStorage.getItem('atq3.look') || 'null'); if (l && l.hair) return Object.assign({}, DEFAULT_LOOK, l, { rig: l.rig }); } catch (e) { } return DEFAULT_LOOK; }
 
 // v1.9.2: touch wording for objective hints on phones
 const touchHint = (h) => h.replace(/\(WASD \/ left stick\)/g, '(left stick)').replace(/\bE \/ ✋/g, '✋ hand button').replace(/\bPress E\b/g, 'Tap ✋').replace(/GAS\/BRAKE \+ ◀ ▶ \([^)]*\)/g, 'GAS/BRAKE + ◀ ▶').replace(/\bWASD\b/g, 'left stick');
@@ -52,13 +53,15 @@ export class Game {
     const [gltf, hdr] = await Promise.all([new GLTFLoader(mgr).loadAsync(base + 'models/AnimationLibrary_Godot_Standard.gltf'), new HDRLoader(mgr).loadAsync(base + 'tex/sky.hdr').catch(() => null)]);
     if (hdr) { const pm = new THREE.PMREMGenerator(r); const env = pm.fromEquirectangular(hdr).texture; scene.environment = env; scene.environmentIntensity = 0.32; scene.background = env; scene.backgroundIntensity = 0.06; scene.backgroundBlurriness = 0.35; hdr.dispose(); }
     // night lighting
-    scene.add(new THREE.HemisphereLight('#3a4a5a', '#151a12', 0.55));
-    const moon = this.moon = new THREE.DirectionalLight('#9fb4d0', 0.9); moon.position.set(-30, 50, 20); moon.castShadow = Q.shadows; moon.shadow.mapSize.set(Q.shadowMap, Q.shadowMap);
+    const GRADE = /[?&]grade=1/.test(location.search); // optional visual-only night grade (test shots): cooler moon, warmer fill, slightly lifted fog
+    scene.add(GRADE ? new THREE.HemisphereLight('#4a5f78', '#2a2418', 0.85) : new THREE.HemisphereLight('#3a4a5a', '#151a12', 0.55));
+    if (GRADE) { scene.fog.color.set('#1b2628'); scene.fog.density *= .8; scene.background = new THREE.Color('#16201f'); }
+    const moon = this.moon = new THREE.DirectionalLight(GRADE ? '#a9c0e0' : '#9fb4d0', GRADE ? 1.25 : 0.9); moon.position.set(-30, 50, 20); moon.castShadow = Q.shadows; moon.shadow.mapSize.set(Q.shadowMap, Q.shadowMap);
     const sc = moon.shadow.camera; sc.left = sc.bottom = -26; sc.right = sc.top = 26; sc.near = 1; sc.far = 140; moon.shadow.bias = -0.0005; moon.shadow.normalBias = 0.03; scene.add(moon, moon.target);
     const CK = ['sedan', 'suv', 'truck', 'police', 'van', 'taxi', 'hatchback-sports', 'suv-luxury', 'ambulance', 'debris-tire', 'debris-door', 'debris-bumper']; const CM = {};
     await Promise.all(CK.map(k => new GLTFLoader().loadAsync(base + 'models/cars/' + k + '.glb').then(g => { CM[k] = g.scene; }).catch(() => { })));
     this.world = buildWorld(scene, Q, tl, base, CM);
-    this.lib = new CharLib(gltf);
+    this.lib = new CharLib(gltf); this.lib.rigs = await loadRigs(base);
     await new Promise(res => { if (mgr.itemsLoaded >= mgr.itemsTotal) res(); else { mgr.onLoad = res; setTimeout(res, 15000); } });
     // drive buttons (touch / mouse)
     [['#dGas', 'gas'], ['#dBrake', 'brake'], ['#dL', 'l'], ['#dR', 'r']].forEach(([id, k]) => { const e = $(id); if (!e) return; const on = (v) => (ev) => { ev.preventDefault(); this.drv = this.drv || {}; this.drv[k] = v; e.classList.toggle('on', v); };
@@ -88,7 +91,7 @@ export class Game {
   makePlayer() { const L = playerLook(), old = this.player; this._lookKey = JSON.stringify(L);
     const P = this.player = new Char(this.lib, L, 0.9); this.scene.add(P.root);
     if (old) { P.root.position.copy(old.root.position); P.root.rotation.y = old.root.rotation.y; this.scene.remove(old.root); }
-    P.attach('DEF-spine.003', this.pack); this.pack.position.set(0, 0.12, -0.2); this.pack.rotation.set(0.1, 0, 0);
+    P.attach('DEF-spine.003', this.pack); this.pack.position.set(0, 0.12, -0.2); this.pack.rotation.set(0.1, 0, 0); if (P.skin) { this.pack.scale.setScalar(.6); this.pack.position.set(0, -0.03, -0.05); } else this.pack.scale.setScalar(1);
     P.attach('DEF-hand.R', this.hand); this.hand.rotation.set(Math.PI / 2, 0, 0); this.hand.position.set(0, 0.08, 0.02);
     this.pack.visible = !!(P.wantsPack || (this.save && this.save.items.includes('backpack'))); return P; }
   start(step) { if (this._lookKey !== JSON.stringify(playerLook())) this.makePlayer(); step = step || 0; if (!(STORY[step] && STORY[step].survival)) this.save.step = step; this.loadStep(step); this.paused = false; if (!this.running) { this.running = true; this.last = performance.now(); requestAnimationFrame((t) => this.frame(t)); } }
@@ -190,8 +193,8 @@ export class Game {
     l.onTake && l.onTake(this); writeSave(this.LS, s); }
 
   // ---------- NPCs & zombies ----------
-  npc(key, look, x, z, rot = 0, anim = 'Idle_Loop', scale = 0.98) { const c = new Char(this.lib, LOOKS[look] || (look && look.hair ? look : randomLook((Math.random() * 1e6) | 0)), scale); c.key = key; c.lookKey = typeof look === 'string' ? look : ''; c.root.position.set(x, 0, z); if (c.wantsPack) { const bp = backpack(); c.attach('DEF-spine.003', bp); bp.position.set(0, 0.12, -0.2); bp.rotation.x = .1; } if (look === 'marcus') { c.attach('DEF-hand.R', wrap(false)).scale.setScalar(.9); if ((this.step | 0) >= 12) c.attach('DEF-forearm.L', wrap(true)); if ((this.step | 0) < 12) { const wk = c.attach('DEF-hips', walkie()); wk.position.set(.17, .02, .02); } }
-    if (look === 'nia') { const rb = makeRabbit(); c.attach('DEF-spine.001', rb); rb.position.set(0, 0.06, 0.15); c.biscuit = rb; const u0 = c.update; c.update = (dt) => { u0 && u0.call(c, dt); const t = (c.bt = (c.bt || 0) + dt); rb.head.rotation.y = Math.sin(t * .7) * .5; rb.head.rotation.x = Math.sin(t * 1.3) * .12; rb.position.y = 0.06 + Math.max(0, Math.sin(t * .9)) * .015; rb.ears.forEach((e, i) => e.rotation.x = -.2 + Math.sin(t * 9 + i) * Math.max(0, Math.sin(t * .5)) * .2); }; } c.root.rotation.y = rot; c.play(anim); this.scene.add(c.root); this.npcs[key] = c; c.key = key; return c; }
+  npc(key, look, x, z, rot = 0, anim = 'Idle_Loop', scale = 0.98) { const c = new Char(this.lib, LOOKS[look] || (look && look.hair ? look : randomLook((Math.random() * 1e6) | 0)), scale); c.key = key; c.lookKey = typeof look === 'string' ? look : ''; c.root.position.set(x, 0, z); if (c.wantsPack) { const bp = backpack(); c.attach('DEF-spine.003', bp); bp.position.set(0, 0.12, -0.2); bp.rotation.x = .1; } if (look === 'marcus') { if (!c.skin) { c.attach('DEF-hand.R', wrap(false)).scale.setScalar(.9); if ((this.step | 0) >= 12) c.attach('DEF-forearm.L', wrap(true)); } /* avatar Dad already has the wrist bandage in his texture */ if ((this.step | 0) < 12) { const wk = c.attach('DEF-hips', walkie()); wk.position.set(.17, .02, .02); } }
+    if (look === 'nia') { const rb = makeRabbit(); if (c.skin) { c.attach('DEF-spine.003', rb); rb.position.set(0.1, 0.1, -0.02); } else { c.attach('DEF-spine.001', rb); rb.position.set(0, 0.06, 0.15); } c.biscuit = rb; const u0 = c.update; c.update = (dt) => { u0 && u0.call(c, dt); const t = (c.bt = (c.bt || 0) + dt); rb.head.rotation.y = Math.sin(t * .7) * .5; rb.head.rotation.x = Math.sin(t * 1.3) * .12; rb.position.y = 0.06 + Math.max(0, Math.sin(t * .9)) * .015; rb.ears.forEach((e, i) => e.rotation.x = -.2 + Math.sin(t * 9 + i) * Math.max(0, Math.sin(t * .5)) * .2); }; } c.root.rotation.y = rot; c.play(anim); this.scene.add(c.root); this.npcs[key] = c; c.key = key; return c; }
   victim(x, z, look, eaters = 3) { const v = this.npc('v' + Math.random(), look, x, z, rnd(0, 6), 'Death01'); v.play('Death01', { once: true }); v.mixer.update(5); v.mat.userData.u.uBlood.value = this.settings.gore ? 1 : 0.2; v.bleed = true;
     v.pool = this.decal(x, z, 0.9); this.decal(x + .6, z - .4, 0.8); v.struggle = 1; v.jolt = 0; v.screamT = rnd(.5, 2); v.isVictim = true;
     for (let i = 0; i < eaters; i++) { const a = i / eaters * 6.28 + rnd(-.3, .3); const zz = this.spawnZ(x + Math.cos(a) * 0.95, z + Math.sin(a) * 0.95, { eat: v }); zz.eatOff = i; zz.root.rotation.y = Math.atan2(x - zz.root.position.x, z - zz.root.position.z); }

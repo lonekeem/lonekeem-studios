@@ -60,12 +60,12 @@ export const OUTFITS = [
   { id: 'smock', name: 'Barber Smock', shirt: '#e8e2d2', pants: '#2a2a2a', shoes: '#151515', sleeve: .45 },
 ];
 export const OUTFIT = Object.fromEntries(OUTFITS.map(o => [o.id, o]));
-export const DEFAULT_LOOK = { outfit: 'varsityB', hair: 'crop', hairColor: '#0b0806', skin: '#6a4430', face: 'keem', eyes: '#2a1608', beard: 'jaw', pack: false, glasses: true, build: 1, seed: 7 };
+export const DEFAULT_LOOK = { rig: 'keem', outfit: 'varsityB', hair: 'crop', hairColor: '#0b0806', skin: '#6a4430', face: 'keem', eyes: '#2a1608', beard: 'jaw', pack: false, glasses: true, build: 1, seed: 7 };
 // Story cast: each one distinct (hair, face, skin, build, clothes)
 export const CAST = {
   keem: DEFAULT_LOOK,
-  marcus: { outfit: 'flannelR', hair: 'crop', hairColor: '#120c08', skin: '#6a4430', face: 'strong', eyes: '#2a1608', beard: 'jaw', build: 1.12, seed: 3, grey: .18 },
-  nia: { outfit: 'purplehood', hair: 'puffs', hairColor: '#160d07', skin: '#7a4f36', face: 'soft', eyes: '#3a2210', beard: 'none', build: .95, seed: 11, headK: 1.42, eyeK: 1.12 },
+  marcus: { rig: 'dad', outfit: 'flannelR', hair: 'crop', hairColor: '#120c08', skin: '#6a4430', face: 'strong', eyes: '#2a1608', beard: 'jaw', build: 1.12, seed: 3, grey: .18 },
+  nia: { rig: 'nia', outfit: 'purplehood', hair: 'puffs', hairColor: '#160d07', skin: '#7a4f36', face: 'soft', eyes: '#3a2210', beard: 'none', build: .95, seed: 11, headK: 1.42, eyeK: 1.12 },
   walt: { outfit: 'cardigan', hair: 'balding', hairColor: '#b8b4ac', skin: '#d9a98c', face: 'elder', eyes: '#3a5a7a', beard: 'mustache', glasses: true, build: 1.08, seed: 5 },
   ruth: { outfit: 'blouse', hair: 'bun', hairColor: '#7a4a2a', skin: '#e6b89a', face: 'narrow', eyes: '#3a4a2a', beard: 'none', build: .96, seed: 8 },
   dube: { outfit: 'button', hair: 'buzz', hairColor: '#8a8680', skin: '#3b2417', face: 'round', eyes: '#2a1608', beard: 'goatee', glasses: true, build: 1.16, seed: 9 },
@@ -79,10 +79,10 @@ export function randomLook(seed, zed) { const r = mulberry(seed * 9973 + 1); con
   const casual = ['classic', 'hoodie', 'flannel', 'denim', 'track', 'scrubs', 'work', 'cardigan', 'blouse', 'button', 'chef', 'street', 'bomber', 'parka', 'overalls', 'pinkhood', 'survivor', 'denim'];
   const hc = r() < .15 ? '#aaa69e' : pick(r, HAIR_COLORS.slice(0, 8));
   return { outfit: pick(r, casual), hair: pick(r, hairs), hairColor: hc, skin: pick(r, SKINS), face: pick(r, Object.keys(FACES)), eyes: pick(r, EYES), beard: fem ? 'none' : pick(r, ['none', 'none', 'stubble', 'mustache', 'goatee', 'full']),
-    glasses: r() < .15, build: .9 + r() * .3, height: .93 + r() * .12, seed: seed | 0, tint: [r(), r(), r()], zed };
+    glasses: r() < .15, build: .9 + r() * .3, height: .93 + r() * .12, seed: seed | 0, tint: [r(), r(), r()], zed, rig: zed ? 'zombie2' : undefined };
 }
 // raiders: masked, leather-jacketed scavengers (same avatar style as everyone else)
-export function raiderLook(seed) { const r = mulberry(seed * 7331 + 5); const L = randomLook(seed, false); L.outfit = r() < .6 ? 'raider1' : 'raider2'; L.tint = [r(), r(), r()]; L.hair = 'short'; L.hairColor = '#150f0a'; L.beard = 'none'; L.glasses = false; return L; }
+export function raiderLook(seed) { const r = mulberry(seed * 7331 + 5); const L = randomLook(seed, false); L.rig = 'raider'; L.outfit = r() < .6 ? 'raider1' : 'raider2'; L.tint = [r(), r(), r()]; L.hair = 'short'; L.hairColor = '#150f0a'; L.beard = 'none'; L.glasses = false; return L; }
 // recolour outfit pieces per person so neighbours never match
 function tintC(hex, t, amt) { const c = new THREE.Color(hex); const hsl = {}; c.getHSL(hsl); c.setHSL((hsl.h + (t[0] - .5) * amt) % 1, Math.min(1, hsl.s * (.7 + t[1] * .6)), Math.min(.92, hsl.l * (.75 + t[2] * .5))); return '#' + c.getHexString(); }
 // shader look for bodyMat()

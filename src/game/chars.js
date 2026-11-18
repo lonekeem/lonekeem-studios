@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { bodyLook, dressChar } from './looks.js';
 import { canvasTex } from './util.js';
 import { buildWeapon } from './gear.js';
+import { attachRig, EXTRA } from './avatar.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 // Body material: one CC0 Quaternius mannequin, "dressed" in the shader by bind-pose regions
@@ -96,6 +97,7 @@ export class Char {
     { // stylized avatar proportions: big head, chunky sneakers/boots (scale tracks for these bones are stripped from the clips)
       const hd = this.bone('DEF-head'); if (hd) hd.scale.setScalar(look.headK || 1.32);
       ['DEF-foot.L', 'DEF-foot.R', 'DEF-toe.L', 'DEF-toe.R'].forEach(n => { const b = this.bone(n); if (b) b.scale.set(1.14, 1.14, 1.2); }); }
+    if (look.rig && lib.rigs && lib.rigs[look.rig] && !/[?&]rig=0/.test(location.search)) { try { attachRig(this, lib.rigs[look.rig], { tint: /zombie|raider/.test(look.rig) ? look.tint : null, handColor: look.rig === 'raider' ? '#1c1c1f' : /zombie/.test(look.rig) ? '#8e9677' : null }); } catch (e) { console.warn('rig', e); } }
     this.mixer = new THREE.AnimationMixer(obj); this.actions = {}; this.cur = null; this.curName = ''; this.oneShot = null;
     this.mixer.addEventListener('finished', (e) => { if (this.oneShot && e.action === this.oneShot.a) { const cb = this.oneShot.cb; this.oneShot = null; cb && cb(); } });
   }
@@ -121,7 +123,7 @@ export class Char {
   }
   endLoco(fade = 0.18) { if (!this.locoOn) return; this.locoOn = false; Char.LOCO.forEach(n => { const a = this.actions[n.name]; if (a) a.fadeOut(fade); }); this.cur = null; this.curName = ''; }
   bone(n) { return this.bones[n] || this.bones[n.replace(/[.]/g, '')]; }
-  attach(boneName, mesh) { const b = this.bone(boneName); if (b) b.add(mesh); return mesh; }
+  attach(boneName, mesh) { if (this.attachSkin && this.attachSkin(boneName, mesh)) return mesh; const b = this.bone(boneName); if (b) b.add(mesh); return mesh; }
   worldOf(boneName, out) { const b = this.bone(boneName); return b ? b.getWorldPosition(out) : this.root.getWorldPosition(out); }
 }
 
@@ -169,7 +171,7 @@ export function makeDog() { const g = new THREE.Group(); const fur = new THREE.M
   const t = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.025, 0.2, 6), fur); t.position.set(0, 0.45, -0.3); t.rotation.x = -0.8; g.add(t); g.tail = t;
   g.traverse(o => { if (o.isMesh) o.castShadow = true; }); return g; }
 // Biscuit: Nia's rabbit, peeking from her hoodie pocket (~7 meshes, shared mats)
-export function makeRabbit() { const g = new THREE.Group(); const fur = new THREE.MeshStandardMaterial({ color: '#c8a27a', roughness: 1 }), pink = new THREE.MeshStandardMaterial({ color: '#e7a0a8', roughness: 1 }), eye = new THREE.MeshBasicMaterial({ color: '#0a0604' });
+export function makeRabbit() { if (EXTRA.biscuit) { const g = new THREE.Group(), m = EXTRA.biscuit.clone(true), bx = new THREE.Box3().setFromObject(m), s = 0.22 / Math.max(1e-3, bx.max.y - bx.min.y); m.scale.setScalar(s); m.position.set(0, -0.085 - bx.min.y * s + 0.0, 0); m.traverse(o => { if (o.isMesh) { o.frustumCulled = false; o.castShadow = true; } }); const pv = new THREE.Group(); pv.add(m); g.add(pv); g.head = pv; g.ears = []; return g; } const g = new THREE.Group(); const fur = new THREE.MeshStandardMaterial({ color: '#c8a27a', roughness: 1 }), pink = new THREE.MeshStandardMaterial({ color: '#e7a0a8', roughness: 1 }), eye = new THREE.MeshBasicMaterial({ color: '#0a0604' });
   const head = new THREE.Group(); g.add(head); const h = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), fur); h.scale.set(1, .9, 1.1); head.add(h);
   const sn = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 5), pink); sn.position.set(0, -0.005, 0.06); head.add(sn);
   [-1, 1].forEach(s => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.009, 6, 5), eye); e.position.set(s * 0.028, 0.014, 0.045); head.add(e);
