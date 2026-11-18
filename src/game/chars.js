@@ -1,37 +1,63 @@
 import * as THREE from 'three';
 import { bodyLook, dressChar } from './looks.js';
+import { canvasTex } from './util.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 // Body material: one CC0 Quaternius mannequin, "dressed" in the shader by bind-pose regions
 // (skin / shirt / sleeves / pants / shoes / hair), with procedural grime and blood.
+
+// v2.0 stylized-avatar helpers -------------------------------------------------
+const _decals = {};
+export function decalTex(kind) { // printed patches: collegiate "B" (varsity jacket) and Nia's hoodie bunny
+  if (_decals[kind]) return _decals[kind];
+  return _decals[kind] = canvasTex(128, 128, (g, w, h) => { g.clearRect(0, 0, w, h);
+    if (kind === 'rabbit') { const ell = (x, y, rx, ry, c, rot = 0) => { g.fillStyle = c; g.beginPath(); g.ellipse(x, y, rx, ry, rot, 0, 7); g.fill(); };
+      ell(48, 34, 10, 30, '#f4f1f0', -.12); ell(80, 34, 10, 30, '#f4f1f0', .12); ell(48, 36, 4.5, 22, '#f2a7b6', -.12); ell(80, 36, 4.5, 22, '#f2a7b6', .12);
+      ell(64, 82, 34, 28, '#f7f4f2'); ell(53, 78, 4, 5.5, '#2a1a20'); ell(75, 78, 4, 5.5, '#2a1a20'); ell(64, 90, 5, 3.5, '#f2a7b6'); g.strokeStyle = '#d9a0aa'; g.lineWidth = 2; g.beginPath(); g.moveTo(64, 93); g.quadraticCurveTo(58, 100, 52, 96); g.moveTo(64, 93); g.quadraticCurveTo(70, 100, 76, 96); g.stroke(); }
+    else { g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = 'bold 118px Georgia, serif'; g.lineJoin = 'round'; g.lineWidth = 12; g.strokeStyle = '#7c7a74'; g.strokeText('B', w / 2, h / 2 + 6); g.fillStyle = '#ffffff'; g.fillText('B', w / 2, h / 2 + 6); } });
+}
+// gentle cartoon lighting: warm rim light + a touch of saturation so characters read as polished 3D avatars
+export function stylizeFrag(sh, sat = 1.1, rim = 0.16) {
+  sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+    { float stRim = pow(1.0 - clamp(dot(normalize(vNormal), normalize(vViewPosition)), 0.0, 1.0), 2.6);
+      float stL = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114)); diffuseColor.rgb = mix(vec3(stL), diffuseColor.rgb, ${sat.toFixed(2)});
+      totalEmissiveRadiance += diffuseColor.rgb * stRim * ${rim.toFixed(2)} + vec3(0.02, 0.018, 0.016) * stRim; }`);
+}
 export function bodyMat(o) {
   const m = new THREE.MeshStandardMaterial({ roughness: 0.78, metalness: 0 });
   const U = m.userData.u = {
     uSkin: { value: new THREE.Color(o.skin) }, uShirt: { value: new THREE.Color(o.shirt) }, uPants: { value: new THREE.Color(o.pants) },
     uShoes: { value: new THREE.Color(o.shoes || '#1b1b1b') }, uHair: { value: new THREE.Color(o.hair || '#0d0a08') },
     uSleeve: { value: o.sleeve ?? 0.62 }, uJk: { value: o.jk || 0 }, uJacket: { value: new THREE.Color(o.jacket || o.shirt) }, uJSleeve: { value: new THREE.Color(o.jsleeve || o.jacket || o.shirt) }, uLong: { value: o.long || 0 }, uCamo: { value: o.camo || 0 }, uBoots: { value: o.boots || 0 }, uGlove: { value: o.gloves || 0 }, uPlaid: { value: o.plaid || 0 }, uStripe: { value: o.stripe || 0 }, uGloss: { value: o.gloss || 0 }, uPuff: { value: o.puff || 0 }, uNoHead: { value: o.nohead ? 1 : 0 }, uGrime: { value: o.grime || 0 }, uBlood: { value: o.blood || 0 }, uZed: { value: o.zed ? 1 : 0 }, uSeed: { value: Math.random() * 10 },
+    uBaggy: { value: o.baggy || 0 }, uCargo: { value: o.cargo || 0 }, uSole: { value: o.sole || 0 }, uRib: { value: o.rib || 0 }, uDecal: { value: new THREE.Vector3(...(o.decal || [0, 0, 0])) }, uBadge: { value: decalTex(o.decalTex || 'B') },
   };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
-    sh.vertexShader = 'varying vec3 vBP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvBP = position; { float sy = smoothstep(1.22,1.36,position.y)*(1.0-smoothstep(1.47,1.53,position.y)); float sx = 1.0-smoothstep(0.30,0.40,abs(position.x)); float k = sy*sx*0.45; transformed.z = mix(transformed.z, -0.015, k*0.6); transformed.x *= 1.0 - k*0.16*smoothstep(0.1,0.22,abs(position.x)); float t = smoothstep(1.0,1.2,position.y)*(1.0-smoothstep(1.45,1.5,position.y))*(1.0-smoothstep(0.2,0.3,abs(position.x))); transformed.z = mix(transformed.z, -0.015, t*0.12); }');
-    sh.fragmentShader = 'varying vec3 vBP;\nuniform vec3 uSkin,uShirt,uPants,uShoes,uHair;uniform vec3 uJacket,uJSleeve;uniform float uNoHead,uJk,uLong,uCamo,uBoots,uGlove,uPlaid,uStripe,uGloss,uPuff;uniform float uSleeve,uGrime,uBlood,uZed,uSeed;\n' +
+    sh.vertexShader = 'varying vec3 vBP;\nuniform float uBaggy;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvBP = position; { float sy = smoothstep(1.22,1.36,position.y)*(1.0-smoothstep(1.47,1.53,position.y)); float sx = 1.0-smoothstep(0.30,0.40,abs(position.x)); float k = sy*sx*0.45; transformed.z = mix(transformed.z, -0.015, k*0.6); transformed.x *= 1.0 - k*0.16*smoothstep(0.1,0.22,abs(position.x)); float t = smoothstep(1.0,1.2,position.y)*(1.0-smoothstep(1.45,1.5,position.y))*(1.0-smoothstep(0.2,0.3,abs(position.x))); transformed.z = mix(transformed.z, -0.015, t*0.12); } if (uBaggy > 0.0 && abs(position.x) < 0.3 && position.y < 1.05) { float lk = smoothstep(0.05,0.32,position.y)*(1.0-smoothstep(0.8,1.02,position.y)); float cx = sign(position.x)*0.09; transformed.x = cx + (transformed.x-cx)*(1.0+0.55*uBaggy*lk); transformed.z *= 1.0+0.5*uBaggy*lk; }');
+    sh.fragmentShader = 'varying vec3 vBP;\nuniform vec3 uSkin,uShirt,uPants,uShoes,uHair;uniform vec3 uJacket,uJSleeve;uniform float uNoHead,uJk,uLong,uCamo,uBoots,uGlove,uPlaid,uStripe,uGloss,uPuff;uniform float uSleeve,uGrime,uBlood,uZed,uSeed,uCargo,uSole,uRib;uniform vec3 uDecal;uniform sampler2D uBadge;\n' +
       sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
-      float h = vBP.y / 1.83; float ax = abs(vBP.x); if (uNoHead > 0.5 && vBP.y > 1.47 && ax < 0.13) discard;
+      float h = vBP.y / 1.83; float ax = abs(vBP.x); if (uNoHead > 0.5 && ((vBP.y > 1.47 && ax < 0.13) || (vBP.y > 1.49 && ax < 0.22))) discard;
       vec3 c = uPants; float jk = 0.0; float cl = 1.0;
       if (h > 0.575) c = uShirt;
       if (uJk > 0.5 && h > 0.575) { bool open = uJk < 1.5 && ax < 0.05 && vBP.z > 0.0 && h < 0.8; if (!open) { c = (ax > 0.17) ? uJSleeve : uJacket; jk = 1.0; } }
       if (uJk > 2.5) { c = uJacket; jk = 1.0; }
       if (uLong > 0.0 && h <= 0.575 && h > 0.575 - uLong * 0.28 && !(uJk < 1.5 && vBP.z > 0.03 && ax < 0.06)) { c = uJacket; jk = 1.0; }
-      if (ax > uSleeve && !(uJk > 0.5 && ax < 0.62)) { c = uSkin; cl = 0.0; }
+      if (ax > uSleeve) { c = uSkin; cl = 0.0; jk = 0.0; }
       if (uGlove > 0.5 && ax > 0.62) { c = vec3(0.06); cl = 0.0; }
-      if (h > 0.82 && ax < 0.16) { c = uSkin; cl = 0.0; }
+      if ((h > 0.82 && ax < 0.085) || (h > 0.86 && ax < 0.16)) { c = uSkin; cl = 0.0; jk = 0.0; }
       if (h < 0.055 + uBoots * 0.07) { c = uShoes; cl = 0.0; }
+      if (uSole > 0.5 && h < 0.055) { if (vBP.y < 0.024) c = vec3(0.93,0.93,0.9); else if (vBP.z > 0.15 && vBP.y < 0.06) c = vec3(0.9,0.9,0.88); else if (vBP.y < 0.034) c = vec3(0.8); }
+      if (uCargo > 0.5 && h < 0.56 && h > 0.2 && cl > 0.5) { float pk = step(0.115, ax) * step(ax, 0.2) * step(0.33, h) * step(h, 0.45); float fl = step(0.43, h) * step(h, 0.45) * step(0.115, ax) * step(ax, 0.2); c *= 1.0 - 0.14 * pk - 0.1 * fl; float edge = step(0.115, ax) * step(ax, 0.123) * step(0.33, h) * step(h, 0.45); c *= 1.0 - 0.16 * edge; }
+      if (uRib > 0.5 && uJk > 0.5 && jk > 0.5 && h > 0.575 && h < 0.605) { c = uJSleeve * (0.9 + 0.1 * step(0.5, fract(vBP.x * 60.0))); }
+      if (uDecal.z > 0.0 && cl > 0.5 && jk > 0.5 && vBP.z > 0.03) { vec2 bu = vec2((vBP.x - uDecal.x) / uDecal.z + 0.5, (vBP.y - uDecal.y) / uDecal.z + 0.5); if (bu.x > 0.0 && bu.x < 1.0 && bu.y > 0.0 && bu.y < 1.0) { vec4 bt = texture2D(uBadge, bu); c = mix(c, bt.rgb, bt.a); } }
       if (uJk < 2.5 && h > 0.548 && h < 0.578 && ax < 0.2 && jk < 0.5) c = uShoes * 1.4 + 0.02; // belt
       if (uCamo > 0.5 && cl > 0.5 && jk < 0.5 || (uCamo > 0.5 && uJk > 1.5 && jk > 0.5)) { float q = sin(vBP.x*17.+sin(vBP.y*13.)*2.)+sin(vBP.y*19.+vBP.z*15.)+sin(vBP.z*21.+vBP.x*9.);
         c = q > 1.0 ? c*0.45 : q > 0.1 ? c*vec3(0.85,0.75,0.55) : q < -1.2 ? c*vec3(1.25,1.2,0.95) : c; }
-      if (uPlaid > 0.5 && jk > 0.5) { float a = step(0.7, fract(vBP.y*22.)) + step(0.7, fract((vBP.x+vBP.z)*22.)); c *= 1.0 - 0.35*min(a,1.0) - 0.25*step(1.5,a); }
+      if (uPlaid > 1.5 && jk > 0.5) { vec2 pq = vec2(vBP.x * 20.0, vBP.y * 20.0); float m = step(0.5, fract(pq.x)) + step(0.5, fract(pq.y)); c = m > 1.5 ? c * 0.16 : m > 0.5 ? c * 0.62 : c * 1.12; }
+      else if (uPlaid > 0.5 && jk > 0.5) { float a = step(0.7, fract(vBP.y*22.)) + step(0.7, fract((vBP.x+vBP.z)*22.)); c *= 1.0 - 0.35*min(a,1.0) - 0.25*step(1.5,a); }
       if (uStripe > 0.5 && cl > 0.5 && ((h < 0.575 && h > 0.06 && ax > 0.12) || (fract(h*6.0) < 0.06 && uJk > 0.5 && jk > 0.5 && h < 0.7))) c = vec3(0.85,0.85,0.7);
       if (uPuff > 0.5 && jk > 0.5) c *= 0.85 + 0.15*step(0.5, fract(vBP.y*14.));
+      if (uZed > 0.5 && cl > 0.5) { float tr = sin(vBP.x*13.+vBP.y*9.+uSeed)*sin(vBP.y*17.+vBP.z*11.+uSeed*2.); float te = smoothstep(0.7, 0.74, tr); c = mix(c, uSkin * 0.75, te); c = mix(c, vec3(0.2,0.01,0.01), smoothstep(0.62,0.7,tr) * (1.0-te) * 0.8); }
       float n1 = sin(vBP.x*31.+uSeed)*sin(vBP.y*23.+uSeed*2.)*sin(vBP.z*37.+1.3);
       float n2 = sin(vBP.x*9.+uSeed*3.)*sin(vBP.y*7.)*sin(vBP.z*11.+uSeed);
       c *= mix(1.0, 0.55 + 0.6*(0.5+0.5*n1), uGrime);
@@ -43,6 +69,7 @@ export function bodyMat(o) {
       diffuseColor.rgb = c;`)
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.32, uGloss * step(0.52, vBP.y/1.83) * step(0.0, uJk - 0.5));\nroughnessFactor = mix(roughnessFactor, 0.25, step(0.5, diffuseColor.r - diffuseColor.g) * uBlood);');
   };
+  const _obc = m.onBeforeCompile; m.onBeforeCompile = (sh) => { _obc(sh); stylizeFrag(sh, o.zed ? 0.95 : 1.12, o.zed ? 0.1 : 0.16); };
   m.customProgramCacheKey = () => 'body';
   return m;
 }
@@ -50,7 +77,7 @@ export function bodyMat(o) {
 export class CharLib {
   constructor(gltf) { this.gltf = gltf; this.clips = {}; gltf.animations.forEach(a => { this.clips[a.name] = a; });
     // strip root translation from in-place clips (keep feet planted), skip _RM
-    for (const k in this.clips) { const c = this.clips[k]; c.tracks = c.tracks.filter(t => !(t.name.startsWith('root.') && t.name.endsWith('.position'))); }
+    for (const k in this.clips) { const c = this.clips[k]; c.tracks = c.tracks.filter(t => !(t.name.startsWith('root.') && t.name.endsWith('.position')) && !(t.name.endsWith('.scale') && /^DEF-(head|foot|toe)/.test(t.name))); }
   }
   make(look) { const obj = SkeletonUtils.clone(this.gltf.scene); const mat = bodyMat(look.hair ? Object.assign(bodyLook(look), { grime: Math.max(look.grime || 0, bodyLook(look).grime), blood: look.blood, zed: look.zed, nohead: 1 }) : look); const bones = {};
     obj.traverse(o => { if (o.isSkinnedMesh) { o.material = mat; o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false; } if (o.isBone) { bones[o.name] = o; bones[o.name.replace(/[.]/g, '')] = o; } });
@@ -59,20 +86,39 @@ export class CharLib {
 }
 
 export class Char {
+  // natural ground speed (m/s), stride length (m per full cycle) and left-foot phase offset of each locomotion clip (measured from the CC0 clips)
+  static LOCO = [{ name: 'Walk_Loop', v: 1.0, stride: 1.333, off: 0 }, { name: 'Jog_Fwd_Loop', v: 4.6, stride: 4.2, off: -0.024 }, { name: 'Sprint_Loop', v: 6.2, stride: 4.13, off: -0.138 }];
   constructor(lib, look, scale = 1) {
     const { obj, mat, bones } = lib.make(look); this.lib = lib; this.mat = mat; this.bones = bones; this.look = look;
     this.root = new THREE.Group(); this.root.add(obj); obj.scale.setScalar(scale); this.scale = scale; this.model = obj;
     if (look.hair) dressChar(this, look);
+    { // stylized avatar proportions: big head, chunky sneakers/boots (scale tracks for these bones are stripped from the clips)
+      const hd = this.bone('DEF-head'); if (hd) hd.scale.setScalar(look.headK || 1.32);
+      ['DEF-foot.L', 'DEF-foot.R', 'DEF-toe.L', 'DEF-toe.R'].forEach(n => { const b = this.bone(n); if (b) b.scale.set(1.14, 1.14, 1.2); }); }
     this.mixer = new THREE.AnimationMixer(obj); this.actions = {}; this.cur = null; this.curName = ''; this.oneShot = null;
     this.mixer.addEventListener('finished', (e) => { if (this.oneShot && e.action === this.oneShot.a) { const cb = this.oneShot.cb; this.oneShot = null; cb && cb(); } });
   }
   act(name) { let a = this.actions[name]; if (!a) { const c = this.lib.clips[name]; if (!c) return null; a = this.actions[name] = this.mixer.clipAction(c); } return a; }
   play(name, { fade = 0.18, speed = 1, once = false, cb, force = false } = {}) {
     if (!force && this.curName === name && !once) { if (this.cur) this.cur.timeScale = speed; return; }
-    const a = this.act(name); if (!a) return; a.reset(); a.timeScale = speed; a.enabled = true;
+    const a = this.act(name); if (!a) return; const wasLoco = this.locoOn; if (wasLoco) this.endLoco(fade); a.reset(); a.timeScale = speed; a.enabled = true;
     if (once) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; this.oneShot = { a, cb }; } else a.setLoop(THREE.LoopRepeat);
-    if (this.cur && this.cur !== a) a.crossFadeFrom(this.cur, fade, false); a.play(); this.cur = a; this.curName = name;
+    if (wasLoco) a.fadeIn(fade); else if (this.cur && this.cur !== a) a.crossFadeFrom(this.cur, fade, false); a.play(); this.cur = a; this.curName = name;
   }
+  // v2.0 locomotion blend tree: Walk <-> Jog <-> Sprint blended by real ground speed, phase-matched, with the cycle advanced by
+  // distance travelled (so feet stay planted: no sliding / moonwalking). dir < 0 plays the cycle backwards (backpedalling).
+  locomote(speed, dir = 1, dt = 0.016, max = 6.4) {
+    const N = Char.LOCO; const acts = N.map(n => this.act(n.name)); if (acts.some(a => !a)) return false;
+    if (!this.locoOn) { this.locoOn = true; this.locoW = 0; this.locoPh = this.locoPh || 0; if (this.cur) { this.cur.fadeOut(0.2); this.cur = null; } this.curName = '__loco';
+      acts.forEach(a => { a.enabled = true; a.stopFading(); a.setLoop(THREE.LoopRepeat); a.timeScale = 0; a.paused = false; a.play(); a.setEffectiveWeight(0); }); }
+    const sm = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+    const v = Math.min(speed, max), tj = sm(N[0].v, N[1].v, v), ts = sm(N[1].v, N[2].v, v);
+    const w = [1 - tj, tj * (1 - ts), tj * ts]; const stride = w[0] * N[0].stride + w[1] * N[1].stride + w[2] * N[2].stride;
+    this.locoPh = (this.locoPh + (dir < 0 ? -1 : 1) * (speed / stride) * dt + 1000) % 1; this.locoW = Math.min(1, this.locoW + dt / 0.2);
+    acts.forEach((a, i) => { a.time = (((this.locoPh + N[i].off) % 1 + 1) % 1) * a.getClip().duration; a.setEffectiveWeight(w[i] * this.locoW); });
+    return true;
+  }
+  endLoco(fade = 0.18) { if (!this.locoOn) return; this.locoOn = false; Char.LOCO.forEach(n => { const a = this.actions[n.name]; if (a) a.fadeOut(fade); }); this.cur = null; this.curName = ''; }
   bone(n) { return this.bones[n] || this.bones[n.replace(/[.]/g, '')]; }
   attach(boneName, mesh) { const b = this.bone(boneName); if (b) b.add(mesh); return mesh; }
   worldOf(boneName, out) { const b = this.bone(boneName); return b ? b.getWorldPosition(out) : this.root.getWorldPosition(out); }

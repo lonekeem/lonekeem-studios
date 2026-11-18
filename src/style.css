@@ -193,3 +193,17 @@ body.driving #tbtns { bottom: 150px; }
 #rld.on{opacity:1}
 #rld i{display:block;height:5px;width:0;background:linear-gradient(90deg,#9fd8ae,#e8f5ec);border-radius:3px;box-shadow:0 0 0 1px #000a}
 #rld span{display:block;text-align:center;font:800 10px system-ui;letter-spacing:.18em;color:#e8f5ec;text-shadow:0 1px 2px #000;margin-top:3px}
+
+/* v2.0 control options */
+.cgrid{display:flex;flex-direction:column;gap:10px}
+.panel select{max-width:60%;font:inherit;font-size:14px}
+body{--tbs:1;--tbo:1}
+#touch #tbtns,#touch #lbtns{opacity:var(--tbo)}#touch #stickBase{opacity:calc(var(--tbo) * .9)}
+#tbtns{transform:scale(var(--tbs));transform-origin:bottom right}
+#lbtns{transform:scale(var(--tbs));transform-origin:top left}
+#stickBase.idle{opacity:calc(var(--tbo) * .45)}
+body.lefty #stickZone{left:auto;right:0}
+body.lefty #stickBase{left:auto;right:max(40px,env(safe-area-inset-right))}
+body.lefty #tbtns{right:auto;left:max(14px,env(safe-area-inset-left));transform-origin:bottom left}
+body.lefty #lbtns{left:auto;right:max(12px,env(safe-area-inset-right));transform-origin:top right}
+body.simple #tAim{display:none}

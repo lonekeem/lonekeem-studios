@@ -3,15 +3,16 @@
 // mannequin's bind-pose space, merged per bone into ONE vertex-coloured mesh (cheap: ~1 draw call per bone).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { stylizeFrag } from './chars.js';
 
 export const SKINS = ['#f3d2bd', '#e6b89a', '#d9a98c', '#c68e6a', '#ad7652', '#8d5a3b', '#73482e', '#5b3a26', '#4a2c1c', '#3b2417', '#2d1b11'];
 export const HAIR_COLORS = ['#0b0806', '#1d130c', '#3a2414', '#5a3a22', '#7a5a3a', '#a07a4a', '#c9a86a', '#8a3a1e', '#aaa69e', '#e8e4dc', '#6a2a6a', '#1e3a7a'];
-export const HAIRS = { hightop: 'High-top fade', afro: 'Afro', curls: 'Short curls', puffs: 'Puffs', braids: 'Box braids', cornrows: 'Cornrows', locs: 'Locs', waves: 'Waves', buzz: 'Buzz cut',
+export const HAIRS = { crop: 'Cropped', hightop: 'High-top fade', afro: 'Afro', curls: 'Short curls', puffs: 'Puffs', braids: 'Box braids', cornrows: 'Cornrows', locs: 'Locs', waves: 'Waves', buzz: 'Buzz cut',
   short: 'Short', slick: 'Slicked back', long: 'Long', bun: 'Bun', ponytail: 'Ponytail', mohawk: 'Mohawk', balding: 'Balding', bald: 'Bald' };
 export const BEARDS = { none: 'None', stubble: 'Stubble', mustache: 'Mustache', goatee: 'Goatee', full: 'Full beard' };
 export const EYES = ['#2a1608', '#3a2210', '#4a3018', '#3a4a2a', '#3a5a7a', '#5a6a72'];
 export const FACES = {  // jaw width, jaw depth, nose width, lip size, brow tilt, eye size
-  keem: { name: 'Keem', jaw: 1, chin: 1, nose: 1.15, lips: 1.15, brow: -0.08, eye: 1 }, soft: { name: 'Soft', jaw: .92, chin: .95, nose: 1, lips: 1.05, brow: 0.05, eye: 1.08 },
+  keem: { name: 'Keem', jaw: 1, chin: 1, nose: 1.1, lips: 1.1, brow: 0.06, eye: 1 }, soft: { name: 'Soft', jaw: .92, chin: .95, nose: 1, lips: 1.05, brow: 0.05, eye: 1.08 },
   strong: { name: 'Strong jaw', jaw: 1.14, chin: 1.08, nose: 1.1, lips: 1, brow: -0.12, eye: .95 }, narrow: { name: 'Narrow', jaw: .88, chin: 1.05, nose: .85, lips: .9, brow: 0, eye: 1 },
   round: { name: 'Round', jaw: 1.1, chin: .9, nose: 1.05, lips: 1.1, brow: 0.08, eye: 1.05 }, sharp: { name: 'Sharp', jaw: .96, chin: 1.12, nose: .95, lips: .95, brow: -0.18, eye: .92 },
   elder: { name: 'Weathered', jaw: 1.02, chin: .98, nose: 1.12, lips: .9, brow: -0.04, eye: .9 } };
@@ -19,6 +20,11 @@ const H = { x: 0, y: 1.588, z: -0.022, rx: .078, ry: .096, rz: .088 }; // head e
 // ---------- outfits (shader colours + accessory meshes) ----------
 // jk: 0 none, 1 open jacket, 2 closed jacket/hoodie, 3 one-piece suit  · long: coat length 0..1 · camo 0/1 · boots 0/1
 export const OUTFITS = [
+  { id: 'varsityB', name: 'Varsity "B"', shirt: '#f4f3ee', pants: '#a2a6ac', shoes: '#17171a', sole: 1, baggy: .6, cargo: 1, rib: 1, jk: 1, jacket: '#16161a', jsleeve: '#efe6cf', decal: [0.075, 1.31, 0.085], decalTex: 'B', acc: ['cap_back'] },
+  { id: 'purplehood', name: 'Purple Hoodie', shirt: '#7b4fb0', pants: '#35557f', shoes: '#7e5cb4', sole: 1, jk: 2, jacket: '#7b4fb0', decal: [0, 1.22, 0.15], decalTex: 'rabbit', acc: ['hoodDown'] },
+  { id: 'flannelR', name: 'Red Flannel', shirt: '#cdb99b', pants: '#2f4a78', shoes: '#6a4426', boots: 1, jk: 1, jacket: '#a01e22', plaid: 2, jsl: .47, acc: ['bandage'] },
+  { id: 'raider1', name: 'Raider (mask)', shirt: '#2a2a2e', pants: '#2e2e32', shoes: '#1e1a16', boots: 1, jk: 2, jacket: '#34343a', gloss: 1, acc: ['rmask', 'hood', 'gloves', 'belt'] },
+  { id: 'raider2', name: 'Raider (goggles)', shirt: '#3a302c', pants: '#34322c', shoes: '#1e1a16', boots: 1, jk: 2, jacket: '#2c2628', gloss: 1, acc: ['goggles', 'bandana', 'gloves', 'belt'] },
   { id: 'classic', name: 'Classic Tee', shirt: '#ecebe6', pants: '#3a4a6a', shoes: '#efefe8', sleeve: .34 },
   { id: 'boss', name: 'The Boss', shirt: '#3a3a3c', pants: '#1c2230', shoes: '#18120e', boots: 1, jk: 1, jacket: '#141214', gloss: 1, acc: ['scarf_red'], price: 1500, lvl: 4 },
   { id: 'tactical', name: 'Tactical Gear', shirt: '#4a5040', pants: '#3e4436', shoes: '#2a2620', boots: 1, jk: 2, jacket: '#4a5040', acc: ['vest', 'kneepads', 'gloves', 'cap_tac'], price: 1200, lvl: 3 },
@@ -54,12 +60,12 @@ export const OUTFITS = [
   { id: 'smock', name: 'Barber Smock', shirt: '#e8e2d2', pants: '#2a2a2a', shoes: '#151515', sleeve: .45 },
 ];
 export const OUTFIT = Object.fromEntries(OUTFITS.map(o => [o.id, o]));
-export const DEFAULT_LOOK = { outfit: 'classic', hair: 'hightop', hairColor: '#0b0806', skin: '#5b3a26', face: 'keem', eyes: '#2a1608', beard: 'none', pack: false, glasses: false, build: 1, seed: 7 };
+export const DEFAULT_LOOK = { outfit: 'varsityB', hair: 'crop', hairColor: '#0b0806', skin: '#6a4430', face: 'keem', eyes: '#2a1608', beard: 'jaw', pack: false, glasses: true, build: 1, seed: 7 };
 // Story cast: each one distinct (hair, face, skin, build, clothes)
 export const CAST = {
   keem: DEFAULT_LOOK,
-  marcus: { outfit: 'work', hair: 'short', hairColor: '#120c08', skin: '#4a2c1c', face: 'strong', eyes: '#2a1608', beard: 'full', build: 1.12, seed: 3, grey: .25 },
-  nia: { outfit: 'pinkhood', hair: 'puffs', hairColor: '#160d07', skin: '#62402b', face: 'soft', eyes: '#3a2210', beard: 'none', build: .95, seed: 11 },
+  marcus: { outfit: 'flannelR', hair: 'crop', hairColor: '#120c08', skin: '#6a4430', face: 'strong', eyes: '#2a1608', beard: 'jaw', build: 1.12, seed: 3, grey: .18 },
+  nia: { outfit: 'purplehood', hair: 'puffs', hairColor: '#160d07', skin: '#7a4f36', face: 'soft', eyes: '#3a2210', beard: 'none', build: .95, seed: 11, headK: 1.42, eyeK: 1.12 },
   walt: { outfit: 'cardigan', hair: 'balding', hairColor: '#b8b4ac', skin: '#d9a98c', face: 'elder', eyes: '#3a5a7a', beard: 'mustache', glasses: true, build: 1.08, seed: 5 },
   ruth: { outfit: 'blouse', hair: 'bun', hairColor: '#7a4a2a', skin: '#e6b89a', face: 'narrow', eyes: '#3a4a2a', beard: 'none', build: .96, seed: 8 },
   dube: { outfit: 'button', hair: 'buzz', hairColor: '#8a8680', skin: '#3b2417', face: 'round', eyes: '#2a1608', beard: 'goatee', glasses: true, build: 1.16, seed: 9 },
@@ -75,14 +81,17 @@ export function randomLook(seed, zed) { const r = mulberry(seed * 9973 + 1); con
   return { outfit: pick(r, casual), hair: pick(r, hairs), hairColor: hc, skin: pick(r, SKINS), face: pick(r, Object.keys(FACES)), eyes: pick(r, EYES), beard: fem ? 'none' : pick(r, ['none', 'none', 'stubble', 'mustache', 'goatee', 'full']),
     glasses: r() < .15, build: .9 + r() * .3, height: .93 + r() * .12, seed: seed | 0, tint: [r(), r(), r()], zed };
 }
+// raiders: masked, leather-jacketed scavengers (same avatar style as everyone else)
+export function raiderLook(seed) { const r = mulberry(seed * 7331 + 5); const L = randomLook(seed, false); L.outfit = r() < .6 ? 'raider1' : 'raider2'; L.tint = [r(), r(), r()]; L.hair = 'short'; L.hairColor = '#150f0a'; L.beard = 'none'; L.glasses = false; return L; }
 // recolour outfit pieces per person so neighbours never match
 function tintC(hex, t, amt) { const c = new THREE.Color(hex); const hsl = {}; c.getHSL(hsl); c.setHSL((hsl.h + (t[0] - .5) * amt) % 1, Math.min(1, hsl.s * (.7 + t[1] * .6)), Math.min(.92, hsl.l * (.75 + t[2] * .5))); return '#' + c.getHexString(); }
 // shader look for bodyMat()
 export function bodyLook(L) { const o = OUTFIT[L.outfit] || OUTFITS[0]; const t = L.tint, k = t ? .25 : 0; const tc = (h) => (t ? tintC(h, t, k) : h);
   const skin = L.zed ? zSkin(L.skin) : L.skin;
-  return { skin, shirt: tc(o.shirt), pants: tc(o.pants), shoes: o.shoes, hair: L.hairColor, sleeve: o.jk ? .62 : (o.sleeve ?? .4), jk: o.jk || 0, jacket: tc(o.jacket || o.shirt), jsleeve: o.jsleeve ? tc(o.jsleeve) : null,
-    long: o.long || 0, camo: o.camo || 0, boots: o.boots || 0, gloves: (o.acc || []).includes('gloves') ? 1 : 0, plaid: o.plaid || 0, stripe: o.stripe || o.reflect || 0, gloss: o.gloss || 0, grime: o.grimeK || 0, puff: o.puff || 0 }; }
-export function zSkin(hex) { const c = new THREE.Color(hex); return '#' + c.lerp(new THREE.Color('#7a8a6a'), .45).multiplyScalar(.85).getHexString(); }
+  return { skin, shirt: tc(o.shirt), pants: tc(o.pants), shoes: o.shoes, hair: L.hairColor, sleeve: o.jk ? (o.jsl ?? .62) : (o.sleeve ?? .4), jk: o.jk || 0, jacket: tc(o.jacket || o.shirt), jsleeve: o.jsleeve ? tc(o.jsleeve) : null,
+    long: o.long || 0, camo: o.camo || 0, boots: o.boots || 0, gloves: (o.acc || []).includes('gloves') ? 1 : 0, plaid: o.plaid || 0, stripe: o.stripe || o.reflect || 0, gloss: o.gloss || 0, grime: o.grimeK || 0, puff: o.puff || 0,
+    baggy: o.baggy || 0, cargo: o.cargo || 0, sole: o.sole || 0, rib: o.rib || 0, decal: o.decal || null, decalTex: o.decalTex || null }; }
+export function zSkin(hex) { const c = new THREE.Color(hex); return '#' + c.lerp(new THREE.Color('#7f9f70'), .78).multiplyScalar(.9).getHexString(); }
 // ---------- geometry helpers ----------
 const M4 = THREE.Matrix4, V = THREE.Vector3, Q = THREE.Quaternion, E = THREE.Euler;
 const mat = (x, y, z, sx = 1, sy = sx, sz = sx, rx = 0, ry = 0, rz = 0) => new M4().compose(new V(x, y, z), new Q().setFromEuler(new E(rx, ry, rz)), new V(sx, sy, sz));
@@ -93,7 +102,7 @@ const SPH = new THREE.SphereGeometry(1, 20, 14), SPHL = new THREE.SphereGeometry
 const cap = (theta) => new THREE.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, theta);
 const ring = (t0, t1) => new THREE.SphereGeometry(1, 22, 10, 0, Math.PI * 2, t0, t1 - t0);
 export const MAT = { std: null, gloss: null };
-function partsMat(gloss) { const k = gloss ? 'gloss' : 'std'; return MAT[k] || (MAT[k] = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: gloss ? .35 : .72, metalness: 0 })); }
+function partsMat(gloss) { const k = gloss ? 'gloss' : 'std'; if (MAT[k]) return MAT[k]; const m = MAT[k] = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: gloss ? .35 : .62, metalness: 0 }); m.onBeforeCompile = (sh) => stylizeFrag(sh, 1.1, .16); m.customProgramCacheKey = () => 'parts' + k; return m; }
 const dark = (hex, k) => '#' + new THREE.Color(hex).multiplyScalar(k).getHexString();
 const mix = (a, b, k) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), k).getHexString();
 // curls: many small icospheres scattered over a region of the head ellipsoid
@@ -109,18 +118,26 @@ export function buildHead(P, L) { const r = mulberry((L.seed || 1) * 131 + 7); c
   P.add('DEF-neck', CYL, skin, mat(0, 1.49, -.03, .042, .1, .042));
   [-1, 1].forEach(s => { P.add(B, SPH, dark(skin, .93), mat(s * .078, 1.588, -.03, .012, .024, .016)); // ears
     P.add(B, SPH, skin, mat(s * .046, 1.572, .036, .022, .016, .02)); // cheekbones
-    const ex = s * .031, ey = 1.603, es = .0122 * F.eye; P.add(B, SPH, L.zed ? '#c8c8b0' : '#f2eee6', mat(ex, ey, .051, es, es * .82, es * .6));
-    if (!L.zed) { P.add(B, SPHL, L.eyes || '#2a1608', mat(ex, ey, .0575, es * .62, es * .62, es * .25)); P.add(B, SPHL, '#050403', mat(ex, ey, .0595, es * .3, es * .3, es * .12)); P.add(B, SPHL, '#ffffff', mat(ex + .003, ey + .003, .0605, .0018)); }
-    P.add(B, SPH, dark(skin, .9), mat(ex, ey + .0055 * F.eye, .052, es * 1.1, es * .5, es * .72)); // upper lid
-    P.add(B, BOX, L.zed ? '#2a2620' : dark(hd, .7), mat(ex + s * .002, 1.6275, .0575, .03, .0065, .009, 0, 0, s * F.brow)); // brow
-    P.add(B, SPH, dark(skin, .82), mat(s * .011, 1.574, .074, .0105 * F.nose, .0085, .009)); }); // nostril wings
-  P.add(B, SPH, skin, mat(0, 1.585, .068, .0105 * F.nose, .024, .016)); P.add(B, SPH, skin, mat(0, 1.576, .076, .0125 * F.nose, .0105, .011)); // nose bridge + tip
-  const lip = L.zed ? '#3a1a1a' : mix(dark(skin, .78), '#8a3a3a', .25); P.add(B, SPH, lip, mat(0, 1.5485, .0615, .022 * F.lips, .0062 * F.lips, .0095)); P.add(B, SPH, dark(lip, 1.06), mat(0, 1.5395, .0595, .0205 * F.lips, .0072 * F.lips, .0095));
-  P.add(B, BOX, dark(lip, .55), mat(0, 1.5445, .066, .03 * F.lips, .0014, .004));
-  if (L.zed) P.add(B, SPH, '#3a0808', mat(.02, 1.53, .055, .02, .012, .012)); // bloody mouth
+    // big, glossy cartoon eyes (v2.0 stylized avatar look)
+    const ex = s * .034, ey = 1.603, es = .0168 * F.eye * (L.eyeK || 1), lidc = L.zed ? '#2a2a22' : dark(skin, .42);
+    P.add(B, SPH, L.zed ? '#e4e6c4' : '#fbf8f2', mat(ex, ey, .0505, es, es * 1.04, es * .62));
+    if (!L.zed) { P.add(B, SPHL, L.eyes || '#2a1608', mat(ex, ey - .0008, .0585, es * .74, es * .78, es * .24)); P.add(B, SPHL, '#060403', mat(ex, ey - .0008, .0615, es * .4, es * .42, es * .12)); P.add(B, SPHL, '#ffffff', mat(ex + s * .0042, ey + .0058, .0632, .0027)); P.add(B, SPHL, '#ffffff', mat(ex - s * .0035, ey - .004, .0632, .0012)); }
+    else { P.add(B, SPHL, '#c9d2a0', mat(ex, ey, .0585, es * .6, es * .62, es * .22)); P.add(B, SPHL, '#0a0806', mat(ex, ey, .0615, es * .16, es * .17, es * .1)); P.add(B, SPH, '#3a2a36', mat(ex, ey - es * 1.18, .047, es * 1.2, es * .38, es * .5)); P.add(B, SPH, '#8a1010', mat(ex + s * es * .75, ey + es * .15, .0525, es * .06, es * .5, es * .3)); }
+    P.add(B, SPH, lidc, mat(ex, ey + es * .86, .0535, es * 1.12, es * .22, es * .62, -.06 * s)); // upper lash line
+    P.add(B, SPH, dark(skin, .9), mat(ex, ey + es * 1.02, .0505, es * 1.15, es * .42, es * .68)); // lid
+    const bt = L.zed ? '#2a2620' : dark(hd, .62), tilt = L.zed ? -s * .35 : s * F.brow * 1.4;
+    P.add(B, BOX, bt, mat(ex + s * .002, 1.6385, .0562, .034, .0078, .009, 0, 0, tilt)); P.add(B, BOX, bt, mat(ex - s * .012, 1.6355 - s * 0 + tilt * -.0, .0565, .012, .0075, .009, 0, 0, tilt * .5)); // brow
+    P.add(B, SPH, dark(skin, .82), mat(s * .0085, 1.575, .0745, .0085 * F.nose, .0065, .007)); }); // nostril wings
+  P.add(B, SPH, skin, mat(0, 1.587, .066, .0085 * F.nose, .02, .013)); P.add(B, SPH, skin, mat(0, 1.5775, .0745, .0105 * F.nose, .0088, .0095)); // nose bridge + tip
+  const lip = L.zed ? '#3a1a1a' : mix(dark(skin, .78), '#8a3a3a', .25);
+  if (!L.zed) { P.add(B, SPH, lip, mat(0, 1.5485, .0615, .02 * F.lips, .0058 * F.lips, .009)); P.add(B, SPH, dark(lip, 1.06), mat(0, 1.5405, .0595, .0185 * F.lips, .0068 * F.lips, .009));
+    P.add(B, new THREE.TorusGeometry(1, .09, 5, 14, Math.PI * .8), dark(lip, .5), mat(0, 1.5535, .0645, .0235, .0085, .004, 0, 0, Math.PI * 1.1)); // smile
+    [-1, 1].forEach(s => P.add(B, SPH, dark(skin, .93), mat(s * .0245, 1.5535, .0585, .0036, .0036, .003))); } // dimples
+  else { P.add(B, SPH, '#240606', mat(0, 1.5405, .0585, .026, .0155, .011)); for (let i = -2; i <= 2; i++) { P.add(B, BOX, '#d8d2b4', mat(i * .0095, 1.5525, .063, .0058, .0075, .003)); if (Math.abs(i) < 2) P.add(B, BOX, '#cfc9ad', mat(i * .0095, 1.5285, .06, .005, .006, .003)); } }
   // beard
   const bc = L.zed ? '#2a2620' : hc; const bd = L.beard || 'none';
   if (bd === 'stubble') P.add(B, new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, 1.45, 1.4), mix(skin, bc, .4), mat(0, 1.545, -0.002, .0635 * F.jaw, .058 * F.chin, .073));
+  if (bd === 'jaw') { P.add(B, new THREE.SphereGeometry(1, 22, 10, -.3, Math.PI + .6, 1.7, 1.0), bc, mat(0, 1.545, -.002, .0655 * F.jaw, .0605 * F.chin, .0755)); P.add(B, SPH, bc, mat(0, 1.5265, .052, .02, .012, .014)); P.add(B, SPH, bc, mat(0, 1.5605, .0655, .021, .0045, .009)); }
   if (bd === 'full') { P.add(B, new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, 1.35, 1.6), bc, mat(0, 1.545, 0, .068 * F.jaw, .065 * F.chin, .078)); curls(P, r, bc, 40, (r) => { const u = r() * Math.PI * 2, v = 1.9 + r() * .9; const p = [Math.sin(v) * Math.cos(u) * .07, 1.545 + Math.cos(v) * .06, Math.sin(v) * Math.sin(u) * .078]; return p[2] > -.03 ? [p[0], p[1], p[2], .011] : null; }); }
   if (bd === 'full' || bd === 'mustache' || bd === 'goatee') P.add(B, SPH, bc, mat(0, 1.556, .066, .026, .0075, .011));
   if (bd === 'goatee') P.add(B, SPH, bc, mat(0, 1.515, .05, .022, .02, .016));
@@ -137,6 +154,7 @@ export function buildHead(P, L) { const r = mulberry((L.seed || 1) * 131 + 7); c
   if (st === 'locs') { shell(1.04, 1.85, -.3); for (let i = 0; i < 16; i++) { const a = -2.4 + i / 15 * 4.8; const x = Math.sin(a) * .082, z = -.025 - Math.cos(a) * .08; P.add(B, CYL, i % 2 ? hc : dark(hc, 1.25), mat(x, 1.53, z, .01, .16, .01, .2 * Math.cos(a), 0, -.12 * Math.sin(a))); } }
   if (st === 'waves') { shell(1.02, 1.75, -.5); for (let i = 0; i < 5; i++) P.add(B, ring(.3 + i * .22, .36 + i * .22), dark(hc, 1.5), mat(H.x, H.y + .004, H.z - .004, H.rx * 1.026, H.ry * 1.026, H.rz * 1.026, -.5, 0, 0)); }
   if (st === 'buzz') shell(1.015, 1.75, -.5, mix(skin, hc, .8));
+  if (st === 'crop') { shell(1.035, 1.42, -.62); P.add(B, SPH, hc, mat(0, 1.668, -.03, .07, .03, .078, -.15)); }
   if (st === 'short') { shell(1.04, 1.75, -.45); P.add(B, SPH, hc, mat(0, 1.65, -.02, .072, .04, .08)); }
   if (st === 'slick') { shell(1.05, 1.8, -.3); P.add(B, SPH, hc, mat(0, 1.655, -.035, .075, .04, .085, -.2)); }
   if (st === 'long' || st === 'ponytail' || st === 'bun') { shell(1.06, 1.75, -.25); }
@@ -145,7 +163,10 @@ export function buildHead(P, L) { const r = mulberry((L.seed || 1) * 131 + 7); c
   if (st === 'bun') P.add(B, SPH, hc, mat(0, 1.675, -.09, .042, .038, .04));
   if (st === 'mohawk') { shell(1.012, 1.7, -.5, mix(skin, hc, .45)); curls(P, r, hc, 60, (r) => { const v = -1.2 + r() * 2.7; return [(r() - .5) * .02, H.y + Math.cos(v) * .1 + .03, H.z + Math.sin(v) * .095, .018]; }); }
   if (st === 'balding') P.add(B, ring(1.0, 1.95), hc, mat(H.x, H.y + .004, H.z - .004, H.rx * 1.03, H.ry * 1.03, H.rz * 1.03, -.5, 0, 0));
-  if (L.glasses) [-1, 1].forEach(s => { P.add(B, TOR, '#1a1a1a', mat(s * .031, 1.603, .068, .017, .015, .01)); P.add(B, BOX, '#1a1a1a', mat(s * .062, 1.606, .02, .003, .003, .09)); P.add(B, BOX, '#1a1a1a', mat(0, 1.606, .07, .016, .003, .003)); });
+  if (L.glasses) { const gc = L.gcol || '#8e9298'; [-1, 1].forEach(s => { const cx = s * .034, cy = 1.603, w = .0255, h = .0205, t = .0034, z = .0675;
+      P.add(B, BOX, gc, mat(cx, cy + h, z, 2 * w + t, t, t)); P.add(B, BOX, gc, mat(cx, cy - h, z, 2 * w + t, t, t)); P.add(B, BOX, gc, mat(cx - w, cy, z, t, 2 * h + t, t)); P.add(B, BOX, gc, mat(cx + w, cy, z, t, 2 * h + t, t));
+      P.add(B, BOX, gc, mat(s * .0625, 1.606, .024, .0028, .0028, .082)); }); // temples
+    P.add(B, BOX, gc, mat(0, 1.612, .0675, .0095, .0034, .0034)); } // bridge
 }
 // ---------- accessories ----------
 export function buildAcc(P, L, o) { const acc = (o.acc || []).slice(); if (L.pack && !acc.includes('pack')) acc.push('pack'); const J = o.jacket || o.shirt;
@@ -159,14 +180,22 @@ export function buildAcc(P, L, o) { const acc = (o.acc || []).slice(); if (L.pac
     if (a === 'pads') [-1, 1].forEach(s => P.add('DEF-upper_arm.' + (s < 0 ? 'R' : 'L'), new THREE.SphereGeometry(1, 12, 8, 0, Math.PI * 2, 0, 1.6), '#4a4a46', mat(s * -.21, 1.4, -.01, .07, .05, .08, 0, 0, s * -.4)));
     if (a === 'kneepads') [-1, 1].forEach(s => P.add('DEF-shin.' + (s < 0 ? 'R' : 'L'), BOX, '#1e1e1c', mat(s * -.09, .5, .055, .085, .09, .03)));
     if (a === 'gloves') { } // shader
-    if (a === 'cap_tac' || a === 'cap_orange' || a === 'cap_back') { const c = a === 'cap_orange' ? '#e0601a' : a === 'cap_back' ? '#1a1a1a' : '#2e3226';
-      P.add('DEF-head', cap(1.35), c, mat(H.x, H.y + .012, H.z, H.rx * 1.1, H.ry * 1.06, H.rz * 1.1)); P.add('DEF-head', CYL, c, mat(0, 1.647, a === 'cap_back' ? -.13 : .085, .07, .005, .06)); }
+    if (a === 'cap_tac' || a === 'cap_orange') { const c = a === 'cap_orange' ? '#e0601a' : '#2e3226';
+      P.add('DEF-head', cap(1.35), c, mat(H.x, H.y + .012, H.z, H.rx * 1.1, H.ry * 1.06, H.rz * 1.1)); P.add('DEF-head', CYL, c, mat(0, 1.647, .085, .07, .005, .06)); }
+    if (a === 'cap_back') { const c = '#26272b'; // backwards snapback: crown, seams, button, brim over the nape
+      P.add('DEF-head', cap(1.22), c, mat(H.x, H.y + .02, H.z - .01, H.rx * 1.09, H.ry * 1.075, H.rz * 1.1, -.62, 0, 0));
+      P.add('DEF-head', SPHL, '#2a2a2e', mat(0, H.y + .108, H.z - .012, .008, .005, .008));
+      P.add('DEF-head', new THREE.CylinderGeometry(1, 1, 1, 18, 1, false, Math.PI / 2, Math.PI), c, mat(0, 1.612, -.092, .082, .0038, .112, -.12, 0, 0)); P.add('DEF-head', new THREE.CylinderGeometry(1, 1, 1, 18, 1, false, Math.PI / 2, Math.PI), '#26262a', mat(0, 1.6095, -.094, .075, .0016, .105, -.12, 0, 0)); }
     if (a === 'beanie') P.add('DEF-head', cap(1.5), '#7a2a2a', mat(H.x, H.y + .012, H.z, H.rx * 1.12, H.ry * 1.12, H.rz * 1.12, -.2));
     if (a === 'helmet_fire') { P.add('DEF-head', cap(1.4), '#c8a020', mat(H.x, H.y + .02, H.z, H.rx * 1.25, H.ry * 1.15, H.rz * 1.25)); P.add('DEF-head', CYL, '#c8a020', mat(0, 1.64, -.05, .12, .006, .14)); }
     if (a === 'hood') P.add('DEF-head', new THREE.SphereGeometry(1, 20, 12, Math.PI, Math.PI, 0, 2.2), J, mat(H.x, H.y + .005, H.z - .01, H.rx * 1.22, H.ry * 1.15, H.rz * 1.2, 0, Math.PI / 2 * 0, 0));
     if (a === 'mask') P.add('DEF-head', new THREE.SphereGeometry(1, 16, 8, -Math.PI * .1, -Math.PI * .8, 1.45, 1.1), '#101012', mat(0, 1.56, -.005, .085, .07, .085));
     if (a === 'bandana') P.add('DEF-head', new THREE.SphereGeometry(1, 16, 8, -Math.PI * .1, -Math.PI * .8, 1.45, 1.1), '#5a1418', mat(0, 1.56, -.005, .085, .07, .085));
     if (a === 'gasmask') { P.add('DEF-head', SPH, '#2a2a2a', mat(0, 1.56, .06, .055, .04, .03)); P.add('DEF-head', CYL, '#3a3a3a', mat(0, 1.545, .095, .022, .03, .022, Math.PI / 2)); P.add('DEF-head', SPH, '#8ab0b8', mat(0, 1.61, .06, .07, .03, .02)); P.add('DEF-head', cap(1.9), '#d8b828', mat(H.x, H.y, H.z - .01, H.rx * 1.25, H.ry * 1.2, H.rz * 1.2, -.9)); }
+    if (a === 'hoodDown') { P.add('DEF-spine003', SPH, J, mat(0, 1.4, -.075, .105, .06, .06)); [-1, 1].forEach(s => P.add('DEF-spine003', CYL, '#d8d2c4', mat(s * .03, 1.3, .105, .004, .07, .004))); }
+    if (a === 'belt') P.add('DEF-hips', BOX, '#2a2420', mat(0, 1.0, 0, .2, .028, .13));
+    if (a === 'rmask') { const mk = '#25262a'; P.add('DEF-head', SPH, '#18181b', mat(H.x, H.y, H.z, H.rx * 1.08, H.ry * 1.07, H.rz * 1.08)); P.add('DEF-head', SPH, mk, mat(0, 1.585, .035, .066, .062, .056)); [-1, 1].forEach(s => { P.add('DEF-head', TOR, '#4a4c50', mat(s * .033, 1.608, .088, .022, .022, .012)); P.add('DEF-head', SPHL, '#9fb2b2', mat(s * .033, 1.608, .091, .019, .019, .006)); P.add('DEF-head', SPHL, '#ffffff', mat(s * .033 + .006, 1.616, .095, .004)); P.add('DEF-head', CYL, '#3a3a3e', mat(s * .062, 1.55, .075, .016, .02, .016, Math.PI / 2)); });
+      P.add('DEF-head', CYL, '#3a3b3f', mat(0, 1.535, .098, .026, .02, .026, Math.PI / 2)); P.add('DEF-head', TOR, '#18181a', mat(0, 1.535, .1, .024, .024, .012)); for (let i = 0; i < 3; i++) P.add('DEF-head', BOX, '#18181a', mat(0, 1.528 + i * .008, .121, .018, .0022, .003)); }
     if (a === 'goggles') { [-1, 1].forEach(s => P.add('DEF-head', CYL, '#3a3a36', mat(s * .032, 1.62, .072, .019, .012, .019, Math.PI / 2))); P.add('DEF-head', TOR, '#2a2a26', mat(0, 1.62, -.02, .085, .02, .1, Math.PI / 2)); }
     if (a === 'dogtags' || a === 'chain') P.add('DEF-spine003', TOR, a === 'chain' ? '#d8b040' : '#9aa0a6', mat(0, 1.36, .08, .05, .08, .03, .4));
     if (a === 'badge') P.add('DEF-spine003', SPH, '#d8b040', mat(.07, 1.34, .1, .012, .012, .004));

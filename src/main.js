@@ -3,7 +3,8 @@ import { SURVIVAL_STEP, chOf } from './game/story.js';
 import { WEAPONS, WEAPON_ORDER, UPGRADES, upCost, AMMO_SHOP, PERKS, xpFor, defaultSave, loadSave, writeSave, clearSave, stat } from './game/data.js';
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const DEF = { vol: 0.9, auto: true, music: 0.6, text: 1, subs: true, gore: true, lang: 'on', qteEasy: false, still: false, hints: true, qual: 'auto', sens: 1, fp: false, sfxVol: 1, voiceVol: 1, voices: true };
+const DEF = { vol: 0.9, auto: true, music: 0.6, text: 1, subs: true, gore: true, lang: 'on', qteEasy: false, still: false, hints: true, qual: 'auto', sens: 1, fp: false, sfxVol: 1, voiceVol: 1, voices: true,
+  ctl: 'twin', autoFire: false, assist: 0, stick: 'float', hand: 'right', btnScale: 1, btnOp: 1, invertY: false, padSens: 1, padDead: 0.15 };
 const LS = (() => { try { const k = '__t'; localStorage.setItem(k, 1); localStorage.removeItem(k); return localStorage; } catch { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; } })();
 let _saved = {}; try { _saved = JSON.parse(LS.getItem('atq3.settings') || '{}') || {}; } catch {}
 const S = Object.assign({}, DEF, _saved); const saveS = () => LS.setItem('atq3.settings', JSON.stringify(S));
@@ -128,9 +129,21 @@ $('#btnRetry').onclick = () => { showScreen(null); state = 'play'; save = loadSa
 $('#btnDeadQuit').onclick = toTitle; $('#btnEndTitle').onclick = toTitle;
 // ---------- settings ----------
 const bindS = (id, k, kind) => { const el = $(id); if (!el) return; if (kind === 'chk') { el.checked = !!S[k]; el.onchange = () => { S[k] = el.checked; saveS(); applyS(k); }; } else if (kind === 'sel') { el.value = S[k]; el.onchange = () => { S[k] = el.value; saveS(); applyS(k); }; } else { el.value = S[k]; el.oninput = () => { S[k] = +el.value; saveS(); applyS(k); }; } };
-function applyS(k) { audio.applyVolumes(); document.body.classList.toggle('still', S.still); if (game && k === 'fp') game.cam.fp = S.fp; if (k === 'qual' && game) game.toast?.('Quality change applies after reloading the app', 2.5); }
+function applyCtl() { const b = document.body; b.classList.toggle('lefty', S.hand === 'left'); b.classList.toggle('simple', S.ctl === 'simple'); b.style.setProperty('--tbs', S.btnScale || 1); b.style.setProperty('--tbo', S.btnOp ?? 1); }
+function applyS(k) { applyCtl(); audio.applyVolumes(); document.body.classList.toggle('still', S.still); if (game && k === 'fp') game.cam.fp = S.fp; if (k === 'qual' && game) game.toast?.('Quality change applies after reloading the app', 2.5); }
 bindS('#sVol', 'vol'); bindS('#sMusic', 'music'); bindS('#sSfx', 'sfxVol'); bindS('#sVoiceVol', 'voiceVol'); bindS('#sVoices', 'voices', 'chk'); bindS('#sText', 'text'); bindS('#sAuto', 'auto', 'chk'); bindS('#sGore', 'gore', 'chk'); bindS('#sQte', 'qteEasy', 'chk'); bindS('#sMotion', 'still', 'chk'); bindS('#sHints', 'hints', 'chk');
 bindS('#sQual', 'qual', 'sel'); bindS('#sLang', 'lang', 'sel'); bindS('#sSens', 'sens'); bindS('#sFP', 'fp', 'chk'); applyS();
+// control settings screen (scheme, joystick, layout, sensitivity)
+const CTL_BINDS = () => { bindS('#cCtl', 'ctl', 'sel'); bindS('#cAuto', 'autoFire', 'chk'); bindS('#cAssist', 'assist'); bindS('#cStick', 'stick', 'sel'); bindS('#cHand', 'hand', 'sel'); bindS('#cBtn', 'btnScale'); bindS('#cOp', 'btnOp'); bindS('#cSens', 'sens'); bindS('#cPad', 'padSens'); bindS('#cDead', 'padDead'); bindS('#cInv', 'invertY', 'chk'); };
+CTL_BINDS();
+$('#cCtl').addEventListener('change', () => { if (S.ctl === 'simple') { S.autoFire = true; S.assist = Math.max(S.assist || 0, 0.8); } else { S.autoFire = false; S.assist = 0; } saveS(); CTL_BINDS(); applyCtl(); });
+const padName = () => { const p = navigator.getGamepads ? [...navigator.getGamepads()].find(q => q && q.connected) : null; $('#cPadState').textContent = (p ? 'Controller connected: ' + p.id.slice(0, 48) + '. ' : 'No controller detected (plug in / pair one and press a button). ') + 'Keyboard + mouse: WASD, mouse (click to lock), left click fire, right click aim.'; };
+addEventListener('gamepadconnected', padName); addEventListener('gamepaddisconnected', padName);
+$('#btnCtlSet').onclick = () => { CTL_BINDS(); padName(); showScreen('#ctlset'); };
+$('#btnCtlRef').onclick = () => { showScreen('#controls'); back = back; };
+$('#btnCtlReset').onclick = () => { Object.assign(S, { ctl: 'twin', autoFire: false, assist: 0, stick: 'float', hand: 'right', btnScale: 1, btnOp: 1, invertY: false, padSens: 1, padDead: 0.15, sens: 1 }); saveS(); CTL_BINDS(); applyCtl(); };
+$$('.back2').forEach(b => b.onclick = () => { $('#sSens').value = S.sens; showScreen('#settings'); });
+
 // boot
 document.body.dataset.dev = 'ontouchstart' in window ? 'touch' : 'kbd'; fadeIn();
 const qs = new URLSearchParams(location.search);

@@ -85,3 +85,8 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Zombies/Keem no longer pass through bridge barriers; corpses separate; hit-react before death ragdoll.
 - Perf: shader/FX prewarm (no first-shot or grenade compile freeze), 1.5s grace after dialogue, actor disposal on retry.
 - HUD: pages in health line, spaced RUN/CRCH, bigger death hint, reload bar.
+
+## v2.0 (work in progress) — character art + controls
+- **Characters**: every character (Keem, Nia, Dad, townspeople, zombies, raiders, bosses) uses the same stylized-avatar look: bigger heads, large glossy eyes, chunkier shoes, warm rim light. Built from original procedural geometry on the CC0 Quaternius rig — gameplay, hitboxes and levels are untouched. Review the cast with `npm run dev` → `/tools/lineup.html`.
+- **Movement**: eased acceleration (same top speeds) and a Walk↔Jog↔Sprint blend tree whose cycle advances with real ground speed (no foot sliding; backpedal plays the cycle in reverse while aiming).
+- **Settings → Control scheme, layout & sensitivity…**: Classic twin-stick or Simple (tap/hold to shoot + strong aim assist + optional auto-fire), floating/fixed joystick, left/right-handed layout, button size/opacity, look sensitivity, controller stick speed/dead-zone, invert-Y. Keyboard+mouse and gamepad work as before. Everything is saved in `atq3.settings`; defaults reproduce the previous behaviour (aim assist off).
