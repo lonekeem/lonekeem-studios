@@ -50,6 +50,9 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.9
+- Fix: the player always uses the new Keem 3D model, including saves that have a custom-creator look stored (those used to fall back to the old mannequin, e.g. in the Chapter 1 bedroom). The creator look no longer overrides the model.
+
 ### v1.9.8
 - Real 3D characters: Keem, Nia, Dad, the raiders and the zombies are now smooth, textured cartoon models (with clean mitten hands) instead of the old block mannequins. They are driven by the existing animation skeleton, so movement, aiming, shooting, melee, death and every other behaviour are unchanged. Biscuit the rabbit is a new model too. Custom-creator characters and townspeople keep the previous look for now.
 - Slightly brighter character lighting; `?rig=0` in the URL switches back to the old mannequins (for comparison).
