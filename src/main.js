@@ -5,10 +5,12 @@ import { WEAPONS, WEAPON_ORDER, UPGRADES, upCost, AMMO_SHOP, PERKS, xpFor, defau
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const DEF = { vol: 0.9, auto: true, music: 0.6, text: 1, subs: true, gore: true, lang: 'on', qteEasy: false, still: false, hints: true, qual: 'auto', sens: 1, fp: false, sfxVol: 1, voiceVol: 1, voices: true,
-  ctl: 'twin', autoFire: false, assist: 0, stick: 'float', hand: 'right', btnScale: 1, btnOp: 1, invertY: false, padSens: 1, padDead: 0.15, btnLay: {} };
+  ctl: 'twin', autoFire: false, assist: 0, stick: 'float', hand: 'right', btnScale: 1, btnOp: 1, invertY: false, padSens: 1, padDead: 0.15, btnLay: {}, hudv2: false, smoothMove: false, ctlRev: 0 };
 const LS = (() => { try { const k = '__t'; localStorage.setItem(k, 1); localStorage.removeItem(k); return localStorage; } catch { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; } })();
 let _saved = {}; try { _saved = JSON.parse(LS.getItem('atq3.settings') || '{}') || {}; } catch {}
 const S = Object.assign({}, DEF, _saved); const saveS = () => LS.setItem('atq3.settings', JSON.stringify(S));
+// v1.9.10: controls go back to exactly how v1.9.7 played (classic HUD layout, stick, aim button, movement). One-time reset of every control setting saved by v1.9.8/v1.9.9; the new layout / smooth movement / schemes are opt-in under Settings -> Control scheme. Look sensitivity is kept.
+if (S.ctlRev !== 2) { Object.assign(S, { ctl: 'twin', autoFire: false, assist: 0, stick: 'float', hand: 'right', btnScale: 1, btnOp: 1, invertY: false, padSens: 1, padDead: 0.15, btnLay: {}, hudv2: false, smoothMove: false, ctlRev: 2 }); try { saveS(); } catch (e) { } }
 const audio = new AudioSys(S);
 let save = loadSave(LS) || defaultSave(); let game = null, gamePromise = null; let state = 'boot', back = '#title';
 window.__atq = { get game() { return game; }, get state() { return state; }, get save() { return save; } };
@@ -130,21 +132,21 @@ $('#btnRetry').onclick = () => { showScreen(null); state = 'play'; save = loadSa
 $('#btnDeadQuit').onclick = toTitle; $('#btnEndTitle').onclick = toTitle;
 // ---------- settings ----------
 const bindS = (id, k, kind) => { const el = $(id); if (!el) return; if (kind === 'chk') { el.checked = !!S[k]; el.onchange = () => { S[k] = el.checked; saveS(); applyS(k); }; } else if (kind === 'sel') { el.value = S[k]; el.onchange = () => { S[k] = el.value; saveS(); applyS(k); }; } else { el.value = S[k]; el.oninput = () => { S[k] = +el.value; saveS(); applyS(k); }; } };
-function applyCtl() { try { layoutApi && layoutApi.refresh(); } catch (e) { } const b = document.body; b.classList.toggle('lefty', S.hand === 'left'); b.classList.toggle('simple', S.ctl === 'simple'); b.style.setProperty('--tbs', S.btnScale || 1); b.style.setProperty('--tbo', S.btnOp ?? 1); }
+function applyCtl() { try { layoutApi && layoutApi.refresh(); } catch (e) { } const b = document.body; b.classList.toggle('lefty', S.hand === 'left'); b.classList.toggle('simple', S.ctl === 'simple'); b.classList.toggle('hudv2', !!S.hudv2); { const u = document.getElementById('tUse'), a = document.getElementById('tAim'); if (u) u.textContent = S.hudv2 ? 'USE' : '✋'; if (a) a.textContent = S.hudv2 ? 'AIM' : '⌖'; } b.style.setProperty('--tbs', S.btnScale || 1); b.style.setProperty('--tbo', S.btnOp ?? 1); }
 function applyS(k) { applyCtl(); audio.applyVolumes(); document.body.classList.toggle('still', S.still); if (game && k === 'fp') game.cam.fp = S.fp; if (k === 'qual' && game) game.toast?.('Quality change applies after reloading the app', 2.5); }
 bindS('#sVol', 'vol'); bindS('#sMusic', 'music'); bindS('#sSfx', 'sfxVol'); bindS('#sVoiceVol', 'voiceVol'); bindS('#sVoices', 'voices', 'chk'); bindS('#sText', 'text'); bindS('#sAuto', 'auto', 'chk'); bindS('#sGore', 'gore', 'chk'); bindS('#sQte', 'qteEasy', 'chk'); bindS('#sMotion', 'still', 'chk'); bindS('#sHints', 'hints', 'chk');
 bindS('#sQual', 'qual', 'sel'); bindS('#sLang', 'lang', 'sel'); bindS('#sSens', 'sens'); bindS('#sFP', 'fp', 'chk'); applyS();
 // control settings screen (scheme, joystick, layout, sensitivity)
-const CTL_BINDS = () => { bindS('#cCtl', 'ctl', 'sel'); bindS('#cAuto', 'autoFire', 'chk'); bindS('#cAssist', 'assist'); bindS('#cStick', 'stick', 'sel'); bindS('#cHand', 'hand', 'sel'); bindS('#cBtn', 'btnScale'); bindS('#cOp', 'btnOp'); bindS('#cSens', 'sens'); bindS('#cPad', 'padSens'); bindS('#cDead', 'padDead'); bindS('#cInv', 'invertY', 'chk'); };
+const CTL_BINDS = () => { bindS('#cCtl', 'ctl', 'sel'); bindS('#cAuto', 'autoFire', 'chk'); bindS('#cAssist', 'assist'); bindS('#cStick', 'stick', 'sel'); bindS('#cHand', 'hand', 'sel'); bindS('#cBtn', 'btnScale'); bindS('#cOp', 'btnOp'); bindS('#cSens', 'sens'); bindS('#cPad', 'padSens'); bindS('#cDead', 'padDead'); bindS('#cInv', 'invertY', 'chk'); bindS('#cHud', 'hudv2', 'chk'); bindS('#cSmooth', 'smoothMove', 'chk'); };
 CTL_BINDS();
 $('#cCtl').addEventListener('change', () => { if (S.ctl === 'simple') { S.autoFire = true; S.assist = Math.max(S.assist || 0, 0.8); } else { S.autoFire = false; S.assist = 0; } saveS(); CTL_BINDS(); applyCtl(); });
 const padName = () => { const p = navigator.getGamepads ? [...navigator.getGamepads()].find(q => q && q.connected) : null; $('#cPadState').textContent = (p ? 'Controller connected: ' + p.id.slice(0, 48) + '. ' : 'No controller detected (plug in / pair one and press a button). ') + 'Keyboard + mouse: WASD, mouse (click to lock), left click fire, right click aim.'; };
 addEventListener('gamepadconnected', padName); addEventListener('gamepaddisconnected', padName);
 const layoutApi = initLayout(S, saveS, () => showScreen('#ctlset'));
-$('#btnLayEdit').onclick = () => { showScreen(null); layoutApi.open(); };
+$('#btnLayEdit').onclick = () => { if (!S.hudv2) { S.hudv2 = true; saveS(); applyCtl(); } showScreen(null); layoutApi.open(); };
 $('#btnCtlSet').onclick = () => { CTL_BINDS(); padName(); showScreen('#ctlset'); };
 $('#btnCtlRef').onclick = () => { showScreen('#controls'); back = back; };
-$('#btnCtlReset').onclick = () => { Object.assign(S, { ctl: 'twin', autoFire: false, assist: 0, stick: 'float', hand: 'right', btnScale: 1, btnOp: 1, invertY: false, padSens: 1, padDead: 0.15, sens: 1, btnLay: {} }); saveS(); CTL_BINDS(); applyCtl(); };
+$('#btnCtlReset').onclick = () => { Object.assign(S, { ctl: 'twin', autoFire: false, assist: 0, stick: 'float', hand: 'right', btnScale: 1, btnOp: 1, invertY: false, padSens: 1, padDead: 0.15, sens: 1, btnLay: {}, hudv2: false, smoothMove: false }); saveS(); CTL_BINDS(); applyCtl(); };
 $$('.back2').forEach(b => b.onclick = () => { $('#sSens').value = S.sens; showScreen('#settings'); });
 
 // boot

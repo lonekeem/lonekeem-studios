@@ -50,6 +50,11 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.10
+- Controls are back to exactly how v1.9.7 played: same button layout and sizes, stick behaviour, aim button and movement feel. The v1.9.8 thumb-arc layout (with Swap/Grenade buttons) and smooth movement are now opt-in under Settings -> Controls. Control settings saved by v1.9.8/v1.9.9 are reset to the classic default once (look sensitivity is kept).
+- Lighting: removed the emissive lift, strong rim light and always-on face light that made characters look washed out and glowing white. Characters now sit in the scene's own lighting; hand and skin colours match their textures.
+- New 3D models for the side cast: Walt, Ruth, Dube, Gus, Reyes, Tuck, Vance, plus generic male / female townspeople and victims (no more mannequins in the story).
+
 ### v1.9.9
 - Fix: the player always uses the new Keem 3D model, including saves that have a custom-creator look stored (those used to fall back to the old mannequin, e.g. in the Chapter 1 bedroom). The creator look no longer overrides the model.
 

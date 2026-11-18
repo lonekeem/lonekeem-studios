@@ -190,27 +190,27 @@ body.driving #stickZone, body.driving #lbtns, body.driving #tbtns > :not(#tUse),
 .panel select{max-width:60%;font:inherit;font-size:14px}
 body{--tbs:1;--tbo:1}
 #touch #tbtns,#touch #lbtns{opacity:var(--tbo)}#touch #stickBase{opacity:calc(var(--tbo) * .9)}
-#stickBase.idle{opacity:calc(var(--tbo) * .45)}
+body.hudv2 #stickBase.idle{opacity:calc(var(--tbo) * .45)}
 body.lefty #stickZone{left:auto;right:0}
 body.simple #tAim{display:none}
 
 /* v2.0.1 thumb-friendly layout: every touch button is positioned from --x/--y (fraction of the screen) and sized from --bu * --s; users can move/resize them in Settings */
 body{--bu:56px}
-#tbtns,#lbtns{position:absolute;inset:0;width:auto;height:auto;transform:none;pointer-events:none;display:block}
-#touch .rb,#layEdit .rb{position:absolute;left:calc(var(--x,.5) * 100%);top:calc(var(--y,.5) * 100%);width:calc(var(--bu) * var(--s,1));height:calc(var(--bu) * var(--s,1));margin:0;transform:translate(-50%,-50%);font-size:calc(var(--bu) * var(--s,1) * .25);line-height:1;pointer-events:auto;-webkit-tap-highlight-color:transparent;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .06s,background .06s,box-shadow .06s}
-#touch .rb.big,#layEdit .rb.big{font-size:calc(var(--bu) * var(--s,1) * .21);background:rgba(120,20,20,.42)}
-#tReload,#layEdit .ed_tReload{font-size:calc(var(--bu) * var(--s,1) * .5)!important}
-#touch .rb small{font-size:calc(var(--bu) * var(--s,1) * .2)}
-#touch .rb.down,#layEdit .rb.sel{background:rgba(127,212,154,.55);border-color:#c8f7d6;box-shadow:0 0 0 3px rgba(127,212,154,.35),0 0 16px rgba(127,212,154,.65)}
-#touch .rb.down{transform:translate(-50%,-50%) scale(.92)}
-#touch .rb.on{background:rgba(127,212,154,.5);border-color:#c8f7d6;box-shadow:0 0 0 3px rgba(127,212,154,.3),0 0 14px rgba(127,212,154,.5)}
-#touch .rb.big.down{background:rgba(220,60,60,.65);border-color:#ffd0d0;box-shadow:0 0 0 3px rgba(255,120,120,.35),0 0 18px rgba(255,80,80,.7)}
-#hud .rb.down{background:rgba(127,212,154,.55);border-color:#c8f7d6;transform:scale(.92)}
-#touch #tAim.on::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:2px dashed rgba(127,212,154,.8)}
-#touch #stickBase{position:fixed;left:calc(var(--x,.11) * 100%);top:calc(var(--y,.78) * 100%);right:auto;bottom:auto;margin:-60px 0 0 -60px;transform:scale(var(--ss,1))}
+body.hudv2 #tbtns,body.hudv2 #lbtns{position:absolute;inset:0;width:auto;height:auto;transform:none;pointer-events:none;display:block}
+body.hudv2 #touch .rb,#layEdit .rb{position:absolute;left:calc(var(--x,.5) * 100%);top:calc(var(--y,.5) * 100%);width:calc(var(--bu) * var(--s,1));height:calc(var(--bu) * var(--s,1));margin:0;transform:translate(-50%,-50%);font-size:calc(var(--bu) * var(--s,1) * .25);line-height:1;pointer-events:auto;-webkit-tap-highlight-color:transparent;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .06s,background .06s,box-shadow .06s}
+body.hudv2 #touch .rb.big,#layEdit .rb.big{font-size:calc(var(--bu) * var(--s,1) * .21);background:rgba(120,20,20,.42)}
+body.hudv2 #tReload,#layEdit .ed_tReload{font-size:calc(var(--bu) * var(--s,1) * .5)!important}
+body.hudv2 #touch .rb small{font-size:calc(var(--bu) * var(--s,1) * .2)}
+body.hudv2 #touch .rb.down,#layEdit .rb.sel{background:rgba(127,212,154,.55);border-color:#c8f7d6;box-shadow:0 0 0 3px rgba(127,212,154,.35),0 0 16px rgba(127,212,154,.65)}
+body.hudv2 #touch .rb.down{transform:translate(-50%,-50%) scale(.92)}
+body.hudv2 #touch .rb.on{background:rgba(127,212,154,.5);border-color:#c8f7d6;box-shadow:0 0 0 3px rgba(127,212,154,.3),0 0 14px rgba(127,212,154,.5)}
+body.hudv2 #touch .rb.big.down{background:rgba(220,60,60,.65);border-color:#ffd0d0;box-shadow:0 0 0 3px rgba(255,120,120,.35),0 0 18px rgba(255,80,80,.7)}
+body.hudv2 #hud .rb.down{background:rgba(127,212,154,.55);border-color:#c8f7d6;transform:scale(.92)}
+body.hudv2 #touch #tAim.on::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:2px dashed rgba(127,212,154,.8)}
+body.hudv2 #touch #stickBase{position:fixed;left:calc(var(--x,.11) * 100%);top:calc(var(--y,.78) * 100%);right:auto;bottom:auto;margin:-60px 0 0 -60px;transform:scale(var(--ss,1))}
 body.simple #touch #tAim{display:none}
-body.driving #touch #tUse{left:50%;top:80%}
-@media (pointer:coarse){#btnSwap,#btnGren{display:none}}
+body.hudv2.driving #touch #tUse{left:50%;top:80%}
+@media (pointer:coarse){body.hudv2 #btnSwap,body.hudv2 #btnGren{display:none}}
 @media (pointer:fine){#tSwap,#tGren{display:none}}
 #lookRing{position:fixed;width:84px;height:84px;margin:-42px 0 0 -42px;border-radius:50%;border:2px solid rgba(220,235,225,.35);background:rgba(10,20,14,.12);pointer-events:none;opacity:0;transition:opacity .25s;z-index:4}
 #lookRing.on{opacity:1;transition:none}
@@ -230,8 +230,19 @@ body.driving #touch #tUse{left:50%;top:80%}
 #layEdit .ledbar input{width:130px}
 #layEdit .hint{position:absolute;left:50%;top:62px;transform:translateX(-50%);opacity:.75;text-align:center;pointer-events:none}
 
-#dlg:not(.on){pointer-events:none}#dlg{z-index:4}
+body.hudv2 #dlg:not(.on){pointer-events:none}body.hudv2 #dlg{z-index:4}
 #stickBase{width:120px;height:120px;border-radius:50%;border:2px solid rgba(220,235,225,.5);background:rgba(10,20,14,.25)}
 #layEdit .rb{display:flex;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;border:2px solid rgba(220,235,225,.55);border-radius:50%;color:#e8f5ec}
 #layEdit .ledbar{width:max-content;max-width:96vw}#layEdit .ledbar b{min-width:92px}
 #layEdit .hint{top:64px;max-width:60vw}
+
+/* v1.9.10: classic v1.9.7 touch HUD is the default again; the thumb-arc layout (body.hudv2) is opt-in */
+body:not(.hudv2) #tSwap,body:not(.hudv2) #tGren,body:not(.hudv2) #lookRing{display:none!important}
+body:not(.hudv2) #stickBase{position:absolute;left:max(40px,env(safe-area-inset-left));bottom:28px}
+body:not(.hudv2) #lbtns{position:absolute;left:max(12px,env(safe-area-inset-left));top:112px;display:flex;flex-direction:column;gap:26px;pointer-events:auto;z-index:4}
+@media (max-height:420px){body:not(.hudv2) #lbtns{gap:22px;top:104px}}
+body:not(.hudv2) #tbtns{position:absolute;right:max(14px,env(safe-area-inset-right));bottom:26px;width:240px;height:220px;pointer-events:none}
+body:not(.hudv2) #tbtns .rb{position:absolute;pointer-events:auto}
+body:not(.hudv2) #tAtk{right:40px;bottom:40px}body:not(.hudv2) #tAim{right:0;bottom:-8px;width:44px!important;height:44px!important}
+body:not(.hudv2) #tReload{right:140px;bottom:20px}body:not(.hudv2) #tRoll{right:132px;bottom:84px}body:not(.hudv2) #tJump{right:82px;bottom:140px}body:not(.hudv2) #tUse{right:12px;bottom:150px}
+body:not(.hudv2).driving #tbtns{bottom:150px}

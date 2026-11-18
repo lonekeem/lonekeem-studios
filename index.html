@@ -72,7 +72,7 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
     <button id="btnControls">Controls</button>
     <button id="btnCredits">Credits</button>
   </div>
-  <div class="foot">v1.9.9 · Story Mode · Chapters 1–11 · Swan Song</div>
+  <div class="foot">v1.9.10 · Story Mode · Chapters 1–11 · Swan Song</div>
 </div>
 <div id="settings" class="screen hidden">
   <div class="panel">
@@ -100,6 +100,8 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
   <div class="panel wide">
     <h2>Control Settings</h2>
     <div class="cgrid">
+      <label class="chk"><input type="checkbox" id="cHud"> New thumb-arc button layout + extra Swap/Grenade buttons (off = classic v1.9.7 layout)</label>
+      <label class="chk"><input type="checkbox" id="cSmooth"> Smooth movement (acceleration + blended walk/run; off = classic v1.9.7 feel)</label>
       <label>Control scheme <select id="cCtl"><option value="twin">Classic twin-stick (move / look / fire button)</option><option value="simple">Simple: tap to shoot + strong aim assist</option></select></label>
       <label class="chk"><input type="checkbox" id="cAuto"> Auto-fire when an enemy is under the crosshair</label>
       <label>Aim assist <input type="range" id="cAssist" min="0" max="1" step="0.05"></label>
