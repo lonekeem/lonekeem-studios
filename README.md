@@ -50,6 +50,10 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.8
+- Real 3D characters: Keem, Nia, Dad, the raiders and the zombies are now smooth, textured cartoon models (with clean mitten hands) instead of the old block mannequins. They are driven by the existing animation skeleton, so movement, aiming, shooting, melee, death and every other behaviour are unchanged. Biscuit the rabbit is a new model too. Custom-creator characters and townspeople keep the previous look for now.
+- Slightly brighter character lighting; `?rig=0` in the URL switches back to the old mannequins (for comparison).
+
 ### v1.9.7
 - Boss kills play out: ~1.3s slow-mo, the full death/collapse, then "BOSS DOWN" and a few seconds of free control before any dialogue, fade, cutscene or chapter-end screen. Applies to all 11 bosses (raider bosses included).
 - Cleared fights wait ~2s for the last death to finish before "Area clear" appears; the Chapter 11 rooftop waves no longer cut straight to the final boss.
