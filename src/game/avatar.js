@@ -53,7 +53,10 @@ function buildMitten(info, thumbDir, mat) {
 }
 
 export const EXTRA = {}; // non-character models (Biscuit the rabbit)
-export async function loadRigs(base, keys = ['keem', 'nia', 'dad', 'raider', 'zombie2']) {
+// character lighting: characters sit in the scene's own lighting; only a faint lift/rim keeps silhouettes readable in the dark (?lift= / ?rim= for tuning)
+const _qp = (k, d) => { try { const v = new URLSearchParams(location.search).get(k); return v == null ? d : +v; } catch (e) { return d; } };
+const LIGHT = { lift: _qp('lift', 0.05), rim: _qp('rim', 0.1) };
+export async function loadRigs(base, keys = ['keem', 'nia', 'dad', 'raider', 'zombie2', 'walt', 'ruth', 'dube', 'gus', 'reyes', 'tuck', 'vance', 'genm', 'genf']) {
   const out = {}; const L = new GLTFLoader(); L.loadAsync(base + 'models/chars/biscuit.glb').then(g => { EXTRA.biscuit = g.scene; }).catch(() => { });
   await Promise.all(keys.map(k => L.loadAsync(base + 'models/chars/' + k + '.glb').then(g => { out[k] = g.scene; }).catch(() => { })));
   return out;
@@ -67,15 +70,15 @@ export function attachRig(ch, scene, opt = {}) {
   if (!skin) return null;
   skin.frustumCulled = false; skin.castShadow = true; skin.receiveShadow = false;
   const mat = skin.material; if (mat) { mat.side = THREE.FrontSide; mat.roughness = .62; mat.metalness = 0; if (mat.map) { mat.map.anisotropy = 8; mat.map.minFilter = THREE.LinearMipmapLinearFilter; mat.map.needsUpdate = true; } mat.needsUpdate = true; }
-  if (opt.tint && mat) { skin.material = mat.clone(); const t = opt.tint; skin.material.color.setRGB(.72 + t[0] * .5, .72 + t[1] * .5, .72 + t[2] * .5); } // per-body variety for crowds (shares geometry + texture)
+  if (opt.tint && mat) { skin.material = mat.clone(); const t = opt.tint; { const a = opt.tintK || .5, b = 1 - a / 2; skin.material.color.setRGB(b + t[0] * a * .98, b + t[1] * a * .98, b + t[2] * a * .98); } } // per-body variety for crowds (shares geometry + texture)
   { // brighter, crisper character read: gentle self-lit lift (keeps the texture) + soft cool rim so figures separate from the dark street
-    const m2 = skin.material; const lift = opt.tint ? .14 : .26; if (m2.map) { m2.emissiveMap = m2.map; m2.emissive = new THREE.Color('#ffffff'); m2.emissiveIntensity = lift; }
-    m2.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n { float rimF = pow(1.0 - clamp(abs(dot(normalize(normal), normalize(vViewPosition))), 0.0, 1.0), 2.6); totalEmissiveRadiance += vec3(0.55, 0.68, 0.95) * rimF * ' + (opt.tint ? '0.2' : '0.3') + '; }'); };
+    const m2 = skin.material; const lift = LIGHT.lift * (opt.tint ? .5 : 1); if (m2.map) { m2.emissiveMap = m2.map; m2.emissive = new THREE.Color('#ffffff'); m2.emissiveIntensity = lift; }
+    m2.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n { float rimF = pow(1.0 - clamp(abs(dot(normalize(normal), normalize(vViewPosition))), 0.0, 1.0), 2.6); totalEmissiveRadiance += vec3(0.55, 0.68, 0.95) * rimF * ' + (LIGHT.rim * (opt.tint ? .7 : 1)).toFixed(3) + '; }'); };
     m2.customProgramCacheKey = () => 'avrim' + (opt.tint ? 'z' : 'h'); m2.needsUpdate = true; }
   ch.root.add(obj); ch.skin = skin; ch.skinRoot = obj;
   // swap the generated hands for clean mittens
   { const H = processHands(skin); skin.geometry = H.geo; const mats = {};
-    ['Left', 'Right'].forEach(sd => { const hi = H.hands[sd]; const hb = B[sd + 'Hand']; if (!hi || !hb) return; const hc = opt.handColor ? new THREE.Color(opt.handColor) : hi.color; const mat = new THREE.MeshStandardMaterial({ color: hc, roughness: opt.handColor ? .8 : .62, metalness: 0, emissive: hc, emissiveIntensity: opt.tint ? .12 : .22 });
+    ['Left', 'Right'].forEach(sd => { const hi = H.hands[sd]; const hb = B[sd + 'Hand']; if (!hi || !hb) return; const hc = opt.handColor ? new THREE.Color(opt.handColor) : hi.color.clone().multiplyScalar(.86); const mat = new THREE.MeshStandardMaterial({ color: hc, roughness: opt.handColor ? .8 : .62, metalness: 0, emissive: hc, emissiveIntensity: LIGHT.lift * (opt.tint ? .5 : 1) });
       const ib = skin.skeleton.bones.indexOf(hb); _m.copy(skin.skeleton.boneInverses[ib]).invert().decompose(_p, _q, _s); const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(_q.clone().invert()); // world +Z (front) in hand-local axes
       hb.add(buildMitten(hi, fwd, mat)); mats[sd] = mat; }); ch.handMats = mats; ch._H = H; }
   // the mannequin keeps animating but is no longer drawn

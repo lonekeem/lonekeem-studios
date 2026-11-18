@@ -14,7 +14,7 @@ const gltf = await new GLTFLoader().loadAsync('/models/AnimationLibrary_Godot_St
 const whoList = (q.get('who') || 'keem').split(','); const anim = q.get('anim') || 'Idle_Loop'; const gun = q.get('gun'); const rot = +q.get('rot') || 0; const sp = +q.get('sp') || 1.1;
 const floor = new THREE.Mesh(new THREE.CircleGeometry(9, 40), new THREE.MeshStandardMaterial({ color: '#2c2f34', roughness: 1 })); floor.rotation.x = -Math.PI / 2; sc.add(floor);
 let c = null; const all = [];
-for (let i = 0; i < whoList.length; i++) { const who = whoList[i]; const L = who === 'raider' ? raiderLook(4) : who === 'zed' ? randomLook(21, true) : CAST[who]; const ch = new Char(lib, L, who === 'nia' ? .62 : who === 'keem' ? .9 : .98);
+for (let i = 0; i < whoList.length; i++) { const who = whoList[i]; const L = who === 'raider' ? raiderLook(4) : who === 'zed' ? randomLook(21, true) : (CAST[who] || Object.assign(randomLook(5, false), { rig: who })); const ch = new Char(lib, L, who === 'nia' ? .62 : who === 'keem' ? .9 : .98);
   sc.add(ch.root); ch.root.position.x = (i - (whoList.length - 1) / 2) * sp; ch.root.rotation.y = rot; const an = who === 'zed' ? 'Walk_Loop' : who === 'raider' ? (q.get('ranim') || 'Pistol_Aim_Neutral') : anim; ch.play(an); ch.mixer.update(+q.get('t') || 0.5);
   const g = who === 'raider' ? 'rifle' : who === 'zed' ? null : gun; if (g) { const h = new THREE.Group(); h.add(weaponMesh(g)); h.rotation.set(Math.PI / 2, 0, 0); h.position.set(0, .08, .02); ch.attach('DEF-hand.R', h); }
   if (who === 'nia') { await new Promise(r => setTimeout(r, 600)); const rb = makeRabbit(); ch.attach('DEF-spine.003', rb); rb.position.set(0.1, 0.1, -0.02); }
