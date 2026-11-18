@@ -11,6 +11,7 @@ import { buildWorld } from './world.js';
 import { CAST, randomLook, raiderLook, DEFAULT_LOOK } from './looks.js';
 import { bossProp, wrap, walkie } from './props.js';
 import { CharLib, Char, backpack, weaponMesh, makeDog, makeRabbit } from './chars.js';
+import { buildPickup } from './gear.js';
 import { WEAPONS, WEAPON_ORDER, stat, perk, xpFor, PERKS, writeSave } from './data.js';
 import { V3, clamp, lerp, rnd, angLerp, bloodTex } from './util.js';
 import { Input } from './input.js';
@@ -161,7 +162,8 @@ export class Game {
   // ---------- pickups ----------
   addPickup(l) { const g = new THREE.Group(); let m;
     const glow = new THREE.MeshBasicMaterial({ color: l.kind === 'page' ? '#e8e0a0' : l.kind === 'hp' ? '#ff5050' : l.drop ? '#ffd040' : '#7fd49a', transparent: true, opacity: .35, depthWrite: false });
-    if (l.kind === 'cash') m = new THREE.Mesh(new THREE.BoxGeometry(.25, .06, .14), new THREE.MeshStandardMaterial({ color: '#5a8a4a', emissive: '#203a10' }));
+    if (['cash', 'ammo', 'hp', 'med', 'grenade'].includes(l.kind) && (m = buildPickup(l.kind, l.drop))) { /* v2.0 realistic pickup models */ }
+    else if (l.kind === 'cash') m = new THREE.Mesh(new THREE.BoxGeometry(.25, .06, .14), new THREE.MeshStandardMaterial({ color: '#5a8a4a', emissive: '#203a10' }));
     else if (l.kind === 'ammo' && l.drop) m = (this._amM || (this._amM = new THREE.Mesh(new THREE.BoxGeometry(.3, .18, .2), new THREE.MeshStandardMaterial({ color: '#c9a227', emissive: '#3a2a00', metalness: .4 })))).clone();
     else if (l.kind === 'ammo') m = new THREE.Mesh(new THREE.BoxGeometry(.3, .18, .2), new THREE.MeshStandardMaterial({ color: '#4a5a2a', metalness: .4 }));
     else if (l.kind === 'hp') m = this._hpM || (this._hpM = new THREE.Mesh(new THREE.BoxGeometry(.28, .2, .2), new THREE.MeshStandardMaterial({ color: '#e33', emissive: '#600' }))), m = m.clone();

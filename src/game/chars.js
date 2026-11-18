@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { bodyLook, dressChar } from './looks.js';
 import { canvasTex } from './util.js';
+import { buildWeapon } from './gear.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 // Body material: one CC0 Quaternius mannequin, "dressed" in the shader by bind-pose regions
@@ -132,6 +133,7 @@ export function backpack() { const g = new THREE.Group(); const m = new THREE.Me
   g.traverse(o => { if (o.isMesh) o.castShadow = true; }); return g; }
 
 export function weaponMesh(id) {
+  { const r = buildWeapon(id); if (r) return r; }
   const g = new THREE.Group(); const dark = new THREE.MeshStandardMaterial({ color: '#1c1c1e', metalness: .7, roughness: .4 });
   const wood = new THREE.MeshStandardMaterial({ color: '#6b4a2b', roughness: .7 }); const steel = new THREE.MeshStandardMaterial({ color: '#9aa0a6', metalness: .9, roughness: .3 });
   const add = (geo, mat, x, y, z, rx = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.x = rx; m.castShadow = true; g.add(m); return m; };

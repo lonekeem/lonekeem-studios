@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { signTex, grassBladeTex, rnd, canvasTex } from './util.js';
+import { furnishKeemHouse } from './interiors.js';
 
 // Riverside, Maine — procedural night town built from CC0 Poly Haven PBR textures.
 export function buildWorld(scene, Q, texLoader, base, CM = {}) {
@@ -76,6 +77,7 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
   const lampM = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), new THREE.MeshBasicMaterial({ color: '#ffc080' })); lampM.position.copy(lamp.position); scene.add(lampM);
   const poster = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.1), new THREE.MeshStandardMaterial({ map: signTex(['ZOMBIE', 'KING III', 'in theaters'], '#2a0a0a', '#e44', 256, 352) })); poster.position.set(19.88, 1.6, 43.5); poster.rotation.y = -Math.PI / 2; scene.add(poster);
   updaters.push((dt, t) => { lamp.intensity = 1.2 + Math.sin(t * 13) * 0.05 + (Math.random() < .02 ? -0.8 : 0); });
+  furnishKeemHouse(scene, updaters); // v2.0 decor-only furnishing (no colliders)
 
   // neighborhood houses
   const hs = [[16, 20], [16, 0 + 12], [16, -12], [16, 56], [-16, 40], [-16, 20], [-16, -12], [-16, 56], [-30, 40], [30, 26], [30, -14], [-30, -14], [-30, 20]];
