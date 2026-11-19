@@ -32,3 +32,9 @@ Goal: Bitmoji-style original guy + girl (refs: /workspace/keem-vids/ref_guy.jpg,
 - Turtleneck collar stops at the neck tube base (no high collar mesh).
 - Sun visor band hides inside big hair; rider helmet visor is opaque black.
 - Garment folds are procedural bump only (no real geometry wrinkles).
+
+## Perf pass (final)
+- Garment shells now use per-layer index subsets (LAYER_REG in dress.js) and skip head triangles.
+- Hair cap 160x40 -> 128x36, braid lumps 12x8 -> 9x6 spheres.
+- Default looks: guy ~83k tris, girl ~91k tris (down from ~100k / ~122k).
+- Grids for tops/jackets/pants/shoes/hair/hats and the ref views were re-rendered after the pass.
