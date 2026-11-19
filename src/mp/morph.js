@@ -2,11 +2,11 @@
 import * as THREE from 'three';
 export const MORPHS = {
   // [key, label, group, default]
-  head: [['headSize', 'Head size'], ['faceW', 'Face width'], ['faceLen', 'Face length'], ['forehead', 'Forehead'], ['browRidge', 'Brow ridge'], ['cheekbone', 'Cheekbones'], ['cheekFull', 'Cheek fullness'], ['jaw', 'Jaw width'], ['chin', 'Chin length'], ['chinW', 'Chin pointiness']],
-  eyes: [['eyeDepth', 'Eye socket depth']],
+  head: [['headSize', 'Head size'], ['faceW', 'Face width'], ['faceLen', 'Face length'], ['forehead', 'Forehead'], ['cheekbone', 'Cheekbones'], ['cheekFull', 'Cheek fullness'], ['jaw', 'Jaw width'], ['chin', 'Chin length'], ['chinW', 'Chin width']],
+  eyes: [],
   nose: [['noseW', 'Nose width'], ['noseLen', 'Nose length'], ['noseBridge', 'Nose bridge'], ['noseTip', 'Nose tip']],
   mouth: [['lipFull', 'Lip fullness']],
-  ears: [['earSize', 'Ear size'], ['earOut', 'Ear stick-out'], ['earPoint', 'Ear point']],
+  ears: [['earSize', 'Ear size'], ['earOut', 'Ear stick-out']],
   body: [['muscle', 'Muscle'], ['weight', 'Belly / weight'], ['chest', 'Chest'], ['shoulders', 'Shoulder width'], ['hips', 'Hips'], ['legs', 'Leg thickness'], ['neck', 'Neck thickness']],
 };
 const g = (dx, dy, dz, r) => Math.exp(-(dx * dx + dy * dy + dz * dz) / (2 * r * r));

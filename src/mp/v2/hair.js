@@ -214,3 +214,50 @@ export function hairMaterial(c1, c2, hl = .35) {
   };
   m.customProgramCacheKey = () => 'v2hair'; _mats.set(key, m); return m;
 }
+
+// ---------- facial hair: polar band around the mouth. Inner edge = first entry into the mask, outer edge = exit; both edges tuck under
+// the skin, so beards have clean smooth outlines and a clean opening around the lips.
+export const BEARD_STYLES = { // mask(p, a, L) on head-local surface points; T thickness, curl
+  full: { T: .0075, curl: .0018, mask: (p, a, L) => Math.abs(a) < 84 && offNeck(p) && p.y < topLine(a, L, 1) && !mouthHole(p, L, .009) },
+  boxed: { T: .004, curl: .0008, mask: (p, a, L) => Math.abs(a) < 84 && offNeck(p) && p.y < topLine(a, L, .8) && !mouthHole(p, L, .008) },
+  lumber: { T: .013, curl: .003, mask: (p, a, L) => Math.abs(a) < 86 && offNeck(p) && p.y < topLine(a, L, 1.15) && !mouthHole(p, L, .01) },
+  goatee: { T: .006, curl: .0015, mask: (p, a, L) => Math.abs(p.x) < .034 && p.y < L.mouthY - .006 && p.z > .02 },
+  circle: { T: .006, curl: .0015, mask: (p, a, L) => Math.abs(p.x) < .036 + .006 * Math.max(0, (L.mouthY - p.y) * 20) && p.y < L.mouthY + .022 && p.z > .02 && !mouthHole(p, L, .007) },
+  strap: { T: .0045, curl: .001, mask: (p, a, L) => Math.abs(a) < 84 && offNeck(p) && p.y < topLine(a, L, 1) && p.y < jawBand(p, a, L) && !mouthHole(p, L, .02) && !(Math.abs(p.x) < .06 && p.y > L.mouthY - .024) },
+  curtain: { T: .006, curl: .0015, mask: (p, a, L) => Math.abs(a) < 84 && offNeck(p) && p.y < topLine(a, L, 1) && p.y < jawBand(p, a, L) + .02 && !(Math.abs(p.x) < .05 && p.y > L.mouthY - .02) },
+  mutton: { T: .006, curl: .0015, mask: (p, a, L) => Math.abs(a) < 86 && Math.abs(a) > 40 && offNeck(p) && p.y < topLine(a, L, 1) && p.y > L.mouthY - .03 },
+  soul: { T: .005, curl: 0, mask: (p, a, L) => Math.abs(p.x) < .009 && p.y < L.mouthY - .012 && p.y > L.mouthY - .03 && p.z > .02 },
+};
+export const STACHE_STYLES = {
+  chevron: { T: .007, mask: (p, a, L) => p.z > .02 && Math.abs(p.x) < .033 && p.y > L.mouthY + .008 - Math.abs(p.x) * .15 && p.y < L.mouthY + .024 - Math.abs(p.x) * .2 },
+  pencil: { T: .003, mask: (p, a, L) => p.z > .02 && Math.abs(p.x) < .03 && p.y > L.mouthY + .009 && p.y < L.mouthY + .0145 },
+  handlebar: { T: .006, mask: (p, a, L) => p.z > .02 && Math.abs(p.x) < .046 && p.y > L.mouthY + .008 + Math.max(0, Math.abs(p.x) - .03) * 1.2 - Math.abs(p.x) * .1 && p.y < L.mouthY + .02 + Math.max(0, Math.abs(p.x) - .03) * 1.8 - Math.abs(p.x) * .12 },
+  walrus: { T: .011, mask: (p, a, L) => p.z > .02 && Math.abs(p.x) < .04 && p.y > L.mouthY + .0 && p.y < L.mouthY + .026 - Math.abs(p.x) * .15 },
+  horseshoe: { T: .007, mask: (p, a, L) => p.z > .02 && ((Math.abs(p.x) < .034 && p.y > L.mouthY + .008 && p.y < L.mouthY + .022) || (Math.abs(p.x) > .027 && Math.abs(p.x) < .038 && p.y < L.mouthY + .022 && p.y > L.mouthY - .04)) },
+};
+export const BEARD_ALIAS = { anchor: 'goatee', vandyke: 'circle', jawline: 'strap' }; export const STACHE_ALIAS = { toothbrush: 'pencil', fumanchu: 'horseshoe', imperial: 'handlebar', painter: 'chevron' };
+function topLine(a, L, k) { const aa = Math.abs(a); return interp([[0, L.mouthY + .024], [16, L.mouthY + .025], [28, -.052 + .01 * (k - 1)], [45, -.04 + .015 * (k - 1)], [62, -.026 + .02 * (k - 1)], [78, -.004 + .01 * (k - 1)], [86, .006]], aa); }
+const offNeck = p => Math.hypot(p.x, p.z + .025) > .056 || p.y > -.08;
+function jawBand(p, a, L) { return -.112 + Math.abs(p.x) * .9 * Math.min(1, Math.abs(a) / 90 + .2); }
+function mouthHole(p, L, m) { const a = p.x / (.032 + m), b = (p.y - L.mouthY + .002) / (.012 + m * .55); return a * a + b * b < 1 && p.z > .03; }
+export function buildBand(head, st, opt = {}) {
+  const L = head.L; const ax = new THREE.Vector3(0, L.mouthY, .13).normalize(); const up = new THREE.Vector3(0, 1, 0); const F = up.clone().addScaledVector(ax, -ax.dot(up)).normalize(); const X = new THREE.Vector3().crossVectors(F, ax).normalize();
+  const fr = { A: ax, F, X }; const NPH = 140, NU = 18; const inM = d => { const p = surf(head, d); const a = Math.atan2(p.x, p.z) / D2R; return st.mask(p, a, L); };
+  const tin = new Float32Array(NPH), tout = new Float32Array(NPH);
+  for (let j = 0; j < NPH; j++) { const ph = j / NPH * Math.PI * 2; let th = 0, st0 = -1, en = -1; let prev = inM(dirOf(fr, 0, ph));
+    if (prev) st0 = 0; for (th = 1.2 * D2R; th < 100 * D2R; th += 1.2 * D2R) { const c = inM(dirOf(fr, th, ph)); if (c && !prev && st0 < 0) st0 = th; if (!c && prev && st0 >= 0) { en = th; break; } prev = c; }
+    if (st0 < 0) { tin[j] = tout[j] = -1; continue; } if (en < 0) en = 100 * D2R;
+    const bis = (a, b, wantIn) => { for (let k = 0; k < 12; k++) { const m = (a + b) / 2; if (inM(dirOf(fr, m, ph)) === wantIn) b = m; else a = m; } return (a + b) / 2; };
+    tin[j] = st0 > 0 ? bis(st0 - 1.2 * D2R, st0, true) : 0; tout[j] = bis(en - 1.2 * D2R, en, false); }
+  // fill empty columns with a zero-width band at the neighbour's position (keeps one closed grid), then smooth
+  for (let j = 0; j < NPH; j++) if (tin[j] < 0) { let k = 1; while (k < NPH && tin[(j + k) % NPH] < 0 && tin[(j - k + NPH) % NPH] < 0) k++; const src = tin[(j + k) % NPH] >= 0 ? (j + k) % NPH : (j - k + NPH) % NPH; const m = (tin[src] + tout[src]) / 2; tin[j] = -m - 10; tout[j] = m; }
+  const fix = arr => { const t = Float32Array.from(arr); for (let j = 0; j < NPH; j++) { const a = t[(j + NPH - 1) % NPH], b = t[j], c = t[(j + 1) % NPH]; arr[j] = (a + 2 * b + c) / 4; } };
+  const empty = Array.from(tin, v => v < -5); for (let j = 0; j < NPH; j++) if (empty[j]) tin[j] = tout[j]; fix(tin); fix(tout);
+  const pos = [], tan = [], aux = [], idx = []; const NR = NU + 3;
+  for (let j = 0; j <= NPH; j++) { const jj = j % NPH, ph = jj / NPH * Math.PI * 2; const w0 = tin[jj], w1 = tout[jj]; const band = Math.max(0, w1 - w0); const zero = empty[jj] || band < .5 * D2R;
+    for (let i = 0; i < NR; i++) { let th, t; if (i === 0) { th = Math.max(0, w0 - 1 * D2R); t = -.0025; } else if (i === NR - 1) { th = w1 + 1 * D2R; t = -.0025; } else { const u = (i - 1) / (NU); th = w0 + band * u; const e = ss(0, .2, u) * ss(1, .62, u); t = zero ? -.0025 : st.T * Math.pow(e, .7) + .0008 * (1 - e); }
+      const d = dirOf(fr, th, ph); const p = surf(head, d); const n = normalAt(head, p); if (t > 0 && !opt.flat) t *= .5 + .5 * ss(-.03, -.13, p.y) + .15 * ss(.03, 0, Math.abs(p.x)); if (st.curl && t > 0) t += st.curl * (Math.abs(Math.sin(p.x * 260 + Math.sin(p.y * 200) * 2) * Math.sin(p.y * 260 + p.z * 150)) - .3) * (t / st.T); const q = p.addScaledVector(n, t);
+      pos.push(q.x, q.y, q.z); const tg = new THREE.Vector3(0, -1, 0).addScaledVector(n, -(-n.y)).normalize(); tan.push(tg.x, tg.y, tg.z); aux.push(.5 + .5 * Math.sin(ph * 40), i / NR, ph / 6.283, 5); } }
+  for (let j = 0; j < NPH; j++) for (let i = 0; i < NR - 1; i++) { const a = j * NR + i, b = (j + 1) * NR + i; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aT', new THREE.Float32BufferAttribute(tan, 3)); g.setAttribute('aH', new THREE.Float32BufferAttribute(aux, 4)); g.setIndex(idx); g.computeVertexNormals(); return g;
+}

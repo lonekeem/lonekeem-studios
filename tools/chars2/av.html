@@ -1,0 +1,20 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#222}</style><script>window.__MP_BASE="/";</script><script type="module">
+import * as THREE from 'three';
+import { loadBase, Avatar } from '/src/mp/avatar.js';
+import { dress } from '/src/mp/dress.js';
+import { defaultLook, normalize } from '/src/mp/look.js';
+const q=new URLSearchParams(location.search); const key=q.get('k')||'mp_m1'; const W=+(q.get('w')||1200),H=+(q.get('h')||600);
+const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true}); r.setSize(W,H); r.setPixelRatio(1); document.body.appendChild(r.domElement); r.outputColorSpace=THREE.SRGBColorSpace; r.toneMapping=THREE.ACESFilmicToneMapping;
+const sc=new THREE.Scene(); sc.background=new THREE.Color(q.get('bg')||'#4a4e5a'); sc.add(new THREE.HemisphereLight('#dfe6ff','#5a5448',1.15)); const dl=new THREE.DirectionalLight('#fff4e6',2.3); dl.position.set(1.6,2.6,3); sc.add(dl); const rim=new THREE.DirectionalLight('#9bb4ff',.9); rim.position.set(-2,2,-2.5); sc.add(rim);
+const tpl=await loadBase(key); const av=new Avatar(tpl); sc.add(av.root);
+let look=defaultLook(key); if(q.get('look')) look=normalize(Object.assign(look, JSON.parse(q.get('look'))));
+dress(av, look); window.av=av;
+const h=av.head2; const C=h.C.clone().multiplyScalar(av.root.scale.x); const cam=new THREE.PerspectiveCamera(30,1,.01,50); r.setScissorTest(true);
+const views=(q.get('views')||'front,q34,face,back').split(','); const vw=W/views.length;
+views.forEach((m,i)=>{ const x=i*vw; r.setViewport(x,0,vw,H); r.setScissor(x,0,vw,H); cam.aspect=vw/H; cam.updateProjectionMatrix(); const top=1.0;
+ if(m==='front'){cam.position.set(0,.95,4.6);cam.lookAt(0,.9,0);} else if(m==='q34'){cam.position.set(2.6,1.05,3.7);cam.lookAt(0,.9,0);} else if(m==='back'){cam.position.set(-1.2,1.05,-4.4);cam.lookAt(0,.9,0);}
+ else if(m==='face'){cam.position.set(0,C.y,C.z+1.05);cam.lookAt(0,C.y-.01,C.z);} else if(m==='faceq'){cam.position.set(.62,C.y+.03,C.z+.85);cam.lookAt(0,C.y-.01,C.z);} else if(m==='faces'){cam.position.set(1.0,C.y,C.z+.1);cam.lookAt(0,C.y-.01,C.z);} else if(m==='faceb'){cam.position.set(.5,C.y-.5,C.z+.7);cam.lookAt(0,C.y-.04,C.z);} else if(m==='side'){cam.position.set(4.6,.95,0);cam.lookAt(0,.9,0);}
+ else if(m==='upper'){cam.position.set(.8,1.3,2.0);cam.lookAt(0,1.25,0);} else if(m==='feet'){cam.position.set(.8,.4,1.4);cam.lookAt(0,.12,0);} else if(m==='hands'){cam.position.set(.9,.95,1.2);cam.lookAt(.35,.9,0);}
+ r.render(sc,cam); });
+document.title='done';
+</script>

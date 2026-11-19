@@ -7,7 +7,7 @@ import { shellMaterial } from './hair.js';
 import { Builder, rigid } from './build.js';
 import { makeCtx, HAT, GLASSES, EAR, PIERCE, NECK, WRIST, RING, BAG, BELT } from './acc.js';
 import { buildHair } from './hairx.js';
-import { faceParts } from './facepart.js';
+import { buildHead, buildHairMesh, buildFacialHair, headCtx, buildMask } from './v2/headrig.js';
 import * as C from './catalog.js';
 import { MORPH_KEYS } from './look.js';
 
@@ -78,16 +78,11 @@ export function dress(av, look) {
   const bd = look.beard; U.uStub.value.set(bd.id === 'stubble' ? .55 + .3 * bd.len : 0, 1, 0, 0);
   // ---- clothes
   const w = look.worn; setUnder(av, f); setGarment(av, 'top', 0, w.top, C.TOPS); setGarment(av, 'jacket', 3, w.jacket, C.JACKETS); setGarment(av, 'pants', 1, w.pants, C.PANTS); setGarment(av, 'shoes', 2, w.shoes, C.SHOES); setGarment(av, 'gloves', 4, w.gloves, C.GLOVES);
-  const ctx = makeCtx(av); av._ctx = ctx; const A = look.acc;
+  buildHead(av, look); const ctx = headCtx(av, makeCtx(av)); av._ctx = ctx; const A = look.acc;
   // ---- hair / beard / mustache / mask shells (+ volumetric extras)
   const hat = A.hat && C.HATS.find(h => h[0] === A.hat.id); const hatFam = hat ? hat[2] : null; const covers = hat && !['headband', 'visor', 'crown'].includes(hatFam);
-  const hs = C.HAIR.find(h => h[0] === look.hair.id) || C.HAIR[0]; const hm = headLayer(av, 'hair', 0); hm.visible = hs[0] !== 'bald'; { const u = hm.material.userData.U, off = hm.material.userData.off; const bd2 = hs[6]; u.uLm.value.set(L.cx, L.chinY, L.hw, L.hw); u.uHc.value.set(L.zc, L.front, L.back, 0); u.uH1.value.set(hs[3], hs[4], hs[5], 0); u.uH2.value.set(hs[6], covers ? 0 : hs[7], covers ? 0 : hs[8], hs[11 - 0]); u.uH3.value.set(hs[9], 1, 1, hs[10]); off.value = 0; u.uC1.value.set(look.hair.c); u.uC2.value.set(look.hair.c2); }
-  const hx = new Builder(); const ex = hs[12].filter(e => !(covers && ['afro', 'quiff', 'spikes', 'fin', 'block', 'fringe', 'bun', 'puffs', 'knots', 'curtain'].includes(e[0]) && !(e[0] === 'bun' && e[1] === 'low')));
-  buildHair(hx, ctx, ex); if (hx.keys().length) mount(av, 'hairx', hx, { a: { c: look.hair.c, hair: true }, b: { c: look.hair.c2, hair: true } }, 'Head'); else clearAcc(av, 'hairx');
-  const bm = headLayer(av, 'beard', 1), sm = headLayer(av, 'stache', 2); const bi = C.BEARDS.find(b => b[0] === bd.id), si = C.STACHES.find(b => b[0] === look.stache.id);
-  const setFH = (m, it, o, id) => { m.visible = !!it && it[2] > 0; if (!m.visible) return; const u = m.material.userData.U; m.material.userData.off.value = 0; u.uLm.value.set(L.cx, L.chinY, L.hw, L.hw); u.uHc.value.set(L.zc, L.front, L.back, 0); u.uMo.value.set(.815, .28, 1.83, 1.07); u.uH2.value.set(.004 + .022 * o.len, .002, .0, 0); u.uH3.value.set(it[2], 1, .45 + .55 * o.dens, 0); u.uC1.value.copy(o.c ? col(o.c) : col(look.hair.c).multiplyScalar(.9)); };
-  setFH(bm, bi, bd); setFH(sm, si, look.stache);
-  const mkm = headLayer(av, 'mask', 3); const mi = look.mask && C.MASKS.find(x => x[0] === look.mask.id); mkm.visible = !!mi; if (mi) { const u = mkm.material.userData.U; mkm.material.userData.off.value = .006; u.uLm.value.set(L.cx, L.chinY, L.hw, L.hw); u.uMo.value.set(.815, .28, 1.83, 1.07); u.uHc.value.set(L.zc, L.front, L.back, 0); u.uH2.value.set(.006, 0, 0, 0); u.uH3.value.set(mi[2], 1, 1, 0); u.uC1.value.set(look.mask.c); u.uC2.value.set(look.mask.c2 || '#fff'); }
+  buildHairMesh(av, look, { hatCut: covers ? 1 : 0 }); buildFacialHair(av, look);
+  const mi = look.mask && C.MASKS.find(x => x[0] === look.mask.id); buildMask(av, mi ? look.mask : null);
   // ---- rigid accessories
   if (hat) { const B = new Builder(); HAT[hat[2]](B, ctx, hat[3]); mount(av, 'hat', B, { a: { c: A.hat.c, r: .8, side: true }, b: { c: A.hat.c2 || '#222', r: .8, side: true }, m: metalOf(A.hat), g: { c: C.SWATCH.gem[A.hat.g ?? 0], r: .25 }, k: { c: '#16171a' } }, 'Head'); } else clearAcc(av, 'hat');
   const gl = A.glasses && C.GLASSES_LIST.find(h => h[0] === A.glasses.id); if (gl) { const B = new Builder(); const o = { ...gl[3] }; GLASSES[gl[2]](B, ctx, o); const dark = o.dark; mount(av, 'glasses', B, { a: { c: C.SWATCH.metal[A.glasses.m ?? 3], mt: .3, r: .4 }, g: dark ? { c: '#0c0d10', op: .9 } : { c: C.SWATCH.gem[A.glasses.g === undefined || A.glasses.g === 0 ? 6 : A.glasses.g], op: .22 }, k: { c: '#0c0d10', op: .9 } }, 'Head'); const mm = av.acc.glasses; mm.forEach(m => { if (m.material.transparent) m.renderOrder = 6; }); } else clearAcc(av, 'glasses');
@@ -98,6 +93,5 @@ export function dress(av, look) {
   for (const [nm, s] of [['ringL', 1], ['ringR', -1]]) { const it = A[nm], d = it && C.RINGS.find(e => e[0] === it.id); if (d) { const B = new Builder(); RING[d[2]](B, ctx, { ...d[3], sides: [s] }); mount(av, nm, B, { m: metalOf(it), g: { c: C.SWATCH.gem[it.g ?? 1], r: .2 }, a: { c: '#888' } }, s > 0 ? 'LeftHand' : 'RightHand'); } else clearAcc(av, nm); }
   const bg = A.bag && C.BAGS.find(e => e[0] === A.bag.id); if (bg) { const B = new Builder(); BAG[bg[2]](B, ctx, bg[3]); mount(av, 'bag', B, { a: { c: A.bag.c, r: .85 }, b: { c: A.bag.c2 || '#222', r: .85 }, m: metalOf(A.bag) }, 'Spine02'); } else clearAcc(av, 'bag');
   const bt = A.belt && C.BELTS.find(e => e[0] === A.belt.id); if (bt) { const B = new Builder(); BELT[bt[2]](B, ctx, bt[3]); mount(av, 'belt', B, { a: { c: A.belt.c, r: .8 }, m: metalOf(A.belt) }, 'Hips'); } else clearAcc(av, 'belt');
-  { const B = new Builder(); faceParts(B, ctx, look, f, mo); const skc = '#' + sk.clone().multiplyScalar(.97).getHexString(); mount(av, 'faceparts', B, { a: { c: skc, r: .62 }, k: { c: '#171210', r: .5 } }, 'Head'); }
   return av;
 }

@@ -104,3 +104,41 @@ export function buildHairMesh(av, look, opt = {}) {
   av._hair = bindMesh(av, new THREE.SkinnedMesh(geo, hairMaterial(look.hair.c, look.hair.c2 || look.hair.c, look.hair.hl ?? .35)), 2);
   return av._hair;
 }
+
+// ---------- facial hair
+import { BEARD_STYLES, STACHE_STYLES, BEARD_ALIAS, STACHE_ALIAS, buildBand } from './hair.js';
+export function buildFacialHair(av, look) {
+  const h = av.head2; const bid = look.beard && look.beard.id || 'none', sid = look.stache && look.stache.id || 'none';
+  const bs = BEARD_STYLES[bid] || BEARD_STYLES[BEARD_ALIAS[bid]], ss_ = STACHE_STYLES[sid] || STACHE_STYLES[STACHE_ALIAS[sid]];
+  const len = look.beard && look.beard.len != null ? look.beard.len : .4; const key = JSON.stringify([bid, sid, len.toFixed(2), av._headKey]);
+  const col = (look.beard && look.beard.c) || look.hair.c; const c2 = ('#' + new THREE.Color(col).multiplyScalar(1.25).getHexString());
+  if (av._fhKey === key) { if (av._fh) av._fh.material = hairMaterial(col, c2, .2); return; }
+  if (av._fh) { av._fh.parent && av._fh.parent.remove(av._fh); av._fh.geometry.dispose(); av._fh = null; } av._fhKey = key;
+  const parts = []; if (bs) parts.push(buildBand(h, Object.assign({}, bs, { T: bs.T * (.5 + .9 * len) }))); if (ss_) parts.push(buildBand(h, Object.assign({}, ss_, { T: ss_.T * (.7 + .6 * ((look.stache && look.stache.len) ?? .4)) })));
+  if (!parts.length) return; const geo = parts.length > 1 ? mergeGeometries(parts, false) : parts[0]; geo.scale(h.s, h.s, h.s); geo.translate(h.C.x, h.C.y, h.C.z);
+  skinTo(av, geo, () => [['Head', 1]]); av._fh = bindMesh(av, new THREE.SkinnedMesh(geo, hairMaterial(col, c2, .2)), 2);
+}
+// accessory context (bind-space landmarks) from the analytic head, merged over the body context
+export function headCtx(av, base) {
+  const h = av.head2, L = h.L, C = h.C, s = h.s; const st = styleOf(av.look && av.look.hair ? av.look.hair.id : 'bald'); const hairT = st ? Math.min(.012, st.T + .003) : 0;
+  const B = y => C.y + y * s; const hw = L.sideX * s;
+  const ear = sd => new THREE.Vector3(sd * (L.sideX + .006) * s, B(L.earY), C.z + L.earZ * s); const lobe = sd => new THREE.Vector3(sd * (L.sideX + .004) * s, B(L.earY - .024), C.z + (L.earZ + .004) * s);
+  const faceZ = (x, y) => C.z + s * L.surfZ(x / s, (y - C.y) / s);
+  const crownY = B(.03); const top = B(L.top) + hairT * s;
+  return Object.assign({}, base, { hw, hs: s, eyeY: B(L.eyeY), mouthY: B(L.mouthY), noseY: B(L.noseY), zc: C.z + .0 * s, top, chinY: B(L.chin), front: C.z + L.front * s, back: C.z + L.back * s - hairT,
+    faceZ, ears: [ear(1), ear(-1)], lobes: [lobe(1), lobe(-1)], earY: B(L.earY), skY: B(L.eyeY), crownY, ry: (top - crownY) + .006, rx: hw * 1.02 + hairT + .006, rz: (h.H.D * s) + hairT + .008 });
+}
+
+// ---------- face masks (cloth bands on the same surface)
+const MASKS2 = {
+  surgical: { T: .006, mask: (p, a, L) => Math.abs(a) < 88 && p.y < L.noseY + .012 && p.y > -.16 + Math.abs(p.x) * .3 },
+  bandanam: { T: .007, mask: (p, a, L) => Math.abs(a) < 100 && p.y < L.noseY + .01 },
+  gaiter: { T: .008, mask: (p, a, L) => Math.abs(a) < 110 && p.y < L.noseY + .004 },
+};
+const _clothM = new Map();
+export function buildMask(av, item) {
+  const key = item ? JSON.stringify([item.id, av._headKey]) : 'none'; const st = item && MASKS2[item.id];
+  if (av._maskKey !== key) { if (av._mask) { av._mask.parent && av._mask.parent.remove(av._mask); av._mask.geometry.dispose(); av._mask = null; } av._maskKey = key;
+    if (st) { const h = av.head2; const geo = buildBand(h, st); geo.scale(h.s, h.s, h.s); geo.translate(h.C.x, h.C.y, h.C.z); skinTo(av, geo, () => [['Head', 1]]); av._mask = bindMesh(av, new THREE.SkinnedMesh(geo, new THREE.MeshStandardMaterial({ roughness: .9 })), 3); } }
+  if (av._mask && item) av._mask.material.color.set(item.c || '#3a5a8a');
+}
