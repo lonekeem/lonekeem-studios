@@ -15,7 +15,7 @@ const MAP = [['DEF-hips', 'Hips'], ['DEF-spine.001', 'Spine02'], ['DEF-spine.002
 
 // --- clean cartoon hands: the generated hand blobs are cut away and replaced with smooth mitten-style hands (skin or glove colour sampled from the texture)
 const HANDS = new WeakMap(); const _v = new THREE.Vector3(), _mm = new THREE.Matrix4();
-function sampleColor(tex, uvs) { try { const im = tex.image; const w = im.width, h = im.height, c = document.createElement('canvas'); c.width = w > 2048 ? 1024 : w; c.height = h > 2048 ? 1024 : h; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0, c.width, c.height);
+export function sampleColor(tex, uvs) { try { const im = tex.image; const w = im.width, h = im.height, c = document.createElement('canvas'); c.width = w > 2048 ? 1024 : w; c.height = h > 2048 ? 1024 : h; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0, c.width, c.height);
     const col = []; for (const [u, v] of uvs) { const px = x.getImageData(Math.min(c.width - 1, Math.max(0, Math.round(u * c.width))), Math.min(c.height - 1, Math.max(0, Math.round((tex.flipY ? 1 - v : v) * c.height))), 1, 1).data; col.push([px[0], px[1], px[2]]); }
     col.sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2])); const m = col[Math.floor(col.length / 2)] || [150, 110, 90]; return new THREE.Color().setRGB(m[0] / 255, m[1] / 255, m[2] / 255, THREE.SRGBColorSpace); } catch (e) { return new THREE.Color('#9a7058'); } }
 function processHands(skin) {
@@ -40,15 +40,15 @@ function processHands(skin) {
   HANDS.set(g0, out); return out;
 }
 function buildMitten(info, thumbDir, mat) {
-  const grp = new THREE.Group(); const { axis: a, L } = info; const palmW = Math.max(info.rM * .7, L * .27), palmT = palmW * .62, wr = Math.min(info.rf * .98, info.rM * .7);
+  const grp = new THREE.Group(); const { axis: a, L } = info; const palmW = Math.max(info.rM * .7, L * .27) * .8, palmT = palmW * .6, wr = Math.min(info.rf * .98, info.rM * .7);
   const up = new THREE.Vector3(0, 1, 0), q = new THREE.Quaternion().setFromUnitVectors(up, a); const u = thumbDir.clone().addScaledVector(a, -thumbDir.dot(a)).normalize(); // thumb side
   // basis: local Y = bone axis, local X = thumb side, local Z = palm normal
   const X = u, Y = a.clone(), Z = new THREE.Vector3().crossVectors(X, Y).normalize(); const bm = new THREE.Matrix4().makeBasis(X, Y, Z); grp.quaternion.setFromRotationMatrix(bm);
   const mk = (geo, x, y, z, sx, sy, sz, rz = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); m.rotation.z = rz; m.castShadow = true; grp.add(m); return m; };
   const S = new THREE.SphereGeometry(1, 16, 12), C = new THREE.CapsuleGeometry(1, 1, 6, 12);
   { const wm = mk(S, 0, L * .06, 0, wr, L * .24, wr * .9); const cfl = info.cf.clone().addScaledVector(a, -info.cf.dot(a)); wm.position.add(cfl.applyQuaternion(grp.quaternion.clone().invert())); } // rounded wrist that closes the cut inside the sleeve, centred on the real forearm
-  mk(S, 0, L * .56, 0, palmW * .92, L * .46, palmT); // palm + fingers as one rounded mitten
-  const th = mk(C, palmW * .9, L * .5, palmT * .15, palmT * .5, L * .16, palmT * .5, -0.5); // thumb
+  mk(S, 0, L * .52, 0, palmW * .92, L * .38, palmT); // palm + fingers as one rounded mitten
+  const th = mk(C, palmW * .88, L * .46, palmT * .15, palmT * .5, L * .12, palmT * .5, -0.5); // thumb
   return grp;
 }
 

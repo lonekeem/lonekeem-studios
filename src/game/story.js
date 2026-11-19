@@ -3,8 +3,13 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const PI = Math.PI;
 const rnd = (a, b) => a + Math.random() * (b - a);
 const dist2 = (g, x, z) => Math.hypot(g.player.root.position.x - x, g.player.root.position.z - z);
-function follow(g, n, off) { n.update = (dt) => { const P = g.player.root.position, p = n.root.position; const tx = P.x + off[0], tz = P.z + off[1]; const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
-  if (d > 1.2) { const sp = Math.min(d, 1) * (d > 4 ? 5 : 2.8); p.x += dx / d * sp * dt; p.z += dz / d * sp * dt; n.root.rotation.y = Math.atan2(dx, dz); n.play(d > 4 ? 'Jog_Fwd_Loop' : 'Walk_Loop'); } else n.play('Idle_Loop'); }; }
+function follow(g, n, off) { // v2.1: companions trail Keem with eased speed + smooth turning; the walk/run blend follows the ground speed they really cover (no sliding, no snapping)
+  n.fv = 0; n.update = (dt) => { const P = g.player.root.position, p = n.root.position; const tx = P.x + off[0], tz = P.z + off[1]; const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
+    const goal = d > 4 ? 5 : 2.8 * Math.min(1, Math.max(0, (d - 1.1) / 1.0)); n.fv += (goal - n.fv) * Math.min(1, dt * (goal > n.fv ? 4 : 7));
+    if (n.fv > 0.05 && d > 0.01) { const st = Math.min(d, n.fv * dt); const nx = p.x + dx / d * st, nz = p.z + dz / d * st; if (!g.inCol(nx, nz, .25)) { p.x = nx; p.z = nz; } else { const [fx, fz] = [p.x + dz / d * st * .8, p.z - dx / d * st * .8]; if (!g.inCol(fx, fz, .25)) { p.x = fx; p.z = fz; } }
+      n.root.rotation.y = angLerpS(n.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 7)); } else if (d < 3.2) { const ly = Math.atan2(P.x - p.x, P.z - p.z); n.root.rotation.y = angLerpS(n.root.rotation.y, ly, Math.min(1, dt * 3)); }
+    n.autoLoco(dt, 'Idle_Loop'); }; }
+const angLerpS = (a, b, t) => { let d = ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; return a + d * t; };
 // v1.9.4: never snap the player to a far checkpoint mid-play — fade to black with the next objective instead
 function goto(g, i, xp = 100) { const tok = g.stepTok; g.addXP(xp); g.audio.pickup(); setTimeout(() => { if (g.stepTok !== tok) return; const cp = STORY[i] && STORY[i].cp, P = g.player.root.position; if (cp && Math.hypot(cp[0] - P.x, cp[1] - P.z) > 4 && g.fadeStep) g.fadeStep(i); else g.loadStep(i); }, 50); }
 // v1.9.7: after a boss (or a big fight) ends, let the death play out (slow-mo + collapse), then give Keem a few seconds of free control
@@ -79,7 +84,7 @@ export const STORY = [
         g.cut = null; D.canDrive = true; g.objective('Get in the truck and drive to Riverside Bridge', 'E / ✋ near the truck. GAS/BRAKE + ◀ ▶ (W/S A/D, pad RT/LT). Ram them.'); g.wpTarget = [22, 1.4, -64];
         D.onDrive = (g) => { dad.root.visible = nia.root.visible = false; g.wpTarget = [0, 1, -96]; g.objective('Drive to Riverside Bridge', 'Plow through. Don\'t stop.'); D.hordeAll = true; D.runners = .3; g.horde(16, [[0, -66], [-2, -72], [3, -78], [-3, -84], [2, -90], [0, -80]]); g.audio.beat(2);
           g.say([['nia', "Left! LEFT! Your OTHER left, Keem!"], ['keem', "I KNOW WHICH {damn |}LEFT!"]]); }; }); },
-    update(g) { const T = g.truck; if (T.driving && T.g.position.z < -91) { T.v = 0; g.shake(1); g.audio.crash(); g.exitTruck(); g.player.root.position.set(1, 0, -93.5); goto(g, 5, 150); } } },
+    update(g) { const T = g.truck; if (T.driving && T.g.position.z < -91) { T.v = 0; g.shake(1); g.audio.crash(); g.leave(() => goto(g, 5, 150), { walkTo: [1, -93.5] }); } } },
 
   { id: 'boss', cp: [0.5, -93.5, PI], obj: 'Defeat Big Gus', hint: 'Roll away from his slam (red ring) and his charge. Headshots hurt him most.', mood: 'tense', beat: 2,
     enter(g) { const D = g.stepData; const dad = g.npc('marcus', 'marcus', 3.5, -92.5, PI, 'Idle_Loop'); const nia = g.npc('nia', 'nia', 4.2, -91.6, PI, 'Idle_Loop', .62);
@@ -261,7 +266,7 @@ export const STORY = [
           g.horde(26, [[0, -1050], [-6, -1075], [6, -1100], [-4, -1125], [5, -1150], [0, -1175], [-6, -1195], [6, -1215]], { aggro: 30 }); g.audio.beat(3);
           g.say([['nia', "Hit that one! HIT HIM! Yesss, ten points!"], ['keem', "That's five! Somebody count!"], ['tuck', 'Watch the burning cars. Watch the— okay, you hit it. Fine.']]); }; }); },
     update(g) { const T = g.truck, D = g.stepData; if (!T.driving) return; const k = g.save.kills - (D.k0 || 0); if (k !== D.lk) { D.lk = k; g.objective('Drive to Cape Marina · Roadkill: ' + k, 'Plow through them. Bonus cash for every splat.'); }
-      if (T.g.position.z < -1226) { T.v = 0; g.shake(1); g.audio.crash(); g.exitTruck(); g.player.root.position.set(4, 0, -1232); g.save.cash += k * 10; goto(g, 34, 150); } } },
+      if (T.g.position.z < -1226) { T.v = 0; g.shake(1); g.audio.crash(); g.save.cash += k * 10; g.leave(() => goto(g, 34, 150), { walkTo: [4, -1232] }); } } },
   { id: 'c7_boss', ch: 7, cp: [4, -1232, PI], obj: 'Kill the Bait Man', hint: 'He swings an anchor. Roll the slam, then unload.', mood: 'tense', beat: 2,
     enter(g) { const D = g.stepData; fam(g, D, -1228, 2, true); const b = boss(g, 8, -1212, 2200, '#2a5a6a', 'THE BAIT MAN — Cape Marina, est. 1974'); b.speed = 2.2; g.horde(6, [[-8, -1214], [12, -1218]], { runner: true, aggro: 99 }); D.hordeAll = true;
       g.say([['nia', "Ew, he smells like fish sticks and feet!"], ['keem', "Bait shop's closed, man. For good."]]); },
@@ -365,7 +370,7 @@ export const STORY = [
       D.onDrive = (g) => { for (const k in g.npcs) g.npcs[k].root.visible = false; D.k0 = g.save.kills; g.wpTarget = [0, 1, -2596]; D.hordeAll = true; D.runners = .5;
         g.horde(24, [[0, -2480], [-6, -2500], [6, -2520], [-4, -2540], [5, -2560], [0, -2580]], { aggro: 30 }); g.audio.beat(3); g.say([['nia', "Siren! Turn on the siren!"], ['keem', "It's already on, it's just broken. Hold on."]]); }; },
     update(g) { const T = g.truck, D = g.stepData; if (!T.driving) return; const k = g.save.kills - (D.k0 || 0); if (k !== D.lk) { D.lk = k; g.objective('Drive to Mass General · Roadkill: ' + k, 'Plow through them.'); }
-      if (T.g.position.z < -2590) { T.v = 0; g.shake(1); g.audio.crash(); g.exitTruck(); g.player.root.position.set(0, 0, -2598); g.save.cash += k * 10; goto(g, 52, 150); } } },
+      if (T.g.position.z < -2590) { T.v = 0; g.shake(1); g.audio.crash(); g.save.cash += k * 10; g.leave(() => goto(g, 52, 150), { walkTo: [0, -2598] }); } } },
   { id: 'c11_er', ch: 11, cp: [0, -2600, PI], obj: 'Clear the ER (0/20)', hint: 'Fight with Dad. Do not let them reach Nia at the desk.', mood: 'tense', beat: 3,
     enter(g) { const D = g.stepData; g.openGate(true); D.k0 = g.save.kills; const d = g.npc('marcus', 'marcus', 2, -2604, PI, 'Idle_Loop'); D.dad = d; dadGun(g, D); g.npc('nia', 'nia', -6, -2610, PI / 2, 'Idle_Loop', .62); D.hordeAll = true; D.w = 0;
       g.say([['vance', 'You made it. Impressive. The ER is overrun, so clear it and come up to the roof.'], ['keem', "You could come down and help."], ['vance', "I could. I won't."]]); },
