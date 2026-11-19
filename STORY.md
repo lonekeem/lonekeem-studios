@@ -34,3 +34,11 @@ The Maine Mall. New survivors: Dr. Imani Reyes, a veterinarian, and Tuck, a kios
 
 ## Chapter 6 — The Lighthouse
 Fort Williams and Portland Head Light. The family survives a Tollmen raid and kills the Toll King, whose last words are "The Captain… he doesn't cure them…". They signal the ship, and the "Captain" radios back: bring the infected one to the shore, alone. Dad's eyes go gray: "Keem… run." One gunshot, off-screen. **To be continued — Chapter 7 coming soon.**
+
+## Chapter 12 — Sublevel B
+Under Mass General, Vance's intercom guides the family through the morgue (sleeping Authority-infected, stay quiet or crouch), the boiler room (three fuses, each one wakes a wave), then power-on opens the sound-lock to the research hall. Hold the hall for 45 seconds while the glass cells crack open; Nia sits at the hatch of cell Subject 02 and talks to Mom through it. Boss: the Night Orderly, a mop-wielding zombie ("Visiting hours are over"). Reunion: Dana (Mom) is alive but turning, with gray-eyed moments; Keem holds her wrists, Dad sits down because his legs gave out, Biscuit pops out of Nia's hoodie. The alarm sounds with the power off. "Hi, baby."
+New cast: Dana Pell (Mom), The Night Orderly.
+
+## Chapter 13 — Biscuit Goes Rogue
+Biscuit bolts the moment someone says "soup". Chase him up through the pack room, gift shop (a runaway gurney gag), the children's ward (two locked room fights, kill-count clears) and into the cafeteria. Boss: Lunch Lady Doreen ("Lunch is served." / "Seconds?"), slow soup puddles, ladle slams. Finale: Biscuit is sitting on the soup kettle; Keem picks him up. Vance: "…the alarm was not false." Card shows "To be continued — Chapter 14 coming soon."
+New cast: Lunch Lady Doreen.

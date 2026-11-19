@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { makeRabbit } from '../chars.js';
 
 export function spawnBiscuit(g, x, z, o = {}) {
-  const grp = new THREE.Group(), r = makeRabbit(); r.scale.setScalar(o.scale || 1.7); grp.add(r); grp.position.set(x, o.y || 0, z); g.scene.add(grp);
+  const grp = new THREE.Group(), r = makeRabbit(); const sc = o.scale || 2.7; r.scale.setScalar(sc); r.position.y = .085 * sc; grp.add(r); const ring = new THREE.Mesh(new THREE.RingGeometry(.38, .46, 20), new THREE.MeshBasicMaterial({ color: '#7fe08a', transparent: true, opacity: .55, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = .04; grp.add(ring); grp.userData.ring = ring; grp.position.set(x, o.y || 0, z); g.scene.add(grp);
   const B = { grp, r, x, z, y0: o.y || 0, wps: [], i: 0, st: 'sit', t: 0, hop: 0, tx: x, tz: z, ty: o.y || 0, miss: 0, active: true, nib: Math.random() * 6 };
   B.go = (wps) => { B.wps = wps; B.i = 0; }; B.remove = () => { g.scene.remove(grp); B.active = false; };
   return B;
