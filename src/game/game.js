@@ -432,7 +432,7 @@ export class Game {
     this.pickups.forEach(p => { p.m.rotation.y += dt * 1.6; p.m.position.y = Math.sin(this.t * 3) * .05; if (!p.l.story && !p.l.manual) { const d = Math.hypot(p.mesh.position.x - P.root.position.x, p.mesh.position.z - P.root.position.z); if (d < 1.0 && !T.driving) this.takePickup(p); } });
     this.updateFX(dt);
     if (this.stepData.tankerBoom && !this.stepData.tankerDone) { this.stepData.tankerDone = true; const tp = this.world.tanker.position.clone(); tp.y = 1.5; this.explode(tp, 12, 500); this.world.tanker.children.forEach(c => c.material && c.material.color && c.material.color.set('#151210')); this.world.tankCol.x0 = 999; this.world.tanker.rotation.z = 0.25; }
-    this.world.update(dt, this.t, this.camera.position); }
+    this.world.env.pl = (this.truck && this.truck.driving) ? this.truck.g.position : this.player.root.position; this.world.update(dt, this.t, this.camera.position); }
   updatePlayer(dt) { const P = this.player, s = this.state, I = this.input, w = WEAPONS[this.save.cur], gun = w.type === 'gun';
     if (I.pressed('swap')) this.swap(1); if (I.pressed('reload')) this.reload(); if (I.pressed('gren')) this.grenade(); if (I.pressed('heal')) this.heal(); if (I.pressed('jump')) this.jump(); if (I.pressed('roll')) this.roll(); if (I.pressed('use')) this.use();
     if (I.pressed('crouch')) s.crouch = !s.crouch; if (I.pressed('view')) { this.cam.fp = !this.cam.fp; this.settings.fp = this.cam.fp; }
