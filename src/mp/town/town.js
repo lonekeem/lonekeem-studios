@@ -36,7 +36,7 @@ export async function enterTown({ look, onExit } = {}) {
   scene.add(new THREE.HemisphereLight('#dfe8f0', '#59614a', 1.25)); const sun = new THREE.DirectionalLight('#ffeccc', 2.1); sun.position.set(36, 60, 28); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = sc.bottom = -34; sc.right = sc.top = 34; sc.near = 5; sc.far = 160; sun.shadow.bias = -.0006; sun.shadow.normalBias = .04; scene.add(sun, sun.target);
   const cam = new THREE.PerspectiveCamera(58, 1, .1, 320);
   // ---- world ----
-  const W = buildTown(scene, { hooks: [addGas] }); addLoot(W); const col = W.col; const bag = new Bag(26); bag.add('cash', 60); bag.add('water', 1);
+  const W = buildTown(scene, { hooks: [addGas, addLoot] }); const col = W.col; const bag = new Bag(26); bag.add('cash', 60); bag.add('water', 1);
   const net = new Net('town'); net.me = { name: look.name || 'Survivor', look }; net.hello();
   const models = await loadCarModels(); const carMgr = createCars({ scene, W, models }); const cars = carMgr.cars; for (const c of cars) W.containers.push(c.cabin, c.trunk);
   const carBy = id => cars.find(c => c.id === id);

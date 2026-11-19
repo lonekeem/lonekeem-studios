@@ -40,7 +40,7 @@ export function addGas(W) {
   }
   // pole sign by the road
   box('metal', CX - 17 - .15, CX - 17 + .15, 0, 7.4, -20.2 - .15, -20.2 + .15, '#8d9296'); col.add(CX - 17.2, CX - 16.8, -20.4, -20, 'prop');
-  const sg = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.6), new THREE.MeshStandardMaterial({ map: signTex(['KL FUEL', '$1.20 / L'], '#1f6f45', '#fff6d6', 512, 320), roughness: .7, side: THREE.DoubleSide, emissive: '#ffffff', emissiveIntensity: .12 })); sg.position.set(CX - 17, 8.1, -20.2); sg.rotation.y = Math.PI; root.add(sg);
+  const sg = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.6), new THREE.MeshStandardMaterial({ map: signTex(['KL FUEL', '$1.20 / L'], '#1f6f45', '#fff6d6', 512, 320), roughness: .7, side: THREE.DoubleSide, emissive: '#2f9a63', emissiveIntensity: .4 })); sg.position.set(CX - 17, 8.1, -20.2); sg.rotation.y = Math.PI; root.add(sg);
   const badge = new THREE.Mesh(new THREE.CircleGeometry(.7, 24), new THREE.MeshBasicMaterial({ map: klTex() })); badge.rotation.y = Math.PI; badge.position.set(CX - 17, 10.0, -20.25); root.add(badge); const b2 = badge.clone(); b2.rotation.y = 0; b2.position.z = -20.15; root.add(b2);
   // canopy underside light panels (cheap emissive look) + fuel-pump KL badges
   const lm = new THREE.MeshBasicMaterial({ color: '#fff4cf' }); for (const x of [-9, -3, 3, 9]) { const l = new THREE.Mesh(new THREE.PlaneGeometry(2.2, .5), lm); l.rotation.x = Math.PI / 2; l.position.set(CX + x, 4.52, CZ); root.add(l); }

@@ -76,7 +76,7 @@ export function createZombies({ scene, W, camera, getPlayers, onHitPlayer, model
       const far = nd > 70; // far from everyone: cheap drift only (no animation tick)
       if (z.hurtT > 0) { z.hurtT -= dt; if (z.oneShot || z.hurtT > 0) { const [nx, nz] = col.push(pp.x + z.vel.x * dt, pp.z + z.vel.z * dt, .3); pp.x = nx; pp.z = nz; z.vel.multiplyScalar(.85); if (!far) { z.mixer.update(dt); zBones(z); } continue; } }
       // state: notice / lose
-      const det = near && near.crouch ? 7 : 14;
+      if (!near) continue; const det = near.crouch ? 7 : 14;
       if (z.st === 'wander') { if (near && nd < det && (nd < 5 || col.los(pp.x, pp.z, near.x, near.z))) { z.st = 'chase'; z.lose = 0; onEvent && onEvent('notice', z); } }
       else if (z.st === 'chase') { if (nd > det * 2.2) { z.lose += dt; if (z.lose > 3) { z.st = 'wander'; z.node = -1; pickNode(z); } } else z.lose = 0; }
       let dx, dz, sp = z.speed, move = true;
@@ -85,7 +85,7 @@ export function createZombies({ scene, W, camera, getPlayers, onHitPlayer, model
         if (d < 1.05) { move = false; if ((z.cd -= dt) <= 0 && !near.drv) { z.cd = R(1.2, 1.8); z.play('Punch_Jab', { once: true, force: true, speed: .9, cb: () => { z.curName = ''; } }); z.hitAt = .35; } z.root.rotation.y += angDiff(z.root.rotation.y, Math.atan2(tx, tz)) * Math.min(1, dt * 8); if (!z.oneShot) z.play('Idle_Loop'); }
         else { let dir = null; if (ni === 0 && nav && d > 2.5) dir = nav.dir(pp.x, pp.z); if (dir) { dx = dir[0]; dz = dir[1]; } else { dx = tx / d; dz = tz / d; } }
       } else { // wander along the road graph
-        const n = graph[z.node]; const wx = n.x + z.off[0], wz = n.z + z.off[1]; const ex = wx - pp.x, ez = wz - pp.z, d = Math.hypot(ex, ez); if (d < 2) { pickNode(z); } dx = ex / (d || 1); dz = ez / (d || 1); sp *= .5; if (z.runner) sp *= .45;
+        if (z.node < 0) pickNode(z); const n = graph[z.node]; const wx = n.x + z.off[0], wz = n.z + z.off[1]; const ex = wx - pp.x, ez = wz - pp.z, d = Math.hypot(ex, ez); if (d < 2) { pickNode(z); } dx = ex / (d || 1); dz = ez / (d || 1); sp *= .7; if (z.runner) sp *= .4;
       }
       if (z.hitAt > 0) { z.hitAt -= dt; if (z.hitAt <= 0 && nd < 1.5 && !near.drv) { onHitPlayer && onHitPlayer(11, pp.x, pp.z, ni); } }
       if (move && !z.oneShot) {
@@ -93,7 +93,7 @@ export function createZombies({ scene, W, camera, getPlayers, onHitPlayer, model
         let sx = dx * sp * dt, sz = dz * sp * dt; if (!far) for (let j = 0; j < zs.length; j++) { if (j === i) continue; const o = zs[j]; if (o.dead) continue; const q = o.root.position; const ex = pp.x - q.x, ez = pp.z - q.z, e2 = ex * ex + ez * ez; if (e2 < .5 && e2 > 1e-4) { sx += ex / e2 * dt * .25; sz += ez / e2 * dt * .25; } }
         let nx = pp.x + sx, nz = pp.z + sz; if (!far) { const r = col.push(nx, nz, .3); nx = r[0]; nz = r[1]; if (W.carPush) { const c = W.carPush(nx, nz, .35); nx = c[0]; nz = c[1]; } } pp.x = nx; pp.z = nz;
         const want = Math.atan2(dx, dz); z.root.rotation.y += angDiff(z.root.rotation.y, want) * Math.min(1, dt * 6);
-        if (!far) z.play(z.st === 'chase' ? (z.runner ? 'Jog_Fwd_Loop' : 'Walk_Loop') : 'Walk_Loop', { speed: z.st === 'chase' ? (z.runner ? 1.1 : .62) : (z.runner ? .5 : .36) });
+        if (!far) z.play(z.st === 'chase' ? (z.runner ? 'Jog_Fwd_Loop' : 'Walk_Loop') : 'Walk_Loop', { speed: z.st === 'chase' ? (z.runner ? 1.1 : .62) : (z.runner ? .5 : .45) });
       }
       if (!far) { z.mixer.update(dt); zBones(z); }
     }
