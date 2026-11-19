@@ -3,7 +3,8 @@
 import * as THREE from 'three';
 
 export const GLSL_COMMON = /* glsl */`
-varying vec3 vRest; varying vec3 vRestN; varying vec4 vR;
+varying vec3 vRest; varying vec3 vRestN; varying vec4 vR; varying vec4 vW1; varying vec4 vW2;
+float softReg(){ vec4 a = vW1, b = vW2; float best = a.x, id = 0.0; if (a.y > best) { best = a.y; id = 1.0; } if (a.z > best) { best = a.z; id = 2.0; } if (a.w > best) { best = a.w; id = 3.0; } if (b.x > best) { best = b.x; id = 4.0; } if (b.y > best) { best = b.y; id = 5.0; } if (b.z > best) { best = b.z; id = 6.0; } return id; }
 float h11(float n){ return fract(sin(n*127.1)*43758.5453); }
 float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
 float h31(vec3 p){ return fract(sin(dot(p, vec3(127.1,311.7,74.7)))*43758.5453); }
@@ -14,11 +15,11 @@ float sdSeg(vec2 p, vec2 a, vec2 b){ vec2 pa=p-a, ba=b-a; float h=clamp(dot(pa,b
 `;
 
 // vertex hook shared by every character material: exposes the bind-pose position / normal / region data and applies a shell offset.
-export function hookVertex(sh, extraVertex = '') {
+export function hookVertex(sh, extraVertex = '', decl = '') {
   sh.uniforms.uOff = sh.uniforms.uOff || { value: 0 };
   sh.vertexShader = sh.vertexShader
-    .replace('#include <common>', '#include <common>\nattribute vec4 aR; attribute vec3 aP0;\nuniform float uOff;\n' + GLSL_COMMON)
-    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = aP0; vRestN = normal; vR = aR; transformed += normalize(normal) * uOff;\n' + extraVertex);
+    .replace('#include <common>', '#include <common>\nattribute vec4 aR; attribute vec3 aP0; attribute vec4 aW1; attribute vec4 aW2;\nuniform float uOff;\n' + decl + GLSL_COMMON)
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nvRest = aP0; vRestN = normal; vR = aR; vW1 = aW1; vW2 = aW2; transformed += normalize(normal) * uOff;\n' + extraVertex);
 }
 
 export function skinTone(t, under = 0) { // t 0..1 light -> deep (sRGB stops), under -1 cool/rosy .. +1 warm/golden

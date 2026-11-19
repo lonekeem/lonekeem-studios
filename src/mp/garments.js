@@ -27,7 +27,7 @@ float pat(vec3 p, float id, float sc){
   return v;
 }
 vec3 garment(vec3 p, vec3 n, vec4 R){
-  float reg = R.x, s = R.y, t = R.z, side = R.w; float ax = abs(p.x); float kind = uKind; bool vis = false; float edge = 9.0;
+  float reg = softReg(), s = R.y, t = R.z, side = R.w; float ax = abs(p.x); float kind = uKind; bool vis = false; float edge = 9.0;
   float front = smoothstep(-0.03, 0.05, p.z - uN.w);
   if (kind < 0.5 || (kind > 2.5 && kind < 3.5)) { // top / jacket
     if (reg > 1.5 && reg < 2.5) { vis = t > uG1.y && ax < uG1.w; edge = t - uG1.y;
@@ -44,10 +44,10 @@ vec3 garment(vec3 p, vec3 n, vec4 R){
   } else if (kind < 4.5) { // gloves
     if (reg > 3.5 && reg < 4.5) { vis = true; edge = 0.5; } if (reg > 2.5 && reg < 3.5) { vis = s > uG1.x; edge = s - uG1.x; }
   } else { // base underlayer
-    if (reg > 1.5 && reg < 2.5) { vis = (t < 0.12 && t > -0.3) || (uG1.z > 0.5 && t > 0.6 && t < 0.78 && ax < 0.25); edge = 0.5; } if (reg > 4.5 && reg < 5.5) { vis = s < 0.1; edge = 0.5; }
+    if (reg > 1.5 && reg < 2.5) { vis = (t < 0.06 && t > -0.3) || (uG1.z > 0.5 && t > 0.6 && t < 0.78 && ax < 0.25); edge = 0.5; } if (reg > 4.5 && reg < 5.5) { vis = s < 0.1; edge = 0.5; }
   }
   if (!vis) discard;
-  vec3 c = uC1; float pv = pat(p, uPat.x, uPat.y); c = mix(c, uC2, pv * uPat.z);
+  vec3 c = uC1; if (uSole.w > 0.5 && reg > 2.5 && reg < 3.5) c = uC2; float pv = pat(p, uPat.x, uPat.y); if (uSole.w < 0.5) c = mix(c, uC2, pv * uPat.z); else if (reg < 2.5 || reg > 3.5) c = mix(c, uC2, pv * uPat.z);
   float fib = vn(p * 900.0) * 0.5 + vn(vec3(p.x * 200.0, p.y * 900.0, p.z * 200.0)) * 0.5; c *= 0.93 + 0.12 * fib;
   if (kind > 1.5 && kind < 2.5) { float sole = step(p.y, uSole.x); c = mix(c, uC3, sole); float cap = step(p.y, 0.05) * step(0.045, p.y); c = mix(c, uC3, cap * 0.7 * step(0.5, uSole.y)); }
   if (edge < 0.03 && kind != 2.0 && kind != 4.0) c *= mix(0.86, 1.0, smoothstep(0.0, 0.03, edge));
@@ -63,9 +63,10 @@ export function garmentMaterial(kind) {
     hookVertex(sh, `
       { float rs = vR.y; float gr = vR.x; float k = 0.0;
         if (uKind > 0.5 && uKind < 1.5 && gr > 4.5 && gr < 5.5) k = uShape.x + uShape.y * rs;
+        if (uKind < 0.5 && gr > 4.5 && gr < 5.5) k = uShape.w * smoothstep(0.0, 0.55, rs);
         if ((uKind < 0.5 || (uKind > 2.5 && uKind < 3.5)) && gr > 2.5 && gr < 3.5) k = uShape.x + uShape.y * rs;
         if (uKind > 1.5 && uKind < 2.5 && gr > 5.5) k = uShape.x + (position.y < 0.05 ? uShape.z : 0.0);
-        transformed.xz += normalize(normal.xz + vec2(1e-5)) * k; }`);
+        transformed.xz += normalize(normal.xz + vec2(1e-5)) * k; }`, 'uniform float uKind; uniform vec4 uShape;\n');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + GLSL_COMMON + FRAG).replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = garment(vRest, normalize(vRestN), vR);'); };
   m.customProgramCacheKey = () => 'mpgarm';
   return m;

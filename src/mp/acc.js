@@ -4,8 +4,16 @@ import * as THREE from 'three';
 import { Builder } from './build.js';
 const PI = Math.PI;
 
+function measure(av) { // head landmarks of the *current* (morphed) mesh
+  const T = av.tpl, P = T.P, pos = av.pos, n = pos.count, hwt = T.headW; let minY = 9, maxY = -9, front = -9, back = 9; const ax = [];
+  for (let i = 0; i < n; i++) if (T.used[i] && hwt[i] > .5 && pos.getY(i) > P.neck.y + .03) { const y = pos.getY(i), z = pos.getZ(i); maxY = Math.max(maxY, y); back = Math.min(back, z); if (z > P.Head.z + .02) minY = Math.min(minY, y); front = Math.max(front, z); ax.push(Math.abs(pos.getX(i))); }
+  ax.sort((a, b) => a - b); const hw = ax[Math.floor(ax.length * .86)]; const earC = [new THREE.Vector3(), new THREE.Vector3()], earN = [0, 0], low = [null, null];
+  for (let i = 0; i < n; i++) if (T.used[i] && hwt[i] > .5) { const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), fy = (y - minY) / hw; if (Math.abs(x) > hw * .98 && fy > 1.0 && fy < 2.6) { const k = x > 0 ? 0 : 1; earC[k].add(new THREE.Vector3(x, y, z)); earN[k]++; if (!low[k] || y < low[k].y) low[k] = new THREE.Vector3(x, y, z); } }
+  const ears = earC.map((c, k) => earN[k] ? c.divideScalar(earN[k]) : new THREE.Vector3((k ? -1 : 1) * hw * 1.05, minY + hw * 1.7, P.Head.z));
+  return { cx: 0, chinY: minY, hw, front, back, zc: (front + back) / 2, top: maxY, ears, lobes: low.map((l, k) => l || ears[k]) };
+}
 export function makeCtx(av) {
-  const T = av.tpl, L = T.lm, P = T.P, hs = av.hs || 1; const pos = av.rest, n = av.pos.count, headW = T.headW, aR = T.aR;
+  const T = av.tpl, L = measure(av), P = T.P, hs = 1; const pos = av.pos.array, n = av.pos.count, headW = T.headW, aR = T.aR;
   const hw = L.hw * hs, eyeY = L.chinY + 1.83 * L.hw, mouthY = L.chinY + .815 * L.hw, noseY = L.chinY + 1.07 * L.hw, zc = L.zc;
   const grid = new Map(); const key = (x, y) => Math.round(x / .006) + ',' + Math.round(y / .006);
   const tgrid = new Map();

@@ -41,7 +41,7 @@ float hairMask(vec3 p, vec2 fc){
   float az = atan(p.x, p.z - uHc.x); float aa = abs(az);
   float hl = mix(uH1.x, mix(uH1.y, uH1.z, smoothstep(1.3, 2.4, aa)), smoothstep(0.55, 1.4, aa));
   float side = step(0.8, abs(fc.x)) * step(fc.y, uH2.w + 0.2) ; // sideburn skip handled by hl
-  float v = step(hl, fc.y);
+  float v = step(0.5, smoothstep(hl - 0.1, hl + 0.1, fc.y) + (vn(vRest * 420.0) - 0.5) * 0.7);
   v *= 1.0 - uH3.w * smoothstep(0.75, 1.0, abs(fc.x)) * smoothstep(uH2.w, uH2.w - 0.5, fc.y) * 0.0;
   return v;
 }`;
@@ -58,7 +58,7 @@ export function shellMaterial(kind) {
       { vec2 fcv = vec2((vRest.x - uLm.x) / uLm.z, (vRest.y - uLm.y) / uLm.z); float d = uH2.x;
         if (uKind < 0.5) { d += uH2.y * smoothstep(1.9, 3.1, fcv.y); vec3 hc = vec3(uLm.x, uLm.y + 2.1 * uLm.z, uHc.x); vec3 rad = normalize(vRest - hc); transformed += rad * uH2.z * smoothstep(1.5, 2.8, fcv.y) * uLm.z; }
         else if (uKind < 2.5) { d += uH2.y; transformed.y -= uH2.z * smoothstep(1.0, 0.5, fcv.y) * uLm.z; }
-        transformed += normalize(normal) * d; }`);
+        transformed += normalize(normal) * d; }`, 'uniform float uKind; uniform vec4 uLm, uHc, uH2;\n');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + GLSL_COMMON + HEAD).replace('#include <color_fragment>', `#include <color_fragment>
       vec2 fcf = vec2((vRest.x - uLm.x) / uLm.z, (vRest.y - uLm.y) / uLm.z); float vis = 0.0; vec3 col = uC1;
       if (uKind < 0.5) { vis = hairMask(vRest, fcf); float id = uH3.x; float st = uH3.y;
