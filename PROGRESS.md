@@ -173,3 +173,6 @@ Based on `feat/mp-town` a091c98. New files: `src/mp/town/camcol.js`, `src/mp/tow
 - Merged origin/main (v1.9.19; only conflicts PROGRESS.md and the `stepMove` block in game.js — kept story's new `slowMul` by passing `slow` into `pctl.stepMove`) + feat/mp-chars-v2 (d63218d) + feat/mp-controls-chars. Version 1.9.20 (versionCode 48): package.json, main.js + index.html footer, build.gradle, README.
 - `vite build` OK. Smoke on the built site (`tools/smoke_v1920.mjs`, proofs `docs/v1920-smoke/`): story ch1 loads, Google sign-in shows in MP menu, creator spins 4 angles, MP town with the new character, pistol fires (12 -> 11), car forward (+8.6 m) and reverse (-5.3 m), 0 page errors.
 - Mission-glow branch is NOT included (still being built).
+
+## v1.9.21 release (mission glow live)
+- feat/mission-glow rebased on main v1.9.20, fast-forwarded. Central `src/game/glow.js`; proofs `docs/mission-glow/`, live proofs `/workspace/live1921/`.

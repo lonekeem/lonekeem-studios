@@ -50,6 +50,9 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.21
+- Mission glow: keys, keycards, fuses, notes and every item/spot you must find or use in chapters 1–13 now pulse and get a floating marker (visible through walls, fades up close), a light beam, sparkles and an edge arrow when off-screen. Only the current objective is highlighted; it turns off once collected/used. Gameplay unchanged.
+
 ### v1.9.20
 - Multiplayer upgrade: new Bitmoji-style characters (full 360 creator spin), story controls/moves/driving (working reverse), story sounds (not Keem's voice), all story guns + grenades with story-style explosions, bat/pan in hand, hit flinch, iPhone audio unlock, Google sign-in in the multiplayer menu (admin unlocks Play as Keem), store moved off the road, minimap.
 
