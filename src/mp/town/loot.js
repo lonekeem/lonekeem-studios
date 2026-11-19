@@ -7,20 +7,24 @@ export const ITEMS = {
   food: { n: 'Canned food', w: .45, ic: '🥫', cat: 'supply' }, water: { n: 'Water bottle', w: .5, ic: '💧', cat: 'supply' }, bandage: { n: 'Bandage', w: .1, ic: '🩹', cat: 'med', heal: 18 }, medkit: { n: 'First-aid kit', w: .8, ic: '🧰', cat: 'med', heal: 55 },
   scrap: { n: 'Scrap metal', w: 1, ic: '🔩', cat: 'material' }, tools: { n: 'Tool kit', w: 2, ic: '🔧', cat: 'tool' }, nails: { n: 'Box of nails', w: .3, ic: '📌', cat: 'material' }, rags: { n: 'Rags', w: .2, ic: '🧵', cat: 'material' },
   cash: { n: 'Cash', w: 0, ic: '💵', cat: 'money' },
+  // story-mode guns (stats from src/game/data.js WEAPONS) + their ammo, one round per bag unit
+  pistol: { n: '9mm Pistol', w: 1, ic: '🔫', cat: 'weapon', gun: 'pistol', ammo: 'ammo_light' }, shotgun: { n: 'Pump Shotgun', w: 3.2, ic: '🔫', cat: 'weapon', gun: 'shotgun', ammo: 'ammo_shell' },
+  grenade: { n: 'Frag grenade', w: .5, ic: '💣', cat: 'weapon' },
+  ammo_light: { n: '9mm round', w: .03, ic: '🔸', cat: 'ammo' }, ammo_shell: { n: 'Shotgun shell', w: .06, ic: '🟥', cat: 'ammo' },
   bat: { n: 'Baseball bat', w: 1.4, ic: '🏏', cat: 'weapon', melee: { dmg: 2.2, reach: 1.7, name: 'bat' } }, crowbar: { n: 'Crowbar', w: 1.6, ic: '🪝', cat: 'weapon', melee: { dmg: 2.6, reach: 1.6, name: 'crowbar' }, pry: true },
   pan: { n: 'Frying pan', w: 1.1, ic: '🍳', cat: 'weapon', melee: { dmg: 1.7, reach: 1.4, name: 'pan' } }, keys: { n: 'Car keys', w: .1, ic: '🔑', cat: 'tool' }, battery: { n: 'Car battery', w: 6, ic: '🔋', cat: 'material' },
 };
 // [item, weight, min, max]
 export const TABLES = {
   kitchen: [['cash', 2, 5, 15], ['food', 6, 1, 3], ['water', 5, 1, 2], ['pan', 1, 1, 1], ['rags', 2, 1, 2], ['bandage', 1, 1, 1], ['emptycan', 0.3, 1, 1]],
-  bedroom: [['cash', 3, 10, 25], ['rags', 4, 1, 3], ['bandage', 3, 1, 2], ['medkit', 1, 1, 1], ['keys', 1.5, 1, 1], ['food', 2, 1, 1], ['bat', .6, 1, 1]],
+  bedroom: [['cash', 3, 10, 25], ['rags', 4, 1, 3], ['bandage', 3, 1, 2], ['medkit', 1, 1, 1], ['keys', 1.5, 1, 1], ['food', 2, 1, 1], ['bat', .6, 1, 1], ['pistol', .5, 1, 1], ['ammo_light', 1.2, 6, 14]],
   living: [['cash', 3, 5, 20], ['rags', 3, 1, 2], ['food', 3, 1, 2], ['water', 2, 1, 1], ['keys', 1, 1, 1], ['wood', 2, 1, 2], ['bat', .8, 1, 1]],
-  garage: [['wood', 6, 2, 5], ['scrap', 4, 1, 3], ['nails', 3, 1, 2], ['gascan', 3, 1, 1], ['emptycan', 2, 1, 1], ['tools', 2, 1, 1], ['crowbar', 1.2, 1, 1], ['battery', .6, 1, 1]],
-  shed: [['wood', 6, 3, 6], ['nails', 3, 1, 2], ['scrap', 3, 1, 2], ['gascan', 2.5, 1, 1], ['emptycan', 2, 1, 1], ['crowbar', 1, 1, 1], ['tools', 1.5, 1, 1]],
-  store: [['cash', 3, 10, 30], ['food', 8, 2, 5], ['water', 7, 2, 4], ['bandage', 3, 1, 3], ['medkit', 1.5, 1, 1], ['rags', 1.5, 1, 2], ['emptycan', 1, 1, 1], ['bat', .5, 1, 1]],
+  garage: [['wood', 6, 2, 5], ['scrap', 4, 1, 3], ['nails', 3, 1, 2], ['gascan', 3, 1, 1], ['emptycan', 2, 1, 1], ['tools', 2, 1, 1], ['crowbar', 1.2, 1, 1], ['battery', .6, 1, 1], ['grenade', .3, 1, 1]],
+  shed: [['wood', 6, 3, 6], ['nails', 3, 1, 2], ['scrap', 3, 1, 2], ['gascan', 2.5, 1, 1], ['emptycan', 2, 1, 1], ['crowbar', 1, 1, 1], ['tools', 1.5, 1, 1], ['ammo_shell', .7, 2, 5]],
+  store: [['cash', 3, 10, 30], ['food', 8, 2, 5], ['water', 7, 2, 4], ['bandage', 3, 1, 3], ['medkit', 1.5, 1, 1], ['rags', 1.5, 1, 2], ['emptycan', 1, 1, 1], ['bat', .5, 1, 1], ['ammo_light', .8, 6, 12], ['ammo_shell', .4, 3, 6]],
   stockroom: [['food', 7, 3, 6], ['water', 6, 3, 5], ['tools', 2, 1, 1], ['gascan', 2, 1, 1], ['wood', 3, 2, 4], ['scrap', 2, 1, 2], ['medkit', 1.5, 1, 1]],
   station: [['cash', 3, 10, 30], ['gascan', 5, 1, 2], ['emptycan', 4, 1, 1], ['tools', 2.5, 1, 1], ['scrap', 2, 1, 2], ['water', 3, 1, 3], ['food', 3, 1, 3], ['rags', 2, 1, 2], ['crowbar', 1.2, 1, 1], ['battery', 1, 1, 1]],
-  car: [['keys', 1.2, 1, 1], ['rags', 3, 1, 2], ['water', 3, 1, 1], ['food', 2, 1, 2], ['emptycan', 1.5, 1, 1], ['gascan', 1.2, 1, 1], ['tools', 1.4, 1, 1], ['bandage', 1.5, 1, 1], ['scrap', 1, 1, 1]],
+  car: [['keys', 1.2, 1, 1], ['rags', 3, 1, 2], ['water', 3, 1, 1], ['food', 2, 1, 2], ['emptycan', 1.5, 1, 1], ['gascan', 1.2, 1, 1], ['tools', 1.4, 1, 1], ['bandage', 1.5, 1, 1], ['scrap', 1, 1, 1], ['ammo_light', .8, 4, 10]],
   trunk: [['gascan', 3, 1, 1], ['wood', 2, 1, 3], ['tools', 2, 1, 1], ['scrap', 2, 1, 2], ['food', 2, 1, 3], ['medkit', 1, 1, 1], ['crowbar', 1, 1, 1], ['emptycan', 1.5, 1, 1]],
 };
 // outdoor spots (loot.js addLoot): extra tables
@@ -28,7 +32,7 @@ Object.assign(TABLES, {
   gascache: [['gascan', 7, 1, 3], ['emptycan', 3, 1, 1], ['rags', 2, 1, 1], ['tools', 1, 1, 1]],
   supply: [['food', 7, 2, 4], ['water', 6, 2, 3], ['bandage', 3, 1, 2], ['medkit', 1.5, 1, 1], ['emptycan', 1, 1, 1]],
   dumpster: [['scrap', 4, 1, 2], ['rags', 3, 1, 2], ['food', 2, 1, 1], ['wood', 2, 1, 2], ['cash', 1.5, 3, 12], ['bandage', 1, 1, 1]],
-  duffel: [['cash', 3, 15, 40], ['medkit', 2, 1, 1], ['bandage', 3, 1, 3], ['bat', 1, 1, 1], ['crowbar', 1, 1, 1], ['gascan', 1.5, 1, 1], ['keys', 1, 1, 1]],
+  duffel: [['cash', 3, 15, 40], ['medkit', 2, 1, 1], ['bandage', 3, 1, 3], ['bat', 1, 1, 1], ['crowbar', 1, 1, 1], ['gascan', 1.5, 1, 1], ['keys', 1, 1, 1], ['pistol', 1.2, 1, 1], ['ammo_light', 2, 8, 18], ['shotgun', .6, 1, 1], ['ammo_shell', 1.4, 3, 8], ['grenade', 1.2, 1, 2]],
 });
 export function rollTable(name, rnd) { const T = TABLES[name] || TABLES.living; const out = []; const n = 1 + Math.floor(rnd() * 3); const tot = T.reduce((s, r) => s + r[1], 0);
   for (let i = 0; i < n; i++) { let x = rnd() * tot; for (const r of T) { x -= r[1]; if (x <= 0) { const q = r[2] + Math.floor(rnd() * (r[3] - r[2] + 1)); const e = out.find(o => o.id === r[0]); if (e) e.n += q; else out.push({ id: r[0], n: q }); break; } } } return out; }

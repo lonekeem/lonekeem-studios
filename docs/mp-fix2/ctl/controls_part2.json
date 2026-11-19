@@ -1,0 +1,212 @@
+[
+ {
+  "name": "JUMP button (touch)",
+  "pass": true,
+  "info": {
+   "y": 0.27,
+   "anim": "Jump_Start"
+  }
+ },
+ {
+  "name": "ROLL button (touch)",
+  "pass": true,
+  "info": {
+   "roll": 0.17,
+   "anim": "Roll"
+  }
+ },
+ {
+  "name": "CRCH button (touch)",
+  "pass": true,
+  "info": {
+   "crouch": true,
+   "anim": "Crouch_Idle_Loop"
+  }
+ },
+ {
+  "name": "CRCH button toggles back",
+  "pass": true,
+  "info": {
+   "crouch": false
+  }
+ },
+ {
+  "name": "HIT button (touch, fists)",
+  "pass": true,
+  "info": {
+   "atk": -0.02,
+   "anim": "Punch_Cross"
+  }
+ },
+ {
+  "name": "SWAP button (⇄) cycles fists → weapons in the bag",
+  "pass": true,
+  "info": {
+   "afterFirst": "pistol",
+   "afterSecond": "bat"
+  }
+ },
+ {
+  "name": "FIRE button (touch, pistol): fires",
+  "pass": true,
+  "info": {
+   "mag": 11
+  }
+ },
+ {
+  "name": "Reload button ⟳ (touch)",
+  "pass": true,
+  "info": {
+   "spareBefore": 24,
+   "after": 23
+  }
+ },
+ {
+  "name": "AIM button toggles aim on",
+  "pass": true,
+  "info": {
+   "aim": true
+  }
+ },
+ {
+  "name": "👁 view button: first person",
+  "pass": true,
+  "info": {
+   "camDist": 0.12
+  }
+ },
+ {
+  "name": "💣 grenade button",
+  "pass": false,
+  "info": {
+   "note": "no grenades in multiplayer",
+   "toast": "No grenades"
+  }
+ },
+ {
+  "name": "RUN button (touch toggles run)",
+  "pass": true,
+  "info": {
+   "on": true
+  }
+ },
+ {
+  "name": "USE button at a door (✋)",
+  "pass": true,
+  "info": {
+   "actsBefore": [
+    "Open door"
+   ],
+   "doorBefore": "closed",
+   "doorAfter": "open",
+   "actsAfter": [
+    "Close door"
+   ]
+  }
+ },
+ {
+  "name": "USE (E) on a container opens the loot panel",
+  "pass": true,
+  "info": {
+   "container": "L4:cabinet:0",
+   "acts": [
+    "Search cabinet"
+   ]
+  }
+ },
+ {
+  "name": "Pause (II) button",
+  "pass": true,
+  "info": {
+   "paused": false,
+   "panel": true
+  }
+ },
+ {
+  "name": "Bag button opens bag",
+  "pass": true,
+  "info": {
+   "open": true
+  }
+ },
+ {
+  "name": "Shop button opens shop",
+  "pass": true,
+  "info": {
+   "open": true
+  }
+ },
+ {
+  "name": "Enter car (E)",
+  "pass": true,
+  "info": {
+   "car": "c2",
+   "actsBefore": [
+    "Smash window"
+   ],
+   "actsAfterSmash": [
+    "Enter suv (KL)",
+    "Search trunk"
+   ]
+  }
+ },
+ {
+  "name": "Drive: GAS (W) accelerates forward",
+  "pass": true,
+  "info": {
+   "before": {
+    "v": 0,
+    "ry": -1.51,
+    "x": 8,
+    "z": 21.8,
+    "steer": 0
+   },
+   "after": {
+    "v": 12.3,
+    "ry": -1.51,
+    "x": -1.3,
+    "z": 22.4,
+    "steer": 0
+   }
+  }
+ },
+ {
+  "name": "Steer RIGHT (D) while driving forward turns right (heading decreases)",
+  "pass": true,
+  "info": {
+   "ryBefore": -1.51,
+   "ryAfter": -2.08
+  }
+ },
+ {
+  "name": "Steer LEFT (A) turns left (heading increases)",
+  "pass": true,
+  "info": {
+   "ryBefore": -2.08,
+   "ryAfter": -1.1
+  }
+ },
+ {
+  "name": "BRAKE (S) slows",
+  "pass": true,
+  "info": {
+   "before": 6.9,
+   "after": -5.7
+  }
+ },
+ {
+  "name": "REV: hold BRAKE from a stop reverses",
+  "pass": false,
+  "info": {
+   "vStop": -2.03,
+   "vAfter": 0.35
+  }
+ },
+ {
+  "name": "Exit car (E)",
+  "pass": true,
+  "info": {
+   "drv": false
+  }
+ }
+]

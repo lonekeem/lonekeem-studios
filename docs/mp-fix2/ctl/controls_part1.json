@@ -1,0 +1,174 @@
+[
+ {
+  "name": "Move (W)",
+  "pass": true,
+  "info": {
+   "from": [
+    -6,
+    21.5
+   ],
+   "to": [
+    -8.79,
+    21.5
+   ],
+   "anim": "Jog_Fwd_Loop",
+   "spd": 3.1
+  }
+ },
+ {
+  "name": "Sprint (Shift)",
+  "pass": true,
+  "info": {
+   "spd": 6.2,
+   "anim": "Sprint_Loop"
+  }
+ },
+ {
+  "name": "Look (swipe right half)",
+  "pass": true,
+  "info": {
+   "before": -1.57,
+   "after": -2.61
+  }
+ },
+ {
+  "name": "First person (V)",
+  "pass": true,
+  "info": {
+   "camDist": 0.12,
+   "avatarVisible": false
+  }
+ },
+ {
+  "name": "Third person (V again)",
+  "pass": true,
+  "info": {
+   "camDist": 4.38
+  }
+ },
+ {
+  "name": "Crouch (C)",
+  "pass": true,
+  "info": {
+   "crouch": true,
+   "anim": "Crouch_Idle_Loop"
+  }
+ },
+ {
+  "name": "Roll (Ctrl)",
+  "pass": true,
+  "info": {
+   "roll": 0.32,
+   "anim": "Roll"
+  }
+ },
+ {
+  "name": "Jump (Space)",
+  "pass": true,
+  "info": {
+   "y": 0.49,
+   "anim": "Jump_Start"
+  }
+ },
+ {
+  "name": "Attack / HIT with fists (J / wantHit)",
+  "pass": true,
+  "info": {
+   "atk": 0.25,
+   "anim": "Punch_Cross"
+  }
+ },
+ {
+  "name": "Fists damage a zombie",
+  "pass": true,
+  "info": {
+   "hpBefore": 70,
+   "after": {
+    "hp": 48,
+    "dead": false
+   }
+  }
+ },
+ {
+  "name": "Attack with bat (Sword anim + zombie dies in 1-2 hits)",
+  "pass": true,
+  "info": {
+   "anim": "Sword_Attack",
+   "zombie": {
+    "hp": 21.599999999999994,
+    "dead": false
+   }
+  }
+ },
+ {
+  "name": "Swap weapon (Q)",
+  "pass": true,
+  "info": {
+   "pref": "pistol"
+  }
+ },
+ {
+  "name": "Pistol equipped: gun idle pose",
+  "pass": true,
+  "info": {
+   "anim": "Pistol_Idle_Loop"
+  }
+ },
+ {
+  "name": "FIRE pistol: mag drops, shot hits zombie",
+  "pass": true,
+  "info": {
+   "zombieHpBefore": 70,
+   "after": {
+    "last": {
+     "g": "pistol",
+     "hits": 0,
+     "mag": 10
+    },
+    "hp": 36,
+    "dead": false,
+    "ammoBag": 24
+   }
+  }
+ },
+ {
+  "name": "Reload (R): spare ammo moves into the magazine",
+  "pass": true,
+  "info": {
+   "before": 24,
+   "after": 22
+  }
+ },
+ {
+  "name": "AIM (button): aim state, slower, gun-aim pose",
+  "pass": true,
+  "info": {
+   "aim": true,
+   "spd": 2.2,
+   "anim": "Walk_Loop"
+  }
+ },
+ {
+  "name": "Heal (H) with bandage",
+  "pass": true,
+  "info": {
+   "hp": 68
+  }
+ },
+ {
+  "name": "Grenade (G): thrown, explodes after fuse, kills zombie",
+  "pass": false,
+  "info": {
+   "grenades": {
+    "left": 0,
+    "before": 1
+   },
+   "boomed": true,
+   "zombie": {
+    "dead": false,
+    "hp": 70,
+    "hpMe": 68
+   }
+  }
+ }
+]

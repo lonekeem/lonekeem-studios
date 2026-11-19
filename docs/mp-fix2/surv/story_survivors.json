@@ -1,0 +1,89 @@
+[
+ [
+  "run",
+  {
+   "st": "run",
+   "npcs": 1,
+   "bodies": 0,
+   "vis": true,
+   "dist": 11,
+   "t": -5
+  }
+ ],
+ [
+  "body just formed",
+  {
+   "st": "down:frozen",
+   "npcs": 0,
+   "bodies": 1,
+   "vis": true,
+   "dist": 8,
+   "t": 9
+  }
+ ],
+ [
+  "30s later",
+  {
+   "st": "down:frozen",
+   "npcs": 0,
+   "bodies": 1,
+   "vis": true,
+   "dist": 8,
+   "t": 39
+  }
+ ],
+ [
+  "100s later (still there)",
+  {
+   "st": "down:frozen",
+   "npcs": 0,
+   "bodies": 1,
+   "vis": true,
+   "dist": 8,
+   "t": 109
+  }
+ ],
+ [
+  "84 m away but still IN VIEW at 209 s: stays",
+  {
+   "st": "down:frozen",
+   "npcs": 0,
+   "bodies": 1,
+   "vis": true,
+   "dist": 88,
+   "t": 209
+  }
+ ],
+ [
+  "camera turned away: body removed quietly (bodies count)",
+  {
+   "bodies": 1,
+   "dbg": {
+    "born": 7.436499999999227,
+    "t": 212.6031666666564,
+    "d": 88.49940525137974,
+    "camPos": [
+     6,
+     2,
+     63
+    ],
+    "camDir": [
+     0,
+     -0.12,
+     0.99
+    ],
+    "body": [
+     2,
+     0,
+     -23
+    ],
+    "far": 260,
+    "FRcheck": [
+     -0.04,
+     0.21,
+     1
+    ]
+   }
+  }
+ ]
+]

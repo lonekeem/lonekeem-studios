@@ -1,0 +1,72 @@
+{
+ "x": 58.45209213531925,
+ "log": [
+  {
+   "ev": "shows",
+   "dead": false,
+   "d": 100,
+   "fog": 0.93
+  },
+  {
+   "ev": "shows",
+   "dead": true,
+   "d": 99,
+   "fog": 0.93
+  },
+  {
+   "ev": "shows",
+   "dead": true,
+   "d": 99,
+   "fog": 0.93
+  },
+  {
+   "ev": "shows",
+   "dead": true,
+   "d": 99,
+   "fog": 0.93
+  },
+  {
+   "ev": "shows",
+   "dead": true,
+   "d": 100,
+   "fog": 0.93
+  },
+  {
+   "ev": "appears(new)",
+   "dead": false,
+   "d": 163,
+   "fog": 1
+  },
+  {
+   "ev": "shows",
+   "dead": true,
+   "d": 100,
+   "fog": 0.93
+  },
+  {
+   "ev": "hides",
+   "dead": false,
+   "d": 162,
+   "fog": 1
+  },
+  {
+   "ev": "shows",
+   "dead": true,
+   "d": 99,
+   "fog": 0.93
+  },
+  {
+   "ev": "shows",
+   "dead": true,
+   "d": 95,
+   "fog": 0.87
+  },
+  {
+   "ev": "shows",
+   "dead": false,
+   "d": 99,
+   "fog": 0.92
+  }
+ ],
+ "bad": []
+}

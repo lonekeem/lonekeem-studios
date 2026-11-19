@@ -1,0 +1,26 @@
+[
+ {
+  "dead": true,
+  "deadT": 4.4,
+  "settled": true,
+  "rootY": 0.042,
+  "lowestVertexY": -0.124,
+  "poolOnRoad": true
+ },
+ {
+  "dead": true,
+  "deadT": 3.9,
+  "settled": true,
+  "rootY": 0.041,
+  "lowestVertexY": -0.012,
+  "poolOnRoad": true
+ },
+ {
+  "dead": true,
+  "deadT": 3.3,
+  "settled": true,
+  "rootY": 0.038,
+  "lowestVertexY": -0.051,
+  "poolOnRoad": true
+ }
+]

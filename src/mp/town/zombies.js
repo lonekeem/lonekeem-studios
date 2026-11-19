@@ -66,6 +66,8 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     z.pool = poolMesh(z.root.position.x, z.root.position.z, .5); z.poolGrow = 1; onEvent && onEvent('kill', z); }
   function hurt(z, dmg, dir, o) { if (z.dead) return false; z.hp -= dmg; z.hurtT = .25; if (z.hp <= 0) { kill(z, dir, o); return true; } z.st = 'chase'; z.lose = 0; z.vel.set(dir.x * 1.8, 0, dir.z * 1.8); z.play(rnd() < .5 ? 'Hit_Chest' : 'Hit_Head', { once: true, force: true, speed: 1.7, fade: .08, cb: () => { z.curName = ''; } }); return false; }
   out.killNear = (x, z, r, dmg, dir0) => { let n = 0; for (const q of zs) { if (q.dead) continue; const p = q.root.position, dx = p.x - x, dz = p.z - z, d = Math.hypot(dx, dz); if (d < r) { const l = d || 1; hurt(q, dmg, dir0 || { x: dx / l, z: dz / l }); n++; } } return n; };
+  // hitscan: nearest living zombie within .45 m of the ray (origin ox,oz heading dx,dz unit) inside `range`; returns {t,dead} or null
+  out.shoot = (ox, oz, dx, dz, range, dmg) => { let best = null, bt = range; for (const q of zs) { if (q.dead) continue; const p = q.root.position, rx = p.x - ox, rz = p.z - oz, t = rx * dx + rz * dz; if (t < .2 || t >= bt) continue; if (Math.abs(rx * dz - rz * dx) < .45) { best = q; bt = t; } } if (!best) return null; const dead = hurt(best, dmg, { x: dx, z: dz }); return { t: bt, dead }; };
   out.runOver = (car) => { if (!car || Math.abs(car.v) < 3) return 0; let n = 0; const cs = car.circles(); for (const q of zs) { if (q.dead || q.hitCar > t) continue; const p = q.root.position; for (const [cx, cz] of cs) { const dx = p.x - cx, dz = p.z - cz; if (dx * dx + dz * dz < 1.5 * 1.5) { q.hitCar = t + .5; const dd = { x: Math.sin(car.ry) * Math.sign(car.v), z: Math.cos(car.ry) * Math.sign(car.v) }; hurt(q, Math.abs(car.v) * 12, dd, { car: true }); car.v *= .965; car.hp = Math.max(0, car.hp - .6); n++; break; } } } return n; };
   out.spawnAt = (x, z, o) => make(x, z, o);
   out.near = (x, z, r) => { for (const q of zs) { if (q.dead) continue; const p = q.root.position; if ((p.x - x) ** 2 + (p.z - z) ** 2 < r * r) return true; } return false; };
@@ -85,7 +87,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     for (let i = 0; i < zs.length; i++) { const z = zs[i], pp = z.root.position;
       if (z.dead) { dead++; z.deadT += dt; if (z.deadT >= 3.2 && !z.settled && z.root.visible && nd0(z) < 60) { z.settled = 1; settleCorpse(z); } if (z.deadT < 3.2) { z.mixer.update(dt); if (z.vel.lengthSq() > .01) { const [nx, nz] = col.push(pp.x + z.vel.x * dt, pp.z + z.vel.z * dt, .3); pp.x = nx; pp.z = nz; z.vel.multiplyScalar(.9); } if (z.pool && z.poolGrow && z.pool.scale.x < 1.5) z.pool.scale.setScalar(z.pool.scale.x + dt * .5); } continue; }
       alive++; let near = null, nd = 1e9, ni = 0; P.forEach((p, k) => { const d = Math.hypot(p.x - pp.x, p.z - pp.z); if (d < nd) { nd = d; near = p; ni = k; } });
-      z.root.visible = nd < fogFar - (z.root.visible ? 4 : 12); // hysteresis, and only vanish once ~90% fogged (no pop in view)
+      z.root.visible = nd < fogFar - (z.root.visible ? 1 : 5); // hysteresis, and only vanish once ~90% fogged (no pop in view)
       const far = nd > fogFar * .7; // far from everyone: cheap drift only (no animation tick)
       if (z.hurtT > 0) { z.hurtT -= dt; if (z.oneShot || z.hurtT > 0) { const [nx, nz] = col.push(pp.x + z.vel.x * dt, pp.z + z.vel.z * dt, .3); pp.x = nx; pp.z = nz; z.vel.multiplyScalar(.85); if (!far) { z.mixer.update(dt); zBones(z); } continue; } }
       // state: notice / lose
