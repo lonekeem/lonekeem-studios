@@ -2,7 +2,7 @@
 import { chromium } from 'playwright';
 import { defaultLook, randomLook } from '../../src/mp/look.js';
 const out = process.argv[2] || '/workspace/mp/L';
-const A = defaultLook('mp_m2'); A.name = 'Keem'; A.skin.t = .75; const B = randomLook('mp_f1', 77); B.name = 'Mia'; B.skin.t = .15; B.hair.id = 'longwave'; B.worn.top = { id: 'sundress', c: '#e9b949', c2: '#fff', p: 0 }; B.worn.pants = null;
+const A = defaultLook('mp_m1'); A.name = 'Keem'; A.skin.t = .75; const B = randomLook('mp_f1', 77); B.name = 'Mia'; B.skin.t = .15; B.hair.id = 'longwave'; B.worn.top = { id: 'sundress', c: '#e9b949', c2: '#fff', p: 0 }; B.worn.pants = null;
 const b = await chromium.launch({ executablePath:'/usr/bin/google-chrome', args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist'] });
 const ctx = await b.newContext({ viewport:{width:844,height:390}, deviceScaleFactor:1.5, hasTouch:true, isMobile:true });
 async function client(look, name) {

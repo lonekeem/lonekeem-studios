@@ -38,6 +38,7 @@ export function randomLook(base, seed = Date.now()) {
 }
 export const MORPH_KEYS = { head: ['headSize', 'faceW', 'faceLen', 'forehead', 'browRidge', 'cheekbone', 'cheekFull', 'jaw', 'chin', 'chinW'], eyes: ['eyeDepth'], nose: ['noseW', 'noseLen', 'noseBridge', 'noseTip'], mouth: ['lipFull'], ears: ['earSize', 'earOut', 'earPoint'], body: ['muscle', 'weight', 'chest', 'shoulders', 'hips', 'legs', 'neck'] };
 export function normalize(look) { // fill missing fields from the defaults (forward compatible)
+  if (look && C.LEGACY_BASE[look.base]) look = { ...look, base: C.LEGACY_BASE[look.base] };
   const d = defaultLook(look?.base || 'mp_m1'); const mg = (a, b) => { if (b === undefined) return a; if (b === null) return null; if (typeof a !== 'object' || a === null || Array.isArray(a)) return b; const o = { ...a }; for (const k in b) o[k] = (k in a && typeof a[k] === 'object' && a[k] !== null && !Array.isArray(a[k])) ? mg(a[k], b[k]) : b[k]; return o; };
   const o = mg(d, look || {}); o.v = LOOK_VERSION; return o;
 }

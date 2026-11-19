@@ -4,9 +4,9 @@ import { PATTERNS } from './garments.js';
 export { PATTERNS };
 
 export const BASES = [
-  { id: 'mp_m1', label: 'Man · lean', g: 'm' }, { id: 'mp_m2', label: 'Man · strong', g: 'm' },
-  { id: 'mp_f1', label: 'Woman · slim', g: 'f' }, { id: 'mp_f2', label: 'Woman · curvy', g: 'f' },
-];
+  { id: 'mp_m1', label: 'Man', g: 'm' }, { id: 'mp_f1', label: 'Woman', g: 'f' },
+]; // mp_m2 / mp_f2 stay on disk (hidden); old saves that used them are mapped to m1 / f1 in look.normalize
+export const LEGACY_BASE = { mp_m2: 'mp_m1', mp_f2: 'mp_f1' };
 export const SWATCH = {
   cloth: ['#f2f2f0', '#c9ccd0', '#8a8f98', '#4b4f57', '#17181b', '#7a1f1f', '#c0392b', '#e8743b', '#e9b949', '#d8c68a', '#6b8e3d', '#2f5d3a', '#1f6f78', '#4aa3c7', '#2f5fa8', '#1c2e5c', '#6c4aa5', '#b45fa7', '#e58fb0', '#8b5a3c', '#5b3a24', '#c8a27a', '#3a4a33', '#6a6a52'],
   hair: ['#0b0807', '#1a110b', '#2b1a10', '#3d2a1a', '#5a3b22', '#7a5230', '#9a6b3a', '#b88a4e', '#d4ae6a', '#e8cf94', '#efe2b8', '#8a8a8a', '#d6d6d6', '#a5391f', '#7a1f1f', '#c9481f', '#d83f8f', '#7b3fd8', '#3f6bd8', '#2fbfd0', '#34c26b', '#e8e03a', '#ff7f50', '#101a30'],
