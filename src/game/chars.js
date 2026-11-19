@@ -81,6 +81,9 @@ export class CharLib {
     // strip root translation from in-place clips (keep feet planted), skip _RM
     for (const k in this.clips) { const c = this.clips[k]; c.tracks = c.tracks.filter(t => !(t.name.startsWith('root.') && t.name.endsWith('.position')) && !(t.name.endsWith('.scale') && /^DEF-(head|foot|toe)/.test(t.name))); }
   }
+  // v2.2 body-part masked clips (raiders): 'Name@ub' = upper body tracks only (spine1-3, neck, head, arms, hands, fingers), 'Name@lb' = everything else (root, hips, legs).
+  mask(name) { const at = name.indexOf('@'); if (at < 0) return null; const base = this.clips[name.slice(0, at)]; if (!base) return null; const ub = /^DEF-(spine\.?00[123]|neck|head|shoulder|upper_arm|forearm|hand|f_|thumb)/;
+    const tracks = base.tracks.filter(t => (name.slice(at + 1) === 'ub') === ub.test(t.name)); return this.clips[name] = new THREE.AnimationClip(name, base.duration, tracks); }
   make(look) { const obj = SkeletonUtils.clone(this.gltf.scene); const mat = bodyMat(look.hair ? Object.assign(bodyLook(look), { grime: Math.max(look.grime || 0, bodyLook(look).grime), blood: look.blood, zed: look.zed, nohead: 1 }) : look); const bones = {};
     obj.traverse(o => { if (o.isSkinnedMesh) { o.material = mat; o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false; } if (o.isBone) { bones[o.name] = o; bones[o.name.replace(/[.]/g, '')] = o; } });
     return { obj, mat, bones };
@@ -102,7 +105,7 @@ export class Char {
     this.mixer = new THREE.AnimationMixer(obj); this.actions = {}; this.cur = null; this.curName = ''; this.oneShot = null;
     this.mixer.addEventListener('finished', (e) => { if (this.oneShot && e.action === this.oneShot.a) { const cb = this.oneShot.cb; this.oneShot = null; cb && cb(); } });
   }
-  act(name) { let a = this.actions[name]; if (!a) { const c = this.lib.clips[name]; if (!c) return null; a = this.actions[name] = this.mixer.clipAction(c); } return a; }
+  act(name) { let a = this.actions[name]; if (!a) { const c = this.lib.clips[name] || this.lib.mask(name); if (!c) return null; a = this.actions[name] = this.mixer.clipAction(c); } return a; }
   play(name, { fade = 0.18, speed = 1, once = false, cb, force = false } = {}) {
     if (!force && this.curName === name && !once) { if (this.cur) this.cur.timeScale = speed; return; }
     const a = this.act(name); if (!a) return; const wasLoco = this.locoOn; if (wasLoco) this.endLoco(fade); a.reset(); a.timeScale = speed; a.enabled = true;
@@ -112,7 +115,7 @@ export class Char {
   // v2.0 locomotion blend tree: Walk <-> Jog <-> Sprint blended by real ground speed, phase-matched, with the cycle advanced by
   // distance travelled (so feet stay planted: no sliding / moonwalking). dir < 0 plays the cycle backwards (backpedalling).
   locomote(speed, dir = 1, dt = 0.016, max = 6.4) {
-    const N = Char.LOCO; const acts = N.map(n => this.act(n.name)); if (acts.some(a => !a)) return false;
+    const N = Char.LOCO, sfx = this.locoPart ? '@' + this.locoPart : ''; const acts = N.map(n => this.act(n.name + sfx)); if (acts.some(a => !a)) return false;
     if (!this.locoOn) { this.locoOn = true; this.locoW = 0; this.locoPh = this.locoPh || 0; if (this.cur) { this.cur.fadeOut(0.2); this.cur = null; } this.curName = '__loco';
       acts.forEach(a => { a.enabled = true; a.stopFading(); a.setLoop(THREE.LoopRepeat); a.timeScale = 0; a.paused = false; a.play(); a.setEffectiveWeight(0); }); }
     const sm = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
@@ -131,7 +134,7 @@ export class Char {
     const on = this.locoOn ? sp > 0.12 : sp > 0.22;
     if (on) { if (!this.locomote(sp, 1, dt, max)) this.play(sp > 2.5 ? 'Jog_Fwd_Loop' : 'Walk_Loop'); return true; }
     this.play(idle); return false; }
-  endLoco(fade = 0.18) { if (!this.locoOn) return; this.locoOn = false; Char.LOCO.forEach(n => { const a = this.actions[n.name]; if (a) a.fadeOut(fade); }); this.cur = null; this.curName = ''; }
+  endLoco(fade = 0.18) { if (!this.locoOn) return; this.locoOn = false; Char.LOCO.forEach(n => { [n.name, n.name + '@lb'].forEach(k => { const a = this.actions[k]; if (a) a.fadeOut(fade); }); }); this.cur = null; this.curName = ''; }
   bone(n) { return this.bones[n] || this.bones[n.replace(/[.]/g, '')]; }
   attach(boneName, mesh) { if (this.attachSkin && this.attachSkin(boneName, mesh)) return mesh; const b = this.bone(boneName); if (b) b.add(mesh); return mesh; }
   worldOf(boneName, out) { const b = this.bone(boneName); return b ? b.getWorldPosition(out) : this.root.getWorldPosition(out); }

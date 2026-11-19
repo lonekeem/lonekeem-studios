@@ -24,3 +24,17 @@ Merged main v1.9.15 (voice update) at 8b4c180 — resolved game.js nextLine conf
 - Read tool caches images by path: write proof frames to fresh filenames.
 - zBones gives raiders zombie arm posture too (check when doing raiders).
 - First load on SwiftShader sits ~35 s on 15% (main thread blocked).
+
+---
+# feat/raider-ai — CANCELLED by Keem (WIP only, not finished, no PR opened)
+Branched from feat/realism-anim-v2 @ 4d40d80. Work stopped at the design/exploration stage.
+
+## Committed
+- `src/game/chars.js`: body-part masked clips. `CharLib.mask('Name@ub'|'Name@lb')` builds upper-body-only or lower-body-only copies of a clip; `Char.act` uses it; `Char.locomote` honours `char.locoPart = 'lb'` (lower-body-only walk/jog/sprint) and `endLoco` fades both sets. Unused so far by game code (no behaviour change for anyone).
+
+## Not done (design notes for whoever resumes)
+- New `src/game/raidai.js` replacing `raiderAI` in game.js: cover from AABB colliders (cars = low cover, stand-up peek; walls = tall, side peek), route around cover via a ring of points, crouch (Crouch_Idle_Loop@lb), peek/shoot, strafe/backpedal by facing legs along travel and twisting spine.001-.003/head to aim, flank in pairs by angle separation, reload (Pistol_Reload@ub) behind cover, retreat at hp<40%, never idle in the open.
+- `zBones` still gives raiders the zombie arm posture (needs `&& !z.raider`).
+- Existing `raiderAI` ignores `z.stun`; hit pushback `z.vel` isn't applied to raiders.
+- Proof: `tools/proof_raider.mjs` is poor (dialog overlay, far camera). Needs HUD hidden and a close camera. Collider list near start (x -50..50, z -40..80) has cars at (-4.2,28), (4.4,12), (8.5,33) etc.
+- No proof frames, no draft PR.
