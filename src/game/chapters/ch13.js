@@ -37,18 +37,38 @@ function gurney() { const gr = new THREE.Group(), st = new THREE.MeshStandardMat
 // parented to the right bone with Object3D.attach (keeps the world transform). Hand axes: +Z = forward/up along the forearm, +Y = fingers.
 function wear(b, boneName, mesh) { b.root.add(mesh); b.root.updateWorldMatrix(true, true); const bone = b.bone(boneName); if (bone) bone.attach(mesh); return mesh; }
 function ladle(b) { const m = new THREE.Group(), steel = new THREE.MeshStandardMaterial({ color: '#c8ccd0', metalness: .7, roughness: .3 });
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(.022, .022, .85, 8), steel); pole.position.y = .25; m.add(pole);   // handle runs through the fist (hand +Z)
-  const grip = new THREE.Mesh(new THREE.CylinderGeometry(.036, .036, .22, 8), new THREE.MeshStandardMaterial({ color: '#b8452a', roughness: .8 })); grip.position.y = 0; m.add(grip);
-  const bowl = new THREE.Mesh(new THREE.SphereGeometry(.13, 14, 10, 0, PI * 2, 0, PI / 2), steel); bowl.rotation.x = -PI / 2; bowl.position.set(0, .72, .02); m.add(bowl);
-  const soup = new THREE.Mesh(new THREE.CircleGeometry(.12, 14), new THREE.MeshStandardMaterial({ color: '#d68a2e', emissive: '#7a3a08' })); soup.position.set(0, .72, .075); m.add(soup);
-  m.rotation.set(1.0, 0, 0); m.position.set(0, .05, .0); b.attach('DEF-hand.R', m); return m; }
+  // normal-sized soup ladle: ~45 cm long in her fist (she is a 1.95x giant, so it looks like a regular ladle in a big hand)
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(.013, .013, .56, 8), steel); pole.position.y = .2; m.add(pole);   // handle runs through the fist (hand +Y = fingers)
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(.026, .026, .15, 8), new THREE.MeshStandardMaterial({ color: '#b8452a', roughness: .8 })); grip.position.y = 0; m.add(grip);
+  const bowl = new THREE.Mesh(new THREE.SphereGeometry(.07, 14, 10, 0, PI * 2, 0, PI / 2), steel); bowl.rotation.x = -PI / 2; bowl.position.set(0, .5, .012); m.add(bowl);
+  const soup = new THREE.Mesh(new THREE.CircleGeometry(.062, 14), new THREE.MeshStandardMaterial({ color: '#d68a2e', emissive: '#7a3a08' })); soup.position.set(0, .5, .05); m.add(soup);
+  m.rotation.set(1.0, 0, 0); m.position.set(0, .04, .0); b.attach('DEF-hand.R', m); return m; }
+// hairnet + apron are SKINNED overlays cut from the body mesh itself (same skeleton, inflated 2 cm), so they fit her body and head exactly and bend with every animation
+function skinPiece(b, pred, off, mat) {
+  let src = null; b.root.traverse(o => { if (o.isSkinnedMesh && o.visible && !src) src = o; }); if (!src) return null;
+  const G = src.geometry, P = G.attributes.position, N = G.attributes.normal, SI = G.attributes.skinIndex, SW = G.attributes.skinWeight, IX = G.index, UV = G.attributes.uv;
+  const keep = new Uint8Array(P.count); for (let i = 0; i < P.count; i++) keep[i] = pred(P.getX(i), P.getY(i), P.getZ(i), N.getX(i), N.getY(i), N.getZ(i)) ? 1 : 0;
+  const idx = []; const n = IX ? IX.count : P.count; for (let t = 0; t < n; t += 3) { const a = IX ? IX.getX(t) : t, c = IX ? IX.getX(t + 1) : t + 1, d = IX ? IX.getX(t + 2) : t + 2; if (keep[a] && keep[c] && keep[d]) idx.push(a, c, d); }
+  if (!idx.length) return null;
+  const g = new THREE.BufferGeometry(); const pos = new Float32Array(P.count * 3); for (let i = 0; i < P.count; i++) { pos[i * 3] = P.getX(i) + N.getX(i) * off; pos[i * 3 + 1] = P.getY(i) + N.getY(i) * off; pos[i * 3 + 2] = P.getZ(i) + N.getZ(i) * off; }
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', N); g.setAttribute('skinIndex', SI); g.setAttribute('skinWeight', SW); if (UV) g.setAttribute('uv', UV); g.setIndex(idx);
+  const m = new THREE.SkinnedMesh(g, mat); m.bindMode = src.bindMode; m.frustumCulled = false; src.parent.add(m); m.position.copy(src.position); m.rotation.copy(src.rotation); m.scale.copy(src.scale); m.updateMatrix(); m.bind(src.skeleton, src.bindMatrix); m.renderOrder = 2; return m; }
 function hairnet(b) {
-  const white = new THREE.MeshStandardMaterial({ color: '#f4f4ee', roughness: 1, side: THREE.DoubleSide });
-  const cap = new THREE.Mesh(new THREE.SphereGeometry(.27, 14, 8, 0, PI * 2, 0, PI * .5), white); cap.scale.set(1, .9, 1.06); cap.position.set(-.037, 2.86, .01); wear(b, 'DEF-head', cap);
-  // apron: an open half-tube hugging the torso front, a bib up to the neck, a skirt over the thighs
-  const ap = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 18, 1, true, -1.05, 2.1), new THREE.MeshStandardMaterial({ color: '#ece8dc', roughness: 1, side: THREE.DoubleSide }));
-  ap.scale.set(.36, 1.0, .34); ap.position.set(-.008, 2.02, -.06); wear(b, 'DEF-spine.002', ap);
-  const strap = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, .34, 6), white); strap.position.set(-.1, 2.72, -.02); strap.rotation.z = .35; wear(b, 'DEF-spine.003', strap); const strap2 = strap.clone(); strap2.position.x = .08; strap2.rotation.z = -.35; wear(b, 'DEF-spine.003', strap2); }
+  const net = new THREE.MeshStandardMaterial({ color: '#f2f2ec', roughness: 1, transparent: true, opacity: .8, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  // everything above the hairline: forehead line is higher at the front, sides/back cover the hair down to the ear/nape
+  skinPiece(b, (x, y, z) => y > 1.505 && (z < .045 ? true : y > 1.585), .011, net);
+  // plus a smooth skull-cap shell (head-bone local units) so the hair cards under the net read as one white hairnet, with an elastic band at the rim
+  const hb = b.bone('DEF-head'); if (hb) { const shell = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12, 0, PI * 2, 0, PI * .56), new THREE.MeshStandardMaterial({ color: '#f4f4ee', roughness: 1, transparent: true, opacity: .93, side: THREE.DoubleSide }));
+    shell.scale.set(.106, .08, .097); shell.position.set(0, -.016, .006); shell.rotation.x = -.34; hb.add(shell);
+    const band = new THREE.Mesh(new THREE.TorusGeometry(1, .03, 6, 24), new THREE.MeshStandardMaterial({ color: '#d8d8d0', roughness: 1 })); const ry = Math.cos(PI * .56), rr = Math.sin(PI * .56) * 1.005; band.rotation.x = PI / 2; band.scale.set(rr, rr, .45); band.position.set(0, ry, 0); shell.add(band); }
+  // apron: a bib + skirt on the FRONT of the torso (|x| narrows up the chest), cream with a darker waist tie that wraps round the back
+  const cream = new THREE.MeshStandardMaterial({ color: '#ece6d4', roughness: 1, emissive: '#2a2820', side: THREE.DoubleSide });
+  const hw = (y) => y > 1.3 ? .05 + (1.42 - y) * 1.1 : y > .98 ? .13 + (1.3 - y) * .1 : .16;
+  skinPiece(b, (x, y, z, nx, ny, nz) => y > .66 && y < 1.4 && nz > .25 && Math.abs(x) < hw(y), .013, cream);
+  const tie = new THREE.MeshStandardMaterial({ color: '#8a7a5a', roughness: 1 });
+  skinPiece(b, (x, y, z, nx, ny, nz) => y > .96 && y < 1.0 && Math.abs(x) < .21 && Math.abs(z) < .2 && Math.abs(nx) < .98, .016, tie);
+  // shoulder straps: two narrow bands from the bib over the shoulders to the back of the waist tie
+  skinPiece(b, (x, y, z, nx, ny, nz) => y > .98 && y < 1.42 && Math.abs(Math.abs(x) - .075) < .022 && (nz < -.2 || ny > .5 || (nz > .25 && y > 1.3)), .015, tie); }
 
 // ================= steps (world coordinates) =================
 export const steps = [
@@ -113,7 +133,7 @@ export const steps = [
     // when Keem gets near the counter Biscuit hops down onto the open floor, so the pick-up happens in the open (not across the counter)
     update(g, dt) { const D = g.stepData, B = D.B; tickMv(g, D, dt); tickBiscuit(g, B, dt, { marker: false });
       const P = g.player.root.position;
-      if (D.carry) { const ry = g.player.root.rotation.y; B.grp.position.set(P.x + Math.sin(ry) * .3, .74, P.z + Math.cos(ry) * .3); B.grp.rotation.y = ry + PI; }
+      if (D.carry) { const ry = g.player.root.rotation.y; B.grp.position.set(P.x + Math.sin(ry) * .27, .9, P.z + Math.cos(ry) * .27); B.grp.rotation.order = 'YXZ'; B.grp.rotation.set(.3, ry + PI, 0); }
       if (!D.drop && !D.fin && Math.hypot(P.x - 3, P.z + 3495) < 6.5) { D.drop = { t: 0 }; g.wpTarget = null; g.floatText && g.floatText('Biscuit hops down!', '#ffe9a0'); }
       if (D.drop && D.drop.t < 1) { D.drop.t = Math.min(1, Math.max(0, D.drop.t + Math.min(.1, Math.max(0, dt)) / .9)); const u = D.drop.t; B.grp.position.set(3, 2.12 * (1 - u) + Math.sin(PI * u) * .7, -3498 + 4.4 * u);
         if (u >= 1) { B.grp.position.y = 0; g.wpTarget = [3, .9, -3493.6]; D.uses = [{ x: 3, z: -3493.6, r: 2.2, label: 'Pick up Biscuit', fn: (g) => finale(g, D) }]; } } } },
@@ -123,7 +143,7 @@ function finale(g, D) { if (D.fin) return; D.fin = true; D.uses = []; g.wpTarget
   g.cut = { anim: 'Idle_Loop', cam: V(4.9, 1.2, -3491.4), look: V(3, .6, -3493.1), flash: false }; snap(g);
   script(g, [['keem', "Hey, buddy. It's me. Nobody's chasing you now."], (g) => { g.cut.anim = 'PickUp_Table'; cam(g, V(4.5, .95, -3491.7), V(3, .5, -3493.2)); g.player.play('PickUp_Table', { once: true, force: true }); },
     ['nia', "Is he okay?"], ['keem', "He's sitting in the soup."], ['nia', "Is it hot soup?"], ['keem', "It's been cold for months."], ['nia', "…Biscuit. Bad. Keem, bring him home."],
-    (g) => { g.cut.anim = 'Idle_Loop'; g.player.play('Idle_Loop', { force: true }); g.player.root.rotation.y = .9; cam(g, V(5.0, 1.3, -3491.1), V(3.1, 1.05, -3492.8)); B.grp.scale.setScalar(.85); D.carry = true; B.held = true; act(g.player, 'cradle', { k: 1 }); },
+    (g) => { g.cut.anim = 'Idle_Loop'; g.player.play('Idle_Loop', { force: true }); g.player.root.rotation.y = .9; cam(g, V(5.0, 1.3, -3491.1), V(3.1, 1.05, -3492.8)); B.grp.scale.setScalar(.85); D.carry = true; B.held = true; act(g.player, 'baby', { k: 1, lean: -.08 }); },
     ['keem', "Okay, bunny. Up you go. Ugh. You smell like meatloaf."],
     ['vance', "Your ten minutes are up. Bring the rabbit. Bring your family. Quickly."], ['keem', "Why quickly?"], ['vance', "Because the alarm was not false."],
     (g) => { act(g.player, null); setTimeout(() => g.onComplete && g.onComplete(13), 900); }]); }

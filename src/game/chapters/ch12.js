@@ -11,6 +11,10 @@ export const speakers = { dana: 'Mom', orderly: 'The Night Orderly' };
 export const Z0 = -2900;
 const OZ = -70, Z = (z) => z + OZ;           // design z -> world z
 let API = null;                                 // the built hospital kit (doors, cells, power) — set by buildZone
+// the reunion hug: Mom drops onto one knee, both arms round Nia's back; Nia steps in on Mom's right side with both arms round her neck, cheeks together
+function embrace(D, mom, nia) { const M = mom.root.position, N = nia.root.position; const r = Math.atan2(N.x - M.x, N.z - M.z); mom.root.rotation.y = r; const f = [Math.sin(r), Math.cos(r)], l = [Math.cos(r), -Math.sin(r)];
+  N.x = M.x + f[0] * .26 - l[0] * .04; N.z = M.z + f[1] * .26 - l[1] * .04; nia.root.rotation.y = r + PI; mom.play('Idle_Loop'); nia.play('Idle_Loop');
+  act(mom, 'embrace', { k: 1, kneel: 'R', lean: .38, head: [.1, -.5, .25] }); act(nia, 'neckhug', { k: 1, lean: -.05, head: [-.1, .4, -.1] }); }
 export function buildZone(ctx) { API = buildSubB(ctx); }
 
 // ---------- small helpers ----------
@@ -81,7 +85,7 @@ export const steps = [
       const L = (arr) => arr.forEach(it => typeof it === 'function' ? cb(g, it) : g.say([it]));
       g.say([['dana', "Don't come in. Please. I can't tell what I'll do."]]); 
       L([['keem', "Mom. It's me. It's Keem."], (g) => { mom.root.rotation.y = 0; act(mom, 'reach', { sides: 'L', k: 1 }); cam(g, V(1.4, 1.6, Z(-3003.4)), V(0, 1.5, Z(-3008.5))); },
-        ['dana', "Keem? You got so tall."], (g) => { walk(D, nia, 0, Z(-3007.68), { sp: 3.2, anim: 'Jog_Fwd_Loop', face: PI, cb: () => { act(nia, 'hug', { k: 1 }); mom.play('Crouch_Idle_Loop'); act(mom, 'hug', { k: 1, lean: .15 }); } }); walk(D, mom, 0, Z(-3008.1), { sp: .8 }); walk(D, g.player, .5, Z(-3005.7), { sp: 1.5 }); },
+        ['dana', "Keem? You got so tall."], (g) => { walk(D, nia, 0, Z(-3007.68), { sp: 3.2, anim: 'Jog_Fwd_Loop', face: PI, cb: () => { embrace(D, mom, nia); } }); walk(D, mom, 0, Z(-3008.1), { sp: .8 }); walk(D, g.player, .5, Z(-3005.7), { sp: 1.5 }); },
         ['nia', "Mommy!"], (g) => cam(g, V(3.7, 1.4, Z(-3006.2)), V(.2, 1.3, Z(-3007.4))), ['dana', "Hi, baby. Hi. Look at the two of you."],
         (g) => { walk(D, dad, 5.3, Z(-3003.4), { sp: 1.2, face: -PI / 2, cb: () => { dad.play('Sitting_Idle_Loop'); act(dad, null); dad.root.position.y = 0; } }); },
         ['marcus', "Dana. You're really here. I'm… I'm just going to sit down for a second."], (g) => { cam(g, V(3.8, 1.2, Z(-3001.2)), V(5, .6, Z(-3003.4))); },

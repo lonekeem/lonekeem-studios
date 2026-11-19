@@ -14,6 +14,9 @@ function kit(H) {
     for (let i = 0; i < 90; i++) { g.fillStyle = `rgba(30,30,24,${Math.random() * .1})`; g.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 9, 2 + Math.random() * 9); } }));
   T.wall = (low, high, stripe) => RW(canvasTex(128, 128, (g, w, h) => { g.fillStyle = high; g.fillRect(0, 0, w, h); g.fillStyle = low; g.fillRect(0, h * .62, w, h * .38); g.fillStyle = stripe; g.fillRect(0, h * .6, w, h * .03);
     for (let i = 0; i < 160; i++) { g.fillStyle = `rgba(20,24,20,${Math.random() * .12})`; g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 3, 4 + Math.random() * 22); } }));
+  // acoustic ceiling tile: 2x2 grid of tiles per texture repeat (one repeat = 1.2 m), speckled, with dark joints, so it reads as a ceiling and not as fog
+  T.ceil = (base, joint) => RW(canvasTex(128, 128, (g, w, h) => { g.fillStyle = base; g.fillRect(0, 0, w, h); for (let i = 0; i < 320; i++) { g.fillStyle = `rgba(0,0,0,${Math.random() * .16})`; g.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5); }
+    g.fillStyle = joint; g.fillRect(0, 0, w, 4); g.fillRect(0, h / 2 - 2, w, 4); g.fillRect(0, 0, 4, h); g.fillRect(w / 2 - 2, 0, 4, h); }));
   const std = (o) => new THREE.MeshStandardMaterial(Object.assign({ roughness: .85 }, o));
   const rep = (t, x, y) => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(x, y); return t; };
   const M = {
@@ -21,13 +24,17 @@ function kit(H) {
     glass: new THREE.MeshStandardMaterial({ color: '#a8d8e0', transparent: true, opacity: .22, roughness: .05, metalness: .2, side: THREE.DoubleSide, depthWrite: false }),
     frame: std({ color: '#5a6064', metalness: .4, roughness: .5 }), red: std({ color: '#8a1a14' }),
   };
+  const TRIM = std({ color: '#50564f', roughness: .9 });
+  const ceilMat = (w, d) => { const t = T.ceil('#8d9189', '#5e635c'); t.repeat.set(w / 1.2, d / 1.2); return std({ map: t, color: '#ffffff', emissive: '#4a4d47', emissiveMap: t, roughness: 1 }); };
   // box with wall-style UVs: u follows the long side, v is exactly one texture per WH of height
   const wallGeo = (w, h, d) => { const g = new THREE.BoxGeometry(w, h, d), uv = g.attributes.uv; for (let f = 0; f < 6; f++) for (let i = 0; i < 4; i++) { const k = f * 4 + i, u = uv.getX(k), v = uv.getY(k); if (f < 2) uv.setXY(k, u * d / 4, v * h / WH); else if (f < 4) uv.setXY(k, u * w / 4, v * d / WH); else uv.setXY(k, u * w / 4, v * h / WH); } return g; };
   const K = {
     col, M, T, std, rep,
     floor(x0, x1, z0, z1, mat) { const m = new THREE.Mesh(new THREE.PlaneGeometry(Math.abs(x1 - x0), Math.abs(z1 - z0)), mat); m.rotation.x = -PI / 2; m.position.set((x0 + x1) / 2, .05, (z0 + z1) / 2); Object.assign(mat, { polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -8 }); m.receiveShadow = true; scene.add(m); return m; },
     // ceilings are single-sided (they face DOWN): visible from inside the room, invisible from above, so a high camera never gets blocked by them
-    ceil(x0, x1, z0, z1, h = WH, mat) { const m = new THREE.Mesh(new THREE.PlaneGeometry(Math.abs(x1 - x0), Math.abs(z1 - z0)), mat || M.ceil); m.rotation.x = PI / 2; m.position.set((x0 + x1) / 2, h, (z0 + z1) / 2); scene.add(m); return m; },
+    ceil(x0, x1, z0, z1, h = WH, mat) { const w = Math.abs(x1 - x0), d = Math.abs(z1 - z0); const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat || ceilMat(w, d)); m.rotation.x = PI / 2; m.position.set((x0 + x1) / 2, h, (z0 + z1) / 2); scene.add(m);
+      // dark crown trim around the edge so the ceiling line reads clearly against the walls
+      const tm = TRIM; [[(x0 + x1) / 2, z0, w, .0], [(x0 + x1) / 2, z1, w, .0], [x0, (z0 + z1) / 2, 0, d], [x1, (z0 + z1) / 2, 0, d]].forEach(([cx, cz, lw, ld]) => { const t = new THREE.Mesh(new THREE.BoxGeometry(lw || .16, .22, ld || .16), tm); t.position.set(cx, h - .11, cz); scene.add(t); }); return m; },
     // straight wall from (ax,az) to (bx,bz) (axis aligned) with door gaps [[centre, width], ...]; gaps get a lintel. returns meshes
     wall(ax, az, bx, bz, gaps = [], o = {}) { const h = o.h || WH, th = o.th || .4, mat = o.mat, along = Math.abs(bx - ax) > Math.abs(bz - az) ? 'x' : 'z'; const a = along === 'x' ? Math.min(ax, bx) : Math.min(az, bz), b = along === 'x' ? Math.max(ax, bx) : Math.max(az, bz), c0 = along === 'x' ? az : ax;
       const gs = gaps.slice().sort((p, q) => p[0] - q[0]); const segs = []; let cur = a; gs.forEach(([c, w]) => { segs.push([cur, c - w / 2]); cur = c + w / 2; }); segs.push([cur, b]); const out = [];
@@ -70,7 +77,7 @@ export const B12 = { x0: -16, x1: 16, zL: -2900, zM: -2916, zB: -2966, zH: -3016
 export function buildSubB(H0) {
   const H = Object.assign({ on: false, level: 0, lamps: [], emerg: [], budget: 99 }, H0); H.budget = Math.min(H0.Q.lamps + 1, 5); H.lampBudget = (d = 0) => (H.budget += d);
   const K = kit(H), { M, T } = K, scene = H0.scene; const R = { cells: [], vents: {} };
-  const floorM = K.std({ map: K.rep(T.tile('#8f9a96', '#818c88'), 8, 8), roughness: .5, metalness: .05 }); floorM.map.repeat.set(1, 1);
+  const floorM = K.std({ map: K.rep(T.tile('#8f9a96', '#8b9692', '#7a8581'), 8, 8), roughness: .5, metalness: .05 }); floorM.map.repeat.set(1, 1);
   const wallM = K.std({ map: T.wall('#4f6b68', '#aebfb8', '#2a3a38') }), wallB = K.std({ map: T.wall('#4a4a46', '#8a8a82', '#222') });
   const floor = (x0, x1, z0, z1) => { const m = K.floor(x0, x1, z0, z1, floorM.clone()); m.material.map = floorM.map.clone(); m.material.map.needsUpdate = true; m.material.map.repeat.set(Math.abs(x1 - x0) / 2.4, Math.abs(z1 - z0) / 2.4); return m; };
   const W = (a, b, c, d, gaps, o = {}) => K.wall(a, b, c, d, gaps, Object.assign({ mat: wallM }, o));
@@ -172,9 +179,9 @@ export function buildUpper(H0) {
   const mk = (a, b, c) => K.std({ map: T.wall(a, b, c) });
   const wP = mk('#5a8a94', '#d4e2dc', '#e8d070'), wG = mk('#a05a7a', '#f0dcc8', '#40a0b0'), wW = mk('#e8b840', '#f6ecd0', '#e86a4a'), wC = mk('#7a9a6a', '#ece6d0', '#c04a3a');
   const flr = (mat, x0, x1, z0, z1) => { const m = K.floor(x0, x1, z0, z1, Object.assign(mat.clone(), {})); m.material.map = mat.map.clone(); m.material.map.needsUpdate = true; m.material.map.repeat.set(Math.abs(x1 - x0) / 2.4, Math.abs(z1 - z0) / 2.4); return m; };
-  const fl1 = K.std({ map: T.tile('#c8c8bc', '#b6b8ac', '#8a8c80'), roughness: .45 }), fl2 = K.std({ map: T.tile('#e8d8a8', '#dcc890', '#a89a70'), roughness: .5 }), fl3 = K.std({ map: T.tile('#c9cdc0', '#bcc2b2', '#a2a898'), roughness: .5 });
+  const fl1 = K.std({ map: T.tile('#c8c8bc', '#c3c3b7', '#acaca0'), roughness: .45 }), fl2 = K.std({ map: T.tile('#e8d8a8', '#e4d4a4', '#c8ba8c'), roughness: .5 }), fl3 = K.std({ map: T.tile('#c9cdc0', '#c5c9bc', '#b2b8a8'), roughness: .5 });
   const rooms = [[-14, 14, -3300, -3332, wP, fl1, 3.6], [-14, 14, -3332, -3374, wG, fl2, 3.6], [-8, 8, -3374, -3446, wW, fl2, 3.4], [-16, 16, -3446, -3508, wC, fl3, 4.2]];
-  rooms.forEach(([a, b, c, d, w, f, h]) => { flr(f, a, b, c, d); K.ceil(a, b, c, d, h, K.std({ color: '#c4c6bc', emissive: '#70726a', roughness: 1 })); });
+  rooms.forEach(([a, b, c, d, w, f, h]) => { flr(f, a, b, c, d); K.ceil(a, b, c, d, h); });
   const W = (a, b, c, d, gaps, mat, h) => K.wall(a, b, c, d, gaps, { mat, h: h || WH });
   // pack room
   W(-14.2, -3300, 14.2, -3300, [], wP); W(-14.2, -3300, -14.2, -3332, [], wP); W(14.2, -3300, 14.2, -3332, [], wP); W(-14.2, -3332, 14.2, -3332, [[0, 4]], wP);
@@ -185,7 +192,7 @@ export function buildUpper(H0) {
   // side rooms (x beyond the corridor): 6 rooms 8 wide, 12 deep
   [[-1, -3390], [-1, -3408], [-1, -3426], [1, -3390], [1, -3408], [1, -3426]].forEach(([sd, zc]) => { const x0 = sd * 8.2, x1 = sd * 16.2; flr(fl2, Math.min(x0, x1), Math.max(x0, x1), zc - 9, zc + 9 > -3374 ? -3374 : zc + 9); });
   [-3381, -3399, -3417, -3435].forEach(z => { [-1, 1].forEach(sd => { W(sd * 8.2, z, sd * 16.2, z, [], wW, 3.4); }); }); [-1, 1].forEach(sd => W(sd * 16.2, -3372, sd * 16.2, -3437, [], wW, 3.4));
-  [-1, 1].forEach(sd => K.ceil(Math.min(sd * 8.2, sd * 16.2), Math.max(sd * 8.2, sd * 16.2), -3374, -3437, 3.4, K.std({ color: '#c4c6bc', emissive: '#70726a', roughness: 1 })));
+  [-1, 1].forEach(sd => K.ceil(Math.min(sd * 8.2, sd * 16.2), Math.max(sd * 8.2, sd * 16.2), -3374, -3437, 3.4));
   W(-8.2, -3446, 8.2, -3446, [[0, 4]], wW, 3.4); // ward -> cafeteria
   // cafeteria
   W(-16.2, -3446, -16.2, -3508, [], wC, 4.2); W(16.2, -3446, 16.2, -3508, [], wC, 4.2); W(-16.2, -3508, 16.2, -3508, [], wC, 4.2); W(-16.2, -3446, -8.2, -3446, [], wC, 4.2); W(8.2, -3446, 16.2, -3446, [], wC, 4.2);
