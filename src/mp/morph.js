@@ -54,7 +54,13 @@ export function applyMorph(av, M) {
       const sc = reg === 6 ? 1 : 1 + (.2 * mus + .3 * legs + hips * .1 * g(0, s, 0, .2)) * (1 - sstep(.7, .95, s)); perp.multiplyScalar(sc); x = a.x + d.x * pr + perp.x; y = a.y + d.y * pr + perp.y; z = a.z + d.z * pr + perp.z; }
     pos.setXYZ(i, x, y, z);
   }
-  pos.needsUpdate = true; weldNormals(av.skin.geometry);
+  pos.needsUpdate = true; weldNormals(av.skin.geometry); eggNormals(av);
+}
+// face lumps from the generated mesh read as dirty patches under the key light: blend the cheek / brow / forehead normals toward a clean egg-shaped surface
+function eggNormals(av) {
+  const T = av.tpl, L = T.lm, pos = av.pos, nr = av.nrm, zw = T.zoneW; if (!zw) return; const cy = (L.chinY + L.top) / 2 + .01, ry = (L.top - L.chinY) / 2, rx = L.hw * 1.02, cz = (L.front + L.back) / 2 - .005, rz = (L.front - L.back) / 2; const v = new THREE.Vector3(), n = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) { const w = zw[i]; if (!w) continue; const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i); v.set(x / (rx * rx), (y - cy) / (ry * ry), (z - cz) / (rz * rz)).normalize(); n.set(nr.getX(i), nr.getY(i), nr.getZ(i)).multiplyScalar(1 - w).addScaledVector(v, w).normalize(); nr.setXYZ(i, n.x, n.y, n.z); }
+  nr.needsUpdate = true;
 }
 export function weldNormals(geo) {
   geo.computeVertexNormals(); const nr = geo.attributes.normal, grp = geo.userData.group, ng = geo.userData.ng, n = nr.count; if (!grp) { nr.needsUpdate = true; return; }

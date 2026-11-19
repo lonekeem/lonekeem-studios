@@ -13,10 +13,10 @@ const CSS = `
 #mpc .hd b{flex:1;font-size:15px;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#mpc button{font:inherit;color:inherit;background:#2a303c;border:1px solid #3a4352;border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer}
 #mpc button:active{background:#3b4558}#mpc button.on{background:#d98a2b;border-color:#f0a947;color:#1a1208}#mpc button.pri{background:#2f8f5b;border-color:#49b97c}
 #mpc .stage{position:relative;flex:1 1 44%;min-height:150px}#mpc canvas{width:100%;height:100%;display:block}
-#mpc .cam{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:5px}#mpc .cam button{padding:5px 8px;font-size:12px;background:#12151bcc}
+#mpc .cam{position:absolute;left:8px;bottom:8px;display:flex;flex-direction:row;flex-wrap:wrap;gap:5px;max-width:92%}#mpc .cam button{padding:5px 8px;font-size:12px;background:#12151bcc}
 #mpc .nm{position:absolute;left:8px;top:8px}#mpc .nm input{background:#12151bcc;border:1px solid #3a4352;color:#fff;border-radius:8px;padding:6px 8px;width:140px;font-size:13px}
 #mpc .pn{flex:1 1 56%;display:flex;flex-direction:column;background:#161a22;border-top:1px solid #2c3441;min-height:0}
-#mpc .tabs{display:flex;gap:4px;overflow-x:auto;padding:6px;scrollbar-width:none;flex:none}#mpc .tabs::-webkit-scrollbar{display:none}#mpc .tabs button{white-space:nowrap;flex:none;padding:6px 10px}
+#mpc .tabs{display:flex;flex-wrap:nowrap;margin:0;gap:4px;overflow-x:auto;padding:6px;scrollbar-width:none;flex:none}#mpc .tabs::-webkit-scrollbar{display:none}#mpc .tabs button{white-space:nowrap;flex:none;padding:6px 10px}
 #mpc .body{flex:1;overflow-y:auto;padding:6px 10px 18px;min-height:0;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 #mpc .row{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:13px}#mpc .row label{width:116px;flex:none;color:#b8c0cf}#mpc .row input[type=range]{flex:1;min-width:0;accent-color:#d98a2b;height:26px}
 #mpc .row .v{width:34px;text-align:right;color:#8c96a8;font-size:11px;flex:none}
@@ -42,7 +42,7 @@ export async function openCreator({ onClose, onPlay } = {}) {
   const scene = new THREE.Scene(); scene.add(new THREE.HemisphereLight('#dfe6ff', '#5a5448', 1.15)); const key = new THREE.DirectionalLight('#fff4e6', 2.3); key.position.set(1.6, 2.6, 3); scene.add(key); const rim = new THREE.DirectionalLight('#9bb4ff', .9); rim.position.set(-2, 2, -2.5); scene.add(rim);
   const floor = new THREE.Mesh(new THREE.CircleGeometry(.9, 48), new THREE.MeshStandardMaterial({ color: '#2a303c', roughness: 1 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -.002; scene.add(floor);
   const cam = new THREE.PerspectiveCamera(30, 1, .05, 30); let av = null, spin = .35, zoom = 1, view = 'full', camY = .9, camD = 4.3, targetY = .9, targetD = 4.3, tx = 0; const hold = { down: false, x: 0 };
-  const VIEWS = { full: () => [.95, 4.4], head: () => [av.tpl.lm.chinY + av.tpl.lm.hh * .5, 1.45], upper: () => [1.25, 2.9], hands: () => [.85, 1.9], feet: () => [.25, 2.2] };
+  const VIEWS = { full: () => [.92, 4.0], head: () => [av.tpl.lm.chinY + av.tpl.lm.hh * .5, 1.45], upper: () => [1.25, 2.9], hands: () => [.85, 1.9], feet: () => [.25, 2.2] };
   function setView(v) { view = v; const [y, d] = VIEWS[v](); targetY = y * (av.root.scale.y); targetD = d * Math.max(.9, av.root.scale.y); }
   async function rebuild(base) { if (av) { scene.remove(av.root); av.dispose(); av = null; } const tpl = await loadBase(base); av = new Avatar(tpl); scene.add(av.root); apply(); setView(view); }
   let dirty = false; function apply() { if (!av) return; try { dress(av, look); } catch (e) { console.error('dress failed', e); } K.saveLook(look); }

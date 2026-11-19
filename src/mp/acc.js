@@ -21,7 +21,7 @@ export function makeCtx(av) {
   const faceZ = (x, y) => { let best = -9; for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) { const v = grid.get(key(Math.abs(x) + dx * .006, y + dy * .006)); if (v !== undefined && v > best) best = v; } return best > -9 ? best : L.front * .7; };
   const torsoZ = (y, back) => { const e = tgrid.get(Math.round(y / .01)); return e ? (back ? e[1] : e[0]) : (back ? -.1 : .1); };
   const c = { L, P, hw, hs, eyeY, mouthY, noseY, zc, top: L.top, chinY: L.chinY, front: L.front, back: L.back, faceZ, torsoZ, ears: L.ears, lobes: L.lobes, earY: L.chinY + 1.7 * L.hw,
-    crownY: eyeY + .035 * hs, ry: (L.top - eyeY) * 1.0, rx: hw * 1.04, rz: (L.front - L.back) / 2 * 1.02 };
+    skY: eyeY, crownY: eyeY + .035 * hs, ry: (L.top - eyeY) * 1.0, rx: hw * 1.04, rz: (L.front - L.back) / 2 * 1.02 };
   return c;
 }
 const hemi = (B, mat, cx, cy, cz, rx, ry, rz, frac = 1, rot) => B.add(new THREE.SphereGeometry(1, 22, 12, 0, PI * 2, 0, PI / 2 * frac), mat, [cx, cy, cz], rot, [rx, ry, rz]);

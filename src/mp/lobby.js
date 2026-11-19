@@ -52,7 +52,7 @@ export async function enterLobby({ look, onExit } = {}) {
   root.append(canvas, el('div', { cls: 'top' }, el('button', { on: { click: exit } }, '‹ Exit'), info, el('button', { on: { click: () => { net.me.look.__edit = 1; exit(true); } } }, 'Look')), stick, el('div', { cls: 'btns' }, useB, runB), tip); document.body.append(root);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true }); renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping;
   const scene = new THREE.Scene(); const solids = buildWorld(scene); const cam = new THREE.PerspectiveCamera(55, 1, .1, 400);
-  const car = buildCar(); car.position.set(6, 0, -8); car.rotation.y = Math.PI / 2; scene.add(car);
+  const car = buildCar(); car.position.set(-2.4, 0, -14); car.rotation.y = 0; scene.add(car);
   const net = new Net('lobby'); net.me = { name: look.name || 'Survivor', look }; net.hello();
   const me = { av: null, x: 0, z: 6, ry: 0, sp: 0, drv: false, vx: 0 }; const remotes = new Map();
   const mkAvatar = async (lk) => { const tpl = await loadBase(lk.base); const av = new Avatar(tpl); dress(av, lk); return av; };

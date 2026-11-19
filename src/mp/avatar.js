@@ -43,7 +43,8 @@ function analyse(key, scene) {
   const ears = earC.map((c, k) => earN[k] ? c.divideScalar(earN[k]) : new THREE.Vector3((k ? -1 : 1) * hw * 1.05, minY + hw * 1.7, P.Head.z));
   const lm = { cx: 0, chinY: minY, hh: maxY - minY, hw, front, back, zc: (front + back) / 2, top: maxY, noseTipY: tipY, headBone: P.Head.clone(), ears, lobes: earLow.map((l, k) => l || ears[k]) };
   flattenFace(geo, headW, lm);
-  return { key, scene, skin, geo, names, P, aR, aW, reg, headW, dom, used, lm, ankleY, hipsY, neckY };
+  const zoneW = new Float32Array(n); { const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }; for (let i = 0; i < n; i++) { if (headW[i] < .5) continue; const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i); const ax = Math.abs(x) / lm.hw, fy = (y - lm.chinY) / lm.hw; zoneW[i] = .9 * ss(lm.zc, lm.zc + .04, z) * ss(.16, .34, ax) * ss(1.05, .85, ax) * ss(.9, 1.25, fy) * ss(3.0, 2.6, fy); } }
+  return { zoneW, key, scene, skin, geo, names, P, aR, aW, reg, headW, dom, used, lm, ankleY, hipsY, neckY };
 }
 
 // Meshy meshes carry noisy folds that the baked texture used to hide; weld seams, Taubin-smooth (volume preserving) and rebuild welded normals
@@ -127,7 +128,7 @@ function flattenFace(geo, headW, lm) {
     G = out; }
   const sq = v => v * v; const grp = geo.userData.group; const wg = new Float32Array(geo.userData.ng);
   for (let i = 0; i < n; i++) { if (headW[i] < .5) continue; const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i); if (z < lm.zc + .01) continue; const ax = Math.abs(x) / hw, fy = (y - lm.chinY) / hw;
-    const we = Math.min(1, 1.5 * Math.exp(-(sq((ax - .45) / .6) + sq((fy - 1.68) / .7)))), wb = .8 * Math.exp(-(sq((ax - .4) / .85) + sq((fy - 2.22) / .3))); const w = Math.max(we, wb) * Math.min(1, (z - lm.zc) / .03); if (w < .01) continue;
+    const we = Math.min(1, 1.5 * Math.exp(-(sq((ax - .45) / .6) + sq((fy - 1.68) / .7)))), wb = .8 * Math.exp(-(sq((ax - .4) / .85) + sq((fy - 2.22) / .3))); const nose = Math.min(1, Math.max(0, (ax - .13) / .22)); const w = Math.max(we * nose, wb) * Math.min(1, (z - lm.zc) / .03); if (w < .01) continue;
     const [cx, cy] = cell(x, y); if (cx < 0 || cy < 0 || cx >= W || cy >= H) continue; const t = G[cy * W + cx]; if (t < -8) continue; pos.setZ(i, z + (t - z) * w); wg[grp[i]] = Math.max(wg[grp[i]], w); }
   { const ng = geo.userData.ng, grp = geo.userData.group, ix = geo.index; const nb = Array.from({ length: ng }, () => new Set()); for (let t = 0; t < ix.count; t += 3) { const a = grp[ix.getX(t)], b = grp[ix.getX(t + 1)], c = grp[ix.getX(t + 2)]; nb[a].add(b); nb[a].add(c); nb[b].add(a); nb[b].add(c); nb[c].add(a); nb[c].add(b); }
     const gp = new Float32Array(ng * 3); for (let i = 0; i < n; i++) { const g = grp[i]; gp[g * 3] = pos.getX(i); gp[g * 3 + 1] = pos.getY(i); gp[g * 3 + 2] = pos.getZ(i); }
