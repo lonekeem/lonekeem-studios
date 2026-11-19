@@ -247,3 +247,5 @@ body:not(.hudv2) #tbtns .rb{position:absolute;pointer-events:auto}
 body:not(.hudv2) #tAtk{right:40px;bottom:40px}body:not(.hudv2) #tAim{right:0;bottom:-8px;width:44px!important;height:44px!important}
 body:not(.hudv2) #tReload{right:140px;bottom:20px}body:not(.hudv2) #tRoll{right:132px;bottom:84px}body:not(.hudv2) #tJump{right:82px;bottom:140px}body:not(.hudv2) #tUse{right:12px;bottom:150px}
 body:not(.hudv2).driving #tbtns{bottom:150px}
+
+#chList{display:flex;flex-direction:column;gap:12px}

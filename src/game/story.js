@@ -388,10 +388,10 @@ export const STORY = [
 bindStory(STORY);
 export function chOf(i) { const s = STORY[i]; return s && s.ch ? s.ch : 1; }
 // first step index of every chapter, derived from the step list (CH_START[n])
-export const CH_START = {}; STORY.forEach((s, i) => { if (!s.survival && s.ch && CH_START[s.ch] == null) CH_START[s.ch] = i; });
+export const CH_START = {}; STORY.forEach((s, i) => { const c = s.ch || 1; if (!s.survival && CH_START[c] == null) CH_START[c] = i; });
 export const SURVIVAL_STEP = STORY.findIndex(s => s.survival);
 export const LAST_CH = Math.max(...Object.keys(CH_START).map(Number));
-export const LAST_STORY_STEP = STORY.map((s, i) => (!s.survival && s.ch === LAST_CH ? i : -1)).reduce((a, b) => Math.max(a, b), 0);
+export const LAST_STORY_STEP = STORY.map((s, i) => (!s.survival && (s.ch || 1) === LAST_CH ? i : -1)).reduce((a, b) => Math.max(a, b), 0);
 // chapter table for menus / end cards: CHAPTERS[n] = { n, title, endQuote, start, stub }
 export const CHAPTERS = [null]; CHAPTER_LIST.forEach(m => { CHAPTERS[m.n] = { ...m, start: CH_START[m.n] }; });
 export const SPEAKER_NAMES = { ...NEW_SPEAKERS };
