@@ -181,7 +181,7 @@ P.loopAt = function (name, p, vol = .5, o = {}) { const s = this.play(name, Obje
 P.wind = function (on, vol = .1) { if (!this.ctx) return; if (on && !this.windSrc) { this.windSrc = this.play('wind_loop', { loop: true, vol: 0, bus: this.amb, jit: 0, flat: true }); if (!this.windSrc) return; }
   if (this.windSrc) this.windSrc.g.gain.setTargetAtTime(on ? vol : 0, this.ctx.currentTime, 1.5); };
 P.footstep = function (surf, p, vol = .35, who = 'p') { const k = who === 'z' ? (Math.random() < .6 ? 'z_shuffle' : 'step_' + surf) : 'step_' + surf; this.play(k, { pos: p, vol: who === 'z' ? vol * .9 : vol, jit: .12, ref: who === 'p' ? 4 : 2, maxD: 30, rate: who === 'z' ? .85 : 1 }); };
-P.breathe = function (vol = .25) { this.play('breath', { vol, jit: .08, flat: true }); };
+P.breathe = function (vol = .25) { if (this.noKeem) return; this.play('breath', { vol, jit: .08, flat: true }); };
 P.jumpS = function () { this.play('jump', { vol: .45, flat: true }); };
 P.land = function (vol = .6) { this.play('land', { vol, flat: true }); this.play('cloth', { vol: .25, flat: true }); };
 P.rollS = function () { if (!this.play('roll', { vol: .6, flat: true })) this.swing(); this.play('cloth', { vol: .35, rate: .8, flat: true }); };
@@ -224,7 +224,7 @@ P.engine = function (on, rpm = 0) { if (!this.ctx) return; const t = this.ctx.cu
 P.ambientTick = function () { O.ambientTick.call(this); if (!this.ctx || this.ctx.state !== 'running') return; if (this.lpos && Math.random() < .035) { const an = Math.random() * 6.283, d = 45 + Math.random() * 60, p = { x: this.lpos.x + Math.cos(an) * d, y: 2, z: this.lpos.z + Math.sin(an) * d }; if (Math.random() < .5) this.play('scream', { vol: .5, pos: p, maxD: 200 }); else { const n = 1 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) setTimeout(() => this.play(FAM.gun_rifle ? 'gun_rifle' : 'gun_pistol', { vol: .45, pos: p, maxD: 200 }), i * (120 + Math.random() * 200)); } }
   if ((this.mode === 'night' || this.mode === 'tense') && Math.random() < .035) this.thunder(.5 + Math.random() * .4); };
 // ---- voices ----
-P.voice = function (who, text, bleeps) { this.stopVoice(); if (!this.ctx || this.s.voices === false || who === 'note') return Promise.resolve(0);
+P.voice = function (who, text, bleeps) { this.stopVoice(); if (this.noKeem && /keem/i.test(who)) return Promise.resolve(0); if (!this.ctx || this.s.voices === false || who === 'note') return Promise.resolve(0);
   const n = 'v/' + vhash(who + '|' + text); const tok = this.vTok = (this.vTok || 0) + 1;
   return this.load(n).then(b => { if (!b || tok !== this.vTok) return 0; this.vSrc = this.play(n, { bus: this.voiceBus, jit: 0 }); this.lastBark = performance.now(); this.vEnd = this.ctx.currentTime + b.duration;
     if (bleeps && bleeps.length && this.vSrc) { const t0 = this.ctx.currentTime + 0.05, sp = Math.max(.3, b.duration - .15), g0 = this.vSrc.g.gain.value;
@@ -232,7 +232,7 @@ P.voice = function (who, text, bleeps) { this.stopVoice(); if (!this.ctx || this
         const o = this.ctx.createOscillator(), og = this.ctx.createGain(); o.frequency.value = 1000; og.gain.value = 0; og.gain.setValueAtTime(.22, ta); og.gain.setValueAtTime(0, tb); o.connect(og); og.connect(this.voiceBus); o.start(ta); o.stop(tb + .05); }); }
     return b.duration; }); };
 P.stopVoice = function () { this.vTok = (this.vTok || 0) + 1; if (this.vSrc) { try { this.vSrc.stop(); } catch {} this.vSrc = null; } };
-P.shout = function (key, force, pos) { if (pos) this.at(pos); const at = this._at; if (!this.ctx || this.s.voices === false) return; const now = performance.now(); if (!force && now - this.lastBark < 4000) return;
+P.shout = function (key, force, pos) { if (this.noKeem && /^keem/.test(key)) return; if (pos) this.at(pos); const at = this._at; if (!this.ctx || this.s.voices === false) return; const now = performance.now(); if (!force && now - this.lastBark < 4000) return;
   if (!force && this.ctx.currentTime < (this.vEnd || 0)) return; this.lastBark = now;
   if (this.s.lang !== 'clean' && this.s.lang !== 'bleep' && this.man && this.man.barks[key + '_x'] && Math.random() < .5) key = key + '_x';
   const n = (this.man && this.man.barks[key]) || 2; if (!force && /_chat/.test(key)) { this.chatCd = this.chatCd || {}; if (now - (this.chatCd[key] || -1e9) < 45000) return; this.chatCd[key] = now; }
