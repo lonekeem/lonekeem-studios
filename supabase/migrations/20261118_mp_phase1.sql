@@ -4,13 +4,16 @@ create schema if not exists atq_mp;
 create table if not exists atq_mp.profiles (
   user_id uuid primary key references auth.users on delete cascade,
   display_name text not null default 'Survivor' check (char_length(display_name) between 2 and 20),
+  active_slot smallint not null default 0,   -- the character used when joining a lobby (what other players see)
   created_at timestamptz not null default now()
 );
-create table if not exists atq_mp.characters (
-  user_id uuid primary key references auth.users on delete cascade,
-  look jsonb not null,                       -- versioned look document (docs/multiplayer.md §4)
+create table if not exists atq_mp.characters (   -- several saved characters per account ("slots"); one is active
+  user_id uuid not null references auth.users on delete cascade,
+  slot smallint not null default 0 check (slot between 0 and 11),
+  look jsonb not null,                       -- versioned look document (docs/multiplayer.md §4); {"exclusive":"skin.keem_story"} = the Original Keem choice (admin only)
   look_hash text generated always as (md5(look::text)) stored,
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  primary key (user_id, slot)
 );
 create table if not exists atq_mp.wallets (
   user_id uuid primary key references auth.users on delete cascade,
