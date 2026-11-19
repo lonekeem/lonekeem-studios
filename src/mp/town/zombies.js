@@ -67,8 +67,9 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
   // noise (door breaking, swings, smashed windows): wanderers within `r` walk over to look
   out.noise = (x, z, r) => { for (const q of zs) { if (q.dead || q.st === 'chase') continue; const p = q.root.position, d = Math.hypot(p.x - x, p.z - z); if (d < r) { q.st = 'look'; q.look = [x, z]; q.lookT = 8; } } onNoise && onNoise(x, z, r); };
   // persistent corpses from the map (k:'h' human victim, k:'z' dead zombie)
-  for (const b of bodies) { const hum = b.k === 'h'; const look = Object.assign(randomLook((zseed++ * 7919 + 99) | 0, !hum), hum ? { grime: .4, blood: 1 } : { grime: 1, blood: 1 }); const c = new Char(lib, look, 1); c.root.position.set(b.x, 0, b.z); c.root.rotation.y = b.ry || 0; scene.add(c.root);
-    c.z = !hum; c.dead = true; c.deadT = 99; c.play('Death01', { once: true, force: true }); c.mixer.update(5); c.vel = new THREE.Vector3(); c.pool = poolMesh(b.x, b.z, hum ? 1.1 : .8); zs.push(c); }
+  for (const [bi, b] of bodies.entries()) { const hum = b.k === 'h'; // human victims always wear the story NPC human rigs (genm / genf, never the zombie rig or zombie skin); fixed seed per body so they look the same every run
+    const look = Object.assign(randomLook(5000 + bi * 131, !hum), hum ? { grime: .35, blood: .75, zed: false } : { grime: 1, blood: 1 }); if (hum) { if (!look.rig || !/^gen[mf]$/.test(look.rig) || !lib.rigs[look.rig]) look.rig = lib.rigs.genm ? 'genm' : null; look.zed = false; } const c = new Char(lib, look, 1); c.root.position.set(b.x, 0, b.z); c.root.rotation.y = b.ry || 0; scene.add(c.root);
+    c.z = !hum; c.victim = hum; c.dead = true; c.deadT = 99; c.play('Death01', { once: true, force: true }); c.mixer.update(5); c.vel = new THREE.Vector3(); c.pool = poolMesh(b.x, b.z, hum ? 1.1 : .8); zs.push(c); }
 
   // -------- per-frame AI --------
   function update(dt) {
