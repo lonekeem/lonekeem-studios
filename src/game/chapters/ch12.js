@@ -23,10 +23,11 @@ function tickMv(g, D, dt) { if (!D.mv) return; D.mv = D.mv.filter(m => { const p
   const s = Math.min(d, m.sp * dt); p.x += dx / d * s; p.z += dz / d * s; m.c.root.rotation.y = Math.atan2(dx, dz); m.c.play(m.anim); if (m.c === g.player && g.cut) g.cut.anim = m.anim; return true; }); }
 const cam = (g, c, l) => { g.cut = Object.assign(g.cut || {}, { cam: c, look: l }); };
 const cb = (g, f) => g.dlgQ.push({ cb: f });
+const snap = (g) => { g.camera.position.copy(g.cut.cam); g._lk = null; };
 const sayThen = (g, lines, f) => g.say(lines, f);
 function fuseMesh() { const m = new THREE.Group(); const glass = new THREE.MeshStandardMaterial({ color: '#ffd24a', emissive: '#ff9a10', emissiveIntensity: 1.6 }), cap = new THREE.MeshStandardMaterial({ color: '#b8bec2', metalness: .7, roughness: .3 });
   const t = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, .26, 12), glass); t.rotation.z = PI / 2; m.add(t); [-1, 1].forEach(s => { const c = new THREE.Mesh(new THREE.CylinderGeometry(.075, .075, .07, 12), cap); c.rotation.z = PI / 2; c.position.x = s * .15; m.add(c); });
-  m.scale.setScalar(1.8); m.userData.spin = true; return m; }
+  m.scale.setScalar(2.6); m.userData.spin = true; return m; }
 // the gray-eyed look: two flat gray discs just in front of the eyes (attached to the head bone), faded in and out
 function grayEyes(c, on) { if (!c.gEyes) { c.gEyes = new THREE.Group(); const mt = new THREE.MeshBasicMaterial({ color: '#b9c4c6', transparent: true, opacity: 0, depthTest: false }); [-1, 1].forEach(s => { const d = new THREE.Mesh(new THREE.CircleGeometry(.0165, 14), mt); d.position.set(s * .033, .078, .082); d.renderOrder = 9; c.gEyes.add(d); }); c.gEyes.userData.m = mt; c.attach('DEF-head', c.gEyes); if (!c.gEyes.parent) c.root.add(c.gEyes); }
   c.gEyes.userData.m.opacity = on ? .95 : 0; }
@@ -34,14 +35,14 @@ function grayEyes(c, on) { if (!c.gEyes) { c.gEyes = new THREE.Group(); const mt
 // ================= steps =================
 export const steps = [
   { id: 'c12_stairs', ch: 12, cp: [0, Z(-2834), PI], obj: 'Find Mom: cross the morgue', hint: 'The volunteers sleep standing up. Crouch (C) and move slowly past. Loud noise wakes them.', mood: 'tense', beat: 1, light: 'dark', rain: false,
-    enter(g) { const D = g.stepData; API.setPower(false); fam(g, D, Z(-2834)); g.wpTarget = [10, 1.2, Z(-2892)];
+    enter(g) { const D = g.stepData; g.hand.visible = true; API.setPower(false); fam(g, D, Z(-2834)); g.wpTarget = [10, 1.2, Z(-2892)];
       sleepers(g, [[-7, -2863], [6, -2850], [1, -2873], [-9, -2887], [8, -2879], [13, -2890], [-2, -2884], [-4, -2858]]); g.victim(-10, Z(-2893), null, 2);
       g.say([['vance', "Sublevel B. The power is failing down there, so mind the lights."], ['keem', "Where is she?"], ['vance', "End of the research wing, past the morgue and the boiler room. My volunteers are loose. They react to light and noise."],
         ['marcus', "Volunteers. That's what he calls them."], ['nia', "Biscuit says shh. He is very good at shh."], ['keem', "Crouch, stay quiet, stay together. Let's go get Mom."]]); },
     update(g) { const D = g.stepData; if (!D.go && g.player.root.position.z < Z(-2892) && g.player.root.position.x > 5) { D.go = true; goto(g, 'c12_boiler', 150); } } },
 
   { id: 'c12_boiler', ch: 12, cp: [10, Z(-2899), PI], obj: 'Find 3 fuses (0/3)', hint: 'Walk over the glowing fuses. Each one rattles the room, so expect company.', mood: 'tense', beat: 2, light: 'dark', rain: false,
-    enter(g) { const D = g.stepData; API.setPower(false); API.doorBoiler.set(true); API.doorHall.set(false); fam(g, D, Z(-2899), 10); D.fuses = 0; g.wpTarget = null; const FZ = [[-8, -2918], [13, -2922], [-12, -2940]];
+    enter(g) { const D = g.stepData; g.hand.visible = true; API.setPower(false); API.doorBoiler.set(true); API.doorHall.set(false); fam(g, D, Z(-2899), 10); D.fuses = 0; g.wpTarget = null; const FZ = [[-8, -2918], [13, -2922], [-12, -2940]];
       sleepers(g, [[-6, -2904], [4, -2915], [-13, -2925], [2, -2931], [10, -2934], [-4, -2938]]);
       FZ.forEach(([x, z], i) => g.addPickup({ kind: 'fuse', story: true, label: 'Fuse', pos: [x, .9, Z(z)], mk: fuseMesh, onTake(g) { const D = g.stepData; D.fuses++; g.objective(D.fuses < 3 ? 'Find 3 fuses (' + D.fuses + '/3)' : 'Throw the breakers', D.fuses < 3 ? 'Walk over the glowing fuses.' : 'The panel is by the sound-lock door. Press E.');
           g.audio.thud(); g.shake(.3); const side = x < 0 ? 12 : -12; g.horde(3 + D.fuses, [[Math.max(-13, Math.min(13, x + side * .3)), Z(z + 6)]], { aggro: 99, runner: D.fuses > 1 });
@@ -51,11 +52,11 @@ export const steps = [
     update(g, dt) { const D = g.stepData; dadTick(g, D, dt); g.pickups.forEach(p => { if (p.m && p.m.userData.spin) { p.m.rotation.y += dt * 2; p.m.position.y = Math.sin(g.t * 2.4) * .06; } }); } },
 
   { id: 'c12_hold', ch: 12, cp: [0, Z(-2952), PI], obj: 'Hold the hall: cell door opens in 45s', hint: 'Stay close to Dad. Cell glass is cracking: shoot them as they come out.', mood: 'tense', beat: 3, light: 'dark', rain: false,
-    enter(g) { const D = g.stepData; API.setPower(true); API.doorHall.set(true); API.doorBoiler.set(true); fam(g, D, Z(-2950)); dadGun(g, D); D.k0 = g.save.kills; D.t = 0; D.go = false; D.hordeAll = true;
+    enter(g) { const D = g.stepData; g.hand.visible = true; API.setPower(true); API.doorHall.set(true); API.doorBoiler.set(true); API.doorCell.set(false); fam(g, D, Z(-2950)); dadGun(g, D); D.k0 = g.save.kills; D.t = 0; D.go = false; D.hordeAll = true;
       // volunteers pressing on the glass in 8 of the 14 cells
       D.cells = [0, 2, 3, 5, 7, 9, 10, 12].map(i => { const c = API.cells[i]; g.spawnZ(c.x, c.z, { aggro: 99, runner: false, hp: 80 }); return c; }); D.brk = [0, 1, 1, 2, 3];
       const mom = g.npc('dana', 'dana', .1, Z(-3000.8), 0, 'Idle_Talking_Loop'); D.mom = mom; const nia = D.nia; D.nia.update = null; D.nia.root.position.set(1.2, 0, Z(-2955)); act(mom, 'reach', { sides: 'R', k: 1, snap: true });
-      g.cut = { anim: 'Idle_Loop', cam: V(-2.8, 2.6, Z(-2949.2)), look: V(0, 1.6, Z(-2990)) };
+      g.cut = { anim: 'Idle_Loop', cam: V(-2.8, 2.6, Z(-2949.2)), look: V(0, 1.6, Z(-2990)) }; snap(g);
       g.say([['vance', "Power's back. Every cell in the research wing just woke up. I want you to see them. I think you've earned that."], ['keem', "Is that… all of them?"], ['vance', "The cell door of your mother's room cycles open in forty-five seconds. Hold the hall until then."],
         ['marcus', "Forty-five seconds. Easy. I've waited twenty years for forty-five seconds."], ['nia', "I'll go sit with Mom! She can hear me!"], ['keem', "Nia, go. Stay low. We've got the hall."]], () => { g.cut = null; D.on = true; g.audio.setMood('tense'); walk(D, nia, .62, Z(-2999.4), { sp: 3.4, anim: 'Jog_Fwd_Loop', face: PI, cb: () => act(nia, 'reach', { sides: 'R', k: 1 }) }); }); },
     update(g, dt) { const D = g.stepData; tickMv(g, D, dt); if (!D.on) return; dadTick(g, D, dt); if (D.dad) { const d = D.dad.root.position; d.x += (2.5 - d.x) * dt * .8; d.z += (Z(-2985) - d.z) * dt * .5; }
@@ -65,7 +66,7 @@ export const steps = [
       if (left <= 0 && !D.go) { D.go = true; g.audio.thud(); g.say([['nia', "Mom says the latch just clicked. Keem, there's something coming up the hall!"]], () => goto(g, 'c12_boss', 200)); } } },
 
   { id: 'c12_boss', ch: 12, cp: [0, Z(-2972), PI], obj: 'Beat the Night Orderly', hint: 'He charges and slams his mop cart. Roll out of the way, shoot when he stops.', mood: 'tense', beat: 3, light: 'dark', rain: false,
-    enter(g) { const D = g.stepData; API.setPower(true); API.doorHall.set(true); fam(g, D, Z(-2972), 0, false); dadGun(g, D); D.hordeAll = true; D.go = false;
+    enter(g) { const D = g.stepData; g.hand.visible = true; API.setPower(true); API.doorHall.set(true); API.doorCell.set(false); fam(g, D, Z(-2972), 0, false); dadGun(g, D); D.hordeAll = true; D.go = false;
       const mom = g.npc('dana', 'dana', .1, Z(-3000.8), 0, 'Idle_Talking_Loop'); act(mom, 'reach', { sides: 'R', k: 1, snap: true }); const nia = g.npc('nia', 'nia', .62, Z(-2999.4), PI, 'Idle_Loop', .62); act(nia, 'reach', { sides: 'R', k: 1, snap: true }); D.nia = nia; if (D.dad) { D.dad.update = null; D.dad.root.position.set(2.8, 0, Z(-2988)); }
       const b = g.spawnZ(0, Z(-2950), { boss: true, hp: 3600, scale: 2.05, runner: false, rig: 'zombie_worker' }); b.cd = 2; b.aggro = 99; b.speed = 1.9; b.mat.userData.u.uShirt.value.set('#4a7a8a'); b.mat.userData.u.uBlood.value = g.settings.gore ? 1.5 : .2; g.boss = b; $q('#bossn').textContent = 'THE NIGHT ORDERLY'; g.audio.roar && setTimeout(() => g.audio.roar(), 700); D.b = b; mop(b);
       g.say([['orderly', "Visiting hours are over."], ['keem', "We're not visiting. We're collecting."], ['orderly', "Mop. Floor. Mop."], ['nia', "He's carrying a mop like a sword."], ['marcus', "It IS a sword now, Nia. Everything's a sword to a man with nothing left."]]); },
@@ -74,23 +75,23 @@ export const steps = [
       if (b && b.dead && !D.won) { D.won = true; afterBoss(g, () => goto(g, 'c12_mom', 500)); } } },
 
   { id: 'c12_mom', ch: 12, cp: [0, Z(-2996), PI], obj: '', hint: '', mood: 'sad', beat: 0, light: 'dark', rain: false,
-    enter(g) { const D = g.stepData; API.setPower(true); API.doorHall.set(true); API.doorCell.set(true); g.audio.setMood('sad');
+    enter(g) { const D = g.stepData; g.hand.visible = false; API.setPower(true); API.doorHall.set(true); API.doorCell.set(true); g.audio.setMood('sad');
       const mom = D.mom = g.npc('dana', 'dana', 0, Z(-3008.5), PI, 'Idle_Loop'); const dad = D.dad = g.npc('marcus', 'marcus', -1.7, Z(-3000.8), PI, 'Idle_Loop'); const nia = D.nia = g.npc('nia', 'nia', 1.3, Z(-3001.2), PI, 'Idle_Loop', .62); const P = g.player.root.position; P.set(0, 0, Z(-3001.6)); g.player.root.rotation.y = PI;
-      act(mom, 'clutch', { k: 1, snap: true, head: [.5, 0, 0] }); g.cut = { anim: 'Idle_Loop', cam: V(2.6, 1.9, Z(-2998.6)), look: V(0, 1.2, Z(-3008)) };
+      act(mom, 'clutch', { k: 1, snap: true, head: [.5, 0, 0] }); g.cut = { anim: 'Idle_Loop', cam: V(1.9, 1.6, Z(-3002.2)), look: V(0, 1.3, Z(-3008.4)) }; snap(g);
       const L = (arr) => arr.forEach(it => typeof it === 'function' ? cb(g, it) : g.say([it]));
       g.say([['dana', "Don't come in. Please. I can't tell what I'll do."]]); 
-      L([['keem', "Mom. It's me. It's Keem."], (g) => { mom.root.rotation.y = 0; act(mom, 'reach', { sides: 'L', k: 1 }); cam(g, V(1.5, 1.6, Z(-3003.2)), V(0, 1.45, Z(-3008.5))); },
-        ['dana', "Keem? You got so tall."], (g) => { walk(D, nia, .5, Z(-3007.4), { sp: 3.2, anim: 'Jog_Fwd_Loop', face: PI, cb: () => { act(nia, 'hug', { k: 1 }); act(mom, 'hug', { k: 1 }); } }); walk(D, g.player, .2, Z(-3005.6), { sp: 1.5 }); },
-        ['nia', "Mommy!"], (g) => cam(g, V(3.4, 1.3, Z(-3004.6)), V(.3, 1.2, Z(-3008))), ['dana', "Hi, baby. Hi. Look at the two of you."],
+      L([['keem', "Mom. It's me. It's Keem."], (g) => { mom.root.rotation.y = 0; act(mom, 'reach', { sides: 'L', k: 1 }); cam(g, V(1.4, 1.6, Z(-3003.4)), V(0, 1.5, Z(-3008.5))); },
+        ['dana', "Keem? You got so tall."], (g) => { walk(D, nia, .3, Z(-3007.55), { sp: 3.2, anim: 'Jog_Fwd_Loop', face: PI, cb: () => { act(nia, 'hug', { k: 1 }); act(mom, 'hug', { k: 1, lean: .25 }); } }); walk(D, mom, 0, Z(-3008.1), { sp: .8 }); walk(D, g.player, .5, Z(-3005.7), { sp: 1.5 }); },
+        ['nia', "Mommy!"], (g) => cam(g, V(3.7, 1.4, Z(-3006.2)), V(.2, 1.3, Z(-3007.4))), ['dana', "Hi, baby. Hi. Look at the two of you."],
         (g) => { walk(D, dad, 5.1, Z(-3003.4), { sp: 1.2, face: -PI / 2, cb: () => { dad.play('Sitting_Idle_Loop'); act(dad, null); dad.root.position.y = -.12; } }); },
         ['marcus', "Dana. You're really here. I'm… I'm just going to sit down for a second."], (g) => { cam(g, V(3.8, 1.2, Z(-3001.2)), V(5, .6, Z(-3003.4))); },
         ['marcus', "My legs have decided this for me."],
-        (g) => { cam(g, V(1.6, 1.5, Z(-3004.4)), V(0, 1.5, Z(-3008.4))); grayEyes(mom, true); act(mom, 'clutch', { k: 1, head: [.5, 0, 0] }); act(nia, null); walk(D, nia, 1.5, Z(-3006.6), { sp: 2 }); g.audio.heartbeat && g.audio.heartbeat(); g.shake(.2); },
+        (g) => { cam(g, V(3.4, 1.5, Z(-3005.6)), V(.2, 1.5, Z(-3007.6))); grayEyes(mom, true); act(mom, 'clutch', { k: 1, head: [-.12, 0, 0] }); act(nia, null); walk(D, nia, 1.5, Z(-3006.6), { sp: 2 }); g.audio.heartbeat && g.audio.heartbeat(); g.shake(.2); },
         ['dana', "Oh. It's the hum again."], ['dana', "It says my name. Somebody hold my hands. Please."],
-        (g) => { act(mom, 'hold', { k: 1 }); act(g.player, 'hold', { k: 1 }); walk(D, g.player, 0, Z(-3007.1), { sp: 1.2 }); },
+        (g) => { act(mom, 'hold', { k: 1 }); act(g.player, 'hold', { k: 1 }); walk(D, g.player, 0, Z(-3007.3), { sp: 1.2 }); },
         ['keem', "I've got you, Mom. Look at me. Breathe with me."], ['dana', "…Okay. Okay. In. And out."],
         (g) => { grayEyes(mom, false); act(mom, 'hold', { k: 1 }); }, ['dana', "There you are."], ['keem', "Here I am."],
-        (g) => { cam(g, V(1.9, 1.4, Z(-3005.6)), V(.2, 1.3, Z(-3007.3))); const b = D.nia.biscuit; if (b) { b.scale.setScalar(1.55); b.position.y += .1; D.bis = b; } },
+        (g) => { cam(g, V(3.2, 1.4, Z(-3006)), V(.2, 1.3, Z(-3007.1))); const b = D.nia.biscuit; if (b) { b.scale.setScalar(1.55); b.position.y += .1; D.bis = b; } },
         ['nia', "Biscuit wants a turn."], ['dana', "Is that Biscuit? He's even floppier than I remember."], ['nia', "He's gotten bigger. He eats like Dad."], ['marcus', "I heard that."],
         (g) => { if (D.bis) { D.bis.scale.setScalar(1); D.bis.position.y -= .1; } g.audio.siren && g.audio.siren(.05, 5); g.audio.staticBurst(1); g.shake(.6); API.setPower(false); cam(g, V(2.8, 2.2, Z(-3003)), V(0, 1.7, Z(-3000))); },
         ['radio', "Dr. Vance, they're here—"]]);

@@ -9,7 +9,7 @@ export const ARM = {
   hug:    [n(.62, -.12, .78), n(-.55, .05, .84)],   // arms wrapped round a person in front
   reach:  [n(.12, .04, 1), n(.08, .06, 1)],         // one arm straight out at chest height (hatch, glass, handshake)
   glass:  [n(.1, .22, 1), n(.05, .35, 1)],          // hand raised flat on a window
-  clutch: [n(.9, .38, .12), n(-.2, 1, .42)],        // hands pressed to the head
+  clutch: [n(.78, .18, .32), n(-.62, .85, .5)],        // hands pressed to the head
   hold:   [n(.3, -.45, .72), n(-.05, -.25, 1)],     // holding someone's wrists in front
   cradle: [n(.45, -.5, .7), n(-.35, -.1, .9)],      // arms in front, carrying a small thing (Biscuit)
   point:  [n(.2, .12, 1), n(.1, .12, 1)],           // pointing the way

@@ -21,11 +21,12 @@ function tickMv(g, D, dt) { if (!D.mv) return; D.mv = D.mv.filter(m => { const p
   const s = Math.min(d, m.sp * dt); p.x += dx / d * s; p.z += dz / d * s; m.c.root.rotation.y = Math.atan2(dx, dz); m.c.play(m.anim); if (m.c === g.player && g.cut) g.cut.anim = m.anim; return true; }); }
 const cam = (g, c, l) => { g.cut = Object.assign(g.cut || {}, { cam: c, look: l }); };
 const cbq = (g, f) => g.dlgQ.push({ cb: f });
+const snap = (g) => { g.camera.position.copy(g.cut.cam); g._lk = null; };
 function script(g, items) { items.forEach(it => typeof it === 'function' ? (g.dlgCur || g.dlgQ.length ? cbq(g, it) : it(g)) : g.say([it])); }
 // Nia's radio: a 3-second cut-in of Nia at the security desk in the pack room, pointing where Biscuit went
 const DESK = [-11, -3312];
 function radio(g, D, lines, o = {}) { const nia = D.deskNia || (D.deskNia = g.npc('nia', 'nia', DESK[0], DESK[1], PI / 2 + .4, 'Idle_Talking_Loop', .62)); nia.update = null;
-  const items = [(g) => { g.cut = { anim: 'Idle_Loop', cam: V(DESK[0] + 3.4, 1.55, DESK[1] + 2.2), look: V(DESK[0], 1.0, DESK[1] - .2), flash: false }; nia.play('Idle_Talking_Loop'); act(nia, 'point', { sides: 'R', k: 1, head: [0, .15, 0] }); }, ...lines, (g) => { act(nia, null); g.cut = null; o.then && o.then(g); }]; script(g, items); }
+  const items = [(g) => { g.cut = { anim: 'Idle_Loop', cam: V(DESK[0] + 3.4, 1.55, DESK[1] + 2.2), look: V(DESK[0], 1.0, DESK[1] - .2), flash: false }; snap(g); nia.play('Idle_Talking_Loop'); act(nia, 'point', { sides: 'R', k: 1, head: [0, .15, 0] }); }, ...lines, (g) => { act(nia, null); g.cut = null; o.then && o.then(g); }]; script(g, items); }
 function puddle(g, D, x, z, r = 1.7) { const m = new THREE.Mesh(new THREE.CircleGeometry(r, 24), new THREE.MeshStandardMaterial({ color: '#d68a2e', roughness: .15, metalness: .1, transparent: true, opacity: .9, polygonOffset: true, polygonOffsetFactor: -2 })); m.rotation.x = -PI / 2; m.position.set(x, .06, z); g.scene.add(m); (D.pud = D.pud || []).push({ m, x, z, r }); return m; }
 function puddleTick(g, D) { let s = 1; (D.pud || []).forEach(p => { if (Math.hypot(g.player.root.position.x - p.x, g.player.root.position.z - p.z) < p.r) s = .5; }); g.slowMul = s; }
 function gurney() { const gr = new THREE.Group(), st = new THREE.MeshStandardMaterial({ color: '#b8c0c4', metalness: .6, roughness: .35 });
@@ -40,9 +41,9 @@ function hairnet(b) { const n = new THREE.Mesh(new THREE.SphereGeometry(.125, 12
 // ================= steps (world coordinates) =================
 export const steps = [
   { id: 'c13_pack', ch: 13, cp: [0, -3304, PI], obj: '', hint: '', mood: 'night', beat: 0, light: 'ward', rain: false,
-    enter(g) { const D = g.stepData; const dad = D.dad = g.npc('marcus', 'marcus', 2.3, -3318.2, -PI / 2, 'Idle_Loop'), mom = D.mom = g.npc('dana', 'dana', -2.3, -3318.2, PI / 2, 'Idle_Loop'), nia = D.nia = g.npc('nia', 'nia', -4.2, -3312.6, PI / 2 + .6, 'Idle_Loop', .62);
+    enter(g) { const D = g.stepData; g.hand.visible = false; const dad = D.dad = g.npc('marcus', 'marcus', 2.3, -3318.2, -PI / 2, 'Idle_Loop'), mom = D.mom = g.npc('dana', 'dana', -2.3, -3318.2, PI / 2, 'Idle_Loop'), nia = D.nia = g.npc('nia', 'nia', -4.2, -3312.6, PI / 2 + .6, 'Idle_Loop', .62);
       const rey = D.rey = g.npc('reyes', 'reyes', 0, -3332, 0, 'Walk_Loop'); const P = g.player.root.position; P.set(.4, 0, -3312.4); g.player.root.rotation.y = PI;
-      g.cut = { anim: 'Idle_Loop', cam: V(6.2, 2.1, -3311.2), look: V(0, 1.25, -3318), flash: false }; g.audio.setMood('night');
+      g.cut = { anim: 'Idle_Loop', cam: V(6.2, 2.1, -3311.2), look: V(0, 1.25, -3318), flash: false }; snap(g); g.audio.setMood('night');
       script(g, [['vance', "Perimeter alarm. A sensor chewed through, I'm told. I need ten minutes to arrange your transport. Pack what Dana needs."],
         (g) => { act(dad, 'point', { sides: 'R', k: 1 }); dad.play('Idle_Talking_Loop'); }, ['marcus', "Easy. I'll carry the cooler."],
         (g) => { act(dad, null); act(mom, 'shrug', { k: 1 }); mom.play('Idle_Talking_Loop'); cam(g, V(-5.8, 2.0, -3312), V(.2, 1.25, -3318.2)); }, ['dana', "Marcus. You threw your back out opening a jar last spring."],
@@ -59,7 +60,7 @@ export const steps = [
       if (D.go && !D.out) { D.out = true; D.B && D.B.remove(); goto(g, 'c13_gift', 100); } } },
 
   { id: 'c13_gift', ch: 13, cp: [0, -3336, PI], obj: 'Catch Biscuit (gift shop)', hint: 'Walk up slowly. He bolts when you get close. Crouch (C) to sneak up on him.', mood: 'night', beat: 1, light: 'ward', rain: false,
-    enter(g) { const D = g.stepData; D.hordeAll = true; D.miss = 0; D.dad = null; const B = D.B = spawnBiscuit(g, -3, -3337, { y: 1.2 }); B.go([[-3, -3337, 1.2], [6, -3343], [-6, -3347], [5, -3357], [-7, -3364], [0, -3371]]);
+    enter(g) { const D = g.stepData; g.hand.visible = true; D.hordeAll = true; D.miss = 0; D.dad = null; const B = D.B = spawnBiscuit(g, -3, -3337, { y: 1.2 }); B.go([[-3, -3337, 1.2], [6, -3343], [-6, -3347], [5, -3357], [-7, -3364], [0, -3371]]);
       sleepers(g, [[-6, -3341], [8, -3346], [-7, -3354], [6, -3361], [-4, -3367], [10, -3369], [-11, -3363]]); g.horde(2, [[0, -3335]], { aggro: 40 });
       const gu = D.gur = gurney(); gu.position.set(0, 0, -3341); gu.rotation.y = 0; g.scene.add(gu); D.gz = -3341; D.gv = 0;
       D.uses = [{ x: 2.4, z: -3340.2, r: 2, label: 'Send the gurney down the aisle', fn: (g) => { D.gv = 11; g.audio.thud(); g.say([['keem', "Express delivery. No tip needed."], ['nia', "Keem, that was a medical device."], ['keem', "It's a delivery device now."]]); } }];
@@ -70,7 +71,7 @@ export const steps = [
       if (D.reached && !D.out) { D.out = true; g.say([['nia', "He's going for the door! Don't let him leave the shop!"]], () => { hopTo(D.B, 0, -3380, 0); setTimeout(() => goto(g, 'c13_ward', 150), 700); }); } } },
 
   { id: 'c13_ward', ch: 13, cp: [0, -3378, PI], obj: "Catch Biscuit (children's ward)", hint: 'Rooms lock when you step inside. Clear the room to open the door.', mood: 'tense', beat: 2, light: 'ward', rain: false,
-    enter(g) { const D = g.stepData; D.hordeAll = true; D.ph = 0; DOORS.A.set(true); DOORS.B.set(true); const B = D.B = spawnBiscuit(g, 0, -3380, {}); B.go([[0, -3384], [-5, -3390], [-12, -3391]]);
+    enter(g) { const D = g.stepData; g.hand.visible = true; D.hordeAll = true; D.ph = 0; DOORS.A.set(true); DOORS.B.set(true); const B = D.B = spawnBiscuit(g, 0, -3380, {}); B.go([[0, -3384], [-5, -3390], [-12, -3391]]);
       sleepers(g, [[3, -3400], [-3, -3414], [2, -3434], [-3, -3396]]); g.wpTarget = [B.grp.position.x, .9, B.grp.position.z];
       radio(g, D, [['nia', "He ran into the children's ward. Be gentle, he hates loud noises."], ['keem', "That makes two of us."]]); },
     update(g, dt) { const D = g.stepData, P = g.player.root.position; tickMv(g, D, dt); const ev = { reach: 3.2, onHop: () => { }, onReach: () => { D.reached = true; } };
@@ -84,10 +85,10 @@ export const steps = [
       if (D.ph === 4 && D.reached && !D.out) { D.out = true; hopTo(D.B, 0, -3452); setTimeout(() => goto(g, 'c13_cafe', 200), 600); } } },
 
   { id: 'c13_cafe', ch: 13, cp: [0, -3450, PI], obj: 'Beat Lunch Lady Doreen', hint: 'Soup puddles slow you down. Dodge the ladle: it comes down in a ring.', mood: 'tense', beat: 3, light: 'ward', rain: false,
-    enter(g) { const D = g.stepData; D.hordeAll = true; D.go = false; [[-8, -3470], [7, -3478], [0, -3488], [-12, -3484], [12, -3462]].forEach(([x, z]) => puddle(g, D, x, z, 1.5 + Math.random() * .5));
+    enter(g) { const D = g.stepData; g.hand.visible = true; D.hordeAll = true; D.go = false; [[-8, -3470], [7, -3478], [0, -3488], [-12, -3484], [12, -3462]].forEach(([x, z]) => puddle(g, D, x, z, 1.5 + Math.random() * .5));
       const B = D.B = spawnBiscuit(g, 3, -3498, { y: 2.12, scale: 1.5 }); D.B.st = 'sit'; B.wps = [[3, -3498]]; B.held = true; g.wpTarget = null;
       const b = D.b = g.spawnZ(0, -3492, { hp: 3200, scale: 1.95, runner: false, rig: 'zombie_office', aggro: 99 }); b.boss = true; b.cd = 2; b.speed = 1.8; g.boss = b; if (b.mat && b.mat.userData.u) { b.mat.userData.u.uBlood.value = g.settings.gore ? 1.2 : .2; } $q('#bossn').textContent = 'LUNCH LADY DOREEN'; ladle(b); hairnet(b); g.audio.roar && setTimeout(() => g.audio.roar(), 900); b.st = 'chase';
-      g.cut = { anim: 'Idle_Loop', cam: V(-5, 1.9, -3466), look: V(0, 1.6, -3492), flash: false };
+      g.cut = { anim: 'Idle_Loop', cam: V(-5, 1.9, -3466), look: V(0, 1.6, -3492), flash: false }; snap(g);
       script(g, [['doreen', "Lunch is served."], (g) => cam(g, V(2.5, 3.2, -3486), V(3, 2.1, -3498)), ['nia', "Keem. Is that Biscuit? On the soup kettle?"], ['keem', "He's sitting on top of the soup."], ['nia', "Is he eating it?"], ['keem', "He is… supervising it."],
         (g) => cam(g, V(-4, 1.9, -3478), V(0, 1.6, -3492)), ['doreen', "No running in the cafeteria."], ['keem', "She's holding a ladle like a sword."], ['nia', "Everyone in this hospital holds things like swords."], (g) => { g.cut = null; }]); },
     update(g, dt) { const D = g.stepData, b = D.b; puddleTick(g, D); tickBiscuit(g, D.B, dt, { marker: false }); const nm = g.alive().filter(z => !z.boss).length;
@@ -96,12 +97,12 @@ export const steps = [
       if (b && b.dead && !D.won) { D.won = true; D.pud.forEach(p => g.scene.remove(p.m)); D.pud = []; g.slowMul = 1; afterBoss(g, () => goto(g, 'c13_end', 600)); } } },
 
   { id: 'c13_end', ch: 13, cp: [0, -3492, PI], obj: 'Pick up Biscuit', hint: 'He is on the soup. Walk up to him; he is too full to run.', mood: 'night', beat: 1, light: 'ward', rain: false,
-    enter(g) { const D = g.stepData; g.slowMul = 1; D.B = spawnBiscuit(g, 3, -3498, { y: 2.12, scale: 1.5 }); D.B.held = true; D.B.st = 'sit'; g.wpTarget = [3, 2.2, -3498]; D.uses = [{ x: 3, z: -3496.4, r: 2.2, label: 'Pick up Biscuit', fn: (g) => finale(g, D) }]; },
+    enter(g) { const D = g.stepData; g.hand.visible = true; g.slowMul = 1; D.B = spawnBiscuit(g, 3, -3498, { y: 2.12, scale: 1.5 }); D.B.held = true; D.B.st = 'sit'; g.wpTarget = [3, 2.2, -3498]; D.uses = [{ x: 3, z: -3496.4, r: 2.2, label: 'Pick up Biscuit', fn: (g) => finale(g, D) }]; },
     update(g, dt) { const D = g.stepData; tickMv(g, D, dt); tickBiscuit(g, D.B, dt, { marker: false }); } },
 ];
 
-function finale(g, D) { if (D.fin) return; D.fin = true; D.uses = []; g.wpTarget = null; const P = g.player.root.position, B = D.B; P.set(3, 0, -3496.6); g.player.root.rotation.y = PI;
-  g.cut = { anim: 'Idle_Loop', cam: V(6.2, 1.5, -3493.6), look: V(3, 1.3, -3498), flash: false };
+function finale(g, D) { if (D.fin) return; D.fin = true; D.uses = []; g.wpTarget = null; const P = g.player.root.position, B = D.B; g.hand.visible = false; P.set(3, 0, -3496.6); g.player.root.rotation.y = PI;
+  g.cut = { anim: 'Idle_Loop', cam: V(6.2, 1.5, -3493.6), look: V(3, 1.3, -3498), flash: false }; snap(g);
   script(g, [['keem', "Hey, buddy. It's me. Nobody's chasing you now."], (g) => { g.cut.anim = 'PickUp_Table'; cam(g, V(5.4, 1.2, -3495.4), V(3, 1.5, -3498)); g.player.play('PickUp_Table', { once: true, force: true }); },
     ['nia', "Is he okay?"], ['keem', "He's sitting in the soup."], ['nia', "Is it hot soup?"], ['keem', "It's been cold for months."], ['nia', "…Biscuit. Bad. Keem, bring him home."],
     (g) => { g.cut.anim = 'Idle_Loop'; cam(g, V(4.6, 2.2, -3491.6), V(3, 1.6, -3496.6)); B.grp.position.set(3, 1.72, -3496.7); B.grp.scale.setScalar(1.2); B.held = true; },

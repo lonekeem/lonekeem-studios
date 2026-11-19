@@ -25,7 +25,7 @@ function kit(H) {
   const wallGeo = (w, h, d) => { const g = new THREE.BoxGeometry(w, h, d), uv = g.attributes.uv; for (let f = 0; f < 6; f++) for (let i = 0; i < 4; i++) { const k = f * 4 + i, u = uv.getX(k), v = uv.getY(k); if (f < 2) uv.setXY(k, u * d / 4, v * h / WH); else if (f < 4) uv.setXY(k, u * w / 4, v * d / WH); else uv.setXY(k, u * w / 4, v * h / WH); } return g; };
   const K = {
     col, M, T, std, rep,
-    floor(x0, x1, z0, z1, mat) { const m = new THREE.Mesh(new THREE.PlaneGeometry(Math.abs(x1 - x0), Math.abs(z1 - z0)), mat); m.rotation.x = -PI / 2; m.position.set((x0 + x1) / 2, .03, (z0 + z1) / 2); m.receiveShadow = true; scene.add(m); return m; },
+    floor(x0, x1, z0, z1, mat) { const m = new THREE.Mesh(new THREE.PlaneGeometry(Math.abs(x1 - x0), Math.abs(z1 - z0)), mat); m.rotation.x = -PI / 2; m.position.set((x0 + x1) / 2, .05, (z0 + z1) / 2); Object.assign(mat, { polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -8 }); m.receiveShadow = true; scene.add(m); return m; },
     ceil() { return null; }, // no ceilings: the over-the-shoulder camera would clip through them
     // straight wall from (ax,az) to (bx,bz) (axis aligned) with door gaps [[centre, width], ...]; gaps get a lintel. returns meshes
     wall(ax, az, bx, bz, gaps = [], o = {}) { const h = o.h || WH, th = o.th || .4, mat = o.mat, along = Math.abs(bx - ax) > Math.abs(bz - az) ? 'x' : 'z'; const a = along === 'x' ? Math.min(ax, bx) : Math.min(az, bz), b = along === 'x' ? Math.max(ax, bx) : Math.max(az, bz), c0 = along === 'x' ? az : ax;
@@ -138,8 +138,15 @@ export function buildSubB(H0) {
     const D = new Decor(61); D.box(0, 3.0, -3070.0, 12.2, .4, .3, '#4a5054'); D.box(-5.9, 1.5, -3070.0, .3, 3, .3, '#4a5054'); D.box(5.9, 1.5, -3070.0, .3, 3, .3, '#4a5054'); D.box(-1.1, 1.5, -3070.05, .12, 3, .3, '#4a5054'); D.box(1.1, 1.5, -3070.05, .12, 3, .3, '#4a5054');
     bed(D, -3.6, -3079, PI / 2, '#c0a8c0'); D.box(3.8, .5, -3081.4, 2, 1.0, .8, '#7a8084'); D.box(3.8, 1.05, -3081.4, 1.7, .1, .6, '#e8e2d2'); D.box(5.7, 1.0, -3076, .1, .8, .6, '#d8d4c0'); // a counter with a blanket, a window-less light box
     D.cyl(-4.9, 1.2, -3082.5, .05, 2, '#222'); // IV pole
+    // a wall of children's drawings (Keem's mom has been waiting a long time): crayon family, sun, rabbit
+    { const t = canvasTex(512, 256, (g, w, h) => { g.fillStyle = '#efe6cf'; g.fillRect(0, 0, w, h); g.strokeStyle = '#555'; g.lineWidth = 2; g.strokeRect(2, 2, w - 4, h - 4);
+        g.fillStyle = '#ffd23a'; g.beginPath(); g.arc(440, 50, 28, 0, 7); g.fill(); g.fillStyle = '#7ac860'; g.fillRect(0, 200, w, 56);
+        const fig = (x, y, s, c) => { g.strokeStyle = c; g.fillStyle = c; g.lineWidth = 5; g.beginPath(); g.arc(x, y - 52 * s, 13 * s, 0, 7); g.stroke(); g.beginPath(); g.moveTo(x, y - 38 * s); g.lineTo(x, y); g.moveTo(x - 20 * s, y - 24 * s); g.lineTo(x + 20 * s, y - 24 * s); g.moveTo(x, y); g.lineTo(x - 14 * s, y + 30 * s); g.moveTo(x, y); g.lineTo(x + 14 * s, y + 30 * s); g.stroke(); };
+        fig(110, 150, 1.3, '#d03a2a'); fig(190, 160, 1.1, '#3a6ad0'); fig(262, 190, .8, '#a03ad0'); fig(330, 165, 1.2, '#2a9a3a'); g.fillStyle = '#c8a27a'; g.beginPath(); g.ellipse(390, 215, 16, 11, 0, 0, 7); g.fill(); g.beginPath(); g.ellipse(380, 196, 4, 14, -.2, 0, 7); g.ellipse(392, 196, 4, 14, .2, 0, 7); g.fill();
+        g.fillStyle = '#333'; g.font = 'bold 26px sans-serif'; g.fillText('MY FAMILY', 150, 36); });
+      const dm = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.7), new THREE.MeshStandardMaterial({ map: t, roughness: 1 })); dm.rotation.y = PI / 2; dm.position.set(-5.88, 1.7, -3077); scene.add(dm); }
     scene.add(D.build()); R.cellFront = front;
-    K.col(-6, -1.1, -3070.15, -3069.95); K.col(1.1, 6, -3070.15, -3069.95); R.doorCell = K.door(0, -3070.05, 2.1, 'x', K.std({ color: '#5a6a72', metalness: .5, roughness: .45 }), 2.7);
+    K.col(-6, -1.1, -3070.15, -3069.95); K.col(1.1, 6, -3070.15, -3069.95); R.doorCell = K.door(0, -3070.05, 2.1, 'x', K.M.glass, 2.7);
     // hatch (a slot cut into the door) drawn as a dark rectangle + a flap
     const slot = new THREE.Mesh(new THREE.BoxGeometry(.5, .28, .08), K.std({ color: '#050808' })); slot.position.set(0, 1.35, -3069.93); scene.add(slot); R.hatch = slot;
     H.sign(['SUBJECT 02', 'DANA PELL'], 0, 2.5, -3069.8, PI, 2.2, .7, '#3a1a1a');
