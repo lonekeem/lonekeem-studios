@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { partnerEnter, partnerUpdate, ventUse } from './partner.js';
 import { convoLine, convoEnd, convoUpdate } from './convo.js';
 import * as ACT from './actions.js';
+import { startUse, updateUse } from './useseq.js';
 import { prepCarDoors, setDoor, boardTruck, leaveTruck, updateCarSeq, outPoint } from './carseq.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
@@ -397,14 +398,14 @@ export class Game {
     const m = new THREE.Mesh(this._grenG || new THREE.CylinderGeometry(.05, .05, .2, 8), this._grenM || new THREE.MeshStandardMaterial({ color: '#444' })); const p = P.root.position.clone(); p.y = 1.6; m.position.copy(p); this.scene.add(m);
     const f = V3(); this.camera.getWorldDirection(f); this.grenadesLive.push({ m, v: f.multiplyScalar(13).add(V3(0, 4.5, 0)), t: 1.7 }); this.audio.swing(); }
   heal() { if (this.save.meds <= 0 || this.hp >= this.maxHp) return; this.save.meds--; this.hp = Math.min(this.maxHp, this.hp + 50); this.toast('+50 health'); this.audio.pickup(); }
-  use() { if (this.carSeq) return; if (this.dlgCur && this.cut) { this.skipLine(); return; } const P = this.player.root.position;
+  use() { if (this.carSeq || this.useSeq) return; if (this.dlgCur && this.cut) { this.skipLine(); return; } const P = this.player.root.position;
     if (this.truck.driving) { return; }
-    const near = this.nearUse(); if (near) { if (near.pickup) this.takePickup(near.pickup); else near.fn(this); return; }
+    const near = this.nearUse(); if (near) { if (near.pickup) startUse(this, { x: near.pickup.mesh.position.x, z: near.pickup.mesh.position.z, fn: () => { if (this.pickups.includes(near.pickup)) this.takePickup(near.pickup); } }); else if (near.x !== undefined) startUse(this, { x: near.x, z: near.z, fn: near.fn }); else near.fn(this); return; }
     if (this.dlgCur) this.skipLine(); }
   nearUse() { const P = this.player.root.position; let best = null, bd = 1.7;
     this.pickups.forEach(p => { const d = Math.hypot(p.mesh.position.x - P.x, p.mesh.position.z - P.z); if (d < bd) { bd = d; best = { pickup: p, label: p.l.label || p.l.kind }; } });
     { const vu = ventUse(this, P); if (vu && !best) best = vu; }
-    (this.stepData.uses || []).forEach(u => { if (u.done) return; const d = Math.hypot(u.x - P.x, u.z - P.z); if (d < (u.r || 1.7) && d < bd + .5) { bd = d; best = { fn: (g) => { if (!u.repeat) u.done = true; u.fn(g); }, label: u.label }; } });
+    (this.stepData.uses || []).forEach(u => { if (u.done) return; const d = Math.hypot(u.x - P.x, u.z - P.z); if (d < (u.r || 1.7) && d < bd + .5) { bd = d; best = { fn: (g) => { if (!u.repeat) u.done = true; u.fn(g); }, label: u.label, x: u.x, z: u.z }; } });
     if (!this.truck.driving && !this.carSeq && this.stepData.canDrive) { const o = outPoint(this.truck.g, 1, this._op || (this._op = V3())); if (Math.hypot(o.x - P.x, o.z - P.z) < 2.3) best = { fn: (g) => g.board(), label: 'Open the truck door' }; }
     return best; }
   enterTruck() { this.truck.driving = true; this.truck.ch = null; document.body.classList.add('driving'); $('#drive')?.classList.remove('hidden'); this.player.root.visible = false; this.updateTruckCol(); this.audio.engine(true, 0); this.stepData.onDrive && this.stepData.onDrive(this); }
@@ -430,7 +431,7 @@ export class Game {
     if (s.fireCd > 0) s.fireCd -= dt; if (s.reload > 0) { s.reload -= dt; if (s.reload <= 0) this.finishReload(); }
     if (s.comboT > 0) { s.comboT -= dt; if (s.comboT <= 0) s.combo = 0; }
     if (this.hp < this.maxHp && this.t - (this.lastHurt || 0) > 5) this.hp = Math.min(this.maxHp, this.hp + dt * 4);
-    if (this.carSeq) updateCarSeq(this, dt); else if (T.driving) this.updateTruck(dt); else if (!this.cut) this.updatePlayer(dt);
+    if (this.carSeq) updateCarSeq(this, dt); else if (this.useSeq) updateUse(this, dt); else if (T.driving) this.updateTruck(dt); else if (!this.cut) this.updatePlayer(dt);
     else if (!(this.convo && this.convo.walking)) { P.play(this.cut.anim || 'Idle_Loop'); }
     P.mixer.update(dt); ACT.actTick(P, dt);
     if (!this.truck.driving) this.stepTrack(this.player, this.player.root.position, 'p'); this.chatter(dt);
