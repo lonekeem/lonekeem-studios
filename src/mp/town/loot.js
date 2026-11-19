@@ -1,0 +1,72 @@
+// Items, weighted loot tables and the player's bag (weight limited). Original item names only.
+import * as THREE from 'three';
+import { boxGeo } from './kit.js';
+import { plain } from './building.js';
+export const ITEMS = {
+  wood: { n: 'Wood planks', w: 1.2, ic: '🪵', cat: 'material' }, gascan: { n: 'Gas can (5 L)', w: 3.5, ic: '⛽', cat: 'fuel' }, emptycan: { n: 'Empty gas can', w: .8, ic: '🛢️', cat: 'fuel' },
+  food: { n: 'Canned food', w: .45, ic: '🥫', cat: 'supply' }, water: { n: 'Water bottle', w: .5, ic: '💧', cat: 'supply' }, bandage: { n: 'Bandage', w: .1, ic: '🩹', cat: 'med', heal: 18 }, medkit: { n: 'First-aid kit', w: .8, ic: '🧰', cat: 'med', heal: 55 },
+  scrap: { n: 'Scrap metal', w: 1, ic: '🔩', cat: 'material' }, tools: { n: 'Tool kit', w: 2, ic: '🔧', cat: 'tool' }, nails: { n: 'Box of nails', w: .3, ic: '📌', cat: 'material' }, rags: { n: 'Rags', w: .2, ic: '🧵', cat: 'material' },
+  cash: { n: 'Cash', w: 0, ic: '💵', cat: 'money' },
+  bat: { n: 'Baseball bat', w: 1.4, ic: '🏏', cat: 'weapon', melee: { dmg: 2.2, reach: 1.7, name: 'bat' } }, crowbar: { n: 'Crowbar', w: 1.6, ic: '🪝', cat: 'weapon', melee: { dmg: 2.6, reach: 1.6, name: 'crowbar' }, pry: true },
+  pan: { n: 'Frying pan', w: 1.1, ic: '🍳', cat: 'weapon', melee: { dmg: 1.7, reach: 1.4, name: 'pan' } }, keys: { n: 'Car keys', w: .1, ic: '🔑', cat: 'tool' }, battery: { n: 'Car battery', w: 6, ic: '🔋', cat: 'material' },
+};
+// [item, weight, min, max]
+export const TABLES = {
+  kitchen: [['cash', 2, 5, 15], ['food', 6, 1, 3], ['water', 5, 1, 2], ['pan', 1, 1, 1], ['rags', 2, 1, 2], ['bandage', 1, 1, 1], ['emptycan', 0.3, 1, 1]],
+  bedroom: [['cash', 3, 10, 25], ['rags', 4, 1, 3], ['bandage', 3, 1, 2], ['medkit', 1, 1, 1], ['keys', 1.5, 1, 1], ['food', 2, 1, 1], ['bat', .6, 1, 1]],
+  living: [['cash', 3, 5, 20], ['rags', 3, 1, 2], ['food', 3, 1, 2], ['water', 2, 1, 1], ['keys', 1, 1, 1], ['wood', 2, 1, 2], ['bat', .8, 1, 1]],
+  garage: [['wood', 6, 2, 5], ['scrap', 4, 1, 3], ['nails', 3, 1, 2], ['gascan', 3, 1, 1], ['emptycan', 2, 1, 1], ['tools', 2, 1, 1], ['crowbar', 1.2, 1, 1], ['battery', .6, 1, 1]],
+  shed: [['wood', 6, 3, 6], ['nails', 3, 1, 2], ['scrap', 3, 1, 2], ['gascan', 2.5, 1, 1], ['emptycan', 2, 1, 1], ['crowbar', 1, 1, 1], ['tools', 1.5, 1, 1]],
+  store: [['cash', 3, 10, 30], ['food', 8, 2, 5], ['water', 7, 2, 4], ['bandage', 3, 1, 3], ['medkit', 1.5, 1, 1], ['rags', 1.5, 1, 2], ['emptycan', 1, 1, 1], ['bat', .5, 1, 1]],
+  stockroom: [['food', 7, 3, 6], ['water', 6, 3, 5], ['tools', 2, 1, 1], ['gascan', 2, 1, 1], ['wood', 3, 2, 4], ['scrap', 2, 1, 2], ['medkit', 1.5, 1, 1]],
+  station: [['cash', 3, 10, 30], ['gascan', 5, 1, 2], ['emptycan', 4, 1, 1], ['tools', 2.5, 1, 1], ['scrap', 2, 1, 2], ['water', 3, 1, 3], ['food', 3, 1, 3], ['rags', 2, 1, 2], ['crowbar', 1.2, 1, 1], ['battery', 1, 1, 1]],
+  car: [['keys', 1.2, 1, 1], ['rags', 3, 1, 2], ['water', 3, 1, 1], ['food', 2, 1, 2], ['emptycan', 1.5, 1, 1], ['gascan', 1.2, 1, 1], ['tools', 1.4, 1, 1], ['bandage', 1.5, 1, 1], ['scrap', 1, 1, 1]],
+  trunk: [['gascan', 3, 1, 1], ['wood', 2, 1, 3], ['tools', 2, 1, 1], ['scrap', 2, 1, 2], ['food', 2, 1, 3], ['medkit', 1, 1, 1], ['crowbar', 1, 1, 1], ['emptycan', 1.5, 1, 1]],
+};
+// outdoor spots (loot.js addLoot): extra tables
+Object.assign(TABLES, {
+  gascache: [['gascan', 7, 1, 3], ['emptycan', 3, 1, 1], ['rags', 2, 1, 1], ['tools', 1, 1, 1]],
+  supply: [['food', 7, 2, 4], ['water', 6, 2, 3], ['bandage', 3, 1, 2], ['medkit', 1.5, 1, 1], ['emptycan', 1, 1, 1]],
+  dumpster: [['scrap', 4, 1, 2], ['rags', 3, 1, 2], ['food', 2, 1, 1], ['wood', 2, 1, 2], ['cash', 1.5, 3, 12], ['bandage', 1, 1, 1]],
+  duffel: [['cash', 3, 15, 40], ['medkit', 2, 1, 1], ['bandage', 3, 1, 3], ['bat', 1, 1, 1], ['crowbar', 1, 1, 1], ['gascan', 1.5, 1, 1], ['keys', 1, 1, 1]],
+});
+export function rollTable(name, rnd) { const T = TABLES[name] || TABLES.living; const out = []; const n = 1 + Math.floor(rnd() * 3); const tot = T.reduce((s, r) => s + r[1], 0);
+  for (let i = 0; i < n; i++) { let x = rnd() * tot; for (const r of T) { x -= r[1]; if (x <= 0) { const q = r[2] + Math.floor(rnd() * (r[3] - r[2] + 1)); const e = out.find(o => o.id === r[0]); if (e) e.n += q; else out.push({ id: r[0], n: q }); break; } } } return out; }
+export const DOOR_PRICE = 40; // shop / house-upgrade list: 'Door'
+export class Bag {
+  constructor(cap = 24) { this.cap = cap; this.items = {}; this.onChange = null; }
+  get weight() { let w = 0; for (const k in this.items) w += ITEMS[k].w * this.items[k]; return w; }
+  count(id) { return this.items[id] || 0; }
+  can(id, n = 1) { return this.weight + ITEMS[id].w * n <= this.cap + 1e-6; }
+  add(id, n = 1) { let got = 0; for (let i = 0; i < n; i++) { if (!this.can(id)) break; this.items[id] = (this.items[id] || 0) + 1; got++; } if (got) this.onChange && this.onChange(); return got; }
+  remove(id, n = 1) { if (this.count(id) < n) return false; this.items[id] -= n; if (!this.items[id]) delete this.items[id]; this.onChange && this.onChange(); return true; }
+  best() { let b = { name: 'fists', dmg: 1, reach: 1.2 }; if (this.pref === 'fists') return b; if (this.pref && this.items[this.pref] && ITEMS[this.pref].melee) return ITEMS[this.pref].melee; for (const k in this.items) { const m = ITEMS[k].melee; if (m && m.dmg > b.dmg) b = m; } return b; }
+  hasPry() { return this.count('crowbar') > 0; }
+}
+
+// ---------------- outdoor loot spots (gas cans, supply crates, dumpsters, duffel bags) ----------------
+// town:  buildTown(scene,{hooks:[addGas, addLoot]})  and  each frame  updateLoot(W, dt)  (animates the little lids).
+// Every spot is a normal W.containers entry ({id,table,label,x,z,reach,looted}) so the town's loot panel + evt sync work unchanged.
+// [id, kind, x, z, rotY] — placeholders, easy to move. kinds: gascans | crate | dumpster | duffel
+export const LOOT_SPOTS = [
+  ['lg1', 'gascans', 33.6, -6.2, 0], ['lg2', 'gascans', 58.6, -9.4, 1.57], ['lc1', 'crate', 55.2, -3.4, .3], ['lc2', 'crate', 3.5, -27.1, .1], ['ld1', 'dumpster', -9.5, -28.5, 0], ['ld2', 'dumpster', 27.5, 28.4, 3.14],
+  ['lc3', 'crate', -27.6, 16.5, 1.2], ['lc4', 'crate', 19, 27.9, 0], ['lf1', 'duffel', 21.2, -21.4, .5], ['lf2', 'duffel', -21.5, 22.2, 2], ['lg3', 'gascans', -44, 3.4, 3.14], ['ld3', 'dumpster', 12, 14.2, 0],
+];
+const SPEC = { gascans: { table: 'gascache', label: 'Gas cans', w: 1.0, d: .6, h: .5 }, crate: { table: 'supply', label: 'Supply crate', w: 1.0, d: .8, h: .75 }, dumpster: { table: 'dumpster', label: 'Dumpster', w: 1.8, d: 1.0, h: 1.2 }, duffel: { table: 'duffel', label: 'Duffel bag', w: .9, d: .45, h: .4 } };
+export function addLoot(W, spots = LOOT_SPOTS) {
+  for (const [id, kind, x, z, ry] of spots) { const S = SPEC[kind]; let px = x, pz = z;
+    if (W.col.hit(px, pz, .9)) { const alt = [[0, 2], [0, -2], [2, 0], [-2, 0], [2, 2], [-2, -2], [0, 4], [0, -4]].find(([dx, dz]) => !W.col.hit(x + dx, z + dz, .9)); if (!alt) continue; px = x + alt[0]; pz = z + alt[1]; }
+    placeSpot(W, id, kind, px, pz, ry, S); }
+}
+function placeSpot(W, id, kind, x, z, ry, S) {
+  const { B, col, root } = W; const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry; root.add(g); const mk = (key, color, w, h, d, px, py, pz) => { const m = new THREE.Mesh(boxGeo(w, h, d, 1.2), plain(W.M, key, color)); m.position.set(px, py, pz); m.castShadow = true; m.receiveShadow = true; g.add(m); return m; };
+  let top = null;
+  if (kind === 'gascans') { for (let i = 0; i < 4; i++) { const px = -.34 + (i % 2) * .5, pz = i < 2 ? -.12 : .16; mk('paint', i % 2 ? '#d8392f' : '#e5c130', .3, .42, .2, px, .21, pz); mk('dark', '#222', .1, .06, .06, px + .05, .45, pz); } mk('plank', '#a58a5b', 1.2, .08, .7, 0, .04, 0); top = mk('paint', '#d8392f', .3, .42, .2, .02, .65, 0); }
+  else if (kind === 'crate') { mk('plank', '#b98e55', 1.0, .7, .8, 0, .35, 0); for (const sx of [-.45, .45]) mk('plank', '#7a5a35', .08, .74, .84, sx, .37, 0); top = new THREE.Group(); top.position.set(0, .72, -.4); const lm = new THREE.Mesh(boxGeo(1.04, .07, .84, 1.2), plain(W.M, 'plank', '#c9a064')); lm.position.set(0, 0, .42); lm.castShadow = true; top.add(lm); g.add(top); }
+  else if (kind === 'dumpster') { mk('paint', '#2f7a4d', 1.8, 1.0, 1.0, 0, .55, 0); mk('dark', '#222', 1.84, .06, 1.04, 0, .13, 0); top = new THREE.Group(); top.position.set(0, 1.1, -.5); const lm = new THREE.Mesh(boxGeo(1.84, .08, 1.04, 1.2), plain(W.M, 'paint', '#27663f')); lm.position.set(0, 0, .52); lm.castShadow = true; top.add(lm); g.add(top); mk('paint', '#f2c230', .5, .12, .02, 0, .85, .52); }
+  else { const body = mk('fabric', '#35507a', .9, .38, .42, 0, .22, 0); mk('dark', '#1b2a44', .92, .06, .44, 0, .4, 0); mk('paint', '#f2c230', .1, .3, .44, .15, .23, 0); mk('paint', '#f2c230', .1, .3, .44, -.15, .23, 0); top = new THREE.Group(); top.position.set(0, .43, 0); g.add(top); }
+  const rr = Math.max(S.w, S.d) / 2 + .9; const Cn = { id, table: S.table, label: S.label, x, z, fx: Math.sin(ry), fz: Math.cos(ry), reach: rr + .5, looted: false, lid: new THREE.Group(), open: 0, bid: 'street', kind: 'prop-' + kind, top, topOpen: 0 };
+  W.containers.push(Cn); (W.lootTops = W.lootTops || []).push(Cn); if (kind !== 'duffel') col.add(x - S.w / 2 * Math.abs(Math.cos(ry)) - S.d / 2 * Math.abs(Math.sin(ry)), x + S.w / 2 * Math.abs(Math.cos(ry)) + S.d / 2 * Math.abs(Math.sin(ry)), z - S.w / 2 * Math.abs(Math.sin(ry)) - S.d / 2 * Math.abs(Math.cos(ry)), z + S.w / 2 * Math.abs(Math.sin(ry)) + S.d / 2 * Math.abs(Math.cos(ry)), 'prop'); return Cn;
+}
+/** ease the little lids open once a spot has been searched (container.looted or container.open > 0) */
+export function updateLoot(W, dt) { for (const c of W.lootTops || []) { if (!c.top) continue; const want = (c.looted || c.open > 0) ? 1 : 0; c.topOpen += (want - c.topOpen) * Math.min(1, dt * 8); if (c.kind === 'prop-duffel') c.top.rotation.x = -c.topOpen * .05; else if (c.top.isGroup && c.kind !== 'prop-gascans') c.top.rotation.x = -c.topOpen * 1.8; else if (c.kind === 'prop-gascans') { c.top.visible = !c.looted; } } }

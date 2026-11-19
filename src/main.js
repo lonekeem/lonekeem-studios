@@ -155,3 +155,6 @@ const qs = new URLSearchParams(location.search);
 if (qs.has('step')) { $('#warning').classList.add('hidden'); save = defaultSave(); if (qs.has('god')) Object.assign(save, { owned: ['fists', 'bat', 'pistol', 'rifle', 'shotgun'], items: ['backpack'], ammo: { light: 99, shell: 30, rifle: 200 }, grenades: 3, cash: 2000, cur: 'rifle' }); play(+qs.get('step')); }
 window.__atqBooted = true;
 // (title background image removed in v1.3.1)
+
+// Multiplayer (Beta): separate module, adds one title-menu button (see docs/multiplayer.md)
+import('./mp/entry.js').then(m => m.install()).catch(e => console.warn('mp entry failed', e));
