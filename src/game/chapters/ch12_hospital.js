@@ -215,5 +215,5 @@ export function buildUpper(H0) {
     R.kettles = [-9, -3, 3, 9].map(x => [x, 2.2, -3498]);
     H.sign(['TODAY', 'MEATLOAF MONDAY', 'SOUP: ALWAYS'], 0, 3.1, -3506.35, 0, 8, 1.4, '#3a2a1a'); scene.add(D.build()); }
   K.col(-16.2, -14, -3490, -3446); // salad bar
-  R.lamps = H.lamps; return R;
+  R.lamps = H.lamps; R.K = K; return R;
 }
