@@ -92,10 +92,12 @@ export async function enterTown({ look, onExit } = {}) {
     const cand = [[0, 0], [8, 0], [-8, 0], [16, 0], [-16, 0], [0, 2.5], [0, -2.5]]; let best = null, bd = -1;
     for (const [dx, dz] of cand) { const x = SPAWN.x + dx, z = SPAWN.z + dz; if (col.hit(x, z, .5)) continue; let d = 1e9; if (Z) for (const q of Z.zombies) { if (q.dead) continue; const p = q.root.position; d = Math.min(d, Math.hypot(p.x - x, p.z - z)); } if (d > bd) { bd = d; best = { x, z }; } }
     return best || { x: SPAWN.x, z: SPAWN.z }; };
+  // drop EVERY running clip (the clamped Death01 pose, loco blend, hit/roll one-shots) so no avatar type (custom Avatar or the admin Keem Char) keeps lying down or sliding
+  const resetPose = P => { try { P.mixer.stopAllAction(); } catch (e) { /* ignore */ } P.oneShot = null; P.cur = null; P.curName = ''; P.locoOn = false; P.locoW = 0; if (P.mixer.setTime) P.mixer.setTime(0); };
   const respawn = () => { const sp = spawnPoint(); me.dead = 0; me.hp = 100; me.prot = PROT_T; me.x = sp.x; me.z = sp.z; me.y = 0; me.ry = SPAWN.ry; me.sp = 0; me.hitCd = 0; me.swing = 0; me.drv = null;
     Object.assign(S, { roll: 0, atk: 0, atkHit: 0, vy: 0, y: 0, crouch: false, aim: false, shotT: 0, stun: 0, combo: 0, spd: 0 }); shim.state.crouch = false; GS.cd = 0; GS.rl = 0; GS.rlId = null; wantHit = wantUse = wantAlt = hitHeld = false; hold.act = null; hold.t = 0;
     dead.style.display = 'none'; vig.style.opacity = 0; const av = me.av; if (!av.root.parent) scene.add(av.root); av.root.visible = true; av.root.position.set(me.x, 0, me.z); av.root.rotation.y = me.ry; camYaw = me.ry; camInit = false;
-    { const P = av.motion; if (P) { P.oneShot = null; P.curName = ''; P.play('Idle_Loop', { force: true }); } } GS.shown = null; try { equipVisual(); } catch (e) { /* ignore */ } toast('Back on your feet', 1.6); };
+    { const P = av.motion; if (P) { resetPose(P); P.play(curGun() ? 'Pistol_Idle_Loop' : 'Idle_Loop', { force: true, fade: 0 }); } } GS.shown = null; try { equipVisual(); } catch (e) { /* ignore */ } toast('Back on your feet', 1.6); };
   // ---- doors ----
   const doorBy = id => W.doors.find(d => d.id === id);
   const setDoor = (D, action, fromNet) => { if (!D) return; if (action !== 'install') { try { aud.at({ x: D.x, y: 1, z: D.z }).door(); } catch (e) { /* ignore */ } } if (action === 'install') { D.installed = true; D.pivot.visible = true; D.state = 'closed'; D.locked = false; col.set(D.col, true); D.target = 0; D.open = 0; }
