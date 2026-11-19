@@ -95,7 +95,7 @@ function tick(g, T, c, dt) { const s = c.tn, ev = T.ev; if (!ev) return; const p
     else if (s.fate === 'away') { if (hyp(p.x - s.tx, p.z - s.tz) < 1.5 || (dFromP(g, p.x, p.z) > 52 && !onScreen(g, p.x, p.z, 0) && s.t > 4)) return finish(g, T, c, 'away'); }
     s.t += dt; }
   else if (s.state === 'open') { s.t += dt; panic(g, T, c, dt); const yaw = Math.atan2(-s.D.f * 0, 0); c.root.rotation.y += angDiff(c.root.rotation.y, s.D.f > 0 ? -Math.PI / 2 : Math.PI / 2) * Math.min(1, dt * 12); if (s.t > .55) { s.state = 'in'; s.t = 0; } c.autoLoco(dt, 'Idle_Loop'); }
-  else if (s.state === 'in') { s.t += dt; const D = s.D; steer(g, c, D.wallX - D.f * 1.1, D.cz, 2.6, dt, false); c.autoLoco(dt, 'Idle_Loop'); if (Math.abs(p.x - D.wallX) < .2 || s.t > 2) { c.root.visible = false; doorShut(g, D); s.state = 'hidden'; s.t = 0; } }
+  else if (s.state === 'in') { s.t += dt; const D = s.D; steer(g, c, D.wallX - D.f * 1.1, D.cz, 2.6, dt, false); c.autoLoco(dt, 'Idle_Loop'); if (-(p.x - D.wallX) * D.f > .5 || s.t > 2.5) { c.root.visible = false; doorShut(g, D); s.state = 'hidden'; s.t = 0; } }
   else if (s.state === 'hidden') { s.t += dt; if (s.t > .8) finish(g, T, c, 'door'); }
   else if (s.state === 'grabbed') { s.t += dt; if (s.t > .7 && !s.fell) { s.fell = 1; down(g, T, c); } }
   else if (s.state === 'down') { s.t += dt; if (s.t > 9) bodyDone(g, T, c); } }
@@ -128,10 +128,11 @@ export function startEvent(g, T, force, o = {}) { const SD = o.sd || 46;
   for (let k = 0; k < 8 && !spawn; k++, dir = o.dir ? dir : -dir) {
     const lane = (Math.random() < .5 ? 1 : -1) * rnd(2.2, 3.8), tryPts = fate === 'away' ? [[-Math.sign(P.x || 1) * 48, P.z + rnd(-12, 12), 'woods'], [lane, P.z + dir * SD, 'road']] : [[lane, P.z + dir * SD, 'road']];
     for (const [x, z, kind] of tryPts) { if (g.inCol(x, z, 1) || (!o.near && (onScreen(g, x, z, 8) || dFromP(g, x, z) < 30))) continue; spawn = { x, z, kind, dir }; break; } }
+  if (o.at) spawn = { x: o.at[0], z: o.at[1], kind: 'road', dir: o.dir || 1 };
   if (!spawn) return false;
   if (fate === 'door') { H = houses.sort((a, b) => Math.abs(a.cz - P.z) - Math.abs(b.cz - P.z))[0]; }
   const c = T.spare || makeChar(g); T.spare = null; const key = 'tn' + (++T.count);
-  c.tn = { state: 'run', fate, spd: fate === 'caught' ? 4.3 : 4.9, sv: 0, hy: 0, lean: 0, gt: rnd(.2, 1), gd: 0, sc: rnd(.3, 1), t: 0, D: H && H.tdoor }; c.key = key; c.lookKey = ''; c.update = (dt) => tick(g, T, c, dt);
+  c.tn = { state: 'run', fate, spd: fate === 'caught' ? 4.3 : 4.9, sv: fate === 'caught' ? 4.3 : 4.9, hy: 0, lean: 0, gt: rnd(.2, 1), gd: 0, sc: rnd(.3, 1), t: 0, D: H && H.tdoor }; c.key = key; c.lookKey = ''; c.update = (dt) => tick(g, T, c, dt);
   c.root.position.set(spawn.x, 0, spawn.z); g.scene.add(c.root); g.npcs[key] = c; T.npcs.push(c); c.play('Jog_Fwd_Loop');
   const away = new THREE.Vector3(spawn.kind === 'woods' ? Math.sign(spawn.x) : 0, 0, spawn.kind === 'woods' ? 0 : spawn.dir).normalize();
   const D = H && H.tdoor; if (D) { c.tn.tx = D.porchX; c.tn.tz = D.cz; } else if (spawn.kind === 'woods') { c.tn.tx = -spawn.x; c.tn.tz = spawn.z + rnd(-6, 6); } else { c.tn.tx = (Math.random() < .5 ? 1 : -1) * 3; c.tn.tz = P.z - spawn.dir * 70; }
