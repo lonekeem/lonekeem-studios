@@ -1,0 +1,17 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#222}</style><script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+const q=new URLSearchParams(location.search); const k=q.get('k')||'keem';
+const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true}); r.setSize(900,600); document.body.appendChild(r.domElement); r.outputColorSpace=THREE.SRGBColorSpace;
+const sc=new THREE.Scene(); sc.background=new THREE.Color('#4a4e5a'); sc.add(new THREE.HemisphereLight('#fff','#667',1.2)); const dl=new THREE.DirectionalLight('#fff',2); dl.position.set(1.5,2.5,3); sc.add(dl);
+const g=await new GLTFLoader().loadAsync('/models/chars/'+k+'.glb'); sc.add(g.scene);
+const box=new THREE.Box3().setFromObject(g.scene); const s=box.getSize(new THREE.Vector3()), c=box.getCenter(new THREE.Vector3());
+const info={size:s.toArray(),center:c.toArray(),meshes:[],bones:[],anims:g.animations.map(a=>a.name)};
+g.scene.traverse(o=>{if(o.isMesh)info.meshes.push({n:o.name,skinned:!!o.isSkinnedMesh,v:o.geometry.attributes.position.count,t:(o.geometry.index?o.geometry.index.count/3:0),mat:o.material.name,map:!!o.material.map, mapsz:o.material.map?o.material.map.image.width:0}); if(o.isBone)info.bones.push(o.name);});
+window.info=info;
+const vp=[[0,0,450,600,0],[450,0,450,300,1],[450,300,450,300,2]];
+const cam=new THREE.PerspectiveCamera(30,.75,.01,100); r.setScissorTest(true);
+for(const [x,y,w,h,m] of vp){ r.setViewport(x,600-y-h,w,h); r.setScissor(x,600-y-h,w,h); cam.aspect=w/h;
+ if(m===0){cam.position.set(c.x+s.y*0.9,c.y,c.z+s.y*2.4);cam.lookAt(c);} else { const hy=box.max.y-s.y*0.09; cam.position.set(m==2?s.y*0.25:0,hy,c.z+s.y*0.45); cam.lookAt(0,hy,c.z);} cam.updateProjectionMatrix(); r.render(sc,cam);}
+document.title='done';
+</script>

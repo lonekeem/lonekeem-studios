@@ -1,0 +1,18 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#222}</style><script>window.__MP_BASE="/";</script><script type="module">
+import * as THREE from 'three';
+import { loadBase, Avatar } from '/src/mp/avatar.js';
+import { buildHead, buildHairMesh } from '/src/mp/v2/headrig.js';
+import { defaultLook } from '/src/mp/look.js';
+const q=new URLSearchParams(location.search); const key=q.get('k')||'mp_m1'; const W=1200,H=600;
+const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true}); r.setSize(W,H); document.body.appendChild(r.domElement); r.outputColorSpace=THREE.SRGBColorSpace; r.toneMapping=THREE.ACESFilmicToneMapping;
+const sc=new THREE.Scene(); sc.background=new THREE.Color('#4a4e5a'); sc.add(new THREE.HemisphereLight('#dfe6ff','#5a5448',1.15)); const dl=new THREE.DirectionalLight('#fff4e6',2.3); dl.position.set(1.6,2.6,3); sc.add(dl); const rim=new THREE.DirectionalLight('#9bb4ff',.9); rim.position.set(-2,2,-2.5); sc.add(rim);
+const tpl=await loadBase(key); const av=new Avatar(tpl); sc.add(av.root);
+const look=defaultLook(key); if(q.get('look')) Object.assign(look, JSON.parse(q.get('look')));
+av.U.uSkin.value.set(q.get('skin')?'#'+q.get('skin'):'#e2b48f');
+const h=buildHead(av, look); window.h=h; buildHairMesh(av, look);
+const C=h.C; const cam=new THREE.PerspectiveCamera(30,1,.01,50); r.setScissorTest(true);
+const views=[[0,0,400,600,'full'],[400,0,400,600,'face'],[800,0,400,600,'q']];
+for(const [x,y,w,hh,m] of views){ r.setViewport(x,0,w,hh); r.setScissor(x,0,w,hh); cam.aspect=w/hh; cam.updateProjectionMatrix();
+ if(m==='full'){cam.position.set(1.2,1.0,3.6);cam.lookAt(0,.9,0);} else if(m==='face'){cam.position.set(0,C.y,C.z+.9);cam.lookAt(0,C.y-.01,C.z);} else {cam.position.set(.6,C.y+.05,C.z+.7);cam.lookAt(0,C.y-.01,C.z);} r.render(sc,cam);}
+document.title='done';
+</script>

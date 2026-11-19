@@ -1,0 +1,11 @@
+<!doctype html><meta charset="utf-8"><script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+const out={};
+for (const k of ['mp_m1','mp_f1','keem']) { const g=await new GLTFLoader().loadAsync('/models/chars/'+k+'.glb'); g.scene.updateMatrixWorld(true); let skin; g.scene.traverse(o=>{if(o.isSkinnedMesh&&!skin)skin=o;});
+ const P={}; const v=new THREE.Vector3(); skin.skeleton.bones.forEach(b=>{b.getWorldPosition(v);P[b.name]=v.toArray().map(x=>+x.toFixed(3));});
+ const sk=skin.skeleton, names=sk.bones.map(b=>b.name), hi=names.indexOf('Head'), ni=names.indexOf('neck'); const pos=skin.geometry.attributes.position, si=skin.geometry.attributes.skinIndex, sw=skin.geometry.attributes.skinWeight;
+ let bb=new THREE.Box3(), nb=new THREE.Box3(); for(let i=0;i<pos.count;i++){ let hw=0,nw=0; for(let j=0;j<4;j++){ if(si.getComponent(i,j)===hi)hw+=sw.getComponent(i,j); if(si.getComponent(i,j)===ni)nw+=sw.getComponent(i,j);} v.fromBufferAttribute(pos,i); if(hw>.5)bb.expandByPoint(v); if(nw>.5)nb.expandByPoint(v);} 
+ out[k]={P, head:[bb.min.toArray().map(x=>+x.toFixed(3)),bb.max.toArray().map(x=>+x.toFixed(3))], neck:[nb.min.toArray().map(x=>+x.toFixed(3)),nb.max.toArray().map(x=>+x.toFixed(3))], skinScale: skin.matrixWorld.elements.slice(0,1), bindIdentity: skin.bindMatrix.elements.map(x=>+x.toFixed(3)).join(',') , parentScale: skin.parent.scale.toArray()}; }
+window.info=out; document.title='done';
+</script>

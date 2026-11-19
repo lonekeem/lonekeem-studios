@@ -3,9 +3,8 @@
 import { PATTERNS } from './garments.js';
 export { PATTERNS };
 
-export const BASES = [
-  { id: 'mp_m1', label: 'Man · lean', g: 'm' }, { id: 'mp_m2', label: 'Man · strong', g: 'm' },
-  { id: 'mp_f1', label: 'Woman · slim', g: 'f' }, { id: 'mp_f2', label: 'Woman · curvy', g: 'f' },
+export const BASES = [ // v2: one guy + one girl base; body shape comes from the proportion sliders (old 'strong' / 'curvy' saves map onto them)
+  { id: 'mp_m1', label: 'Guy', g: 'm' }, { id: 'mp_f1', label: 'Girl', g: 'f' },
 ];
 export const SWATCH = {
   cloth: ['#f2f2f0', '#c9ccd0', '#8a8f98', '#4b4f57', '#17181b', '#7a1f1f', '#c0392b', '#e8743b', '#e9b949', '#d8c68a', '#6b8e3d', '#2f5d3a', '#1f6f78', '#4aa3c7', '#2f5fa8', '#1c2e5c', '#6c4aa5', '#b45fa7', '#e58fb0', '#8b5a3c', '#5b3a24', '#c8a27a', '#3a4a33', '#6a6a52'],
@@ -28,78 +27,24 @@ export const BROWS = [ // [name, arch, tilt, taper, thick, len, density]
   ['Angled', .75, .45, .5, .08, .62, 1], ['Upswept', .4, .55, .6, .07, .64, 1], ['Flat thick', .05, 0, .2, .13, .68, 1], ['Short', .5, .1, .4, .08, .4, 1], ['Sparse', .5, .15, .5, .06, .62, .55], ['Unibrow', .3, .05, .2, .1, .9, 1],
 ];
 export const NOSES = [['Average', 0, 0, 0, 0], ['Button', -.4, -.5, 0, .5], ['Broad', .6, 0, 0, 0], ['Long', 0, .6, .2, 0], ['Roman', .1, .3, .6, -.1], ['Upturned', -.2, -.2, 0, .6], ['Wide bridge', .4, 0, .4, 0], ['Narrow', -.6, .1, 0, 0]]; // [name, width, length, bridge, tip]
-export const MOUTHS = [['Neutral', .28, .5, 0], ['Full', .3, .8, 0], ['Thin', .27, .15, 0], ['Smile', .3, .5, .6], ['Wide', .35, .55, .1], ['Small', .22, .55, 0], ['Pouty', .24, .9, -.1], ['Smirk', .28, .5, .3]];
+export const MOUTHS = [['Neutral', .28, .5, 0], ['Full', .3, .8, 0], ['Thin', .27, .15, 0], ['Smile', .3, .5, .6], ['Wide', .35, .55, .1], ['Small', .22, .55, 0], ['Pouty', .24, .9, -.1], ['Smirk', .28, .5, .3], ['Grin', .35, .55, .9]];
 export const MAKEUP = {
   shadow: ['None', 'Soft', 'Smoky', 'Bold'], liner: ['None', 'Thin', 'Wing', 'Heavy'], blush: ['None', 'Light', 'Rosy', 'Strong'], lipstick: ['None', 'Tint', 'Matte', 'Dark'],
   freckles: ['None', 'Light', 'Medium', 'Heavy'], moles: ['None', 'One', 'Two', 'Three'], scars: ['None', 'Eyebrow cut', 'Cheek slash', 'Lip scar', 'Brow-to-eye', 'Stitches'], tattoo: ['None', 'Sleeve', 'Bands', 'Dots', 'Tribal'],
 };
-// ---- hair: [id, name, gender (m/f/u), hairline front,temple,back, thickness, topVolume, radialVolume, texture, fade, fadeLine, extras]
-const X = (...a) => a;
+// ---- hair (v2: sculpted caps on the analytic head; geometry lives in v2/hair.js STYLES). [id, name, gender m/f/u]
 export const HAIR = [
-  ['bald', 'Bald', 'u', 9, 9, 9, 0, 0, 0, 0, 0, 2.3, []],
-  ['buzz', 'Buzz cut', 'u', 2.55, 2.15, 1.7, .003, 0, 0, 0, 0, 2.3, []],
-  ['crew', 'Crew cut', 'm', 2.65, 2.2, 1.6, .006, .008, 0, 0, 0, 2.3, []],
-  ['caesar', 'Caesar', 'm', 2.45, 2.25, 1.7, .006, .006, 0, 0, 0, 2.3, []],
-  ['lowfade', 'Low fade', 'm', 2.7, 2.4, 2.3, .007, .012, 0, 0, .5, 2.1, []],
-  ['midfade', 'Mid fade', 'm', 2.7, 2.6, 2.6, .008, .016, 0, 0, .6, 2.45, []],
-  ['highfade', 'High fade', 'm', 2.75, 2.8, 2.8, .01, .02, 0, 0, .7, 2.75, []],
-  ['waves', 'Waves', 'u', 2.6, 2.2, 1.6, .006, .008, 0, 3, 0, 2.3, []],
-  ['wavefade', 'Wave fade', 'm', 2.65, 2.55, 2.5, .007, .01, 0, 3, .6, 2.45, []],
-  ['cornrows', 'Cornrows', 'u', 2.5, 2.1, 1.5, .006, .004, 0, 2, 0, 2.3, []],
-  ['curlcrop', 'Curly crop', 'u', 2.65, 2.2, 1.7, .01, .016, .006, 1, .2, 2.3, []],
-  ['curlfade', 'Curly top fade', 'm', 2.7, 2.6, 2.6, .012, .03, .006, 1, .6, 2.5, []],
-  ['hitop', 'High-top fade', 'm', 2.75, 2.6, 2.6, .014, .05, .0, 1, .6, 2.45, [X('block', .06)]],
-  ['afro', 'Afro', 'u', 2.4, 2.1, 1.4, .015, .02, .06, 1, 0, 2.3, [X('afro', 1)]],
-  ['afromini', 'Mini afro', 'u', 2.5, 2.1, 1.6, .012, .015, .03, 1, 0, 2.3, [X('afro', .62)]],
-  ['afrotaper', 'Afro taper', 'u', 2.6, 2.4, 2.3, .012, .02, .035, 1, .35, 2.2, [X('afro', .72)]],
-  ['sidepart', 'Side part', 'm', 2.45, 2.15, 1.7, .008, .012, 0, 0, 0, 2.3, [X('quiff', .0, .8)]],
-  ['slickback', 'Slick back', 'm', 2.65, 2.15, 1.6, .007, .01, 0, 3, 0, 2.3, []],
-  ['quiff', 'Quiff', 'm', 2.5, 2.2, 1.7, .008, .02, 0, 0, .0, 2.3, [X('quiff', .06, 1)]],
-  ['pomp', 'Pompadour', 'm', 2.45, 2.25, 1.8, .009, .02, 0, 0, .3, 2.45, [X('quiff', .11, 1.4)]],
-  ['undercut', 'Undercut', 'm', 2.5, 2.7, 2.7, .009, .03, 0, 0, .5, 2.8, [X('quiff', .04, 1)]],
-  ['messy', 'Messy crop', 'u', 2.4, 2.15, 1.7, .012, .022, .004, 1, .1, 2.3, [X('spikes', 9, .03)]],
-  ['spiky', 'Spiky', 'm', 2.6, 2.2, 1.7, .008, .01, 0, 0, .1, 2.3, [X('spikes', 16, .06)]],
-  ['mohawk', 'Mohawk', 'u', 3.1, 3.0, 3.0, .006, 0, 0, 0, .6, 2.9, [X('fin', .08)]],
-  ['fauxhawk', 'Faux hawk', 'm', 2.7, 2.7, 2.6, .008, .02, 0, 0, .4, 2.7, [X('fin', .045)]],
-  ['bowl', 'Bowl cut', 'u', 1.9, 1.8, 1.6, .012, .01, 0, 0, 0, 2.3, [X('fringe', .06)]],
-  ['mullet', 'Mullet', 'u', 2.55, 2.15, 1.2, .008, .015, 0, 0, 0, 2.3, [X('long', .1, .12)]],
-  ['shag', 'Shag', 'u', 2.3, 1.7, 1.2, .012, .02, 0, 0, 0, 2.3, [X('long', .17, .1), X('fringe', .045)]],
-  ['receding', 'Receding', 'm', 3.0, 2.3, 1.7, .006, .006, 0, 0, 0, 2.3, []],
-  ['balding', 'Balding crown', 'm', 3.05, 2.8, 1.9, .005, 0, 0, 0, .5, 2.3, []],
-  ['manbun', 'Man bun', 'm', 2.55, 2.5, 2.4, .007, .01, 0, 0, .3, 2.4, [X('bun', 'top', .045)]],
-  ['topknot', 'Top knot', 'u', 2.6, 2.5, 2.5, .006, .006, 0, 0, .35, 2.5, [X('bun', 'crown', .04)]],
-  ['ponylow', 'Low ponytail', 'u', 2.5, 2.1, 1.9, .007, .008, 0, 0, 0, 2.3, [X('pony', 'low', .26)]],
-  ['ponyhigh', 'High ponytail', 'f', 2.55, 2.2, 2.5, .007, .008, 0, 0, 0, 2.3, [X('pony', 'high', .3)]],
-  ['pigtails', 'Pigtails', 'f', 2.45, 2.15, 2.2, .007, .006, 0, 0, 0, 2.3, [X('pigtails', .24)]],
-  ['bunhigh', 'High bun', 'f', 2.5, 2.2, 2.4, .007, .006, 0, 0, 0, 2.3, [X('bun', 'top', .06)]],
-  ['bunlow', 'Low bun', 'f', 2.5, 2.2, 1.8, .007, .006, 0, 0, 0, 2.3, [X('bun', 'low', .055)]],
-  ['spacebuns', 'Space buns', 'f', 2.55, 2.3, 2.6, .007, .005, 0, 0, .0, 2.3, [X('puffs', .052, .9)]],
-  ['afropuffs', 'Afro puffs', 'f', 2.55, 2.3, 2.5, .01, .01, .01, 1, 0, 2.3, [X('puffs', .075, 1.0)]],
-  ['bantu', 'Bantu knots', 'f', 2.4, 2.1, 1.6, .008, .004, 0, 2, 0, 2.3, [X('knots', 14)]],
-  ['bob', 'Bob', 'f', 2.35, 1.6, 1.0, .01, .014, .005, 3, 0, 2.3, [X('long', .1, .05)]],
-  ['lob', 'Long bob', 'f', 2.35, 1.5, .9, .01, .014, .005, 0, 0, 2.3, [X('long', .17, .06)]],
-  ['pixie', 'Pixie', 'f', 2.4, 2.3, 2.3, .007, .018, 0, 0, .3, 2.5, [X('quiff', .035, .9)]],
-  ['curlybob', 'Curly bob', 'f', 2.3, 1.6, 1.0, .014, .02, .018, 1, 0, 2.3, [X('long', .1, .03)]],
-  ['longstr', 'Long straight', 'f', 2.35, 1.5, .9, .01, .012, .004, 0, 0, 2.3, [X('long', .35, .0)]],
-  ['longwave', 'Long waves', 'f', 2.35, 1.5, .9, .01, .016, .006, 3, 0, 2.3, [X('long', .33, .04)]],
-  ['longcurl', 'Long curls', 'f', 2.3, 1.5, .9, .014, .02, .012, 1, 0, 2.3, [X('long', .3, .07)]],
-  ['shoulder', 'Shoulder length', 'u', 2.4, 1.6, 1.0, .01, .012, .004, 0, 0, 2.3, [X('long', .22, .02)]],
-  ['sidebang', 'Side bangs long', 'f', 2.0, 1.6, .9, .01, .012, .004, 0, 0, 2.3, [X('long', .3, .02), X('fringe', .05)]],
-  ['curtain', 'Curtain bangs', 'f', 2.35, 1.5, .9, .01, .012, .004, 0, 0, 2.3, [X('long', .3, .02), X('curtain', .07)]],
-  ['halfup', 'Half-up', 'f', 2.4, 1.8, 1.0, .01, .01, .004, 0, 0, 2.3, [X('long', .3, .02), X('bun', 'top', .04)]],
-  ['boxbraids', 'Box braids', 'f', 2.45, 1.6, .9, .008, .004, 0, 2, 0, 2.3, [X('braids', 34, .42)]],
-  ['bobbraids', 'Short braids', 'f', 2.45, 1.7, 1.0, .008, .004, 0, 2, 0, 2.3, [X('braids', 30, .2)]],
-  ['braidpony', 'Braided ponytail', 'f', 2.5, 2.2, 2.2, .008, .004, 0, 2, 0, 2.3, [X('braids', 1, .5, 'pony')]],
-  ['dreads', 'Dreadlocks', 'u', 2.4, 1.8, 1.2, .008, .004, 0, 4, 0, 2.3, [X('dreads', 40, .3)]],
-  ['dreadsshort', 'Short dreads', 'u', 2.45, 2.1, 1.7, .008, .004, 0, 4, .0, 2.3, [X('dreads', 46, .12)]],
-  ['twists', 'Twists', 'u', 2.5, 2.2, 1.9, .008, .004, 0, 4, .0, 2.3, [X('dreads', 52, .07)]],
-  ['fringe', 'Long fringe', 'u', 2.0, 2.0, 1.7, .01, .01, 0, 0, 0, 2.3, [X('fringe', .08)]],
+  ['bald', 'Bald', 'u'], ['buzz', 'Buzz cut', 'u'], ['crew', 'Crew cut', 'm'], ['caesar', 'Caesar', 'm'], ['lowfade', 'Low fade', 'm'], ['midfade', 'Mid fade', 'm'], ['highfade', 'High fade', 'm'],
+  ['waves', 'Waves', 'u'], ['curlcrop', 'Curly crop', 'u'], ['curlfade', 'Curly top fade', 'm'], ['afro', 'Afro', 'u'], ['afromini', 'Mini afro', 'u'], ['sidepart', 'Side part', 'm'], ['slickback', 'Slick back', 'm'],
+  ['quiff', 'Quiff', 'm'], ['pomp', 'Pompadour', 'm'], ['undercut', 'Undercut', 'm'], ['messy', 'Tousled', 'u'], ['spiky', 'Spiky', 'm'], ['mohawk', 'Mohawk', 'u'], ['receding', 'Receding', 'm'], ['bowl', 'Bowl cut', 'u'],
+  ['manbun', 'Man bun', 'm'], ['ponylow', 'Low ponytail', 'u'], ['ponyhigh', 'High ponytail', 'f'], ['bunhigh', 'High bun', 'f'], ['bunlow', 'Low bun', 'f'], ['spacebuns', 'Space buns', 'f'], ['afropuffs', 'Afro puffs', 'f'],
+  ['pigtails', 'Pigtails', 'f'], ['braids2', 'Two Dutch braids', 'f'], ['braidpony', 'Braided ponytail', 'f'], ['cornrows', 'Cornrows', 'u'], ['bob', 'Bob', 'f'], ['lob', 'Long bob', 'f'], ['pixie', 'Pixie', 'f'],
+  ['shoulder', 'Shoulder length', 'u'], ['longstr', 'Long straight', 'f'], ['longwave', 'Long waves', 'f'], ['longcurl', 'Long curls', 'f'], ['curtain', 'Curtain bangs', 'f'], ['dreads', 'Locs', 'u'], ['twists', 'Twists', 'u'],
 ];
-export const BEARDS = [ // [id, name, maskId]
-  ['none', 'None', -1], ['stubble', 'Stubble', -2], ['full', 'Full beard', 1], ['boxed', 'Short boxed', 2], ['goatee', 'Goatee', 3], ['soul', 'Soul patch', 4], ['strap', 'Chin strap', 5], ['curtain', 'Chin curtain', 6],
-  ['mutton', 'Mutton chops', 7], ['circle', 'Circle beard', 8], ['anchor', 'Anchor', 9], ['vandyke', 'Van Dyke', 10], ['lumber', 'Lumberjack', 11], ['jawline', 'Jawline', 12],
+export const BEARDS = [ // [id, name, kind]
+  ['none', 'None', -1], ['stubble', 'Stubble', -2], ['full', 'Full beard', 1], ['boxed', 'Short boxed', 2], ['lumber', 'Big beard', 11], ['goatee', 'Goatee', 3], ['circle', 'Circle beard', 8], ['soul', 'Soul patch', 4], ['strap', 'Chin strap', 5], ['curtain', 'Chin curtain', 6],
 ];
-export const STACHES = [['none', 'None', -1], ['chevron', 'Chevron', 1], ['pencil', 'Pencil', 2], ['handlebar', 'Handlebar', 3], ['walrus', 'Walrus', 4], ['horseshoe', 'Horseshoe', 5], ['toothbrush', 'Toothbrush', 6], ['fumanchu', 'Fu Manchu', 7], ['imperial', 'Imperial', 8], ['painter', 'Painter', 9]];
+export const STACHES = [['none', 'None', -1], ['chevron', 'Chevron', 1], ['pencil', 'Pencil', 2], ['handlebar', 'Handlebar', 3], ['walrus', 'Walrus', 4], ['horseshoe', 'Horseshoe', 5]];
 // ---- clothes
 // tops: [id, name, g, sleeveEnd, hem, neckTop, neckDepth, neckHalfW, dressLen, turtle, loose, flare, contrastSleeves]
 export const TOPS = [
@@ -117,11 +62,11 @@ export const JACKETS = [
   ['bomber', 'Bomber', 'u', 1, .06, .98, .06, .0, 0, 0, .009, 0], ['denim', 'Denim jacket', 'u', 1, .1, .98, .05, .0, 0, 0, .008, 0], ['biker', 'Biker leather', 'u', 1, .12, .98, .07, .0, 0, 0, .007, 0], ['blazer', 'Blazer', 'u', 1, -.04, .98, .07, .0, 0, 0, .006, 0],
   ['puffer', 'Puffer', 'u', 1, .0, 1.0, .05, .0, 0, 1, .02, 0], ['trench', 'Trench coat', 'u', 1, -.2, .98, .06, .0, .45, 0, .008, .03], ['cardigan', 'Cardigan', 'u', 1, -.08, .98, .07, .0, 0, 0, .008, 0], ['vest', 'Vest', 'u', 0, .02, .98, .07, .0, 0, 0, .008, 0],
   ['parka', 'Parka', 'u', 1, -.12, 1.0, .05, .0, .2, 1, .016, .02], ['windbreaker', 'Windbreaker', 'u', 1, .04, .98, .05, .0, 0, 0, .012, 0], ['zip', 'Zip hoodie', 'u', 1, .0, 1.0, .04, .0, 0, 1, .011, 0], ['varsity', 'Varsity', 'u', 1, .06, .98, .06, .0, 0, 0, .01, 0],
-  ['cropjacket', 'Cropped jacket', 'f', 1, .3, .98, .06, .0, 0, 0, .007, 0], ['longcoat', 'Long coat', 'u', 1, -.3, .98, .06, .0, .75, 0, .009, .04], ['shacket', 'Shirt jacket', 'u', 1, -.02, .98, .06, .0, 0, 0, .009, 0], ['poncho', 'Poncho', 'u', .8, -.1, .99, .0, .0, .1, 0, .018, .06],
+  ['cropjacket', 'Cropped jacket', 'f', 1, .3, .98, .06, .0, 0, 0, .007, 0], ['cropzip', 'Cropped zip hoodie', 'f', 1, .36, .97, .0, .0, 0, 0, .013, 0], ['longcoat', 'Long coat', 'u', 1, -.3, .98, .06, .0, .75, 0, .009, .04], ['shacket', 'Shirt jacket', 'u', 1, -.02, .98, .06, .0, 0, 0, .009, 0], ['poncho', 'Poncho', 'u', .8, -.1, .99, .0, .0, .1, 0, .018, .06],
 ];
 // pants / skirts: [id, name, g, legEnd, waist, loose, flare]  (flare is per-leg radial offset, k = x + y * s)
 export const PANTS = [
-  ['jeans', 'Jeans', 'u', 1, .02, .006, 0, .003], ['skinny', 'Skinny jeans', 'u', 1, .02, .003, 0, 0], ['chino', 'Chinos', 'm', 1, .02, .005, 0, 0], ['cargo', 'Cargo pants', 'u', 1, .0, .014, 0, .004], ['joggers', 'Joggers', 'u', 1, .02, .009, 0, -.002],
+  ['jeans', 'Jeans', 'u', 1, .02, .006, 0, .003], ['skinny', 'Skinny jeans', 'u', 1, .02, .003, 0, 0], ['chino', 'Chinos', 'm', 1, .02, .005, 0, 0], ['cargo', 'Cargo pants', 'u', 1, .0, .014, 0, .004], ['joggers', 'Joggers', 'u', 1, .02, .009, 0, -.002], ['cargojog', 'Cargo joggers', 'u', 1, .02, .022, 0, -.002],
   ['wide', 'Wide-leg', 'u', 1, .06, .007, .02, .028], ['bootcut', 'Bootcut', 'u', 1, .0, .005, .01, .014], ['shorts', 'Shorts', 'u', .42, .02, .007, 0, .004], ['bermuda', 'Bermuda shorts', 'm', .62, .02, .009, 0, .004], ['capri', 'Capri', 'f', .72, .02, .005, 0, 0],
   ['minishorts', 'Mini shorts', 'f', .22, .0, .004, 0, 0], ['leggings', 'Leggings', 'f', 1, .08, .002, 0, 0], ['highjeans', 'High-waist jeans', 'f', 1, .17, .005, 0, .004], ['miniskirt', 'Mini skirt', 'f', .2, .04, .006, .03, .09], ['midiskirt', 'Midi skirt', 'f', .5, .05, .006, .02, .13],
   ['longskirt', 'Long skirt', 'f', .9, .05, .006, .02, .15], ['trackpants', 'Track pants', 'u', 1, .03, .008, 0, .002], ['dresspants', 'Dress pants', 'u', 1, .05, .004, 0, .008], ['overalls', 'Overalls (shorts)', 'u', .42, .38, .01, 0, .004], ['kneeshorts', 'Cycling shorts', 'u', .4, .05, .002, 0, 0],
@@ -130,7 +75,7 @@ export const PANTS = [
 export const SHOES = [
   ['sneaker', 'Sneakers', 'u', .985, .03, .013, 1, 0], ['lowtop', 'Low-top canvas', 'u', .985, .014, .006, 1, 0], ['hightop', 'High-tops', 'u', .88, .024, .008, 1, 0], ['runner', 'Runners', 'u', .985, .03, .008, 0, 0], ['boot', 'Boots', 'u', .72, .02, .008, 0, 0],
   ['ankleboot', 'Ankle boots', 'u', .9, .02, .007, 0, 0], ['combat', 'Combat boots', 'u', .78, .03, .01, 0, 0], ['kneeboot', 'Knee boots', 'f', .5, .02, .007, 0, 0], ['thighboot', 'Thigh boots', 'f', .28, .02, .006, 0, 0], ['flat', 'Flats', 'f', .995, .008, .005, 0, 0],
-  ['loafer', 'Loafers', 'u', .985, .012, .006, 0, 0], ['dress', 'Dress shoes', 'm', .985, .012, .006, 1, 0], ['chunky', 'Chunky sneakers', 'u', .97, .045, .012, 1, 0], ['work', 'Work boots', 'u', .8, .028, .011, 1, 0], ['rain', 'Rain boots', 'u', .6, .018, .01, 0, 0], ['socks', 'Socks only', 'u', .8, .004, .004, 0, 0],
+  ['loafer', 'Loafers', 'u', .985, .012, .006, 0, 0], ['dress', 'Dress shoes', 'm', .985, .012, .006, 1, 0], ['chunky', 'Chunky sneakers', 'u', .97, .045, .012, 1, 0], ['work', 'Work boots', 'u', .8, .028, .011, 1, 0], ['rain', 'Rain boots', 'u', .6, .018, .01, 0, 0], ['socks', 'Socks only', 'u', .8, .004, .004, 0, 0], ['clog', 'Clogs', 'u', .975, .035, .02, 1, 0],
 ];
 export const GLOVES = [['short', 'Gloves', .98, .005], ['long', 'Long gloves', .55, .005], ['elbow', 'Elbow gloves', .3, .005], ['work', 'Work gloves', .93, .012], ['fingerless', 'Wrist wraps', .93, .006], ['driving', 'Driving gloves', .97, .005], ['winter', 'Winter mitts', .9, .016]];
 export const OUTFIT_SLOTS = ['top', 'jacket', 'pants', 'shoes', 'gloves'];
@@ -138,13 +83,15 @@ export const OUTFIT_SLOTS = ['top', 'jacket', 'pants', 'shoes', 'gloves'];
 const H = (id, name, fam, o = {}) => [id, name, fam, o];
 export const HATS = [
   H('capflat', 'Baseball cap', 'cap'), H('capshort', 'Short-brim cap', 'cap', { brim: .05 }), H('caplong', 'Long-brim cap', 'cap', { brim: .13 }), H('beanie', 'Beanie', 'beanie'), H('beanietall', 'Tall slouch beanie', 'beanie', { tall: 1.5 }), H('beaniepom', 'Pom beanie', 'beanie', { pom: 1 }),
-  H('bucket', 'Bucket hat', 'bucket'), H('fedora', 'Fedora', 'brimmed', { wide: 1.6, crown: .75 }), H('sun', 'Sun hat', 'brimmed', { wide: 2.4, crown: .6 }), H('cowboy', 'Western hat', 'brimmed', { wide: 2.0, crown: 1.0 }), H('beret', 'Beret', 'beret'),
+  H('bucket', 'Bucket hat', 'bucket'), H('fedora', 'Fedora', 'brimmed', { wide: 1.6, crown: .75, style: 'fedora' }), H('sun', 'Sun hat', 'brimmed', { wide: 2.4, crown: .6, style: 'sun' }), H('cowboy', 'Western hat', 'brimmed', { wide: 2.0, crown: 1.0, style: 'western' }), H('beret', 'Beret', 'beret'),
   H('headband', 'Headband', 'headband'), H('headbandthin', 'Thin headband', 'headband', { thick: .007 }), H('bandana', 'Bandana', 'bandana'), H('hardhat', 'Hard hat', 'hardhat'), H('visor', 'Sun visor', 'visor'), H('crown', 'Crown', 'crown'), H('catears', 'Cat-ear hat', 'ears'), H('hood', 'Hood up', 'hood'), H('helmet', 'Rider helmet', 'helmet'),
 ];
+// each hat's own default colours [main, accent]
+export const HAT_DEFAULTS = { capflat: ['#2b4a7a', '#f2f2f0'], capshort: ['#3d6b45', '#f2f2f0'], caplong: ['#2e2f35', '#d9b44a'], beanie: ['#566a8a', '#d8d6cf'], beanietall: ['#9a4a34', '#e9dcc0'], beaniepom: ['#e4d6b6', '#c9503f'], bucket: ['#c8b78a', '#7a6a48'], fedora: ['#4b4038', '#1b1b1d'], sun: ['#e6d3a0', '#c2503f'], cowboy: ['#8a6238', '#e1cf9f'], beret: ['#6a2c42', '#3b1826'], headband: ['#d9483a', '#f2f2f0'], headbandthin: ['#f2f2f0', '#1a1a1a'], bandana: ['#2a4a8a', '#f2f2f0'], hardhat: ['#f0b400', '#2a2a2e'], visor: ['#f2f2f0', '#2a2a2e'], crown: ['#d9b44a', '#fff'], catears: ['#f1b3c6', '#e24b78'], hood: ['#4b5a4a', '#2c352c'], helmet: ['#2a2b31', '#c23b3b'] };
 export const GLASSES_LIST = [];
 for (const [sid, sn, o] of [['round', 'Round', { shape: 'round' }], ['square', 'Square', { shape: 'square' }], ['hex', 'Hex', { shape: 'hex' }], ['cat', 'Cat-eye', { shape: 'cat' }], ['oval', 'Oval', { shape: 'oval', w: .03, h: .018 }], ['big', 'Oversized', { shape: 'round', w: .036, h: .034 }], ['avi', 'Aviator', { shape: 'oval', aviator: 1, w: .032, h: .026 }], ['thin', 'Thin square', { shape: 'square', w: .028, h: .015, th: .0022 }]])
   for (const [lid, ln, lo] of [['clear', 'clear', {}], ['dark', 'shades', { dark: 1 }]]) GLASSES_LIST.push(H(sid + lid, sn + ' ' + ln, 'frame', { ...o, ...lo }));
-GLASSES_LIST.push(H('goggles', 'Goggles', 'goggles'), H('visorg', 'Visor shades', 'visor'));
+// goggles / visor shades removed in v2: their straps could not fit the new head cleanly
 export const EARRINGS = [];
 for (const [r, n] of [[.0045, 'Tiny'], [.006, 'Small'], [.008, 'Big']]) { EARRINGS.push(H('stud' + n, n + ' stud', 'stud', { r })); EARRINGS.push(H('gstud' + n, n + ' gem stud', 'stud', { r, gem: 1 })); }
 for (const [R, n] of [[.011, 'Tiny'], [.016, 'Small'], [.022, 'Medium'], [.03, 'Large'], [.04, 'Huge']]) EARRINGS.push(H('hoop' + n, n + ' hoop', 'hoop', { R }));
@@ -158,7 +105,7 @@ export const WRISTS = [H('band', 'Wristband', 'band'), H('bandw', 'Wide wristban
 export const RINGS = [H('ring', 'Band ring', 'band'), H('ringgem', 'Gem ring', 'band', { gem: 1 })];
 export const BAGS = [H('pack', 'Backpack', 'pack'), H('packbig', 'Hiking pack', 'pack', { h: .46, w: .3, d: .14 }), H('packsmall', 'Small pack', 'small'), H('cross', 'Crossbody bag', 'cross'), H('duffel', 'Duffel', 'duffel')];
 export const BELTS = [H('belt', 'Belt', 'belt'), H('beltwide', 'Wide belt', 'belt', { rx: 1.04 })];
-export const MASKS = [['surgical', 'Face mask', 0], ['bandanam', 'Bandana mask', 1], ['balaclava', 'Balaclava', 2], ['gaiter', 'Neck gaiter', 3], ['ski', 'Ski mask', 4]];
+export const MASKS = [['surgical', 'Face mask', 0], ['bandanam', 'Bandana mask', 1], ['gaiter', 'Neck gaiter', 3]]; // v2: balaclava / ski mask removed (could not fit the new head cleanly)
 export const SKIN_PRESETS = [0, .1, .2, .3, .4, .5, .6, .7, .8, .9, 1];
 
 const sw = (k) => SWATCH[k].length;

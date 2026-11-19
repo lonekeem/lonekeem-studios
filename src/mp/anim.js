@@ -5,12 +5,13 @@ const _q = new THREE.Quaternion(), _p = new THREE.Quaternion(), _d = new THREE.Q
 export function prepare(av) {
   if (av._anim) return av._anim; const bones = av.skin.skeleton.bones; const depth = b => { let d = 0; for (let o = b; o.parent; o = o.parent) d++; return d; };
   const order = bones.map(b => ({ b, d: depth(b) })).sort((a, b) => a.d - b.d).map(o => o.b); const restW = {}; av.obj.updateMatrixWorld(true);
-  bones.forEach(b => { restW[b.name] = b.getWorldQuaternion(new THREE.Quaternion()); });
+  av.root.updateMatrixWorld(true); const r0 = av.root.getWorldQuaternion(new THREE.Quaternion()).invert(); bones.forEach(b => { restW[b.name] = b.getWorldQuaternion(new THREE.Quaternion()).premultiply(r0); });
   return av._anim = { order, restW, restLocal: Object.fromEntries(bones.map(b => [b.name, b.quaternion.clone()])), hips: av.bones.Hips.position.clone() };
 }
+const _r = new THREE.Quaternion();
 export function pose(av, deltas, hipsOffset) { // deltas: { boneName: [rx, ry, rz] } world-axis radians
-  const A = prepare(av);
-  for (const b of A.order) { const d = deltas[b.name]; if (!b.parent) continue; if (!d) { b.quaternion.copy(A.restLocal[b.name]); } else { _e.set(d[0], d[1], d[2], 'XYZ'); _d.setFromEuler(_e); _d.multiply(A.restW[b.name]); b.parent.getWorldQuaternion(_p); b.quaternion.copy(_p.invert().multiply(_d)); } b.updateMatrixWorld(true); }
+  const A = prepare(av); av.root.updateMatrixWorld(true); av.root.getWorldQuaternion(_r); // deltas are in the avatar's own (root) frame, so the creator spin / town yaw rotate the whole posed body
+  for (const b of A.order) { const d = deltas[b.name]; if (!b.parent) continue; if (!d) { b.quaternion.copy(A.restLocal[b.name]); } else { _e.set(d[0], d[1], d[2], 'XYZ'); _d.setFromEuler(_e); _d.multiply(A.restW[b.name]); _d.premultiply(_r); b.parent.getWorldQuaternion(_p); b.quaternion.copy(_p.invert().multiply(_d)); } b.updateMatrixWorld(true); }
   if (hipsOffset) av.bones.Hips.position.set(A.hips.x + hipsOffset[0], A.hips.y + hipsOffset[1], A.hips.z + hipsOffset[2]); else av.bones.Hips.position.copy(A.hips);
 }
 const ARM_DOWN = .52;
