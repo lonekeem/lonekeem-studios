@@ -1,5 +1,6 @@
 // Town assembly: renderer, lighting, player, camera, input, interactions (doors, loot, cars, shop), HUD and net events.
 // Houses/streets live in map.js + building.js; cars.js / loot.js / zombies.js / gas.js are the props modules.
+import { armSolve } from './camcol.js';
 import * as THREE from 'three';
 import { loadBase, Avatar } from '../avatar.js';
 import { dress } from '../dress.js';
@@ -188,9 +189,8 @@ export async function enterTown({ look, onExit } = {}) {
     const inb = insideB(me.x, me.z); for (const b of W.buildings) if (b.roof) b.roof.visible = b !== inb; W.closed.update(me.x, me.z);
     if (fp && !c) { const eye = new THREE.Vector3(me.x, me.y + 1.62, me.z); camPos.copy(eye); cam.position.copy(eye); cam.lookAt(eye.x + Math.sin(camYaw) * Math.cos(fpPitch), eye.y + Math.sin(fpPitch), eye.z + Math.cos(camYaw) * Math.cos(fpPitch)); }
     else { const tgt = new THREE.Vector3(me.x, (c ? 1.5 : 1.45) + me.y, me.z); const pitch = c ? .36 : inb ? Math.max(camPitch, .85) : camPitch; const dd = (c ? 8.6 : inb ? 5.2 : camDist) * (aimZoom && !c ? .72 : 1); const yawEff = c ? me.ry : camYaw; if (c) camYaw = me.ry;
-      const dir = new THREE.Vector3(-Math.sin(yawEff) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yawEff) * Math.cos(pitch)); let dist = dd, hit = false;
-      // camera collision: walk out from the player along the camera ray and stop short of walls, trees and cars
-      for (let d = .6; d <= dd + .01; d += .35) { const px = tgt.x + dir.x * d, py = tgt.y + dir.y * d, pz = tgt.z + dir.z * d; let bad = py < .15 || (py < 2.7 && col.hit(px, pz, .28)); if (!bad && py < 2.4) for (const k of cars) { if (k === me.drv || !k.g.visible) continue; if (Math.hypot(px - k.x, pz - k.z) < k.rad + .3) { for (const [cx, cz] of k.circles()) if (Math.hypot(px - cx, pz - cz) < .95) { bad = true; break; } } if (bad) break; } if (bad) { dist = Math.max(.7, d - .45); hit = true; break; } }
+      // camera collision (camcol.js): tilt the arm up over cars/low walls, then shorten it; never ends inside cars, trucks, walls or pillars
+      const arm = armSolve(W, cars, me.drv, tgt, yawEff, pitch, dd), dir = arm, dist = arm.dist, hit = arm.hit;
       const want = new THREE.Vector3(tgt.x + dir.x * dist, tgt.y + dir.y * dist, tgt.z + dir.z * dist); if (!camInit) { camPos.copy(want); camInit = true; } if (hit) camPos.copy(want); else camPos.lerp(want, Math.min(1, dt * (c ? 5 : 9))); cam.position.copy(camPos); cam.lookAt(tgt); }
     sun.position.set(me.x + 36, 60, me.z + 28); sun.target.position.set(me.x, 0, me.z); sun.target.updateMatrixWorld();
     // HUD
