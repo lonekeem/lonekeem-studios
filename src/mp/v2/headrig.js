@@ -131,7 +131,7 @@ export function buildFacialHair(av, look) {
   if (av._fhKey === key) { if (av._fh) av._fh.material = hairMaterial(col, c2, .4, skinHex(av)); return; }
   if (av._fh) { av._fh.parent && av._fh.parent.remove(av._fh); av._fh.geometry.dispose(); av._fh = null; } av._fhKey = key;
   const parts = []; const lipCut = !!(bs && ss_); // with a mustache, the beard leaves the upper lip so the mustache reads as its own shape
-  if (bs) parts.push(buildBand(h, Object.assign({}, bs, { T: bs.T * (.5 + .9 * len) }, lipCut ? { mask: (p, a, L) => bs.mask(p, a, L) && !LIP_CUT(p, L) } : {}))); if (ss_) { const sg = buildBand(h, Object.assign({}, ss_, { T: ss_.T * (.7 + .6 * ((look.stache && look.stache.len) ?? .4)) * (bs ? 1.35 : 1) })); const a = sg.attributes.aH; for (let k = 0; k < a.count; k++) a.setW(k, 6); parts.push(sg); }
+  if (bs) parts.push(buildBand(h, Object.assign({}, bs, { T: bs.T * (.5 + .9 * len) }, lipCut ? { mask: (p, a, L) => bs.mask(p, a, L) && !LIP_CUT(p, L) } : {}))); if (ss_) { const sg = buildBand(h, Object.assign({}, ss_, { fade: .007, T: ss_.T * (.7 + .6 * ((look.stache && look.stache.len) ?? .4)) * (bs ? 1.35 : 1) })); const a = sg.attributes.aH; for (let k = 0; k < a.count; k++) a.setW(k, 6); parts.push(sg); }
   if (!parts.length) return; const geo = parts.length > 1 ? mergeGeometries(parts, false) : parts[0]; geo.scale(h.s, h.s, h.s); geo.translate(h.C.x, h.C.y, h.C.z);
   skinTo(av, geo, () => [['Head', 1]]); av._fh = bindMesh(av, new THREE.SkinnedMesh(geo, hairMaterial(col, c2, .4, skinHex(av))), 2);
 }

@@ -116,11 +116,17 @@ function freckles(g, o) { const R = rnd(99), n = [0, 26, 48, 80][o.freckles] || 
   for (let k = 0; k < n / 4; k++) { const [px, py] = P((R() - .5) * .02, -.02 - R() * .012); g.fillStyle = rgba(o.freckleCol, .35 + .3 * R()); g.beginPath(); g.arc(px, py, 2 + R() * 2, 0, 7); g.fill(); }
   g.restore(); }
 function blush(g, o) { if (!o.blush) return; for (const sd of [-1, 1]) { const [px, py] = P(sd * .056, -.047); const r = K * .028; const gr = g.createRadialGradient(px, py, 0, px, py, r); gr.addColorStop(0, rgba('#e0506a', .1 + .08 * o.blush)); gr.addColorStop(1, 'rgba(224,80,106,0)'); g.fillStyle = gr; g.beginPath(); g.arc(px, py, r, 0, 7); g.fill(); } }
-function nose(g, o) { // nostril shadows + soft side shading for the 3D nose
-  const [nx, ny] = P(0, o.noseY - .007); const w = K * .011 * o.noseW; g.save(); g.fillStyle = rgba(o.skinDark, .3); for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(nx + sd * w * .5, ny + w * .1, w * .2, w * .11, sd * -.35, 0, 7); g.fill(); } g.restore(); }
+function nose(g, o) { // 3D-nose helper shading: bridge side shadows, nostril shadows, under-tip shadow, soft tip highlight (reads even in flat frontal light)
+  const [nx, ny] = P(0, o.noseY - .007); const w = K * .011 * o.noseW; g.save();
+  const grad = (x, y, rx, ry, col, a, rot = 0) => { g.save(); g.translate(x, y); g.rotate(rot); g.scale(rx, ry); const gr = g.createRadialGradient(0, 0, 0, 0, 0, 1); gr.addColorStop(0, rgba(col, a)); gr.addColorStop(1, rgba(col, 0)); g.fillStyle = gr; g.beginPath(); g.arc(0, 0, 1, 0, 7); g.fill(); g.restore(); };
+  for (const sd of [-1, 1]) { grad(nx + sd * w * 1.55, ny - w * 1.9, w * .6, w * 2.4, o.skinDark, .3, sd * .12); grad(nx + sd * w * 1.3, ny + w * .1, w * .8, w * .9, o.skinDark, .22); }
+  grad(nx, ny + w * 1.35, w * 1.6, w * .7, o.skinDark, .34);
+  g.fillStyle = rgba(o.skinDark, .6); for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(nx + sd * w * .52, ny + w * .55, w * .26, w * .14, sd * -.4, 0, 7); g.fill(); }
+  grad(nx, ny - w * .35, w * .75, w * .65, '#fff0dd', .2); grad(nx, ny - w * 2.6, w * .35, w * 1.6, '#fff0dd', .1);
+  g.restore(); }
 function moles(g, o) { const spots = [[.05, -.075], [-.035, .055], [.065, -.01]]; for (let k = 0; k < (o.moles || 0); k++) { const [px, py] = P(...spots[k]); g.fillStyle = 'rgba(70,40,30,.85)'; g.beginPath(); g.arc(px, py, 3.2, 0, 7); g.fill(); } }
 function beardShade(g, o) { if (!o.beardShade) return; const R = rnd(9); g.save(); // soft stubble halo just past the beard edge: skin -> stubble -> beard
-  for (let k = 0; k < 9000; k++) { const x = (R() - .5) * .22, y = -.16 + R() * .14; const ax = Math.abs(x); const lineY = -.05 + ax * .5; const dy = y - lineY; if (dy > .02 || ax > .105) continue; if (Math.abs(y - o.mouthY) < .011 && ax < o.mW * .5) continue;
+  for (let k = 0; k < 9000; k++) { const x = (R() - .5) * .22, y = -.16 + R() * .14; const ax = Math.abs(x); const lineY = -.062 + ax * .5; const dy = y - lineY; if (dy > .02 || ax > .105) continue; if (Math.abs(y - o.mouthY) < .011 && ax < o.mW * .5) continue;
     const a = .45 * Math.min(1, Math.max(0, (.02 - dy) / .02)); const [px, py] = P(x, y); g.fillStyle = rgba(o.stubbleCol, a * (.5 + .5 * R())); g.fillRect(px, py, 2, 2); }
   g.restore(); }
 function stubble(g, o) { if (!o.stubble) return; const R = rnd(5); g.save(); g.fillStyle = rgba(o.stubbleCol, .35); // dotted shadow over jaw / upper lip

@@ -153,7 +153,7 @@ function buildDrop(head, st, fr, cols, thB, NPH, NR) {
   const NC = (NPH + 1) * (NS + 1);
   for (let j = 0; j < NPH; j++) { if (useCols[j] < .01 && useCols[j + 1] < .01) continue; for (let k = 0; k < NS; k++) { const a = j * (NS + 1) + k, b = (j + 1) * (NS + 1) + k; idx.push(a, b, a + 1, b, b + 1, a + 1); idx.push(NC + a, NC + a + 1, NC + b, NC + b, NC + a + 1, NC + b + 1); }
     const a = j * (NS + 1) + NS, b = (j + 1) * (NS + 1) + NS; idx.push(a, b, NC + a, b, NC + b, NC + a); }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aT', new THREE.Float32BufferAttribute(tan, 3)); g.setAttribute('aH', new THREE.Float32BufferAttribute(aux, 4)); g.setIndex(idx); g.computeVertexNormals(); return g;
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aT', new THREE.Float32BufferAttribute(tan, 3)); g.setAttribute('aH', new THREE.Float32BufferAttribute(aux, 4)); g.setAttribute('aE', new THREE.Float32BufferAttribute(aE, 1)); g.setIndex(idx); g.computeVertexNormals(); return g;
 }
 
 // tousled clumps: tapered, grooved locks lying on the hair surface, swept forward / sideways from the crown, tips lifting off the surface
@@ -220,17 +220,17 @@ export function hairMaterial(c1, c2, hl = .35, skin = null) { // skin: blend the
   const m = new THREE.MeshStandardMaterial({ color: c1, roughness: .55, metalness: 0, side: THREE.FrontSide });
   const U = { uC2: { value: new THREE.Color(c2) }, uHl: { value: hl }, uSk: { value: new THREE.Color(skin || '#000') }, uSkF: { value: skin ? 1 : 0 } };
   m.onBeforeCompile = sh => { Object.assign(sh.uniforms, U);
-    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 aT; attribute vec4 aH; varying vec3 vT; varying vec4 vH; varying vec3 vObjP;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvH = aH; vObjP = position; vT = normalize(normalMatrix * aT);');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uC2; uniform float uHl; uniform vec3 uSk; uniform float uSkF; varying vec3 vT; varying vec4 vH; varying vec3 vObjP;')
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 aT; attribute vec4 aH; attribute float aE; varying vec3 vT; varying vec4 vH; varying vec3 vObjP; varying float vE;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvH = aH; vE = aE; vObjP = position; vT = normalize(normalMatrix * aT);');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uC2; uniform float uHl; uniform vec3 uSk; uniform float uSkF; varying vec3 vT; varying vec4 vH; varying vec3 vObjP; varying float vE;')
       .replace('#include <color_fragment>', `#include <color_fragment>
         float g = vH.x; float fine = sin(vH.z * 900.0 + sin(vObjP.y * 300.0) * 2.0) * 0.5 + 0.5;
         vec3 c = diffuseColor.rgb * (0.72 + 0.38 * g) * (0.94 + 0.08 * fine);
         c = mix(c, uC2, uHl * 0.25 * smoothstep(0.4, 1.0, g));
         if (vH.w > 4.5) { float sk = vH.w > 5.5 ? 0.3 : 1.0; // facial hair (6 = mustache: keeps its colour): wispy, uneven outer edge (strands of random length) instead of a hard cut line
           float u = vH.y; float r1 = fract(sin(floor(vH.z * 300.0) * 12.9898) * 43758.5453), r2 = fract(sin(floor(vH.z * 1100.0 + 3.0) * 78.233) * 43758.5453);
-          float fo = smoothstep(0.8, 0.995, u), fi = smoothstep(0.08, 0.0, u);
-          if (max(fo, fi * 0.6) > 0.1 + 0.9 * (r1 * 0.65 + r2 * 0.35)) discard; float fs = smoothstep(0.5, 0.99, u) * (0.75 + 0.25 * r2); c = mix(c * (1.0 + 0.15 * fs), uSk * 0.86, uSkF * fs * 0.62 * sk); }
+          float r3 = fract(sin(dot(floor(vObjP * 1500.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453); float fo = vE, fi = smoothstep(0.08, 0.0, u);
+          if (max(fo, fi * 0.6) > 0.1 + 0.9 * (r1 * 0.35 + r2 * 0.25 + r3 * 0.4)) discard; float fs = smoothstep(0.0, 0.85, vE) * (0.75 + 0.25 * r2); c = mix(c * (1.0 + 0.15 * fs), uSk * 0.86, uSkF * fs * 0.62 * sk); }
         else if (vH.w < 0.5) { // scalp hair: soft, strand-broken hairline
           float u = vH.y; float r1 = fract(sin(floor(vH.z * 150.0) * 12.9898) * 43758.5453), r2 = fract(sin(floor(vH.z * 600.0 + 7.0) * 78.233) * 43758.5453);
           float fo = smoothstep(0.985, 1.012, u); if (fo > 0.68 + 0.32 * (r1 * 0.8 + r2 * 0.2)) discard; float fs = smoothstep(0.9, 1.01, u) * (0.7 + 0.3 * r2); c = mix(c, uSk * 0.85, uSkF * fs * 0.5); }
@@ -241,13 +241,13 @@ export function hairMaterial(c1, c2, hl = .35, skin = null) { // skin: blend the
           float spec = pow(sinTH, 60.0) * 0.35 + pow(sinTH, 12.0) * 0.08; float rimF = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 2.5);
           totalEmissiveRadiance += mix(diffuseColor.rgb, vec3(1.0), 0.35) * spec * (0.5 + 0.5 * vH.x) + diffuseColor.rgb * (0.05 + rimF * 0.2); }`);
   };
-  m.customProgramCacheKey = () => 'v2hair2'; _mats.set(key, m); return m;
+  m.customProgramCacheKey = () => 'v2hair4'; _mats.set(key, m); return m;
 }
 
 // ---------- facial hair: polar band around the mouth. Inner edge = first entry into the mask, outer edge = exit; both edges tuck under
 // the skin, so beards have clean smooth outlines and a clean opening around the lips.
 export const BEARD_STYLES = { // mask(p, a, L) on head-local surface points; T thickness, curl
-  full: { T: .0075, curl: .0018, mask: (p, a, L) => Math.abs(a) < 91 && offNeck(p) && p.y < topLine(a, L, 1) && !mouthHole(p, L, .009) },
+  full: { T: .0046, curl: .0013, mask: (p, a, L) => Math.abs(a) < 91 && offNeck(p) && p.y < topLine(a, L, 1) - cheekDrop(a) && p.y > fullFloor(p) && !mouthHole(p, L, .009) },
   boxed: { T: .004, curl: .0008, mask: (p, a, L) => Math.abs(a) < 90 && offNeck(p) && p.y < topLine(a, L, .8) && !mouthHole(p, L, .008) },
   lumber: { T: .013, curl: .003, mask: (p, a, L) => Math.abs(a) < 92 && offNeck(p) && p.y < topLine(a, L, 1.15) && !mouthHole(p, L, .01) },
   goatee: { T: .006, curl: .0015, mask: (p, a, L) => Math.abs(p.x) < .034 && p.y < L.mouthY - .006 && p.z > .02 },
@@ -267,6 +267,9 @@ export const STACHE_STYLES = {
 export const BEARD_ALIAS = { mutton: 'strap', anchor: 'goatee', vandyke: 'circle', jawline: 'strap' }; export const STACHE_ALIAS = { toothbrush: 'pencil', fumanchu: 'horseshoe', imperial: 'handlebar', painter: 'chevron' };
 export const LIP_CUT = (p, L) => Math.abs(p.x) < .034 && p.y > L.mouthY + .004 && p.z > .03; // upper lip left to the mustache
 function topLine(a, L, k) { const aa = Math.abs(a); return interp([[0, L.mouthY + .024], [16, L.mouthY + .025], [28, -.052 + .01 * (k - 1)], [45, -.04 + .015 * (k - 1)], [62, -.026 + .02 * (k - 1)], [78, -.004 + .01 * (k - 1)], [86, .006], [94, .012]], aa); }
+// trimmed 'full' beard: cheeks left clear above a lowered line, bottom edge held close to the jaw (chin underside + neck stay skin)
+const cheekDrop = a => { const aa = Math.abs(a); return .013 * ss(14, 34, aa) * ss(92, 70, aa); };
+const fullFloor = p => -.15 + Math.abs(p.x) * .27;
 const offNeck = p => Math.hypot(p.x, p.z + .025) > .056 || p.y > -.08;
 function jawBand(p, a, L) { return -.112 + Math.abs(p.x) * .9 * Math.min(1, Math.abs(a) / 90 + .2); }
 function mouthHole(p, L, m) { const a = p.x / (.032 + m), b = (p.y - L.mouthY + .002) / (.012 + m * .55); return a * a + b * b < 1 && p.z > .03; }
@@ -283,11 +286,11 @@ export function buildBand(head, st, opt = {}) {
   for (let j = 0; j < NPH; j++) if (tin[j] < 0) { let k = 1; while (k < NPH && tin[(j + k) % NPH] < 0 && tin[(j - k + NPH) % NPH] < 0) k++; const src = tin[(j + k) % NPH] >= 0 ? (j + k) % NPH : (j - k + NPH) % NPH; const m = (tin[src] + tout[src]) / 2; tin[j] = -m - 10; tout[j] = m; }
   const fix = arr => { const t = Float32Array.from(arr); for (let j = 0; j < NPH; j++) { const a = t[(j + NPH - 1) % NPH], b = t[j], c = t[(j + 1) % NPH]; arr[j] = (a + 2 * b + c) / 4; } };
   const empty = Array.from(tin, v => v < -5); for (let j = 0; j < NPH; j++) if (empty[j]) tin[j] = tout[j]; fix(tin); fix(tout);
-  const pos = [], tan = [], aux = [], idx = []; const NR = NU + 3;
-  for (let j = 0; j <= NPH; j++) { const jj = j % NPH, ph = jj / NPH * Math.PI * 2; const w0 = tin[jj], w1 = tout[jj]; const band = Math.max(0, w1 - w0); const zero = empty[jj] || band < .5 * D2R;
+  const pos = [], tan = [], aux = [], aE = [], idx = []; const NR = NU + 3; const FL = st.fade || .03;
+  for (let j = 0; j <= NPH; j++) { const jj = j % NPH, ph = jj / NPH * Math.PI * 2; const w0 = tin[jj], w1 = tout[jj]; const band = Math.max(0, w1 - w0); const zero = empty[jj] || band < .5 * D2R; const pe = surf(head, dirOf(fr, w1, ph));
     for (let i = 0; i < NR; i++) { let th, t; if (i === 0) { th = Math.max(0, w0 - 1 * D2R); t = -.0025; } else if (i === NR - 1) { th = w1 + 1 * D2R; t = -.0025; } else { const u = (i - 1) / (NU); th = w0 + band * u; const e = ss(0, .2, u) * ss(1, .62, u); t = zero ? -.0025 : st.T * Math.pow(e, .7) + .0008 * (1 - e); }
-      const d = dirOf(fr, th, ph); const p = surf(head, d); const n = normalAt(head, p); if (t > 0 && !opt.flat) t *= .5 + .5 * ss(-.03, -.13, p.y) + .15 * ss(.03, 0, Math.abs(p.x)); if (st.curl && t > 0) t += st.curl * (Math.abs(Math.sin(p.x * 260 + Math.sin(p.y * 200) * 2) * Math.sin(p.y * 260 + p.z * 150)) - .3) * (t / st.T); const q = p.addScaledVector(n, t);
+      const d = dirOf(fr, th, ph); const p = surf(head, d); const n = normalAt(head, p); if (t > 0 && !opt.flat) t *= .5 + .5 * ss(-.03, -.13, p.y) + .15 * ss(.03, 0, Math.abs(p.x)); if (st.curl && t > 0) t += st.curl * (Math.abs(Math.sin(p.x * 260 + Math.sin(p.y * 200) * 2) * Math.sin(p.y * 260 + p.z * 150)) - .3) * (t / st.T); const dE = p.distanceTo(pe); const q = p.addScaledVector(n, t); aE.push(zero ? 1 : 1 - Math.min(1, dE / FL));
       pos.push(q.x, q.y, q.z); const tg = new THREE.Vector3(0, -1, 0).addScaledVector(n, -(-n.y)).normalize(); tan.push(tg.x, tg.y, tg.z); aux.push(.5 + .5 * Math.sin(ph * 40), i / NR, ph / 6.283, 5); } }
   for (let j = 0; j < NPH; j++) for (let i = 0; i < NR - 1; i++) { const a = j * NR + i, b = (j + 1) * NR + i; idx.push(a, b, a + 1, b, b + 1, a + 1); }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aT', new THREE.Float32BufferAttribute(tan, 3)); g.setAttribute('aH', new THREE.Float32BufferAttribute(aux, 4)); g.setIndex(idx); g.computeVertexNormals(); return g;
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aT', new THREE.Float32BufferAttribute(tan, 3)); g.setAttribute('aH', new THREE.Float32BufferAttribute(aux, 4)); g.setAttribute('aE', new THREE.Float32BufferAttribute(aE, 1)); g.setIndex(idx); g.computeVertexNormals(); return g;
 }

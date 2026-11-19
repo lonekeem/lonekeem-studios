@@ -15,7 +15,7 @@ export function headParams(g, m = {}) {
   return {
     f, W: (f ? .117 : .121) * (1 + .07 * M('faceW')), Ht: (f ? .142 : .145) * (1 + .06 * M('forehead')), Hb: (f ? .148 : .155) * (1 + .07 * M('faceLen') + .04 * M('chin')), D: (f ? .123 : .127), yc: .0,
     taper: (f ? .34 : .28) - .14 * M('jaw'), chinW: 1 + .3 * M('chinW'), chinFwd: .012 + .006 * M('chin'), cheek: .5 + .45 * M('cheekFull') + .2 * M('cheekbone'),
-    noseW: 1 + .3 * M('noseW'), noseLen: 1 + .3 * M('noseLen'), noseBridge: M('noseBridge'), noseTip: M('noseTip'), noseSize: f ? .9 : 1,
+    noseW: 1 + .3 * M('noseW'), noseLen: 1 + .3 * M('noseLen'), noseBridge: M('noseBridge'), noseTip: M('noseTip'), noseSize: f ? .95 : 1.22,
     earS: 1 + .15 * M('earSize'), earOut: M('earOut'),
   };
 }
@@ -30,7 +30,7 @@ export function makeSDF(H) {
     // soft cheek fullness
     if (H.cheek > .01) d = smin(d, sdEll(Math.abs(x) - .05, y + .045, z - .05, .045 * H.cheek + .01, .04, .04), .05);
     // nose: soft button tip + faint bridge + small alae
-    const tz = fz + .012 + .004 * H.noseTip, ty = ty0 + .004 * H.noseTip;
+    const tz = fz + .013 + .004 * H.noseTip, ty = ty0 + .004 * H.noseTip;
     let n = sdEll(x, y - ty, z - tz, nr * 1.05 * H.noseW, nr * .95, nr * .95);
     n = smin(n, sdCaps(x, y, z, 0, .006, fz - .004 + .004 * H.noseBridge, 0, ty + .005, tz - .003, .0055 * (1 + .2 * H.noseBridge)), .012);
     n = smin(n, sdEll(Math.abs(x) - .0105 * H.noseW, y - ty + .004, z - tz + .008, .0078 * H.noseW, .0065, .007), .007);
