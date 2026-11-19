@@ -189,7 +189,8 @@ export async function enterTown({ look, onExit } = {}) {
     navAcc += dt; if (navAcc > .45) { navAcc = 0; W.nav.field(me.x, me.z); } try { if (aud.ctx && aud.listen) aud.listen(cam, false); } catch (e) { /* ignore */ } perfLOD(dt); if (Z) { Z.update(dt, t); zombieLOD(); } updateLoot(W, dt);
     // roofs + camera
     const inb = insideB(me.x, me.z); for (const b of W.buildings) if (b.roof) b.roof.visible = b !== inb; W.closed.update(me.x, me.z);
-    if (fp && !c) { const eye = new THREE.Vector3(me.x, me.y + 1.62, me.z); camPos.copy(eye); cam.position.copy(eye); cam.lookAt(eye.x + Math.sin(camYaw) * Math.cos(fpPitch), eye.y + Math.sin(fpPitch), eye.z + Math.cos(camYaw) * Math.cos(fpPitch)); }
+    { const wantNear = fp && !c ? .06 : .1; if (cam.near !== wantNear) { cam.near = wantNear; cam.updateProjectionMatrix(); } } // first person: tight near plane, own avatar (head/hair/hat/face) is hidden above
+    if (fp && !c) { const eye = new THREE.Vector3(me.x + Math.sin(camYaw) * .12, me.y + (shim.state.crouch ? 1.28 : 1.58), me.z + Math.cos(camYaw) * .12); camPos.copy(eye); cam.position.copy(eye); cam.lookAt(eye.x + Math.sin(camYaw) * Math.cos(fpPitch), eye.y + Math.sin(fpPitch), eye.z + Math.cos(camYaw) * Math.cos(fpPitch)); }
     else { const tgt = new THREE.Vector3(me.x, (c ? 1.5 : 1.45) + me.y, me.z); const pitch = c ? .36 : inb ? Math.max(camPitch, .85) : camPitch; const dd = (c ? 8.6 : inb ? 5.2 : camDist) * (aimZoom && !c ? .72 : 1); const yawEff = c ? me.ry : camYaw; if (c) camYaw = me.ry;
       // camera collision (camcol.js): tilt the arm up over cars/low walls, then shorten it; never ends inside cars, trucks, walls or pillars
       const arm = armSolve(W, cars, me.drv, tgt, yawEff, pitch, dd), dir = arm, dist = arm.dist, hit = arm.hit;
