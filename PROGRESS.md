@@ -121,3 +121,12 @@ Based on `feat/mp-town` a091c98. New files: `src/mp/town/camcol.js`, `src/mp/tow
 - Solo works from the live menu (title -> "Multiplayer (Beta)" -> creator -> town); verified against the production build served statically (`docs/mp-town-final/prod_build_start.png`).
 - Online: Supabase restored (free plan), migrations applied, Realtime broadcast transport with solo fallback, 2 clients in separate browser contexts see each other (`docs/mp-town-final/online_A.png`, `tools/mp/town_online.mjs` with TWO=1). Setup/TODO for Keem: docs/mp-online-setup.md.
 - Perf at the final merge: spawn ~100 calls/139k tris, gas station ~175 (KL MART added).
+
+---
+
+## v1.9.18 release (multiplayer live, guests only)
+- Merged `feat/mp-town` into main (only conflict: PROGRESS.md, both sections kept; v1.9.17 first-person + v1.9.16 gore/town NPC code untouched). Bumped to 1.9.18 (versionCode 46).
+- Google sign-in not configured: the pause panel shows "Guest · Google sign-in coming soon" (button only appears once the provider is enabled in Supabase). No Keem character option exists in the creator yet, so guests cannot pick it (admin-only picker still to do).
+- Release: https://github.com/lonekeem/lonekeem-studios/releases/tag/v1.9.18-debug (debug APK + AAB, built locally with gradle assembleDebug bundleDebug like earlier releases). Pages deploy run 44484296210 succeeded.
+- Live check (`tools/live_check.mjs`, headless Chrome on the live URL): story New Game starts, first-person has 0 visible player meshes, near 0.06; Title > Multiplayer (Beta) > creator > Save & enter > town; two guest sessions (GuestA/GuestB) see each other, positions sync. Frames in `docs/live-1918/`.
+- Known issues: zombies are not synced between players; Google sign-in + saving characters/wallets/houses to accounts not done; "Original Keem" picker not done; store interior is dark brick; remote name tags float at hip height; favicon 404 in console; the shared room can hold stray sessions (a leftover client showed once as a 3rd player).
