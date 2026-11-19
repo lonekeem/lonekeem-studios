@@ -15,7 +15,7 @@ const MAP = [['DEF-hips', 'Hips'], ['DEF-spine.001', 'Spine02'], ['DEF-spine.002
 
 // --- clean cartoon hands: the generated hand blobs are cut away and replaced with smooth mitten-style hands (skin or glove colour sampled from the texture)
 const HANDS = new WeakMap(); const _v = new THREE.Vector3(), _mm = new THREE.Matrix4();
-function sampleColor(tex, uvs) { try { const im = tex.image; const w = im.width, h = im.height, c = document.createElement('canvas'); c.width = w > 2048 ? 1024 : w; c.height = h > 2048 ? 1024 : h; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0, c.width, c.height);
+export function sampleColor(tex, uvs) { try { const im = tex.image; const w = im.width, h = im.height, c = document.createElement('canvas'); c.width = w > 2048 ? 1024 : w; c.height = h > 2048 ? 1024 : h; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(im, 0, 0, c.width, c.height);
     const col = []; for (const [u, v] of uvs) { const px = x.getImageData(Math.min(c.width - 1, Math.max(0, Math.round(u * c.width))), Math.min(c.height - 1, Math.max(0, Math.round((tex.flipY ? 1 - v : v) * c.height))), 1, 1).data; col.push([px[0], px[1], px[2]]); }
     col.sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2])); const m = col[Math.floor(col.length / 2)] || [150, 110, 90]; return new THREE.Color().setRGB(m[0] / 255, m[1] / 255, m[2] / 255, THREE.SRGBColorSpace); } catch (e) { return new THREE.Color('#9a7058'); } }
 function processHands(skin) {

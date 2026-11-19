@@ -2,14 +2,14 @@
 import { chromium } from 'playwright';
 import { execFileSync } from 'child_process';
 import fs from 'fs';
-export async function openGame(port, step, { w = 844, h = 390, qual = 'low', query = '' } = {}) {
+export async function openGame(port, step, { w = 844, h = 390, qual = 'low', query = '', skip = true } = {}) {
   const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--no-sandbox'] });
   const ctx = await b.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
   await ctx.addInitScript((q) => localStorage.setItem('atq3.settings', JSON.stringify({ qual: q, gore: true })), qual);
   const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
   await p.goto(`http://localhost:${port}/?step=${step}&god${query}`, { waitUntil: 'load' });
   await p.waitForFunction(() => window.__atq && window.__atq.game && window.__atq.game.running, null, { timeout: 120000 }); await p.waitForTimeout(2500);
-  await p.evaluate(() => { const g = window.__atq.game; g.god = true; for (let i = 0; i < 60; i++) g.skipLine && g.skipLine(); });
+  await p.evaluate((skip) => { const g = window.__atq.game; g.god = true; if (skip) for (let i = 0; i < 60; i++) g.skipLine && g.skipLine(); }, skip);
   return { b, ctx, p, errs };
 }
 // advance the simulation by n fixed steps then let the renderer present, then screenshot
