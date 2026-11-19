@@ -291,7 +291,7 @@ export class Game {
   screenSplat() { if (!this.settings.gore) return; let e = $('#splat'); if (!e) { e = document.createElement('div'); e.id = 'splat'; e.style.cssText = 'position:absolute;inset:0;pointer-events:none;z-index:3;transition:opacity 1.6s;opacity:0'; $('#stage').appendChild(e); }
     const b = []; for (let i = 0; i < 7; i++) { const x = rnd(0, 100), y = rnd(0, 100), r = rnd(4, 14); b.push(`radial-gradient(circle at ${x}% ${y}%, rgba(110,0,0,.85) 0, rgba(80,0,0,.7) ${r * .6}%, transparent ${r}%)`); }
     e.style.transition = 'none'; e.style.background = b.join(','); e.style.opacity = '1'; requestAnimationFrame(() => { e.style.transition = 'opacity 2.2s'; e.style.opacity = '0'; }); }
-  gib(pos, n = 5, col = '#5a1010', limb, vel) { const G = this._gibG || (this._gibG = { geo: new THREE.BoxGeometry(.09, .075, .09), mats: {} }); const cap = this.Q && this.Q.shadows === false ? 28 : (this.settings.qual === 'low' ? 28 : 64);
+  gib(pos, n = 5, col = '#5a1010', limb, vel) { const G = this._gibG || (this._gibG = { geo: new THREE.IcosahedronGeometry(.04, 0), mats: {} }); const cap = this.Q && this.Q.shadows === false ? 28 : (this.settings.qual === 'low' ? 28 : 64);
     const mat = G.mats[col] || (G.mats[col] = new THREE.MeshStandardMaterial({ color: col, roughness: .4 }));
     for (let i = 0; i < n; i++) { let m; if (limb && i === 0) m = limb; else { m = new THREE.Mesh(G.geo, mat); m.scale.set(rnd(.55, 1.35), rnd(.6, 1.3), rnd(.55, 1.35)); m.pooled = 1; }
       while (this.gibs.length >= cap) { const o = this.gibs.shift(); this.scene.remove(o.m); }

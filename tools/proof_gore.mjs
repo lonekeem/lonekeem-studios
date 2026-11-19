@@ -13,5 +13,5 @@ await p.evaluate(([C]) => { const g = window.__atq.game; g.dlgQ = []; g.dlgCur =
 if (process.env.ROLL !== undefined) await p.evaluate((r) => { const g = window.__atq.game; Object.values(g.npcs).filter(n => n.isVictim).forEach(v => { v.roll = +r; v.root.rotation.z = +r; v.root.position.y = +r ? .09 : 0; }); }, process.env.ROLL);
 if (process.env.ADJ) await p.evaluate((a) => { window.__atq.game.kneelAdj = +a; }, process.env.ADJ);
 const files = [];
-for (let i = 0; i < +n; i++) { const f = `${out}/f${String(i).padStart(2, '0')}.png`; await stepShot(p, f, +stepsPer, 1 / 30, 500); files.push(f); }
+for (let i = 0; i < +n; i++) { if (process.env.KILL && i === 1) await p.evaluate(() => { const g = window.__atq.game; const z = g.zombies.find(z => z.st === 'eat' && !z.dead); if (z) { const V = g.camera.position.constructor; g.damageZ(z, 1e5, new V(0.5, 0, -0.8).normalize(), { head: true }); } }); const f = `${out}/f${String(i).padStart(2, '0')}.png`; await stepShot(p, f, +stepsPer, 1 / 30, 500); files.push(f); }
 sheet(files, `${out}/sheet.png`, 4, 0.7); console.log(errs.slice(0, 3)); await b.close();
