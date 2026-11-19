@@ -18,18 +18,18 @@ export const POSES = {
   showL: both(arm('L', 0.0, 0.2, 1.0, 0), { 'DEF-upper_arm.L': [0.15, -0.9, 0.2] }),
   rollL: both(arm('L', 0, 0.2, 1.4, 0.3), arm('R', 0, 0, 0, 0), { 'DEF-upper_arm.L': [0.3, 0, 0.2], 'DEF-upper_arm.R': [0, 0.9, -0.2], 'DEF-forearm.R': [0, 1.0, 0] }),
   guardL: { 'DEF-upper_arm.L': [0.3, 0, 0.2], 'DEF-forearm.L': [0, -1.3, 0] },
-  pointR: arm('R', 1.8, 0.05, -0.5), pointL: arm('L', 1.8, 0.05, -0.5),
+  pointR: arm('R', 1.55, 0.05, -0.42), pointL: arm('L', 1.55, 0.05, -0.42),
   offerR: arm('R', 1.0, 0.1, 0.0),
-  shrug: both(arm('L', 0.7, 0.6, 0.3), arm('R', 0.7, 0.6, 0.3)),
+  shrug: both(arm('L', 0.35, 0.55, 0.9), arm('R', 0.35, 0.55, 0.9)),
   hugArms: both(arm('L', 1.4, -0.2, -0.1), arm('R', 1.4, -0.2, -0.1)),
   coverEars: both(arm('L', 1.2, 1.0, 2.0), arm('R', 1.2, 1.0, 2.0)),
   headHands: both(arm('L', 1.0, 0.8, 2.1), arm('R', 1.0, 0.8, 2.1)),
-  haltBoth: both(arm('L', 1.0, 0.3, 1.0), arm('R', 1.0, 0.3, 1.0)),          // "hold up": both palms out
+  haltBoth: both(arm('L', 1.1, 0.4, 0.9), arm('R', 1.1, 0.4, 0.9)),
   wheel: both(arm('L', 1.0, 0.05, 0.1), arm('R', 1.0, 0.05, 0.1)),           // hands on a steering wheel
   grabBoth: both(arm('L', 1.5, -0.1, -0.2), arm('R', 1.5, -0.1, -0.2)),      // take someone by the shoulders
-  reachBoth: both(arm('L', 1.8, 0, -0.55), arm('R', 1.8, 0, -0.55)),         // arms out in front (hungry / grabbing)
+  reachBoth: both(arm('L', 1.55, 0.05, -0.42), arm('R', 1.55, 0.05, -0.42)),
   mouthR: arm('R', 1.0, 0.2, 1.6),                                           // hand cupped at the mouth: radio / shout
-  aimBoth: both(arm('L', 1.8, 0, -0.4), arm('R', 1.8, 0, -0.4)),
+  aimBoth: both(arm('L', 1.55, 0, -0.3), arm('R', 1.55, 0, -0.3)),
 };
 // head-only behaviours (yaw sweeps etc.): fn(t) -> [pitch, yaw]
 export const HEADS = {

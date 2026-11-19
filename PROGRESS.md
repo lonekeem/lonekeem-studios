@@ -23,3 +23,11 @@ Merged main v1.9.15 (voice update) at 8b4c180 — resolved game.js nextLine conf
 - Read tool caches images by path: write proof frames to fresh filenames.
 - zBones gives raiders zombie arm posture too (check when doing raiders).
 - First load on SwiftShader sits ~35 s on 15% (main thread blocked).
+
+## STATUS: STOPPED (Keem cancelled remaining story-realism work)
+Last state: pose tuning for new action poses was NOT finished/verified. In the last bench, every arm pose (pointR/L, reachBoth, wheel, haltBoth, shrug)
+rendered with the hand up at the face even though tools/arm_probe.mjs numbers predicted forward-pointing arms — unresolved discrepancy
+(possibly stale-render timing in the bench or forearm X- clamping). The 30 uncued-line RULES were NOT added; real doors and no-pop-in were NOT started.
+Only the earlier poses showL/rollL/guardL (Dad sleeve scene) are visually verified. New poses in actions.js are unverified; treat as experimental.
+Verified + pushed: convo facing/camera, window artifact, sleeve/bite shot, smaller mitts, smooth loading bar, exact-object interaction (useseq.js).
+Handed to other workers: raiders, gore/wounds, town NPC events.
