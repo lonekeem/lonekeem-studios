@@ -43,7 +43,7 @@ function analyse(key, scene) {
   const ears = earC.map((c, k) => earN[k] ? c.divideScalar(earN[k]) : new THREE.Vector3((k ? -1 : 1) * hw * 1.05, minY + hw * 1.7, P.Head.z));
   const lm = { cx: 0, chinY: minY, hh: maxY - minY, hw, front, back, zc: (front + back) / 2, top: maxY, noseTipY: tipY, headBone: P.Head.clone(), ears, lobes: earLow.map((l, k) => l || ears[k]) };
   flattenFace(geo, headW, lm);
-  const zoneW = new Float32Array(n); { const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }; for (let i = 0; i < n; i++) { if (headW[i] < .5) continue; const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i); const ax = Math.abs(x) / lm.hw, fy = (y - lm.chinY) / lm.hw; zoneW[i] = .9 * ss(lm.zc, lm.zc + .04, z) * ss(.16, .34, ax) * ss(1.05, .85, ax) * ss(.9, 1.25, fy) * ss(3.0, 2.6, fy); } }
+  const zoneW = new Float32Array(n); { const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }; for (let i = 0; i < n; i++) { if (headW[i] < .5) continue; const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i); const ax = Math.abs(x) / lm.hw, fy = (y - lm.chinY) / lm.hw; zoneW[i] = .9 * ss(lm.zc, lm.zc + .04, z) * ss(.16, .34, ax) * ss(1.05, .85, ax) * ss(.9, 1.25, fy) * ss(3.0, 2.6, fy); const cw = (1 - ss(.1, .3, ax)) * ss(lm.zc, lm.zc + .04, z) * ss(tipY - .024, tipY + .0, y) * ss(lm.chinY + (maxY - minY) * .62, lm.chinY + (maxY - minY) * .5, y); zoneW[i] = Math.max(zoneW[i], .8 * cw); } }
   return { zoneW, key, scene, skin, geo, names, P, aR, aW, reg, headW, dom, used, lm, ankleY, hipsY, neckY };
 }
 

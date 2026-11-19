@@ -185,6 +185,18 @@ Data model: `gun = receiver family × barrel × stock × grip × optic/mag slots
 | 5 | Weapons store, missions + currencies, crafting, survival needs, weather/day-night | planned |
 | 6 | Google Play Billing, crews, pets, infection, radio/safe zones, horde events, big map expansion | planned |
 
-## 17. Phase 1 status
+## 17. Phase 1 status (built vs planned)
 
-The live numbers (catalog counts, what works, what is planned) are in the PR description and in `COUNTS` in `src/mp/catalog.js`.
+Screenshots: `docs/mp-proof/` (lineups of all 4 bases, skin-tone rows, creator at phone-landscape size, two-client lobby).
+
+**Built and verified in a browser (swiftshader, 844×390 phone landscape):**
+* Main menu → "Multiplayer (Beta)" (`src/mp/entry.js`, one import + install call in `main.js`; no story code touched).
+* 4 original rigged bases (Meshy via Fal, ~$3.36 total): `mp_m1` lean man, `mp_m2` strong man, `mp_f1` slim woman, `mp_f2` curvy woman. No voices on player characters.
+* Creator: procedural skin (preset swatches + fine slider, light → very dark), face painting (eyes, brows, lips, nose cues, makeup, freckles, moles, scars, tattoos), head/body morphs on the real mesh (sliders), hair/beard/mustache shells and volumetric hair, garments as patterned shells (tops, jackets, pants, shoes, gloves), hats, glasses, masks, earrings, piercings, necklaces, wrists, rings, bags, belts. Search, chips, favourites, randomise, reset, undo, save/load looks (localStorage, versioned JSON).
+* Lobby (`src/mp/lobby.js`): street, joystick, walk/run, drivable KL-badge car, nametags; `BroadcastChannel` transport so two tabs/clients see each other move (verified with two Playwright pages: each sees the other; car position syncs).
+
+**Catalog counts (computed by `COUNTS()` — named styles / style×colour items):** hairstyles 58 / 1392, beards 14 / 336, mustaches 10 / 240, tops 24 / 384, jackets 16 / 256, pants & skirts 20 / 320, shoes 16 / 64, gloves 7 / 112, hats 20 / 320, glasses 18 / 108, masks 5 / 80, earrings 17 / 204, piercings 12 / 72, necklaces 28 / 168, wrist & rings 9 / 108, bags & belts 7 / 112. **Total 281 named styles, 4,276 style×colour items** (before patterns and cut sliders; with patterns the clothing combos are in the tens of thousands). Honest note: "named styles" is the real authored content; the large number comes from colours.
+
+**Known rough edges (not hidden):** hair is procedural volumes, so long/braided/dread styles still look rough up close; faces are clean but plain (noses are shader-suggested; the lean man's nose still has a faint dark smudge); hands are the source mitt meshes (no finger separation); portrait-orientation not verified (the game itself is landscape); no real Supabase transport yet.
+
+**Planned (nothing below is built):** Supabase Realtime transport and authoritative game server, accounts/saved looks in `atq_mp` (migration drafted, not applied; project is paused), full Kemy-style map and activities, houses/cabins and fortification, server-side zombies/NPC events, car break-in/hotwire/fuel, survival systems, weapons store, missions and Play Billing.

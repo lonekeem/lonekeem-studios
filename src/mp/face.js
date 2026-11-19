@@ -38,6 +38,7 @@ vec3 paintSkin(vec3 p, vec3 n, vec4 R){
     // cheeks + nose + brow warmth (cartoon subsurface, no glow)
     c = mix(c, c * vec3(1.06, 0.9, 0.88), 0.45 * smoothstep(0.5, 0.0, length(vec2(ax - 0.55, fc.y - ey + 0.55))));
     c = mix(c, c * vec3(1.07, 0.88, 0.86), 0.45 * smoothstep(0.16, 0.0, length(vec2(fc.x, fc.y - uNose.x - 0.04))));
+    { vec2 nq = vec2(ax, fc.y - (uNose.x - 0.075)); c *= 1.0 - 0.2 * smoothstep(0.1, 0.0, length(nq * vec2(0.9, 2.4))) * smoothstep(-0.02, 0.03, nq.y + 0.04 - abs(nq.x) * 0.2); vec2 nt = vec2(ax, fc.y - (uNose.x + 0.04)); c = mix(c, c * vec3(1.06, 1.03, 1.0) + 0.02, 0.5 * smoothstep(0.075, 0.0, length(nt * vec2(1.0, 1.3)))); float wing = smoothstep(0.05, 0.0, length(vec2(ax - (uNose.y + 0.1), fc.y - (uNose.x - 0.03)))); c *= 1.0 - 0.14 * wing; }
     // nose side shading + highlight so a flat paint reads as a nose
     { float nside = smoothstep(0.1, 0.0, abs(ax - (uNose.y + 0.07)) - 0.03) * smoothstep(uNose.x - 0.05, uNose.x + 0.1, fc.y) * smoothstep(uNose.x + 0.55, uNose.x + 0.25, fc.y); c *= 1.0 - 0.1 * nside; }
     if (uMk2.z > 0.01) { float fl = abs(fract((fc.y - ey - 0.8) * 3.2) - 0.5); c *= 1.0 - uMk2.z * 0.28 * smoothstep(0.1, 0.03, fl) * step(ey + 0.7, fc.y) * step(ax, 0.9) * step(0.5, vn(vec3(fc.x * 3.0, fc.y * 3.0, 1.0)));

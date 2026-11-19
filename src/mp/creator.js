@@ -12,10 +12,10 @@ const CSS = `
 #mpc *{box-sizing:border-box}#mpc .hd{display:flex;align-items:center;gap:6px;padding:6px 8px;background:#12151bcc;z-index:3}
 #mpc .hd b{flex:1;font-size:15px;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#mpc button{font:inherit;color:inherit;background:#2a303c;border:1px solid #3a4352;border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer}
 #mpc button:active{background:#3b4558}#mpc button.on{background:#d98a2b;border-color:#f0a947;color:#1a1208}#mpc button.pri{background:#2f8f5b;border-color:#49b97c}
-#mpc .stage{position:relative;flex:1 1 44%;min-height:150px}#mpc canvas{width:100%;height:100%;display:block}
+#mpc .stage{min-width:0;position:relative;flex:1 1 44%;min-height:150px}#mpc canvas{width:100%;height:100%;display:block}
 #mpc .cam{position:absolute;left:8px;bottom:8px;display:flex;flex-direction:row;flex-wrap:wrap;gap:5px;max-width:92%}#mpc .cam button{padding:5px 8px;font-size:12px;background:#12151bcc}
 #mpc .nm{position:absolute;left:8px;top:8px}#mpc .nm input{background:#12151bcc;border:1px solid #3a4352;color:#fff;border-radius:8px;padding:6px 8px;width:140px;font-size:13px}
-#mpc .pn{flex:1 1 56%;display:flex;flex-direction:column;background:#161a22;border-top:1px solid #2c3441;min-height:0}
+#mpc .pn{min-width:0;overflow:hidden;flex:1 1 56%;display:flex;flex-direction:column;background:#161a22;border-top:1px solid #2c3441;min-height:0}
 #mpc .tabs{display:flex;flex-wrap:nowrap;margin:0;gap:4px;overflow-x:auto;padding:6px;scrollbar-width:none;flex:none}#mpc .tabs::-webkit-scrollbar{display:none}#mpc .tabs button{white-space:nowrap;flex:none;padding:6px 10px}
 #mpc .body{flex:1;overflow-y:auto;padding:6px 10px 18px;min-height:0;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 #mpc .row{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:13px}#mpc .row label{width:116px;flex:none;color:#b8c0cf}#mpc .row input[type=range]{flex:1;min-width:0;accent-color:#d98a2b;height:26px}
