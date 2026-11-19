@@ -3,7 +3,7 @@
 // Directions are in the character's own frame: +x = its left, +y = up, +z = forward.  ARM[name] = [upperArmDir, forearmDir] for the LEFT arm (x is mirrored for the right).
 import * as THREE from 'three';
 const V = THREE.Vector3, Q = THREE.Quaternion, Y = new V(0, 1, 0), ID = new Q();
-const bp = new V(), cp = new V(), cur = new V(), dw = new V(), bq = new Q(), pq = new Q(), dq = new Q(), root_q = new Q();
+const tq = new Q(), bp = new V(), cp = new V(), cur = new V(), dw = new V(), bq = new Q(), pq = new Q(), dq = new Q(), root_q = new Q();
 const n = (x, y, z) => new V(x, y, z).normalize();
 export const ARM = {
   hug:    [n(.62, -.12, .78), n(-.55, .05, .84)],   // arms wrapped round a person in front
@@ -11,7 +11,7 @@ export const ARM = {
   glass:  [n(.1, .22, 1), n(.05, .35, 1)],          // hand raised flat on a window
   clutch: [n(.78, .18, .32), n(-.62, .85, .5)],        // hands pressed to the head
   hold:   [n(.3, -.45, .72), n(-.05, -.25, 1)],     // holding someone's wrists in front
-  cradle: [n(.45, -.5, .7), n(-.35, -.1, .9)],      // arms in front, carrying a small thing (Biscuit)
+  cradle: [n(.3, -.6, .55), n(-.5, .3, .85)],      // arms in front, carrying a small thing (Biscuit)
   point:  [n(.2, .12, 1), n(.1, .12, 1)],           // pointing the way
   wave:   [n(.75, .55, .25), n(.2, 1, .1)],         // waving overhead
   shrug:  [n(.55, -.25, .25), n(.2, .55, .5)],      // palms up
@@ -21,7 +21,7 @@ export const ARM = {
 function aim(bone, child, dir, w) {
   if (!bone || !child || w <= .001) return;
   bone.updateWorldMatrix(true, true); bone.getWorldPosition(bp); child.getWorldPosition(cp); cur.copy(cp).sub(bp).normalize();
-  dq.setFromUnitVectors(cur, dir); if (w < 1) dq.copy(ID).slerp(dq, w);
+  tq.setFromUnitVectors(cur, dir); if (w < 1) dq.copy(ID).slerp(tq, w); else dq.copy(tq);
   bone.getWorldQuaternion(bq); bq.premultiply(dq); bone.parent.getWorldQuaternion(pq); bone.quaternion.copy(pq.invert().multiply(bq)); bone.updateWorldMatrix(false, true);
 }
 function apply(c, dt) {

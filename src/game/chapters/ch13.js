@@ -89,7 +89,7 @@ export const steps = [
     update(g, dt) { const D = g.stepData, P = g.player.root.position; tickMv(g, D, dt); const ev = { reach: 3.2, onHop: () => { }, onReach: () => { D.reached = true; } };
       if (D.ph === 0 || D.ph === 2 || D.ph === 4) tickBiscuit(g, D.B, dt, ev); else if (D.B.st === 'hop') tickBiscuit(g, D.B, dt, { marker: false });
       if (D.ph === 0 && D.B.i >= 2 && P.x < -9.2 && Math.abs(P.z + 3391) < 7) { D.ph = 1; DOORS.A.set(false); g.audio.thud(); g.shake(.5); g.wpTarget = null; g.objective('Clear the room (' + 7 + ')', 'The door is locked until they are down.'); g.horde(4, [[-13, -3386]], { aggro: 99 }); g.horde(3, [[-13, -3396]], { aggro: 99, runner: true }); g.toast('LOCKED IN', 1.4);
-        g.say([['keem', "That is a LOT of tiny beds."], ['nia', "Keem. Don't shoot the rabbit."], ['keem', "I'm shooting the zombies, Nia. Not the rabbit."]]); D.left = 7; D.k0 = g.save.kills; }
+        g.say([['keem', "That is a LOT of tiny beds."], ['nia', "Keem. Don't shoot the rabbit."], ['keem', "I'm aiming at the zombies, Nia. Not the rabbit."]]); D.left = 7; D.k0 = g.save.kills; }
       if (D.ph === 1) { const k = g.save.kills - D.k0, left = Math.max(0, 7 - k); if (left !== D.left) { D.left = left; g.objective('Clear the room (' + left + ')', 'The door is locked until they are down.'); }
         if (g.alive().filter(z => z.root.position.x < -9).length === 0 && g.t - (D.t1 || (D.t1 = g.t)) > 3) { D.ph = 2; DOORS.A.set(true); g.audio.thud(); const B = D.B; B.go([[-12, -3391], [-3, -3402], [0, -3410], [6, -3420], [12, -3426]]); B.i = 0; B.held = false; hopTo(B, -3, -3402); B.i = 1; g.objective("Catch Biscuit (children's ward)", 'He is on the move.'); g.say([['nia', "Door's open! He's hopping toward the other side!"]]); } }
       if (D.ph === 2 && D.B.i >= 4 && P.x > 9.2 && Math.abs(P.z + 3426) < 7) { D.ph = 3; DOORS.B.set(false); g.audio.thud(); g.shake(.5); g.wpTarget = null; g.horde(5, [[13, -3421]], { aggro: 99 }); g.horde(4, [[13, -3431]], { aggro: 99, runner: true }); g.toast('LOCKED IN', 1.4); D.k1 = g.save.kills; D.t3 = g.t; g.say([['keem', "Okay. Murals. Beds. Zombies. Standard ward."]]); }
@@ -108,17 +108,23 @@ export const steps = [
         if (!D.p2 && b.hp < 1600) { D.p2 = true; g.shake(1); g.audio.roar && g.audio.roar(); b.speed = 2.8; g.horde(4, [[-12, -3460], [12, -3460]], { aggro: 99 }); g.horde(3, [[0, -3462]], { aggro: 99, runner: true }); g.say([['doreen', "Seconds?"], ['keem', "No, thank you! I'm full!"], ['nia', "She said seconds! That's how you know she's mad!"]]); } }
       if (b && b.dead && !D.won) { D.won = true; D.pud.forEach(p => g.scene.remove(p.m)); D.pud = []; g.slowMul = 1; afterBoss(g, () => goto(g, 'c13_end', 600)); } } },
 
-  { id: 'c13_end', ch: 13, cp: [0, -3492, PI], obj: 'Pick up Biscuit', hint: 'He is on the soup. Walk up to him; he is too full to run.', mood: 'night', beat: 1, light: 'ward', rain: false,
-    enter(g) { const D = g.stepData; g.hand.visible = true; g.slowMul = 1; D.B = spawnBiscuit(g, 3, -3498, { y: 2.12, scale: 2.4 }); D.B.held = true; D.B.st = 'sit'; g.wpTarget = [3, 2.2, -3498]; D.uses = [{ x: 3, z: -3496.4, r: 2.2, label: 'Pick up Biscuit', fn: (g) => finale(g, D) }]; },
-    update(g, dt) { const D = g.stepData; tickMv(g, D, dt); tickBiscuit(g, D.B, dt, { marker: false }); } },
+  { id: 'c13_end', ch: 13, cp: [0, -3492, PI], obj: 'Find Biscuit', hint: 'He is on the soup kettle. Walk toward him: he hops down when you get close.', mood: 'night', beat: 1, light: 'ward', rain: false,
+    enter(g) { const D = g.stepData; g.hand.visible = true; g.slowMul = 1; D.B = spawnBiscuit(g, 3, -3498, { y: 2.12, scale: 2.4 }); D.B.held = true; D.B.st = 'sit'; g.wpTarget = [3, 2.2, -3498]; D.uses = []; D.drop = null; },
+    // when Keem gets near the counter Biscuit hops down onto the open floor, so the pick-up happens in the open (not across the counter)
+    update(g, dt) { const D = g.stepData, B = D.B; tickMv(g, D, dt); tickBiscuit(g, B, dt, { marker: false });
+      const P = g.player.root.position;
+      if (D.carry) { const ry = g.player.root.rotation.y; B.grp.position.set(P.x + Math.sin(ry) * .3, .74, P.z + Math.cos(ry) * .3); B.grp.rotation.y = ry + PI; }
+      if (!D.drop && !D.fin && Math.hypot(P.x - 3, P.z + 3495) < 6.5) { D.drop = { t: 0 }; g.wpTarget = null; g.floatText && g.floatText('Biscuit hops down!', '#ffe9a0'); }
+      if (D.drop && D.drop.t < 1) { D.drop.t = Math.min(1, Math.max(0, D.drop.t + Math.min(.1, Math.max(0, dt)) / .9)); const u = D.drop.t; B.grp.position.set(3, 2.12 * (1 - u) + Math.sin(PI * u) * .7, -3498 + 4.4 * u);
+        if (u >= 1) { B.grp.position.y = 0; g.wpTarget = [3, .9, -3493.6]; D.uses = [{ x: 3, z: -3493.6, r: 2.2, label: 'Pick up Biscuit', fn: (g) => finale(g, D) }]; } } } },
 ];
 
-function finale(g, D) { if (D.fin) return; D.fin = true; D.uses = []; g.wpTarget = null; const P = g.player.root.position, B = D.B; g.hand.visible = false; P.set(3, 0, -3496.6); g.player.root.rotation.y = PI;
-  g.cut = { anim: 'Idle_Loop', cam: V(7.2, 1.6, -3494.6), look: V(3.2, 1.5, -3497.3), flash: false }; snap(g);
-  script(g, [['keem', "Hey, buddy. It's me. Nobody's chasing you now."], (g) => { g.cut.anim = 'PickUp_Table'; cam(g, V(6.2, 1.3, -3494.4), V(3.1, 1.3, -3497.2)); g.player.play('PickUp_Table', { once: true, force: true }); },
+function finale(g, D) { if (D.fin) return; D.fin = true; D.uses = []; g.wpTarget = null; const P = g.player.root.position, B = D.B; g.hand.visible = false; P.set(3, 0, -3492.9); g.player.root.rotation.y = PI; B.grp.position.set(3, 0, -3493.6);
+  g.cut = { anim: 'Idle_Loop', cam: V(4.9, 1.2, -3491.4), look: V(3, .6, -3493.1), flash: false }; snap(g);
+  script(g, [['keem', "Hey, buddy. It's me. Nobody's chasing you now."], (g) => { g.cut.anim = 'PickUp_Table'; cam(g, V(4.5, .95, -3491.7), V(3, .5, -3493.2)); g.player.play('PickUp_Table', { once: true, force: true }); },
     ['nia', "Is he okay?"], ['keem', "He's sitting in the soup."], ['nia', "Is it hot soup?"], ['keem', "It's been cold for months."], ['nia', "…Biscuit. Bad. Keem, bring him home."],
-    (g) => { g.cut.anim = 'Idle_Loop'; cam(g, V(5.6, 1.7, -3494.0), V(3, 1.3, -3496.9)); B.grp.position.set(3, .68, -3496.95); B.grp.scale.setScalar(1.0); B.held = true; },
-    ['keem', "Okay, bunny. Up you go. Ugh. You smell like meatloaf."], (g) => { act(g.player, 'cradle', { k: 1 }); },
+    (g) => { g.cut.anim = 'Idle_Loop'; g.player.play('Idle_Loop', { force: true }); g.player.root.rotation.y = .9; cam(g, V(5.0, 1.3, -3491.1), V(3.1, 1.05, -3492.8)); B.grp.scale.setScalar(.85); D.carry = true; B.held = true; act(g.player, 'cradle', { k: 1 }); },
+    ['keem', "Okay, bunny. Up you go. Ugh. You smell like meatloaf."],
     ['vance', "Your ten minutes are up. Bring the rabbit. Bring your family. Quickly."], ['keem', "Why quickly?"], ['vance', "Because the alarm was not false."],
     (g) => { act(g.player, null); setTimeout(() => g.onComplete && g.onComplete(13), 900); }]); }
 
