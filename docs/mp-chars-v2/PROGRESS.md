@@ -54,3 +54,22 @@ Goal: Bitmoji-style original guy + girl (refs: /workspace/keem-vids/ref_guy.jpg,
 - Girl's jacket collar edge is smoother but still slightly wavy up close; a faint tone step where the head neck meets the body neck.
 - Wide-brim hats (bucket/sun/western) have thin, slightly see-through brims; hard hat shows a stray thin red strip.
 - Fingers are separated but sit close together and are fairly straight (no knuckle detail).
+
+## Fix pass 2 (Nov 19 2026, ~06:30-06:50 EST)
+Done:
+- Guy full beard: thinner (T .0075 -> .0046), trimmed to the jaw (floor line follows the jawline, chin underside + neck stay skin), cheeks left clear (top line dropped ~1.3 cm), outer edges now fade by *surface distance to the cut* (new `aE` vertex attribute, 3 cm feather, stippled strand fade + skin blend) so the bottom edge tapers softly into the neck. Mustache uses a 7 mm feather.
+- Nose: guy nose 1.22x with a slightly longer tip; painted bridge-side shadows, nostril shadows, under-tip shadow and tip highlight (reads in flat frontal light).
+- Scalp hairline: same distance-to-edge feather (`aE`, 2 cm) + 3 smoothing passes on the boundary; edge is a stippled fade, not a hard cut. (`aE` is zero-filled for parts without it, see headrig.js merge.)
+- Hats: bucket / sun / fedora / western brims are now closed drooping frustums with real thickness (`brim()` in acc.js), underside normals bent up so they do not render black; bucket hat raised off the eyes. Hard hat: full short solid brim, dome only (the floating red strip is gone).
+- Girl/guy neckline: inner (back) faces of the collar lip beside the neck no longer render (dark specks gone). Neck tube now uses a `plain` skin material lit exactly like the body skin (no extra self-light) -> the tone step where neck meets chest is much smaller.
+- Fingers: slightly stronger natural curl (curls .6/.5/.42/.34 pinky->index, curl .16), tris unchanged.
+- Tools: `PORT` env for tools/chars2/*.mjs (default 5262), `hatshots.sh`, extra camera views (hatfr/hatup/hatdn/neckL/neckF) in av.html.
+- Perf: guy 86,029 tris, girl 90,683 tris (unchanged).
+
+Honest flaws left:
+- Beard is still one opaque, strand-shaded shell with a feathered edge; it reads cartoon-thick on the jaw sides and has a straight vertical cut at the mouth corners.
+- Hairline feather is a stippled dither (a little grainy up close, especially on the girl's dark hair where the skin blend reads slightly orange).
+- Small pointed shell tips remain at the top of the collar on both sides of the neck (the base body mesh has jagged triangles there); girl's cropped-jacket collar edge is still slightly wavy.
+- A faint tone/shading step remains where the neck meets the chest (blotchy flat shading from the base body normals), much weaker than before but visible on the girl up close.
+- Brim undersides are lit flat/pale rather than shaded; baseball-cap bills and the sun visor are still thin partial shells.
+- Fingers are only slightly curled (bind-pose rotation, no knuckle detail).
