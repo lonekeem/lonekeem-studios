@@ -13,7 +13,7 @@ const S = Object.assign({}, DEF, _saved); const saveS = () => LS.setItem('atq3.s
 if (S.ctlRev !== 2) { Object.assign(S, { ctl: 'twin', autoFire: false, assist: 0, stick: 'float', hand: 'right', btnScale: 1, btnOp: 1, invertY: false, padSens: 1, padDead: 0.15, btnLay: {}, hudv2: false, smoothMove: false, ctlRev: 2 }); try { saveS(); } catch (e) { } }
 const audio = new AudioSys(S);
 let save = loadSave(LS) || defaultSave(); let game = null, gamePromise = null; let state = 'boot', back = '#title';
-window.__atq = { get game() { return game; }, get state() { return state; }, get save() { return save; } };
+window.__atq = { get audio() { return audio; }, get game() { return game; }, get state() { return state; }, get save() { return save; } };
 
 function showScreen(id) { $$('.screen').forEach(s => s.classList.add('hidden')); if (id) $(id).classList.remove('hidden'); }
 function fadeIn() { $('#fade').style.opacity = 0; }

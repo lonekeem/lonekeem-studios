@@ -1,6 +1,12 @@
 // Procedural audio synthesized at runtime, plus (v1.3.2) a sample layer at the bottom of this file.
 export class AudioSys {
   constructor(settings) { this.s = settings; this.ctx = null; }
+  /** iOS Safari: Web Audio only starts from a touchend/click. Call from those events until it reports 'running' (state can also be 'interrupted' after a call/lock). `playback` = ignore the silent switch (multiplayer asks for it). */
+  unlock(playback) {
+    try { this.init(); const c = this.ctx; if (!c) return false; if (playback && navigator.audioSession) navigator.audioSession.type = 'playback';
+      if (c.state !== 'running') { c.resume().catch(() => {}); const src = c.createBufferSource(); src.buffer = c.createBuffer(1, 1, 22050); src.connect(c.destination); src.start(0); }
+      return c.state === 'running'; } catch (e) { return false; }
+  }
   init() {
     if (this.ctx) { this.ctx.resume(); return; }
     const C = window.AudioContext || window.webkitAudioContext; if (!C) return;

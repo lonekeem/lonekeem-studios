@@ -1,0 +1,47 @@
+[
+ [
+  "before any tap",
+  {
+   "main": null,
+   "mp": "n/a",
+   "same": false,
+   "t": null
+  }
+ ],
+ [
+  "after tapping warning (touch)",
+  {
+   "main": "running",
+   "mp": "n/a",
+   "same": false,
+   "t": 4.77
+  }
+ ],
+ [
+  "in town",
+  {
+   "main": "running",
+   "mp": "running",
+   "same": true,
+   "t": 12.59
+  }
+ ],
+ [
+  "forced suspended (like iOS interrupted)",
+  {
+   "main": "suspended",
+   "mp": "suspended",
+   "same": true,
+   "t": 12.8
+  }
+ ],
+ [
+  "after one touch in town",
+  {
+   "main": "running",
+   "mp": "running",
+   "same": true,
+   "t": 13.32
+  }
+ ]
+]
