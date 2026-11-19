@@ -97,8 +97,8 @@ export function buildCap(head, st, opt = {}) {
   // fringe tips: scallop the boundary on the front half with the lock pattern
   const lockPh = ph => { const w = st.locks || 1; return ph * w + 2.4 * (vnoise1(ph * 2.3 + 4) - .5) * 2 + .8 * Math.sin(ph * 3 + 1); };
   if (st.tips) for (let j = 0; j < NPH; j++) { const ph = j / NPH * Math.PI * 2; const d = dirOf(fr, thB[j], ph); const [a] = azEl(d); const fw = ss(110, 30, Math.abs(a)); const g = .5 + .5 * Math.cos(lockPh(ph)); thB[j] *= 1 + st.tips * fw * .07 * (Math.pow(g, 2) - .35); }
-  { const tmp = Float32Array.from(thB); for (let j = 0; j < NPH; j++) thB[j] = (tmp[(j + NPH - 1) % NPH] + 2 * tmp[j] + tmp[(j + 1) % NPH]) / 4; }
-  const pos = [], tan = [], aux = [], idx = []; const drop = st.drop;
+  for (let pass = 0; pass < 3; pass++) { const tmp = Float32Array.from(thB); for (let j = 0; j < NPH; j++) thB[j] = (tmp[(j + NPH - 1) % NPH] + 2 * tmp[j] + tmp[(j + 1) % NPH]) / 4; }
+  const pos = [], tan = [], aux = [], aE = [], idx = []; const drop = st.drop;
   const thick = (d, u, ph) => { const [a, e] = azEl(d); const top = ss(-.25, .9, d.y); let t = st.T * (st.side + (1 - st.side) * top) + st.top * Math.pow(top, 1.5);
     if (st.fade) t *= 1 - st.fade * .75 * ss(.35, -.15, d.y) ;
     if (st.front) { const fw = ss(60, 0, Math.abs(a)) * ss(.0, .55, d.y) * ss(.98, .6, d.y); t += st.front * fw * (st.frontLift ? 1 : .6); }
@@ -112,17 +112,17 @@ export function buildCap(head, st, opt = {}) {
     return Math.max(st.minT || .0012, t); };
   // rows: u in [0, 1] crown -> hairline, then a tuck ring just under the skin
   const cols = [];
-  for (let j = 0; j <= NPH; j++) { const jj = j % NPH, ph = jj / NPH * Math.PI * 2; const col = [];
+  for (let j = 0; j <= NPH; j++) { const jj = j % NPH, ph = jj / NPH * Math.PI * 2; const col = []; const pe = surf(head, dirOf(fr, thB[jj], ph)); const FL = st.hlFade || .02; const eF = p => 1 - Math.min(1, p.distanceTo(pe) / FL);
     for (let i = 0; i <= NU; i++) { const u = i / NU; const th = thB[jj] * u * (1.55 - .55 * u); const d = dirOf(fr, Math.max(th, 1e-4), ph); const p = surf(head, d); const n = normalAt(head, p); const edge = ss(1, .8, u);
-      let t = thick(d, u, ph) * Math.pow(edge, .6) + .0009 * (1 - edge); const q = p.clone().addScaledVector(n, t); col.push({ q, n, d, u, ph, t }); }
-    { const d = dirOf(fr, thB[jj] + 1.2 * D2R, ph); const p = surf(head, d); const n = normalAt(head, p); col.push({ q: p.clone().addScaledVector(n, -.0025), n, d, u: 1.02, ph, t: -.0025 }); }
+      let t = thick(d, u, ph) * Math.pow(edge, .6) + .0009 * (1 - edge); const q = p.clone().addScaledVector(n, t); col.push({ q, n, d, u, ph, t, e: eF(p) }); }
+    { const d = dirOf(fr, thB[jj] + 1.2 * D2R, ph); const p = surf(head, d); const n = normalAt(head, p); col.push({ q: p.clone().addScaledVector(n, -.0025), n, d, u: 1.02, ph, t: -.0025, e: 1 }); }
     cols.push(col); }
   const NR = cols[0].length;
   // flow tangent (crown -> hairline) and lock groove value for the shader
   for (let j = 0; j <= NPH; j++) for (let i = 0; i < NR; i++) { const c = cols[j][i], nx = cols[j][Math.min(NR - 1, i + 1)], pv = cols[j][Math.max(0, i - 1)]; const t = nx.q.clone().sub(pv.q).normalize(); const g = st.locks ? .5 + .5 * Math.cos(lockPh(c.ph)) : .5;
-    pos.push(c.q.x, c.q.y, c.q.z); tan.push(t.x, t.y, t.z); aux.push(g, c.u, c.ph / (Math.PI * 2), 0); }
+    pos.push(c.q.x, c.q.y, c.q.z); tan.push(t.x, t.y, t.z); aux.push(g, c.u, c.ph / (Math.PI * 2), 0); aE.push(c.e); }
   for (let j = 0; j < NPH; j++) for (let i = 0; i < NR - 1; i++) { const a = j * NR + i, b = (j + 1) * NR + i; idx.push(a, a + 1, b, b, a + 1, b + 1); }
-  let geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('aT', new THREE.Float32BufferAttribute(tan, 3)); geo.setAttribute('aH', new THREE.Float32BufferAttribute(aux, 4)); geo.setIndex(idx); geo.computeVertexNormals();
+  let geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('aT', new THREE.Float32BufferAttribute(tan, 3)); geo.setAttribute('aH', new THREE.Float32BufferAttribute(aux, 4)); geo.setAttribute('aE', new THREE.Float32BufferAttribute(aE, 1)); geo.setIndex(idx); geo.computeVertexNormals();
   const parts = [geo];
   if (drop) parts.push(buildDrop(head, st, fr, cols, thB, NPH, NR));
   if (st.tufts) parts.push(...buildTufts(head, st, d => thick(d, .5, 0), d => inside(d)));
@@ -233,7 +233,7 @@ export function hairMaterial(c1, c2, hl = .35, skin = null) { // skin: blend the
           if (max(fo, fi * 0.6) > 0.1 + 0.9 * (r1 * 0.35 + r2 * 0.25 + r3 * 0.4)) discard; float fs = smoothstep(0.0, 0.85, vE) * (0.75 + 0.25 * r2); c = mix(c * (1.0 + 0.15 * fs), uSk * 0.86, uSkF * fs * 0.62 * sk); }
         else if (vH.w < 0.5) { // scalp hair: soft, strand-broken hairline
           float u = vH.y; float r1 = fract(sin(floor(vH.z * 150.0) * 12.9898) * 43758.5453), r2 = fract(sin(floor(vH.z * 600.0 + 7.0) * 78.233) * 43758.5453);
-          float fo = smoothstep(0.985, 1.012, u); if (fo > 0.68 + 0.32 * (r1 * 0.8 + r2 * 0.2)) discard; float fs = smoothstep(0.9, 1.01, u) * (0.7 + 0.3 * r2); c = mix(c, uSk * 0.85, uSkF * fs * 0.5); }
+          float r3 = fract(sin(dot(floor(vObjP * 1300.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453); float fo = max(smoothstep(0.985, 1.012, u), smoothstep(0.35, 1.0, vE)); if (fo > 0.3 + 0.7 * (r1 * 0.3 + r2 * 0.2 + r3 * 0.5)) discard; float fs = max(smoothstep(0.9, 1.01, u), smoothstep(0.1, 0.9, vE)) * (0.7 + 0.3 * r2); c = mix(c, uSk * 0.85, uSkF * fs * 0.5); }
         diffuseColor.rgb = c;`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         { vec3 V = normalize(vViewPosition); vec3 N = normalize(vNormal); vec3 T = normalize(vT - N * dot(vT, N));
@@ -241,7 +241,7 @@ export function hairMaterial(c1, c2, hl = .35, skin = null) { // skin: blend the
           float spec = pow(sinTH, 60.0) * 0.35 + pow(sinTH, 12.0) * 0.08; float rimF = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 2.5);
           totalEmissiveRadiance += mix(diffuseColor.rgb, vec3(1.0), 0.35) * spec * (0.5 + 0.5 * vH.x) + diffuseColor.rgb * (0.05 + rimF * 0.2); }`);
   };
-  m.customProgramCacheKey = () => 'v2hair4'; _mats.set(key, m); return m;
+  m.customProgramCacheKey = () => 'v2hair5'; _mats.set(key, m); return m;
 }
 
 // ---------- facial hair: polar band around the mouth. Inner edge = first entry into the mask, outer edge = exit; both edges tuck under

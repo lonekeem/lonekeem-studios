@@ -112,7 +112,7 @@ export function buildHairMesh(av, look, opt = {}) {
   av._hairKey = key; if (!st0) return null;
   let st = st0; if (opt.hatCut) st = Object.assign({}, st0, { tufts: 0, top: Math.min(st0.top, .003), front: 0, spikes: 0, round: 0, locks: 0, lockAmp: 0, tips: 0, frontLift: 0, waves: 0, T: Math.min(st0.T, .008), curl: Math.min(st0.curl, .002), ex: (st0.ex || []).filter(e => e[0] === 'dutch' || (e[0] === 'locs' && e[1] > .1) || (e[0] === 'bun' && e[1] === 'low') || (e[0] === 'pony' && e[1] === 'low') || e[0] === 'braidpony' || e[0] === 'pigtails') });
   const parts = [...buildCap(h, st), ...buildExtras(h, st)];
-  const geo = mergeGeometries(parts.map(g => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'aT', 'aH'].includes(k)) g.deleteAttribute(k); return g.index ? g : g; }), false);
+  const geo = mergeGeometries(parts.map(g => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'aT', 'aH', 'aE'].includes(k)) g.deleteAttribute(k); if (!g.attributes.aE) g.setAttribute('aE', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count), 1)); return g; }), false);
   geo.scale(h.s, h.s, h.s); geo.translate(h.C.x, h.C.y, h.C.z);
   const C = h.C, s = h.s; const P = av.tpl.P;
   skinTo(av, geo, (i, x, y) => { const ly = (y - C.y) / s; if (ly > -.16) return [['Head', 1]]; const t = Math.min(1, (-.16 - ly) / .2); return t < .5 ? [['Head', 1 - t], ['neck', t]] : [['Head', 1 - t], ['neck', .5], ['Spine02', t - .5]]; });
