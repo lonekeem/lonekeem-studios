@@ -399,7 +399,11 @@ export const STORY = [
 const $q = (s) => document.querySelector(s);
 
 // v1.6 chapter helpers
-const CH_START = { 1: 0, 2: 7, 3: 13, 4: 18, 5: 23, 6: 28, 7: 33, 8: 36, 9: 40, 10: 45, 11: 50 };
+// v1.9.17: one table for every chapter (name + end-card quote). Add a chapter = add a line here + its steps before 'survival'. Start steps / last chapter / page total are all derived, nothing else hard-codes 11.
+export const CHAPTERS = { 1: ['The Day Before', '“He said he\'d be right behind us.”'], 2: ['High Water', '“It\'s nothing, baby. Glass. From the gate.”'], 3: ['Route 1', '“Don\'t tell your sister. Not yet.”'], 4: ['Everybody Pays', '“I can\'t feel my hand, Keem.”'], 5: ['Black Friday', '“Then I\'m volunteering.”'], 6: ['The Lighthouse', '“Keem… run.”'],
+  7: ['Rearview', '“We\'ll make a trade.”'], 8: ['Open Water', '“He keeps saying your name.”'], 9: ['Peaks Island', '“…Boston?”'], 10: ['Harbor Lights', '“He has maybe a day.”'], 11: ['Swan Song', '“Take me to her.”'] };
+export const LAST_CH = Object.keys(CHAPTERS).length;
+const CH_START = {}; for (let c = 1; c <= LAST_CH; c++) CH_START[c] = c === 1 ? 0 : STORY.findIndex(s => s.ch === c && !s.survival);
 export function chOf(i) { const s = STORY[i]; return s && s.ch ? s.ch : 1; }
 export { CH_START };
 export const SURVIVAL_STEP = STORY.findIndex(s => s.survival);
@@ -437,3 +441,5 @@ export const LOOT = [
   { id: 'c11a', kind: 'ammo', item: 'fuel', n: 150, pos: [-6, .25, -2440], minStep: 50 }, { id: 'c11b', kind: 'med', pos: [-8, .25, -2612], minStep: 52 }, { id: 'c11c', kind: 'weapon', item: 'launcher', pos: [6, .25, -2636], label: 'M32 grenade launcher', minStep: 52 }, { id: 'c11d', kind: 'ammo', item: 'gl', n: 18, pos: [7, .25, -2638], minStep: 52 }, { id: 'c11e', kind: 'grenade', n: 3, pos: [-6, .25, -2638], minStep: 53 },
   pg(-24, -330, 'Captain Riverside #15: "Breaker Breaker"', 13), pg(28, -404, 'Captain Riverside #16: "Room 4"', 15), pg(-28, -478, 'Captain Riverside #17: "Everybody Pays"', 18), pg(26, -560, 'Captain Riverside #18: "Food Court of the Dead"', 23), pg(-12, -604, 'Captain Riverside #19: "Ho Ho Horror"', 24), pg(-34, -672, 'Captain Riverside #20: "The Light Keeps"', 28),
 ];
+export const TOTAL_PAGES = LOOT.filter(l => l.kind === 'page').length; // 'Comic pages x/N' everywhere
+export const LAST_STEP = SURVIVAL_STEP - 1; // final story step (the 'To be continued' scene)

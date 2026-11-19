@@ -1,6 +1,6 @@
 import { initLayout } from './game/layout.js';
 import { AudioSys } from './audio.js';
-import { SURVIVAL_STEP, chOf } from './game/story.js';
+import { SURVIVAL_STEP, chOf, CHAPTERS, LAST_CH, CH_START, LAST_STEP, TOTAL_PAGES } from './game/story.js';
 import { WEAPONS, WEAPON_ORDER, UPGRADES, upCost, AMMO_SHOP, PERKS, xpFor, defaultSave, loadSave, writeSave, clearSave, stat } from './game/data.js';
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -26,9 +26,9 @@ async function ensureGame() { if (game) return game; if (gamePromise) return gam
     await g.load(p => { $('#loading .lb i').style.width = Math.round(p * 100) + '%'; });
     g.onDeath = () => { state = 'dead'; $('#deadMsg').textContent = g.survival ? 'Survived to wave ' + (g.stepData.wave || 0) + ' · Best: wave ' + (LS.getItem('atq3.survBest') || 0) : ['They got you.', 'Keem didn\'t make it.', 'Torn apart in Riverside.', 'Should\'ve rolled.'][(Math.random() * 4) | 0]; showScreen('#dead'); };
     g.onPause = () => { if (state === 'play') pause(); else if (state === 'paused') resume(); };
-    g.onComplete = (ch = 1) => { const ST = { 2: 7, 3: 13, 4: 18, 5: 23, 6: 28, 7: 33, 8: 36, 9: 40, 10: 45, 11: 50 }; const E = { 1: ['The Day Before', '“He said he\'d be right behind us.”'], 2: ['High Water', '“It\'s nothing, baby. Glass. From the gate.”'], 3: ['Route 1', '“Don\'t tell your sister. Not yet.”'], 4: ['Everybody Pays', '“I can\'t feel my hand, Keem.”'], 5: ['Black Friday', '“Then I\'m volunteering.”'], 6: ['The Lighthouse', '“Keem… run.”'], 7: ['Rearview', '“We\'ll make a trade.”'], 8: ['Open Water', '“He keeps saying your name.”'], 9: ['Peaks Island', '“…Boston?”'], 10: ['Harbor Lights', '“He has maybe a day.”'], 11: ['Swan Song', '“Take me to her.”'] };
-      save.done = true; if (ch >= 2) save.done2 = true; save.maxCh = Math.max(save.maxCh || 1, Math.min(11, ch + 1)); save.ch = Math.min(11, ch + 1); save.step = ch >= 11 ? 54 : ST[ch + 1]; writeSave(LS, save); state = 'ending'; g.paused = true; $('#endStats').innerHTML = `Kills: ${save.kills} · Level ${save.level} · Cash $${save.cash} · Comic pages ${save.pages.length}/20`;
-      $('#endH').textContent = 'End of Chapter ' + ch + ' · ' + E[ch][0]; $('#endQ').textContent = E[ch][1]; $('#endNext').textContent = ch >= 11 ? 'To be continued — Chapter 12 coming soon.' : 'Chapter ' + (ch + 1) + ' · ' + E[ch + 1][0] + ' is unlocked. Your level, cash and weapons carry over.'; $('#btnEndNext').textContent = 'Continue to Chapter ' + Math.min(11, ch + 1); $('#btnEndNext').classList.toggle('hidden', ch >= 11); showScreen('#ending'); audio.setMood('sad'); };
+    g.onComplete = (ch = 1) => { const E = CHAPTERS, last = ch >= LAST_CH;
+      save.done = true; if (ch >= 2) save.done2 = true; save.maxCh = Math.max(save.maxCh || 1, Math.min(LAST_CH, ch + 1)); save.ch = Math.min(LAST_CH, ch + 1); save.step = last ? LAST_STEP : CH_START[ch + 1]; writeSave(LS, save); state = 'ending'; g.paused = true; $('#endStats').innerHTML = `Kills: ${save.kills} · Level ${save.level} · Cash $${save.cash} · Comic pages ${save.pages.length}/${TOTAL_PAGES}`;
+      $('#endH').textContent = 'End of Chapter ' + ch + ' · ' + E[ch][0]; $('#endQ').textContent = E[ch][1]; $('#endNext').textContent = last ? 'To be continued — Chapter ' + (LAST_CH + 1) + ' coming soon.' : 'Chapter ' + (ch + 1) + ' · ' + E[ch + 1][0] + ' is unlocked. Your level, cash and weapons carry over.'; $('#btnEndNext').textContent = 'Continue to Chapter ' + Math.min(LAST_CH, ch + 1); $('#btnEndNext').classList.toggle('hidden', last); showScreen('#ending'); audio.setMood('sad'); };
     game = g; $('#loading').classList.add('hidden'); return g; })();
   return gamePromise; }
 function goLandscape() { if (document.body.dataset.dev !== 'touch' || window.Capacitor?.isNativePlatform?.()) return; try { const d = document.documentElement, rq = d.requestFullscreen || d.webkitRequestFullscreen; const p = !document.fullscreenElement && rq ? rq.call(d, { navigationUI: 'hide' }) : null; Promise.resolve(p).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape')).catch(() => {}); } catch (e) {} }
@@ -98,7 +98,7 @@ async function openCustom(from) { back = from; state = 'custom'; showScreen('#cu
 // ---------- inventory ----------
 function openInv() { state = 'inv'; renderInv(); showScreen('#inv'); }
 function renderInv() { const s = save; const need = xpFor(s.level);
-  $('#invStats').innerHTML = `Level ${s.level} · XP ${s.xp}/${need} · Cash $${s.cash} · Kills ${s.kills} · Comic pages ${s.pages.length}/20`;
+  $('#invStats').innerHTML = `Level ${s.level} · XP ${s.xp}/${need} · Cash $${s.cash} · Kills ${s.kills} · Comic pages ${s.pages.length}/${TOTAL_PAGES}`;
   const L = $('#invList'); L.innerHTML = ''; const add = (h, btns = [], eq) => { const d = document.createElement('div'); d.className = 'gi' + (eq ? ' eq' : ''); d.innerHTML = h; btns.forEach(([t, fn]) => { const b = document.createElement('button'); b.textContent = t; b.onclick = () => { fn(); writeSave(LS, save); renderInv(); }; d.appendChild(b); }); L.appendChild(d); };
   WEAPON_ORDER.filter(id => s.owned.includes(id)).forEach(id => { const w = WEAPONS[id]; add(`<b>${w.name}</b><div class="st">${w.type === 'gun' ? `Mag ${s.mags[id] ?? 0} · Reserve ${s.ammo[w.ammo] || 0} ${w.ammo}` : 'Melee'}</div>`, s.cur === id ? [] : [['Equip', () => { s.cur = id; if (game) game.equip(id, true); }]], s.cur === id); });
   add(`<b>Supplies</b><div class="st">Med kits ${s.meds} · Pipe grenades ${s.grenades}<br>9mm/.44 ${s.ammo.light || 0} · Shells ${s.ammo.shell || 0} · Rifle ${s.ammo.rifle || 0}</div>`, s.meds && game && back === '#pause' ? [['Use med kit (+50 HP)', () => game.heal()]] : []);
@@ -111,12 +111,14 @@ $$('.back').forEach(b => b.onclick = () => { if (state === 'custom' && back === 
 $('#btnWarn').onclick = async () => { try { audio.init(); audio.sting(); } catch (e) {} showScreen(null); $('#studio').classList.remove('hidden'); fadeIn(); ensureGame().catch(e => console.error(e)); $('#loading').classList.add('hidden');
   await Promise.race([sleep(4200), new Promise(r => addEventListener('keydown', r, { once: true }))]); $('#studio').classList.add('hidden'); toTitle(); };
 $('#btnNew').onclick = () => { if (loadSave(LS) && loadSave(LS).step > 0 && !confirm('Start a new game? Your current progress (level, cash, weapons) will be reset.')) return; clearSave(LS); save = defaultSave(); writeSave(LS, save); play(0); };
-$('#btnEndNext').onclick = () => { save = loadSave(LS) || save; const nc = Math.min(11, Math.max(2, save.ch || 2)); if (chOf(save.step || 0) !== nc) save.step = CHS[nc]; writeSave(LS, save); play(save.step); };
-var CHN = ['', 'The Day Before', 'High Water', 'Route 1', 'Everybody Pays', 'Black Friday', 'The Lighthouse', 'Rearview', 'Open Water', 'Peaks Island', 'Harbor Lights', 'Swan Song'], CHS = [0, 0, 7, 13, 18, 23, 28, 33, 36, 40, 45, 50];
+$('#btnEndNext').onclick = () => { save = loadSave(LS) || save; const nc = Math.min(LAST_CH, Math.max(2, save.ch || 2)); if (chOf(save.step || 0) !== nc) save.step = CHS[nc]; writeSave(LS, save); play(save.step); };
+var CHN = ['', ...Array.from({ length: LAST_CH }, (_, i) => CHAPTERS[i + 1][0])], CHS = [0, ...Array.from({ length: LAST_CH }, (_, i) => CH_START[i + 1])];
 const unlockedCh = (s) => Math.max(s.maxCh || 1, s.done || (s.step || 0) >= 7 ? 2 : 1, s.done2 ? 3 : 1, CHS.findLastIndex(v => (s.step || 0) >= v) || 1);
-$('#btnChapters').onclick = () => { const s = loadSave(LS) || defaultSave(); const u = unlockedCh(s); for (let c = 2; c <= 11; c++) { const b = $('#btnCh' + c); b.disabled = c > u; b.textContent = 'Chapter ' + c + ' · ' + CHN[c] + (c > u ? ' (finish Chapter ' + (c - 1) + ')' : ''); } showScreen('#chapters'); };
+$('#btnChapters').onclick = () => { const s = loadSave(LS) || defaultSave(); const u = unlockedCh(s); for (let c = 2; c <= LAST_CH; c++) { const b = $('#btnCh' + c); b.disabled = c > u; b.textContent = 'Chapter ' + c + ' · ' + CHN[c] + (c > u ? ' (finish Chapter ' + (c - 1) + ')' : ''); } showScreen('#chapters'); };
+{ const pn = $('#btnCh1').parentNode, anchor = pn.querySelector('p.small'); for (let c = 2; c <= LAST_CH; c++) { let b = $('#btnCh' + c); if (!b) { b = document.createElement('button'); b.id = 'btnCh' + c; pn.insertBefore(b, anchor); } b.textContent = 'Chapter ' + c; }
+  const ft = $('#titleFoot'); if (ft) ft.textContent = ft.textContent.replace(/Chapters 1–\d+ · .*$/, 'Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH][0]); }
 $('#btnCh1').onclick = () => { save = loadSave(LS) || defaultSave(); writeSave(LS, save); play(0); };
-for (let c = 2; c <= 11; c++) $('#btnCh' + c).onclick = () => { save = loadSave(LS) || defaultSave(); save.ch = c; writeSave(LS, save); play(CHS[c]); };
+for (let c = 2; c <= LAST_CH; c++) $('#btnCh' + c).onclick = () => { save = loadSave(LS) || defaultSave(); save.ch = c; writeSave(LS, save); play(CHS[c]); };
 $('#btnSurvival').onclick = () => { save = loadSave(LS) || defaultSave(); writeSave(LS, save); play(SURVIVAL_STEP); };
 $('#btnContinue').onclick = () => { save = loadSave(LS) || defaultSave(); play(save.step || 0); };
 $('#btnCustom').onclick = () => openCustom('#title'); $('#btnShopCustom').onclick = () => openCustom(back === '#pause' ? '#pause' : '#shop');
