@@ -11,6 +11,7 @@ await p.evaluate(([C]) => { const g = window.__atq.game; g.dlgQ = []; g.dlgCur =
   g.player.root.position.set(-30, 0, 60); const V = g.camera.position.constructor; const mc = { anim: 'Idle_Loop', cam: new V(), look: new V(), flash: false }; g.cut = mc; g.player.root.visible = false;
   const ou = g.update.bind(g); g.update = (a, c) => { ou(a, c); g.cut = mc; g.dlgQ = []; g.convo = null; mc.look.set(C[0], 0.35, C[1]); mc.cam.set(C[0] + C[2], C[3], C[1] + C[4]); g.camera.position.copy(mc.cam); g.camera.lookAt(mc.look); g._lk = mc.look.clone(); g.player.root.visible = false; }; }, [C]);
 if (process.env.ROLL !== undefined) await p.evaluate((r) => { const g = window.__atq.game; Object.values(g.npcs).filter(n => n.isVictim).forEach(v => { v.roll = +r; v.root.rotation.z = +r; v.root.position.y = +r ? .09 : 0; }); }, process.env.ROLL);
+if (process.env.ADJ) await p.evaluate((a) => { window.__atq.game.kneelAdj = +a; }, process.env.ADJ);
 const files = [];
 for (let i = 0; i < +n; i++) { const f = `${out}/f${String(i).padStart(2, '0')}.png`; await stepShot(p, f, +stepsPer, 1 / 30, 500); files.push(f); }
 sheet(files, `${out}/sheet.png`, 4, 0.7); console.log(errs.slice(0, 3)); await b.close();

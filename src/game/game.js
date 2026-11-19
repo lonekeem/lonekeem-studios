@@ -554,10 +554,17 @@ export class Game {
     if (nk) { nk.rotateX((dip * .45 - pull * .25) * (1 - lk) - lk * .35); nk.rotateY(rel * .45 * lk); }
     if (hd) { hd.rotateX((dip * .3 - pull * .35) * (1 - lk) - lk * .25); hd.rotateY(rel * .45 * lk + shake); hd.rotateZ(shake * .5); }
     ['L', 'R'].forEach((s, i) => { const ua = B('DEF-upper_arm.' + s), fa = B('DEF-forearm.' + s); if (ua) { ua.rotateX((.75 + dip * .35 + pull * .3) * (1 - lk * .4)); ua.rotateZ((i ? -1 : 1) * -.12); } if (fa) fa.rotateX(.9 + pull * .4 + dip * .3); });
-    { /* kneel: hips drop onto both knees, shins fold back behind */ const hp = B('DEF-hips'); if (hp) hp.position.z -= .4 / (z.model.scale.x || 1) * (z.kn = Math.min(1, (z.kn || 0) + dt * 2));
-      ['L', 'R'].forEach((k) => { const th = B('DEF-thigh.' + k), sh = B('DEF-shin.' + k), ft = B('DEF-foot.' + k); if (th) th.rotateX(-.12); if (sh) sh.rotateX(1.65); if (ft) ft.rotateX(.5); }); }
+    { /* kneel: shins fold back, then the hips drop (calibrated once per zombie) until the knees rest on the ground */ const hp = B('DEF-hips');
+      ['L', 'R'].forEach((k) => { const th = B('DEF-thigh.' + k), sh = B('DEF-shin.' + k), ft = B('DEF-foot.' + k); if (th) th.rotateX(-.12); if (sh) sh.rotateX(1.65); if (ft) ft.rotateX(.5); });
+      if (hp) { if (z.hipZ0 === undefined) z.hipZ0 = hp.position.z; z.kneelK = clamp((z.kneelK || 0) + Math.max(0, dt) * 2, 0, 1);
+        if (z.hipDrop === undefined) { /* measure the visible body: lowest skinned vertex, two samples, solve for "knees on the ground" */
+          const sk = z.skin, W = (z._kw || (z._kw = V3())); const minY = (d) => { hp.position.z = z.hipZ0 - d; z.root.updateMatrixWorld(true);
+            if (sk) { sk.skeleton.update(); const n = sk.geometry.attributes.position.count, st = Math.max(1, (n / 400) | 0); let m = 9; for (let i = 0; i < n; i += st) { sk.getVertexPosition(i, W); W.applyMatrix4(sk.matrixWorld); if (W.y < m) m = W.y; } return m; }
+            const sl = B('DEF-shin.L'); sl.getWorldPosition(W); return W.y - .08 * z.scale; };
+          const y0 = minY(0), y1 = minY(.2), sl = Math.max(.05, (y0 - y1) / .2); z.hipDrop = clamp((y0 - .01) / sl, 0, 3); z._dbg = [y0, y1, sl]; }
+        hp.position.z = z.hipZ0 - (z.hipDrop + (this.kneelAdj || 0)) * z.kneelK; } }
     if (z.noHead && hd) hd.scale.setScalar(.001); }
-  /// victims: struggle + scream + reach while alive, weaken (dying), then lie limp with the odd death-twitch; every bite jolts the body
+  // victims: struggle + scream + reach while alive, weaken (dying), then lie limp with the odd death-twitch; every bite jolts the body
   victimStruggle(n, dt) { if (!n.isVictim) return; const eaters = this.zombies.filter(z => !z.dead && z.st === 'eat' && z.eat === n).length;
     if (n.life === undefined) n.life = 1; if (eaters) n.life = Math.max(0, n.life - dt * eaters / 26); const L = n.life; n.jolt = Math.max(0, (n.jolt || 0) - dt * 2.5);
     n.struggle = L > .5 ? Math.max(.4, n.struggle - dt * .02) : L > .12 ? .28 : 0; const t = this.t + (n.id || 0), B = (k) => n.bone(k), ps = n.pose || 0;
