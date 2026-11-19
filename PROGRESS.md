@@ -17,7 +17,7 @@ Merged main v1.9.15 (voice update) at 8b4c180 — resolved game.js nextLine conf
 3. Real doors (hinged house doors; people/zombies open, pass, close)
 4. No pop-in: spawn/despawn from off-screen / doorways / woods
 5./6. (MOVED TO OTHER WORKER) gore, feeding poses, blood on faces/hands, lasting wounds on everyone
-7. Living-town NPC events (flee / eaten / escape)
+7. (MOVED TO OTHER WORKER) living-town NPC events
 
 ## Notes / flaws
 - Read tool caches images by path: write proof frames to fresh filenames.

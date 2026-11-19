@@ -18,18 +18,18 @@ export const POSES = {
   showL: both(arm('L', 0.0, 0.2, 1.0, 0), { 'DEF-upper_arm.L': [0.15, -0.9, 0.2] }),
   rollL: both(arm('L', 0, 0.2, 1.4, 0.3), arm('R', 0, 0, 0, 0), { 'DEF-upper_arm.L': [0.3, 0, 0.2], 'DEF-upper_arm.R': [0, 0.9, -0.2], 'DEF-forearm.R': [0, 1.0, 0] }),
   guardL: { 'DEF-upper_arm.L': [0.3, 0, 0.2], 'DEF-forearm.L': [0, -1.3, 0] },
-  pointR: arm('R', 1.8, 0.05, -0.35), pointL: arm('L', 1.8, 0.05, -0.35),
-  offerR: arm('R', 1.15, 0.1, 0.5),
-  shrug: both(arm('L', 0.5, 0.5, 1.1), arm('R', 0.5, 0.5, 1.1)),
-  hugArms: both(arm('L', 1.3, -0.3, 1.0), arm('R', 1.3, -0.3, 1.0)),
-  coverEars: both(arm('L', 0.3, 0.9, 2.1), arm('R', 0.3, 0.9, 2.1)),
-  headHands: both(arm('L', 0.5, 0.8, 2.2), arm('R', 0.5, 0.8, 2.2)),
-  haltBoth: both(arm('L', 0.8, 0.5, 1.5), arm('R', 0.8, 0.5, 1.5)),          // "hold up": both palms out
-  wheel: both(arm('L', 1.1, 0.05, 0.8), arm('R', 1.1, 0.05, 0.8)),           // hands on a steering wheel
-  grabBoth: both(arm('L', 1.6, -0.1, 0.4), arm('R', 1.6, -0.1, 0.4)),        // take someone by the shoulders
-  reachBoth: both(arm('L', 1.8, 0, -0.1), arm('R', 1.8, 0, -0.1)),           // arms out in front (hungry / grabbing)
-  mouthR: arm('R', 0.7, 0.35, 2.1),                                          // hand cupped at the mouth: radio / shout
-  aimBoth: both(arm('L', 1.8, 0, 0.3), arm('R', 1.8, 0, 0.3)),
+  pointR: arm('R', 1.8, 0.05, -0.5), pointL: arm('L', 1.8, 0.05, -0.5),
+  offerR: arm('R', 1.0, 0.1, 0.0),
+  shrug: both(arm('L', 0.7, 0.6, 0.3), arm('R', 0.7, 0.6, 0.3)),
+  hugArms: both(arm('L', 1.4, -0.2, -0.1), arm('R', 1.4, -0.2, -0.1)),
+  coverEars: both(arm('L', 1.2, 1.0, 2.0), arm('R', 1.2, 1.0, 2.0)),
+  headHands: both(arm('L', 1.0, 0.8, 2.1), arm('R', 1.0, 0.8, 2.1)),
+  haltBoth: both(arm('L', 1.0, 0.3, 1.0), arm('R', 1.0, 0.3, 1.0)),          // "hold up": both palms out
+  wheel: both(arm('L', 1.0, 0.05, 0.1), arm('R', 1.0, 0.05, 0.1)),           // hands on a steering wheel
+  grabBoth: both(arm('L', 1.5, -0.1, -0.2), arm('R', 1.5, -0.1, -0.2)),      // take someone by the shoulders
+  reachBoth: both(arm('L', 1.8, 0, -0.55), arm('R', 1.8, 0, -0.55)),         // arms out in front (hungry / grabbing)
+  mouthR: arm('R', 1.0, 0.2, 1.6),                                           // hand cupped at the mouth: radio / shout
+  aimBoth: both(arm('L', 1.8, 0, -0.4), arm('R', 1.8, 0, -0.4)),
 };
 // head-only behaviours (yaw sweeps etc.): fn(t) -> [pitch, yaw]
 export const HEADS = {
