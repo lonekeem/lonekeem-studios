@@ -38,3 +38,19 @@ Goal: Bitmoji-style original guy + girl (refs: /workspace/keem-vids/ref_guy.jpg,
 - Hair cap 160x40 -> 128x36, braid lumps 12x8 -> 9x6 spheres.
 - Default looks: guy ~83k tris, girl ~91k tris (down from ~100k / ~122k).
 - Grids for tops/jackets/pants/shoes/hair/hats and the ref views were re-rendered after the pass.
+
+## Polish pass (Nov 19 2026, ~06:40 EST) — done
+- Heads 1.20x (guy) / 1.18x (girl), neck + shoulders unchanged; creator/grid cameras reframed.
+- Guy beard: lighter brown, wispy skin-blended edge + stubble halo on cheeks, separate mustache over the open smile.
+- Guy hair: 26 tousled clumps (blunt tips, no straw spikes), natural temples + sideburns; clumps removed under hats.
+- Cargo joggers: baggier, real side pockets, blousing at shin, tight cuffs; tops now cover the waistband.
+- Separated fingers on both base bodies (rings follow the finger).
+- Girl: neck triangles kept so the analytic neck hole cuts the collar smoothly; dress closes between the legs, hip line gone.
+- Perf: guy ~86k tris, girl ~91k tris. Run/roll checked, limbs intact.
+
+### Honest flaws left
+- Guy forehead hairline is still a fairly crisp edge with small steps, not a true soft fade.
+- Beard underside reads as a rounded solid edge against the neck in close-up; small dark specks at the shirt neckline sides.
+- Girl's jacket collar edge is smoother but still slightly wavy up close; a faint tone step where the head neck meets the body neck.
+- Wide-brim hats (bucket/sun/western) have thin, slightly see-through brims; hard hat shows a stray thin red strip.
+- Fingers are separated but sit close together and are fairly straight (no knuckle detail).

@@ -162,12 +162,12 @@ function buildTufts(head, st, thickAt, inside) {
   const P = (az, el, lift) => { const d = dirAE(az, el); const p = surf(head, d); const n = normalAt(head, p); return p.addScaledVector(n, (inside(d) ? thickAt(d) : .002) + lift); };
   const N = st.tufts; for (let i = 0; i < N; i++) { const h1 = hash(i * 3.1 + 1), h2 = hash(i * 7.7 + 2), h3 = hash(i * 1.3 + 5);
     let az0, el0, az1, el1, tipLift; // start (crown side) -> tip
-    if (i < N * .5) { const k = i / (N * .5); az0 = -55 + 110 * k + (h1 - .5) * 12; el0 = 70 + h2 * 8; az1 = az0 * .95 + 16 * st.sweep + (h3 - .5) * 18; el1 = 44 + h2 * 7 - Math.abs(az1) * .06; tipLift = .016 + .01 * h3; } // fringe: tips overhang the forehead
+    if (i < N * .5) { const k = i / (N * .5); az0 = -55 + 110 * k + (h1 - .5) * 12; el0 = 70 + h2 * 8; az1 = az0 * .95 + 16 * st.sweep + (h3 - .5) * 18; el1 = 44 + h2 * 7 - Math.abs(az1) * .06; tipLift = .009 + .006 * h3; } // fringe: tips overhang the forehead
     else if (i < N * .82) { const k = (i - N * .5) / (N * .32); const sd = k < .5 ? -1 : 1; az0 = sd * (45 + 55 * ((k * 2) % 1)) + (h1 - .5) * 10; el0 = 62 + h2 * 8; az1 = az0 + sd * (10 + 10 * h3); el1 = 36 + h2 * 8; tipLift = .004 + .004 * h3; } // sides
     else { const k = (i - N * .82) / (N * .18); az0 = -140 + 280 * k + (h1 - .5) * 20; el0 = 74 + h2 * 6; az1 = az0 * 1.05 + (h3 - .5) * 16; el1 = 48 + h3 * 10; tipLift = .004; } // crown / back
     const r = .011 + .005 * h2;
     const pts = [P(az0, el0, -r * .4), P(az0 + (az1 - az0) * .4, el0 + (el1 - el0) * .4, r * .15), P(az0 + (az1 - az0) * .78, el0 + (el1 - el0) * .78, tipLift * .5 + r * .1), P(az1, el1, tipLift)];
-    const [g] = tube(pts, r, .0016, { seg: 9, rad: 6, groove: .22, pow: .65 });
+    const [g] = tube(pts, r, .0032, { seg: 9, rad: 6, groove: .22, pow: .8, tipRound: 1 }); // blunter tips: thin needle tips read as straws in close-up
     { const pa = g.attributes.position, rad = 6, v = new THREE.Vector3(), c = new THREE.Vector3(); for (let ii = 0; ii <= 9; ii++) { c.set(0, 0, 0); for (let j = 0; j <= rad; j++) c.add(v.fromBufferAttribute(pa, ii * (rad + 1) + j)); c.multiplyScalar(1 / (rad + 1)); const n = c.clone().normalize();
       for (let j = 0; j <= rad; j++) { const id = ii * (rad + 1) + j; v.fromBufferAttribute(pa, id).sub(c); v.addScaledVector(n, -v.dot(n) * .5); v.add(c); pa.setXYZ(id, v.x, v.y, v.z); } } g.computeVertexNormals(); }
     out.push(g); }
