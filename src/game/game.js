@@ -280,6 +280,7 @@ export class Game {
     for (let i = 0; i < n; i++) { const d = this.pd[this.pI = (this.pI + 1) % this.pd.length]; d.p.copy(pos); d.v.set(dir.x * speed + rnd(-1.5, 1.5), rnd(0.5, 3) + dir.y * speed, dir.z * speed + rnd(-1.5, 1.5)); d.life = rnd(.3, .65); d.s = rnd(.018, .05) * size * (gore ? 1 : .6); d.dec = gore && Math.random() < .3; }
     this.pMat.color.set(gore ? '#5a0505' : '#3a3a34'); }
   // lasting wound mark on anyone hurt: from = attacker position (or dir = attack direction), kind melee (bite/claw) | bullet | claw
+  addWound(ch, o) { return addWound(ch, o); }
   woundFrom(ch, from, kind, dir, head) { if (!ch || !ch.skin) return; const a = ch.root.rotation.y; let wx, wz;
     if (dir) { wx = -dir.x; wz = -dir.z; } else if (from) { wx = from.x - ch.root.position.x; wz = from.z - ch.root.position.z; } else { wx = 0; wz = 1; }
     const l = Math.hypot(wx, wz) || 1; wx /= l; wz /= l; const c = Math.cos(-a), s = Math.sin(-a); const lx = wx * c + wz * s, lz = -wx * s + wz * c; // world -> bind (front +z, left +x)
