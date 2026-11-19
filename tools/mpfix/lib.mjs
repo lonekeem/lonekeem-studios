@@ -10,3 +10,7 @@ export async function client(ctx, name = 'A') {
 }
 export const ctxOpts = { viewport: { width: 844, height: 390 }, deviceScaleFactor: 1.5, hasTouch: true, isMobile: true };
 export async function boot() { const b = await launch(); const ctx = await b.newContext(ctxOpts); const p = await client(ctx); await p.evaluate(() => { window.__MP_DTCAP = .15; window.__mpTown.Z.killNear(0, 0, 400, 9999); }); return { b, p }; }
+// take over the camera for proof shots (the town loop keeps running but can no longer move the camera)
+export async function freecam(p, pos, look) {
+  await p.evaluate(([pos, look]) => { const T = window.__mpTown, cam = T.cam; if (!cam.__free) { cam.__free = 1; cam.position.copy = function () { return this; }; cam.lookAt = function () {}; cam.fov = 55; } cam.position.set(...pos); const V = cam.position.constructor; cam.up.set(0, 1, 0); const l = new V(...look); const m = new (cam.matrix.constructor)(); m.lookAt(cam.position, l, cam.up); cam.quaternion.setFromRotationMatrix(m); cam.updateProjectionMatrix(); }, [pos, look]);
+}

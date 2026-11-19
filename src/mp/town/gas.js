@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { signTex, klTex } from './kit.js';
 import { makeBuilding } from './building.js';
+import { addStorefront } from './storefront.js';
 import { GAS_LOT } from './map.js';
 
 export const PRICE = 0;        // $ per litre: 0 = free fill-ups for now (pass `pay(cost)->bool` / set PRICE to charge)
@@ -11,11 +12,16 @@ export const GAS_CAN_L = 5;    // litres in a full gas can
 export const PUMP_RATE = 7;    // litres per second while fuelling
 const CX = 46, CZ = -13.5;     // station centre (pumps line, matches GAS_LOT.pumpZ)
 
+// pole-sign face: text is measured so it always fits (the shared signTex sizes by height only and clipped 'GAS · SNACKS')
+function poleSignTex() { const c = document.createElement('canvas'); c.width = 512; c.height = 320; const g = c.getContext('2d'); g.fillStyle = '#1f6f45'; g.fillRect(0, 0, 512, 320); g.strokeStyle = '#fff6d6'; g.lineWidth = 8; g.strokeRect(10, 10, 492, 300); g.fillStyle = '#fff6d6'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  const fit = (t, y, px) => { g.font = `bold ${px}px system-ui,sans-serif`; while (g.measureText(t).width > 440 && px > 20) { px -= 4; g.font = `bold ${px}px system-ui,sans-serif`; } g.fillText(t, 256, y); }; fit('KL FUEL', 118, 130); fit('GAS · SNACKS', 238, 76);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }
+
 export function addGas(W) {
   const { B, col, root, M } = W; const box = (m, x0, x1, y0, y1, z0, z1, c, s) => B.bounds(m, x0, x1, y0, y1, z0, z1, c, s);
   W.pumps = W.pumps || [];
   // shop (kiosk building from building.js), door faces the pumps
-  const bd = makeBuilding(W, { id: 'kiosk', kind: 'kiosk', cx: GAS_LOT.kioskCX, cz: GAS_LOT.kioskCZ, w: 9, d: 7, face: 'N', ci: 5, locked: 0 }); W.enterable.push(bd); W.kiosk = bd;
+  const bd = makeBuilding(W, { id: 'kiosk', kind: 'kiosk', cx: GAS_LOT.kioskCX, cz: GAS_LOT.kioskCZ, w: 9, d: 7, face: 'N', ci: 5, locked: 0 }); W.enterable.push(bd); W.kiosk = bd; addStorefront(W, bd);
   // forecourt slab + canopy
   box('concrete', CX - 14, CX + 14, 0, .07, CZ - 7.5, CZ + 4, '#c9c6bb');
   box('paint', CX - 13, CX + 13, 4.55, 4.95, CZ - 4.4, CZ + 4.4, '#f1efe6');           // canopy roof
@@ -41,12 +47,12 @@ export function addGas(W) {
   // pole sign by the road
   box('metal', CX - 17 - .15, CX - 17 + .15, 0, 7.4, -20.2 - .15, -20.2 + .15, '#8d9296'); col.add(CX - 17.2, CX - 16.8, -20.4, -20, 'prop');
   // double-sided sign: two single-sided panels back to back (a DoubleSide plane shows mirrored text from behind), each facing outward and reading correctly
-  { const SX = CX - 17, SZ = -20.2, tex = signTex(['KL FUEL', 'GAS · SNACKS'], '#1f6f45', '#fff6d6', 512, 320), bm = klTex();
-    box('metal', SX - 2.2, SX + 2.2, 6.8, 9.4, SZ - .1, SZ + .1, '#2b3a33'); // slab the faces sit on
+  { const SX = CX - 17, SZ = -20.2, tex = poleSignTex(), bm = klTex(), slab = new THREE.MeshStandardMaterial({ color: '#1b5a39', roughness: .8 });
+    { const m = new THREE.Mesh(new THREE.BoxGeometry(4.36, 2.76, .2), slab); m.position.set(SX, 8.1, SZ); root.add(m); } // slab the faces sit on
     for (const f of [1, -1]) { // f=+1 faces +z (into the lot), f=-1 faces -z (the road)
       const sg = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.6), new THREE.MeshStandardMaterial({ map: tex, roughness: .7, emissive: '#2f9a63', emissiveMap: tex, emissiveIntensity: .55 })); sg.rotation.y = f > 0 ? 0 : Math.PI; sg.position.set(SX, 8.1, SZ + f * .105); root.add(sg);
       const badge = new THREE.Mesh(new THREE.CircleGeometry(.7, 24), new THREE.MeshBasicMaterial({ map: bm })); badge.rotation.y = f > 0 ? 0 : Math.PI; badge.position.set(SX, 10.1, SZ + f * .06); root.add(badge); }
-    box('metal', SX - .7, SX + .7, 9.4, 10.8, SZ - .05, SZ + .05, '#2b3a33'); }
+    { const m = new THREE.Mesh(new THREE.CylinderGeometry(.78, .78, .1, 28).rotateX(Math.PI / 2), slab); m.position.set(SX, 10.1, SZ); root.add(m); } }
   // canopy underside light panels (cheap emissive look) + fuel-pump KL badges
   const lm = new THREE.MeshBasicMaterial({ color: '#fff4cf' }); for (const x of [-9, -3, 3, 9]) { const l = new THREE.Mesh(new THREE.PlaneGeometry(2.2, .5), lm); l.rotation.x = Math.PI / 2; l.position.set(CX + x, 4.52, CZ); root.add(l); }
   // small cartoon props: tyre stack + oil drums by the shop (no collision needed beyond a rect)
