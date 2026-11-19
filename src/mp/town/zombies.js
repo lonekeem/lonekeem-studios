@@ -62,9 +62,17 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
   seedScatter();
 
   // -------- damage / death --------
-  function kill(z, dir, o = {}) { if (z.dead) return; z.dead = true; z.st = 'dead'; z.deadT = 0; S.killed++; z.play('Death01', { once: true, force: true, speed: o.car ? 1.6 : 1.05, fade: .1 }); if (dir) z.vel.set(dir.x * (o.car ? 7 : 2.2), 0, dir.z * (o.car ? 7 : 2.2));
+  function kill(z, dir, o = {}) { if (z.dead) return; z.dead = true; z.st = 'dead'; z.deadT = 0; S.killed++; if (o.head && !o.car) z.play('Hit_Head', { once: true, force: true, speed: 1.7, fade: .08, cb: () => { if (z.dead) z.play('Death01', { once: true, force: true, speed: 1.05, fade: .28 }); } }); else z.play('Death01', { once: true, force: true, speed: o.car ? 1.6 : 1.05, fade: .1 }); if (dir) z.vel.set(dir.x * (o.car ? 7 : 2.2), 0, dir.z *
+ (o.car ? 7 : 2.2));
     z.pool = poolMesh(z.root.position.x, z.root.position.z, .5); z.poolGrow = 1; onEvent && onEvent('kill', z); }
-  function hurt(z, dmg, dir, o) { if (z.dead) return false; z.hp -= dmg; z.hurtT = .25; if (z.hp <= 0) { kill(z, dir, o); return true; } z.st = 'chase'; z.lose = 0; z.vel.set(dir.x * 1.8, 0, dir.z * 1.8); z.play(rnd() < .5 ? 'Hit_Chest' : 'Hit_Head', { once: true, force: true, speed: 1.7, fade: .08, cb: () => { z.curName = ''; } }); return false; }
+  // every damage source goes through here (bullets, melee, blasts, cars, remote players' hits): story-style stun + Hit_Head / Hit_Chest reaction, shove, then `onEvent('hit')` for blood / net sync
+  function hurt(z, dmg, dir, o = {}) { if (z.dead) return false; z.hp -= dmg; z.hurtT = o.head ? .5 : .4; const d0 = z.hp <= 0; if (onEvent) onEvent('hit', z, { dmg, dir, head: !!o.head, dead: d0, remote: !!o.remote, blade: !!o.blade, boom: !!o.boom, car: !!o.car, pellets: !!o.pellets }); if (d0) { kill(z, dir, o); return true; } z.st = 'chase'; z.lose = 0; z.vel.set(dir.x * 3, 0, dir.z * 3); z.play(o.head ? 'Hit_Head' : 'Hit_Chest', { once: true, force: true, speed: 1.7, fade: .08, cb: () => { z.curName = ''; } }); return false; }
+  out.damage = (z, dmg, dir, o) => hurt(z, dmg, dir, o);
+  // net: another player's hit (zombie index in zs when it exists on this client and is near the reported spot, else the nearest living zombie within 3.5 m)
+  out.applyRemote = (h) => { let z = (h.i >= 0 && zs[h.i] && !zs[h.i].dead && zs[h.i].z && !zs[h.i].victim) ? zs[h.i] : null; if (z) { const p = z.root.position; if (Math.hypot(p.x - h.x, p.z - h.z) > 8) z = null; }
+    if (!z) { let bd = 3.5; for (const q of zs) { if (q.dead || !q.z || q.victim) continue; const p = q.root.position, d = Math.hypot(p.x - h.x, p.z - h.z); if (d < bd) { bd = d; z = q; } } } if (!z) return false; if (h.px != null) { z.root.position.x += (h.px - z.root.position.x) * .5; z.root.position.z += (h.pz - z.root.position.z) * .5; }
+    return hurt(z, h.d, { x: h.dx || 0, z: h.dz || 0 }, { head: !!h.h, remote: true, blade: !!h.b, pellets: !!h.p }); };
+  out.indexOf = z => zs.indexOf(z);
   out.killNear = (x, z, r, dmg, dir0) => { let n = 0; for (const q of zs) { if (q.dead) continue; const p = q.root.position, dx = p.x - x, dz = p.z - z, d = Math.hypot(dx, dz); if (d < r) { const l = d || 1; hurt(q, dmg, dir0 || { x: dx / l, z: dz / l }); n++; } } return n; };
   // hitscan: nearest living zombie within .45 m of the ray (origin ox,oz heading dx,dz unit) inside `range`; returns {t,dead} or null
   out.shoot = (ox, oz, dx, dz, range, dmg) => { let best = null, bt = range; for (const q of zs) { if (q.dead) continue; const p = q.root.position, rx = p.x - ox, rz = p.z - oz, t = rx * dx + rz * dz; if (t < .2 || t >= bt) continue; if (Math.abs(rx * dz - rz * dx) < .45) { best = q; bt = t; } } if (!best) return null; const dead = hurt(best, dmg, { x: dx, z: dz }); return { t: bt, dead }; };
