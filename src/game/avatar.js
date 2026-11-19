@@ -65,19 +65,20 @@ export async function loadRigs(base, keys = ['keem', 'nia', 'dad', 'raider', 'zo
 const _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _q2 = new THREE.Quaternion();
 
 export function attachRig(ch, scene, opt = {}) {
-  const obj = SkeletonUtils.clone(scene); let skin = null; const B = {};
+  const TG = opt.target; // multiplayer: retarget the story animation onto an existing Avatar (keeps its own skin shader, morphs, hair, clothes)
+  const obj = TG ? TG.obj : SkeletonUtils.clone(scene); let skin = TG ? TG.skin : null; const B = {};
   obj.traverse(o => { if (o.isSkinnedMesh && !skin) skin = o; if (o.isBone) B[o.name] = o; });
   if (!skin) return null;
-  skin.frustumCulled = false; skin.castShadow = true; skin.receiveShadow = false;
-  const mat = skin.material; if (mat) { mat.side = THREE.FrontSide; mat.roughness = opt.rough || .62; mat.metalness = 0; if (mat.map) { mat.map.anisotropy = 8; mat.map.minFilter = THREE.LinearMipmapLinearFilter; mat.map.needsUpdate = true; } mat.needsUpdate = true; }
-  if (opt.tint && mat) { skin.material = mat.clone(); const t = opt.tint; { const a = opt.tintK || .5, b = 1 - a / 2; skin.material.color.setRGB(b + t[0] * a * .98, b + t[1] * a * .98, b + t[2] * a * .98); if (opt.tintMul) skin.material.color.multiplyScalar(opt.tintMul); } } // per-body variety for crowds (shares geometry + texture)
-  { // brighter, crisper character read: gentle self-lit lift (keeps the texture) + soft cool rim so figures separate from the dark street
+  skin.frustumCulled = false; skin.castShadow = true; skin.receiveShadow = !!TG;
+  const mat = TG ? null : skin.material; if (mat) { mat.side = THREE.FrontSide; mat.roughness = opt.rough || .62; mat.metalness = 0; if (mat.map) { mat.map.anisotropy = 8; mat.map.minFilter = THREE.LinearMipmapLinearFilter; mat.map.needsUpdate = true; } mat.needsUpdate = true; }
+  if (!TG && opt.tint && mat) { skin.material = mat.clone(); const t = opt.tint; { const a = opt.tintK || .5, b = 1 - a / 2; skin.material.color.setRGB(b + t[0] * a * .98, b + t[1] * a * .98, b + t[2] * a * .98); if (opt.tintMul) skin.material.color.multiplyScalar(opt.tintMul); } } // per-body variety for crowds (shares geometry + texture)
+  if (!TG) { // brighter, crisper character read: gentle self-lit lift (keeps the texture) + soft cool rim so figures separate from the dark street
     const m2 = skin.material; const lift = LIGHT.lift * (opt.tint ? .5 : 1); if (m2.map) { m2.emissiveMap = m2.map; m2.emissive = new THREE.Color('#ffffff'); m2.emissiveIntensity = lift; }
     m2.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n { float rimF = pow(1.0 - clamp(abs(dot(normalize(normal), normalize(vViewPosition))), 0.0, 1.0), 2.6); totalEmissiveRadiance += vec3(0.55, 0.68, 0.95) * rimF * ' + (LIGHT.rim * (opt.tint ? .7 : 1)).toFixed(3) + '; }'); };
     m2.customProgramCacheKey = () => 'avrim' + (opt.tint ? 'z' : 'h'); m2.needsUpdate = true; }
   ch.root.add(obj); ch.skin = skin; ch.skinRoot = obj;
   // swap the generated hands for clean mittens
-  { const H = processHands(skin); skin.geometry = H.geo; const mats = {};
+  if (!TG) { const H = processHands(skin); skin.geometry = H.geo; const mats = {};
     ['Left', 'Right'].forEach(sd => { const hi = H.hands[sd]; const hb = B[sd + 'Hand']; if (!hi || !hb) return; const hc = opt.handColor ? new THREE.Color(opt.handColor) : hi.color.clone().multiplyScalar(.86); const mat = new THREE.MeshStandardMaterial({ color: hc, roughness: opt.handColor ? .8 : .62, metalness: 0, emissive: hc, emissiveIntensity: LIGHT.lift * (opt.tint ? .5 : 1) });
       const ib = skin.skeleton.bones.indexOf(hb); _m.copy(skin.skeleton.boneInverses[ib]).invert().decompose(_p, _q, _s); const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(_q.clone().invert()); // world +Z (front) in hand-local axes
       hb.add(buildMitten(hi, fwd, mat)); mats[sd] = mat; }); ch.handMats = mats; ch._H = H; }

@@ -1,4 +1,5 @@
 // Drivable real-world-style cars (CC0 low-poly bodies, no manufacturer marks) wearing the original "KL" emblem. Fuel, break-in, loot, wrecks.
+import { stepVehicle } from '../../game/pctl.js';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { BASE, klTex, mulberry } from './kit.js';
@@ -38,15 +39,15 @@ export class Car {
   circles() { const s = Math.sin(this.ry), c = Math.cos(this.ry), o = this.L / 2 - this.rad; return [[this.x + s * o, this.z + c * o], [this.x - s * o, this.z - c * o]]; }
   get fuelFrac() { return this.fuel / CAP; }
   update(dt, ctl, col, others) { // ctl: {gas -1..1, steer -1..1, brake bool}
-    const dr = this.driver === 'me'; if (dr) { const on = this.engine && this.fuel > 0; const gas = ctl.gas; let acc = 0;
-      if (on) { if (gas > .05) acc = this.v < -.5 ? 14 * gas : (this.v < 8 ? 7.5 : 5.2) * gas * Math.max(.1, 1 - this.v / 25); else if (gas < -.05) acc = this.v > .5 ? -13 * -gas : -4.5 * -gas; }
-      if (ctl.brake) acc -= Math.sign(this.v) * 16; this.v += acc * dt; this.v -= Math.sign(this.v) * Math.min(Math.abs(this.v), (.9 + Math.abs(this.v) * .09) * dt); if (Math.abs(this.v) < .12 && Math.abs(acc) < .5) this.v = 0; this.v = Math.max(-5.5, Math.min(25, this.v));
-      const st = ctl.steer * (.58 - Math.min(.38, Math.abs(this.v) / 55)); this.steer += (st - this.steer) * Math.min(1, dt * 7);
-      if (on) { this.fuel = Math.max(0, this.fuel - (.015 + Math.abs(this.v) * .0042 + Math.max(0, ctl.gas) * .012) * dt); if (this.fuel <= 0 && this.engine) { this.engine = false; this.stalled = true; } }
-      this.ry += this.v / 2.7 * Math.tan(this.steer) * dt; const nx = this.x + Math.sin(this.ry) * this.v * dt, nz = this.z + Math.cos(this.ry) * this.v * dt; this.x = nx; this.z = nz;
-      // collisions: circles vs rect colliders and other cars
-      let hit = 0; for (let pass = 0; pass < 2; pass++) { const cs = this.circles(); let ax = 0, az = 0; for (const [cx, cz] of cs) { const [px, pz, h] = col.push(cx, cz, this.rad); if (h) { ax += px - cx; az += pz - cz; hit = Math.max(hit, 1); } } for (const o of others) { if (o === this) continue; const oc = o.circles(); for (const [cx, cz] of cs) for (const [ox, oz] of oc) { const dx = cx - ox, dz = cz - oz, d = Math.hypot(dx, dz); if (d < this.rad * 2 && d > 1e-4) { const k = (this.rad * 2 - d) / d * .5; ax += dx * k * 2; az += dz * k * 2; hit = Math.max(hit, 2); if (o.driver !== 'me') { o.x -= dx * k * .5; o.z -= dz * k * .5; o.sync(); } } } } this.x += ax * .5; this.z += az * .5; }
-      if (hit) { const sp = Math.abs(this.v); if (sp > 3) { this.hp = Math.max(0, this.hp - sp * 1.5); this.onCrash && this.onCrash(sp); } this.v *= -.22; }
+    const dr = this.driver === 'me'; if (dr) { const on = this.engine && this.fuel > 0; // v2: the SAME arcade vehicle model as story mode (pctl.stepVehicle): steering right turns right, BRAKE (REV) reverses from a stop, same speeds
+      const T = this._T || (this._T = { v: 0, head: this.ry, st: 0 }); T.v = this.v; T.head = this.ry; let crashSp = 0;
+      const R = stepVehicle(T, ctl.I, ctl.D, dt, { noGas: !on, move: (fx, fz) => { this.ry = T.head; this.x += fx; this.z += fz;
+        // collisions: circles vs rect colliders and other cars
+        let hit = 0; for (let pass = 0; pass < 2; pass++) { const cs = this.circles(); let ax = 0, az = 0; for (const [cx, cz] of cs) { const [px, pz, h] = col.push(cx, cz, this.rad); if (h) { ax += px - cx; az += pz - cz; hit = Math.max(hit, 1); } } for (const o of others) { if (o === this) continue; const oc = o.circles(); for (const [cx, cz] of cs) for (const [ox, oz] of oc) { const dx = cx - ox, dz = cz - oz, d = Math.hypot(dx, dz); if (d < this.rad * 2 && d > 1e-4) { const k = (this.rad * 2 - d) / d * .5; ax += dx * k * 2; az += dz * k * 2; hit = Math.max(hit, 2); if (o.driver !== 'me') { o.x -= dx * k * .5; o.z -= dz * k * .5; o.sync(); } } } } this.x += ax * .5; this.z += az * .5; }
+        return !!hit; }, onHit: sp => { crashSp = sp; } });
+      this.v = T.v; this.ry = T.head; this.steer = -T.st * .5; // wheel visual: positive = left, like before
+      if (on) { this.fuel = Math.max(0, this.fuel - (.015 + Math.abs(this.v) * .0042 + R.gas * .012) * dt); if (this.fuel <= 0 && this.engine) { this.engine = false; this.stalled = true; } }
+      if (crashSp > 3) { this.hp = Math.max(0, this.hp - crashSp * 1.5); this.onCrash && this.onCrash(crashSp); }
     } else if (this.net) { const n = this.net; this.x += (n.x - this.x) * Math.min(1, dt * 10); this.z += (n.z - this.z) * Math.min(1, dt * 10); let d = n.ry - this.ry; d = Math.atan2(Math.sin(d), Math.cos(d)); this.ry += d * Math.min(1, dt * 10); this.v = n.v; this.steer = (n.steer || 0); this.fuel = n.fuel ?? this.fuel; this.engine = !!n.engine; }
     else { this.v *= Math.max(0, 1 - dt * 3); }
     this.spin += this.v * dt / .38; for (const w of this.wheels) { w.rotation.x = this.spin; if (w.name.includes('front')) w.rotation.y = -this.steer * .9; }
