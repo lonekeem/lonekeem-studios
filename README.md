@@ -50,6 +50,9 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.13
+- Grass: about half the height, thinned near the camera, and cleared from the camera-to-player line of sight and a patch around the player's feet, so Keem's whole body is always visible while the field stays lush at a distance.
+
 ### v1.9.12
 - Environment: GPU grass/weed/fern field (never on roads, water or tunnels), ground splat shader with CC0 Poly Haven textures, cracked road overlays, pine/deciduous/dead trees and bushes, new sky and fog, window/grime detail on houses, rust/dirt on cars, more varied debris props and per-car tint/scale/rotation. Low preset uses fewer, larger instance chunks and fewer prop types.
 - Zombies: six new rigged cartoon zombies (male, office, elder, big, cop, worker) mixed with the original cartoon zombie and the old v1.9.7 procedural look (~28%). Townspeople/victims keep ~35% of the old procedural look. Elder zombie darkened and flashlight softened so nearby zombies no longer glow.

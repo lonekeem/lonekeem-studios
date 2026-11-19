@@ -154,11 +154,11 @@ diffuseColor.rgb *= 1. - .25*smoothstep(.55,.8,vn3(vWP2*5.3)) * paint;`)
       const N = Q.grass, Rr = low ? 17 : high ? 30 : 24;
       const ig = new THREE.InstancedBufferGeometry(); ig.index = null; ['position', 'normal', 'uv'].forEach(k => ig.setAttribute(k, base.attributes[k])); ig.instanceCount = N;
       const rnd = new Float32Array(N * 4); for (let i = 0; i < N * 4; i++) rnd[i] = R(); ig.setAttribute('aRnd', new THREE.InstancedBufferAttribute(rnd, 4));
-      const U = { uCam: { value: new V3() }, uR: { value: Rr }, uT: { value: 0 }, uMask: { value: maskTex }, uRect: { value: new THREE.Vector4(X0, Z0, XW, ZH) } };
+      const U = { uPl: { value: new THREE.Vector2(0, 1e5) }, uCam: { value: new V3() }, uR: { value: Rr }, uT: { value: 0 }, uMask: { value: maskTex }, uRect: { value: new THREE.Vector4(X0, Z0, XW, ZH) } };
       const gm = new THREE.MeshStandardMaterial({ map: at, alphaTest: .5, side: THREE.DoubleSide, roughness: 1, metalness: 0 });
       gm.onBeforeCompile = (s) => { Object.assign(s.uniforms, U);
         s.vertexShader = s.vertexShader.replace('#include <common>', `#include <common>
-attribute vec4 aRnd; uniform vec3 uCam; uniform float uR, uT; uniform sampler2D uMask; uniform vec4 uRect; varying vec3 vTint; varying vec2 vAU;`)
+attribute vec4 aRnd; uniform vec2 uPl; uniform vec3 uCam; uniform float uR, uT; uniform sampler2D uMask; uniform vec4 uRect; varying vec3 vTint; varying vec2 vAU;`)
           .replace('#include <begin_vertex>', `
 vec2 tile = vec2(2.*uR); vec2 org = uCam.xz - uR;
 vec2 wp = org + mod(aRnd.xy*tile*7.31 - org, tile);
@@ -168,8 +168,14 @@ vec2 mu = (wp - uRect.xy) / uRect.zw;
 float ok = (mu.x < 0. || mu.y < 0. || mu.x > 1. || mu.y > 1.) ? 1. : step(.5, texture2D(uMask, mu).r);
 float kind = floor(fract(aRnd.w*13.7)*100.);   // 0..99
 float tp = kind < 42. ? 0. : kind < 68. ? 1. : kind < 84. ? 2. : 3.;
-float hs = (tp < 1.5 ? mix(.55, 1.2, aRnd.z) : tp < 2.5 ? mix(.5, .85, aRnd.z) : mix(.55, .95, aRnd.z));
-float sc = hs * fade * ok;
+float hs = (tp < 1.5 ? mix(.28, .6, aRnd.z) : tp < 2.5 ? mix(.25, .43, aRnd.z) : mix(.28, .48, aRnd.z)); // v1.9.13: ~half height so Keem's legs stay visible
+float nearK = smoothstep(2., 7.5, dist);
+float keep = step(fract(aRnd.x*91.7), mix(.22, 1., nearK));                 // thin out blades close to the camera
+vec2 cp = uPl - uCam.xz; float tt = clamp(dot(wp - uCam.xz, cp) / max(dot(cp, cp), .01), 0., 1.);
+float dSeg = length(wp - (uCam.xz + tt * cp));                              // keep the line of sight camera -> player clear
+float dPl = length(wp - uPl);
+float clear = smoothstep(.9, 2.3, dSeg) * smoothstep(1.3, 3.4, dPl);        // and a bare patch around the player's feet
+float sc = hs * fade * ok * keep * clear * mix(.55, 1., nearK);
 float ang = aRnd.w * 6.2831 * 9.;
 mat2 rot = mat2(cos(ang), -sin(ang), sin(ang), cos(ang));
 vec3 transformed = vec3(position.x * sc * 1.15, position.y * sc, position.z * sc * 1.15);
@@ -186,7 +192,7 @@ vTint = gc * mix(.55, 1.15, uv.y) * mix(.8, 1.1, fract(aRnd.x*37.));`)
           .replace('#include <map_fragment>', 'vec4 sdc = texture2D(map, vAU); diffuseColor *= vec4(sdc.rgb * vTint, sdc.a);'); };
       const gmesh = new THREE.Mesh(ig, gm); gmesh.frustumCulled = false; gmesh.renderOrder = 1; scene.add(gmesh);
       let vt = 0; const vegNear = (x, z) => { let n = 0; for (let a = -3; a <= 3; a++) for (let b = -3; b <= 3; b++) { const i = Math.floor(x + a * 6 - X0), j = Math.floor(z + b * 6 - Z0); n += (i < 0 || j < 0 || i >= MW || j >= MH) ? 1 : (mask[j * MW + i] ? 1 : 0); } return n / 49; };
-      updaters.push((dt, t, cam) => { U.uCam.value.copy(cam); U.uT.value = t; vt -= dt; if (vt <= 0) { vt = .35; gmesh.visible = vegNear(cam.x, cam.z) > .04; } }); // no grass pass inside tunnels / on bare ground (perf)
+      updaters.push((dt, t, cam) => { U.uCam.value.copy(cam); U.uT.value = t; if (api.pl) U.uPl.value.set(api.pl.x, api.pl.z); vt -= dt; if (vt <= 0) { vt = .35; gmesh.visible = vegNear(cam.x, cam.z) > .04; } }); // no grass pass inside tunnels / on bare ground (perf)
       api.grassMesh = gmesh; }
 
     // ---- geometry factories for trees / bushes
@@ -289,6 +295,7 @@ vTint = gc * mix(.55, 1.15, uv.y) * mix(.8, 1.1, fract(aRnd.x*37.));`)
     updaters.push((dt, t, cam) => { skyU.uTime.value = t; sky.position.copy(cam); });
     api.stats = { trees: spots.length, bushes: bushes.length, mask: [MW, MH] };
   };
+  api.pl = null;
   api.update = (dt, t, cam) => updaters.forEach(u => u(dt, t, cam));
   return api;
 }
