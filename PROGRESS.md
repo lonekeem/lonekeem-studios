@@ -13,11 +13,10 @@ Merged main v1.9.15 (voice update) at 8b4c180 — resolved game.js nextLine conf
 
 ## Next (in order)
 1. Verify new poses visually (tools/proof_pose2.mjs), then add RULES for the 30 uncued lines (docs/realism-proof/ACTION_AUDIT.md)
-2. Raider tactics module raidai.js: cover points from AABB colliders, crouch (Crouch_Idle_Loop), peek/strafe-while-aiming (procedural leg shuffle), flank, Pistol_Reload behind cover; proof tools/proof_raider.mjs
+2. (MOVED TO OTHER WORKER) raider cover/flank/strafe/reload — tools/proof_raider.mjs + tools/leg_probe.mjs are starter tools only
 3. Real doors (hinged house doors; people/zombies open, pass, close)
 4. No pop-in: spawn/despawn from off-screen / doorways / woods
-5. Gore: feeding poses, pools/splatter, blood on zombie faces/hands
-6. Persistent bite/wound marks on anyone hurt
+5./6. (MOVED TO OTHER WORKER) gore, feeding poses, blood on faces/hands, lasting wounds on everyone
 7. Living-town NPC events (flee / eaten / escape)
 
 ## Notes / flaws
