@@ -249,3 +249,7 @@ body:not(.hudv2) #tReload{right:140px;bottom:20px}body:not(.hudv2) #tRoll{right:
 body:not(.hudv2).driving #tbtns{bottom:150px}
 
 #chList{display:flex;flex-direction:column;gap:12px}
+.glowArrow{position:absolute;transform:translate(-50%,-50%);text-align:center;pointer-events:none;color:#ffd54a;text-shadow:0 0 6px #000;font:800 11px system-ui;z-index:7}
+.glowArrow i{display:block;font-style:normal;font-size:22px;filter:drop-shadow(0 0 5px #ffb000);animation:glowArr 1s ease-in-out infinite}
+.glowArrow b{display:block;font-weight:800}
+@keyframes glowArr{50%{opacity:.55}}

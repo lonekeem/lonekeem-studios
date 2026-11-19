@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { partnerEnter, partnerUpdate, ventUse } from './partner.js';
+import { glowUpdate, keyModel, cardModel } from './glow.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -185,6 +186,8 @@ export class Game {
     else if (l.kind === 'grenade') m = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, .2, 8), new THREE.MeshStandardMaterial({ color: '#555', metalness: .6 }));
     else if (l.kind === 'page') m = new THREE.Mesh(new THREE.PlaneGeometry(.25, .33), new THREE.MeshStandardMaterial({ color: '#efe6c8', emissive: '#554a20', side: THREE.DoubleSide }));
     else if (l.kind === 'weapon') m = weaponMesh(l.item).clone();
+    else if (l.kind === 'key') m = keyModel();
+    else if (l.kind === 'keycard') m = cardModel();
     else if (l.kind === 'backpack') m = backpack();
     else m = new THREE.Mesh(new THREE.BoxGeometry(.3, .15, .25), new THREE.MeshStandardMaterial({ color: '#555' }));
     g.add(m); const ring = new THREE.Mesh(new THREE.RingGeometry(.25, .34, 24), glow); ring.rotation.x = -Math.PI / 2; ring.position.y = -l.pos[1] + 0.04; g.add(ring);
@@ -201,6 +204,7 @@ export class Game {
     else if (l.kind === 'weapon') { this.give(l.item); if (l.ammo) s.ammo[WEAPONS[l.item].ammo] = (s.ammo[WEAPONS[l.item].ammo] || 0) + l.ammo; }
     else if (l.kind === 'backpack') { s.items.push('backpack'); this.pack.visible = true; this.toast('Backpack on. More room for loot.'); }
     else if (l.kind === 'item') { s.items.push(l.item); this.toast(l.label || l.item); }
+    else if (l.kind === 'key' || l.kind === 'keycard') { s.items.push(l.item || l.kind); this.toast(l.label || (l.kind === 'key' ? 'Got the key' : 'Got the keycard')); }
     l.onTake && l.onTake(this); writeSave(this.LS, s); }
 
   // ---------- NPCs & zombies ----------
@@ -651,6 +655,7 @@ export class Game {
     const mp = P.root.position; this.moon.position.set(mp.x - 20, 40, mp.z + 14); this.moon.target.position.copy(mp);
     if (this.player && this.scene) { if (!this.faceL) { this.faceL = new THREE.PointLight('#ffe6cc', 0.7, 4.5, 1.6); this.faceL.castShadow = false; this.scene.add(this.faceL); } this.faceL.visible = !!this.cut; /* v1.9.10: face fill only in cutscenes (made the player glow white in play) */ const hp = this.cut && this.cut.look ? this.cut.look : this.player.root.position, hy = this.cut && this.cut.look ? hp.y + .25 : hp.y + 1.7, cp = cam.position; this.faceL.position.set(hp.x + (cp.x - hp.x) * .45, hy, hp.z + (cp.z - hp.z) * .45); }
     if (this.audio.listen) { const K = this.world && this.world.KH, c = cam.position; this.audio.listen(cam, !!(K && c.x > K.x0 && c.x < K.x1 && c.z > K.z0 && c.z < K.z1)); }
+    try { glowUpdate(this); } catch (e) { if (!this._glowErr) { this._glowErr = 1; console.warn('glow', e); } }
     if (this.composer) this.composer.render(); else this.renderer.render(this.scene, cam);
     if (this.running && !this.paused) this.hud(); }
   hud() { const s = this.save, w = WEAPONS[s.cur];
