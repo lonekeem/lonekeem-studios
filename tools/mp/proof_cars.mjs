@@ -1,11 +1,11 @@
 import { open } from './pshot.mjs';
 const { b, p } = await open(); const out = '/workspace/atqtown2/docs/mp-props-proof';
-const log = await p.evaluate(() => { H.mkZ({ target: 0 }); const L = {}; const C = H.cars, car = C.byId.c7, pump = H.W.pumps[0];
+const log = await p.evaluate(async () => { await H.mkZ({ target: 0 }); const L = {}; const C = H.cars, car = C.byId.c7, pump = H.W.pumps[0];
   L.truckStart = { x: car.x, z: car.z, fuel: car.fuel, lock: car.lock };
   L.enterEmpty = C.enter(car); L.engineWithNoFuel = car.engine;
   H.pl = H.players[0]; H.pl.x = car.x; H.pl.z = car.z + 3;
   const pn = H.pumpNear(H.W, car.x - 1.2, H.W.pumps[0].z); L.pumpFound = pn && pn.id;
-  let added = 0; for (let i = 0; i < 400; i++) added += H.refuelCar(pn, car, 1 / 30); L.refueled = { added: +added.toFixed(1), fuel: +car.fuel.toFixed(1), cap: H.CAP, pumpStock: pn.stock };
+  let added = 0; for (let i = 0; i < 400; i++) added += H.refuelCar(pn, car, 1 / 30); L.refueled = { added: +added.toFixed(1), fuel: +car.fuel.toFixed(1), cap: H.CAP, pumpStock: pn.fuel };
   L.enter2 = C.enter(car); L.engineOn = car.engine;
   // locked car + crowbar
   const sd = C.byId.c2; L.lockedEnter = C.enter(sd); const bag = new H.Bag(); L.breakNoBar = C.breakIn(sd, bag); bag.add('crowbar', 1); L.breakBar = C.breakIn(sd, bag); L.afterBreak = C.enter(sd); C.exit(sd);
