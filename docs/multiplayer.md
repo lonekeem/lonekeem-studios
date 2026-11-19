@@ -179,11 +179,23 @@ Data model: `gun = receiver family × barrel × stock × grip × optic/mag slots
 | Phase | Scope | Status |
 |---|---|---|
 | **1 (this PR)** | Architecture, 4 new original rigged base bodies, character creator (body/face/hair/beard/skin details/clothes/jewellery), catalog + counts, look JSON + local save, lobby with 2-client presence, KL test car | built (see §17) |
-| 2 | Supabase accounts + saves + realtime presence (needs project restored + approval), name/look sync, chat | planned |
-| 3 | Authoritative game server, zombie director, chunked map v1 (one town + forest + lake), driving + fuel + hotwire | planned |
+| **2 (next, after the character quality pass)** | **Start small (Keem): ONE small town about the size of Kemy Pal Street**: a few streets, a handful of enterable/lootable houses, drivable KL cars, never-ending zombies, some loot. Plus the plumbing it needs: Supabase accounts (Google sign-in), saved looks, realtime presence (needs project restored + approval) | planned |
+| 3 | Authoritative game server hardening, zombie director tuning, fuel + hotwire, chunk streaming groundwork so the map can grow | planned |
 | 4 | Houses/cabins, fortification, 1000-item decor catalog, bodies persistence | planned |
 | 5 | Weapons store, missions + currencies, crafting, survival needs, weather/day-night | planned |
 | 6 | Google Play Billing, crews, pets, infection, radio/safe zones, horde events, big map expansion | planned |
+
+### Phase 2 scope: the first multiplayer map is small (decision from Keem)
+
+Do **not** build the huge map first. Phase 2 ships one small town, roughly the footprint of Kemy Pal Street, and everything else is expanded later on top of it:
+
+* **Map:** one town, a few streets with sidewalks/intersection, ~8-12 houses (a few with open doors and lootable rooms), a small store/gas station, a bit of forest edge. Built as chunk 0 of the chunked layout in §12 so later chunks (more streets, cabins, lake, rivers, bridges, the big world) plug in without rewriting.
+* **Cars:** a few drivable cars with the custom **KL** emblem (no real brand logos), basic fuel, enter/exit, shared state through the server.
+* **Zombies:** never-ending spawning from the director (§9), capped by the performance budget (§11), spawning away from players and out of sight; basic roam/chase/attack/damage.
+* **Loot:** a small data-driven loot table (food, water, ammo, a couple of melee/guns, fuel cans, car parts) placed in houses/cars/stores, with respawn timers.
+* **Players:** the Phase 1 creator characters, 2-8 players per lobby, name tags, simple text/quick-chat.
+* **Deliberately deferred (expansion list):** big map, 1000-item house decor and purchasing, fortification, NPC raiders/break-ins, car looting depth, weapons store, missions/currencies, Google Play Billing, weather, persistent bodies.
+* Order of work: (1) character look approved by Keem, (2) approval to turn on Supabase (Google sign-in, saves, realtime), (3) the small town + cars + zombies + loot on the existing lobby code.
 
 ## 17. Phase 1 status (built vs planned)
 
