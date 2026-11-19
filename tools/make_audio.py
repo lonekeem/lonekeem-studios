@@ -169,9 +169,9 @@ BARKS = {
  'npcf_chat': ('npcf', ['Has anyone seen my husband?', 'Get inside! Get inside!', "Don't let them hear you!", "Oh my God, they're everywhere."]),
  'npcf_scream': ('npcf', ['Aaaah! No! Nooo!', 'Help meee! Please!', 'Get it off! Get it off me!']),
  'npcm_scream': ('npcm', ['Aaagh! Get it off!', 'No! No no no!', 'Somebody! Aaah!']),
- 'keem_kill_x': ('keem', ['Stay the hell down!', 'Eat shit!', 'Hell yeah, BOY!', 'Get lost!', 'Not today, sucka!']), 'keem_hurt_x': ('keem', ['Shit!', 'Ah, dang!', 'Get the hell off me, bro!']),
+ 'keem_kill_x': ('keem', ['Stay the hell down!', 'Eat this!', 'Hell yeah, BOY!', 'Get lost!', 'Not today, sucka!']), 'keem_hurt_x': ('keem', ['Shit!', 'Ah, dang!', 'Get the hell off me, bro!']),
  'keem_empty_x': ('keem', ['Empty! Shit!', 'Out of ammo, dammit!']), 'keem_boss_x': ('keem', ["Ain't no way, that's one big dude!", 'Oh, hell nah!']), 'keem_reload_x': ('keem', ['Reloading, shit, shit!', 'Come on, damn it!']),
- 'keem_drive_x': ('keem', ['Get the hell outta the road!', 'Holy shit, holy shit!']), 'keem_combat_x': ('keem', ['Come get some, ugly!', "Oh shit, bruh, there's more!"]), 'keem_scared_x': ('keem', ['Bro, what the hell...', 'Holy shit. Holy shit.']),
+ 'keem_drive_x': ('keem', ['Get the hell outta the road!', 'Holy shit, holy shit!']), 'keem_combat_x': ('keem', ['Come get some!', "Oh shit, bruh, there's more!"]), 'keem_scared_x': ('keem', ['Bro, what the hell...', 'Holy shit. Holy shit.']),
  'marcus_shout_x': ('marcus', ['Behind you, damn it!', 'Move your ass, son!', 'Hell of a shot!']), 'npcm_help_x': ('npcm', ['Holy shit, run!', 'Get the fuck away from me!']),
  'npcf_help': ('npcf', ['Help! Somebody help me!', 'No! Get off me!', 'Please! Help!']), 'npcm_help': ('npcm', ['Run! Just run!', 'Help! Help!', 'Get away from me!']),
 }
