@@ -9,11 +9,11 @@ export const meta = { n: 15, title: 'PFC Danny Is So Sorry', endQuote: '“Dear 
 export const speakers = {};
 // world z origin of this chapter's set: -4100..-4400. Step cp's must live inside this band.
 export const Z0 = -4100;
-export const steps = stubSteps({ n: 15, z0: Z0 - 10, title: meta.title, endLine: 'Placeholder end of Chapter 15.' });
+export const steps = stubSteps({ n: 15, z0: Z0 + (-66), title: meta.title, endLine: 'Placeholder end of Chapter 15.' });
 // comic pages / pickups. Use `at: '<step id>'` (first step where it shows) instead of minStep. e.g. pg(x, z, 'Captain Riverside #24: "…"', 'c15_stub1')
 export const loot = [];
 // the 3D set. Runs inside world.js zone(15, ...); ctx is described in docs/CHAPTERS_DEV.md. Kit pieces live in ./kit/.
 export function buildZone(ctx) {
-  buildMarket(ctx, { x: 0, z: -4160 });
-  buildFreezer(ctx, { x: 30, z: -4220 });
+  buildMarket(ctx, { x: 0, z: Z0 - 60 });
+  buildFreezer(ctx, { x: 14, z: Z0 - 128 });
 }

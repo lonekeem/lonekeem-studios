@@ -9,10 +9,10 @@ export const meta = { n: 12, title: 'Sublevel B', endQuote: '“Hi, baby.”', s
 export const speakers = {};
 // world z origin of this chapter's set: -2900..-3200. Step cp's must live inside this band.
 export const Z0 = -2900;
-export const steps = stubSteps({ n: 12, z0: Z0 - 10, title: meta.title, endLine: 'Mom is alive. Placeholder end of Chapter 12.' });
+export const steps = stubSteps({ n: 12, z0: Z0 + (-38), title: meta.title, endLine: 'Mom is alive. Placeholder end of Chapter 12.' });
 // comic pages / pickups. Use `at: '<step id>'` (first step where it shows) instead of minStep. e.g. pg(x, z, 'Captain Riverside #21: "…"', 'c12_stub1')
 export const loot = [];
 // the 3D set. Runs inside world.js zone(12, ...); ctx is described in docs/CHAPTERS_DEV.md. Kit pieces live in ./kit/.
 export function buildZone(ctx) {
-  buildBasement(ctx, { x: 0, z: -2930, length: 260 });
+  buildBasement(ctx, { x: 0, z: Z0 - 30, length: 260 });
 }

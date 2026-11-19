@@ -9,10 +9,10 @@ export const meta = { n: 14, title: 'Every Bite', endQuote: '“Every single bit
 export const speakers = {};
 // world z origin of this chapter's set: -3700..-4000. Step cp's must live inside this band.
 export const Z0 = -3700;
-export const steps = stubSteps({ n: 14, z0: Z0 - 10, title: meta.title, endLine: 'Placeholder end of Chapter 14.' });
+export const steps = stubSteps({ n: 14, z0: Z0 + (-66), title: meta.title, endLine: 'Placeholder end of Chapter 14.' });
 // comic pages / pickups. Use `at: '<step id>'` (first step where it shows) instead of minStep. e.g. pg(x, z, 'Captain Riverside #23: "…"', 'c14_stub1')
 export const loot = [];
 // the 3D set. Runs inside world.js zone(14, ...); ctx is described in docs/CHAPTERS_DEV.md. Kit pieces live in ./kit/.
 export function buildZone(ctx) {
-  buildLab(ctx, { x: 0, z: -3760 });
+  buildLab(ctx, { x: 0, z: Z0 - 60 });
 }
