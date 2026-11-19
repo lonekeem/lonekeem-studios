@@ -33,10 +33,22 @@ function gurney() { const gr = new THREE.Group(), st = new THREE.MeshStandardMat
   const bed = new THREE.Mesh(new THREE.BoxGeometry(.9, .14, 2.1), new THREE.MeshStandardMaterial({ color: '#f2f2ee' })); bed.position.y = .95; gr.add(bed); const fr = new THREE.Mesh(new THREE.BoxGeometry(.8, .08, 2.0), st); fr.position.y = .8; gr.add(fr);
   [-1, 1].forEach(a => [-1, 1].forEach(b => { const l = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, .7, 6), st); l.position.set(a * .36, .42, b * .85); gr.add(l); const w = new THREE.Mesh(new THREE.CylinderGeometry(.07, .07, .05, 10), new THREE.MeshStandardMaterial({ color: '#222' })); w.rotation.z = PI / 2; w.position.set(a * .36, .07, b * .85); gr.add(w); }));
   const pil = new THREE.Mesh(new THREE.BoxGeometry(.6, .1, .4), new THREE.MeshStandardMaterial({ color: '#d8e8f0' })); pil.position.set(0, 1.07, -.75); gr.add(pil); const sh = new THREE.Mesh(new THREE.BoxGeometry(.86, .06, 1.2), new THREE.MeshStandardMaterial({ color: '#4aa0c8' })); sh.position.set(0, 1.04, .3); gr.add(sh); return gr; }
-function ladle(b) { const m = new THREE.Group(), steel = new THREE.MeshStandardMaterial({ color: '#c8ccd0', metalness: .7, roughness: .3 }); const pole = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, 1.0, 8), steel); pole.position.y = .3; m.add(pole);
-  const bowl = new THREE.Mesh(new THREE.SphereGeometry(.14, 14, 10, 0, PI * 2, 0, PI / 2), steel); bowl.rotation.x = PI; bowl.position.y = .82; m.add(bowl); const soup = new THREE.Mesh(new THREE.CircleGeometry(.13, 14), new THREE.MeshStandardMaterial({ color: '#d68a2e', emissive: '#7a3a08' })); soup.rotation.x = PI / 2; soup.position.y = .81; m.add(soup);
-  m.rotation.set(PI / 2, 0, 0); m.position.set(0, .08, .02); b.attach('DEF-hand.R', m); }
-function hairnet(b) { const n = new THREE.Mesh(new THREE.SphereGeometry(.125, 12, 8, 0, PI * 2, 0, PI / 2), new THREE.MeshStandardMaterial({ color: '#f4f4ee', roughness: 1 })); n.position.set(0, -.1, -.01); n.scale.set(1, .95, 1.05); b.attach('DEF-head', n); const ap = new THREE.Mesh(new THREE.BoxGeometry(.3, .5, .04), new THREE.MeshStandardMaterial({ color: '#ece8dc', roughness: 1 })); ap.position.set(0, .02, .1); b.attach('DEF-spine.002', ap); }
+// Doreen's props. The boss rig is scaled up, so everything is authored in the rig's ROOT space (metres as seen in the world) and then
+// parented to the right bone with Object3D.attach (keeps the world transform). Hand axes: +Z = forward/up along the forearm, +Y = fingers.
+function wear(b, boneName, mesh) { b.root.add(mesh); b.root.updateWorldMatrix(true, true); const bone = b.bone(boneName); if (bone) bone.attach(mesh); return mesh; }
+function ladle(b) { const m = new THREE.Group(), steel = new THREE.MeshStandardMaterial({ color: '#c8ccd0', metalness: .7, roughness: .3 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(.022, .022, .85, 8), steel); pole.position.y = .25; m.add(pole);   // handle runs through the fist (hand +Z)
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(.036, .036, .22, 8), new THREE.MeshStandardMaterial({ color: '#b8452a', roughness: .8 })); grip.position.y = 0; m.add(grip);
+  const bowl = new THREE.Mesh(new THREE.SphereGeometry(.13, 14, 10, 0, PI * 2, 0, PI / 2), steel); bowl.rotation.x = -PI / 2; bowl.position.set(0, .72, .02); m.add(bowl);
+  const soup = new THREE.Mesh(new THREE.CircleGeometry(.12, 14), new THREE.MeshStandardMaterial({ color: '#d68a2e', emissive: '#7a3a08' })); soup.position.set(0, .72, .075); m.add(soup);
+  m.rotation.set(1.0, 0, 0); m.position.set(0, .05, .0); b.attach('DEF-hand.R', m); return m; }
+function hairnet(b) {
+  const white = new THREE.MeshStandardMaterial({ color: '#f4f4ee', roughness: 1, side: THREE.DoubleSide });
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(.27, 14, 8, 0, PI * 2, 0, PI * .5), white); cap.scale.set(1, .9, 1.06); cap.position.set(-.037, 2.86, .01); wear(b, 'DEF-head', cap);
+  // apron: an open half-tube hugging the torso front, a bib up to the neck, a skirt over the thighs
+  const ap = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 18, 1, true, -1.05, 2.1), new THREE.MeshStandardMaterial({ color: '#ece8dc', roughness: 1, side: THREE.DoubleSide }));
+  ap.scale.set(.36, 1.0, .34); ap.position.set(-.008, 2.02, -.06); wear(b, 'DEF-spine.002', ap);
+  const strap = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, .34, 6), white); strap.position.set(-.1, 2.72, -.02); strap.rotation.z = .35; wear(b, 'DEF-spine.003', strap); const strap2 = strap.clone(); strap2.position.x = .08; strap2.rotation.z = -.35; wear(b, 'DEF-spine.003', strap2); }
 
 // ================= steps (world coordinates) =================
 export const steps = [

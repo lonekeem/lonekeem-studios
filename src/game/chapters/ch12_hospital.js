@@ -17,7 +17,7 @@ function kit(H) {
   const std = (o) => new THREE.MeshStandardMaterial(Object.assign({ roughness: .85 }, o));
   const rep = (t, x, y) => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(x, y); return t; };
   const M = {
-    ceil: std({ color: '#3c4244', roughness: 1 }), steel: std({ color: '#9aa2a6', metalness: .5, roughness: .45 }), dark: std({ color: '#1c2022' }),
+    ceil: std({ color: '#3c4244', emissive: '#323a3c', roughness: 1 }), steel: std({ color: '#9aa2a6', metalness: .5, roughness: .45 }), dark: std({ color: '#1c2022' }),
     glass: new THREE.MeshStandardMaterial({ color: '#a8d8e0', transparent: true, opacity: .22, roughness: .05, metalness: .2, side: THREE.DoubleSide, depthWrite: false }),
     frame: std({ color: '#5a6064', metalness: .4, roughness: .5 }), red: std({ color: '#8a1a14' }),
   };
@@ -26,7 +26,8 @@ function kit(H) {
   const K = {
     col, M, T, std, rep,
     floor(x0, x1, z0, z1, mat) { const m = new THREE.Mesh(new THREE.PlaneGeometry(Math.abs(x1 - x0), Math.abs(z1 - z0)), mat); m.rotation.x = -PI / 2; m.position.set((x0 + x1) / 2, .05, (z0 + z1) / 2); Object.assign(mat, { polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -8 }); m.receiveShadow = true; scene.add(m); return m; },
-    ceil() { return null; }, // no ceilings: the over-the-shoulder camera would clip through them
+    // ceilings are single-sided (they face DOWN): visible from inside the room, invisible from above, so a high camera never gets blocked by them
+    ceil(x0, x1, z0, z1, h = WH, mat) { const m = new THREE.Mesh(new THREE.PlaneGeometry(Math.abs(x1 - x0), Math.abs(z1 - z0)), mat || M.ceil); m.rotation.x = PI / 2; m.position.set((x0 + x1) / 2, h, (z0 + z1) / 2); scene.add(m); return m; },
     // straight wall from (ax,az) to (bx,bz) (axis aligned) with door gaps [[centre, width], ...]; gaps get a lintel. returns meshes
     wall(ax, az, bx, bz, gaps = [], o = {}) { const h = o.h || WH, th = o.th || .4, mat = o.mat, along = Math.abs(bx - ax) > Math.abs(bz - az) ? 'x' : 'z'; const a = along === 'x' ? Math.min(ax, bx) : Math.min(az, bz), b = along === 'x' ? Math.max(ax, bx) : Math.max(az, bz), c0 = along === 'x' ? az : ax;
       const gs = gaps.slice().sort((p, q) => p[0] - q[0]); const segs = []; let cur = a; gs.forEach(([c, w]) => { segs.push([cur, c - w / 2]); cur = c + w / 2; }); segs.push([cur, b]); const out = [];
@@ -37,7 +38,7 @@ function kit(H) {
     door(cx, cz, w, along = 'x', mat = M.steel, h = 2.6) { const g = new THREE.Mesh(new THREE.BoxGeometry(along === 'x' ? w : .18, h, along === 'x' ? .18 : w), mat); g.position.set(cx, h / 2, cz); g.castShadow = true; scene.add(g);
       const c = col(along === 'x' ? cx - w / 2 : cx - .1, along === 'x' ? cx + w / 2 : cx + .1, along === 'x' ? cz - .1 : cz - w / 2, along === 'x' ? cz + .1 : cz + w / 2); const x0 = { ...c }; const d = { mesh: g, col: c, open: false, t: 0, along, w };
       d.set = (open) => { d.open = open; if (open) { c.x0 = c.x1 = c.z0 = c.z1 = 9999; } else Object.assign(c, x0); }; updaters.push((dt) => { const tt = d.open ? 1 : 0; d.t += (tt - d.t) * Math.min(1, dt * 5); if (along === 'x') g.position.x = cx + d.t * (w - .15); else g.position.z = cz + d.t * (w - .15); g.visible = d.t < .98; }); return d; },
-    lamp(x, z, o = {}) { const y = o.y || WH - .07, em = std({ color: '#222', emissive: o.color || '#e8f4ff', emissiveIntensity: 0 }); const m = new THREE.Mesh(new THREE.BoxGeometry(o.w || 1.5, .06, o.d || .38), em); m.position.set(x, y, z); scene.add(m);
+    lamp(x, z, o = {}) { const y = o.y || WH - .07, em = std({ color: '#aeb4b4', emissive: o.color || '#e8f4ff', emissiveIntensity: 0 }); const m = new THREE.Mesh(new THREE.BoxGeometry(o.w || 1.5, .06, o.d || .38), em); m.position.set(x, y, z); scene.add(m);
       const L = { m: em, light: null, on: 1.6, color: o.color || '#e8f4ff' }; if (o.light !== false && H.lampBudget() > 0) { const pl = new THREE.PointLight(o.color || '#e8f4ff', 0, o.r || 15, 1.7); pl.position.set(x, y - .6, z); scene.add(pl); L.light = pl; L.I = o.I || 14; H.lampBudget(-1); }
       H.lamps.push(L); if (o.flicker) updaters.push((dt, t) => { if (!H.on) return; const f = Math.sin(t * 31 + x) * Math.sin(t * 7.3 + z) > .82 ? .15 : 1; em.emissiveIntensity = L.on * f * H.level; if (L.light) L.light.intensity = L.I * f * H.level; }); return L; },
     emergency(x, z, y = 3.2) { const em = std({ color: '#300', emissive: '#ff2a1a', emissiveIntensity: 2.4 }); const m = new THREE.Mesh(new THREE.BoxGeometry(.26, .12, .14), em); m.position.set(x, y, z); scene.add(m); H.emerg.push(m); return m; },
@@ -133,6 +134,7 @@ export function buildSubB(H0) {
         const c = K.col(x0 - .1, x0 + .1, zc - P7 / 2 + .1, zc + P7 / 2 - .1); R.cells.push({ glass, col: c, x: sd * 14.4, z: zc, sd, broken: false }); cot(D, sd * 15.6, zc + 1.4, PI / 2 * sd); toilet(D, sd * 16.3, zc - 2.5, -PI / 2 * sd); D.box(sd * 16.6, 1.2, zc - .5, .04, .5, 2, '#5a1010'); }); });
     H.sign(['CELL BLOCK 3'], -11.9, 2.9, -3042, PI / 2, 2, .5, '#222'); scene.add(D.build()); }
   R.breakCell = (c) => { if (c.broken) return; c.broken = true; c.glass.visible = false; Object.assign(c.col, { x0: 9999, x1: 9999, z0: 9999, z1: 9999 }); };
+  { const D = new Decor(62); chair(D, 5.35, -3073.4, -PI / 2, '#6a7c8a'); scene.add(D.build()); K.col(5.1, 5.6, -3073.7, -3073.1); } // the chair Dad drops into in the reunion
   { // Mom's cell: glass front with door + hatch
     const front = new THREE.Group(); for (const sx of [-1, 1]) { const pn = new THREE.Mesh(new THREE.PlaneGeometry(4.9, 2.8), M.glass); pn.position.set(sx * 3.55, 1.5, -3070.05); front.add(pn); } scene.add(front);
     const D = new Decor(61); D.box(0, 3.0, -3070.0, 12.2, .4, .3, '#4a5054'); D.box(-5.9, 1.5, -3070.0, .3, 3, .3, '#4a5054'); D.box(5.9, 1.5, -3070.0, .3, 3, .3, '#4a5054'); D.box(-1.1, 1.5, -3070.05, .12, 3, .3, '#4a5054'); D.box(1.1, 1.5, -3070.05, .12, 3, .3, '#4a5054');
@@ -170,9 +172,9 @@ export function buildUpper(H0) {
   const mk = (a, b, c) => K.std({ map: T.wall(a, b, c) });
   const wP = mk('#5a8a94', '#d4e2dc', '#e8d070'), wG = mk('#a05a7a', '#f0dcc8', '#40a0b0'), wW = mk('#e8b840', '#f6ecd0', '#e86a4a'), wC = mk('#7a9a6a', '#ece6d0', '#c04a3a');
   const flr = (mat, x0, x1, z0, z1) => { const m = K.floor(x0, x1, z0, z1, Object.assign(mat.clone(), {})); m.material.map = mat.map.clone(); m.material.map.needsUpdate = true; m.material.map.repeat.set(Math.abs(x1 - x0) / 2.4, Math.abs(z1 - z0) / 2.4); return m; };
-  const fl1 = K.std({ map: T.tile('#c8c8bc', '#b6b8ac', '#8a8c80'), roughness: .45 }), fl2 = K.std({ map: T.tile('#e8d8a8', '#dcc890', '#a89a70'), roughness: .5 }), fl3 = K.std({ map: T.tile('#d0d4c8', '#7a8a6a', '#8a9080'), roughness: .5 });
+  const fl1 = K.std({ map: T.tile('#c8c8bc', '#b6b8ac', '#8a8c80'), roughness: .45 }), fl2 = K.std({ map: T.tile('#e8d8a8', '#dcc890', '#a89a70'), roughness: .5 }), fl3 = K.std({ map: T.tile('#c9cdc0', '#bcc2b2', '#a2a898'), roughness: .5 });
   const rooms = [[-14, 14, -3300, -3332, wP, fl1, 3.6], [-14, 14, -3332, -3374, wG, fl2, 3.6], [-8, 8, -3374, -3446, wW, fl2, 3.4], [-16, 16, -3446, -3508, wC, fl3, 4.2]];
-  rooms.forEach(([a, b, c, d, w, f, h]) => { flr(f, a, b, c, d); K.ceil(a, b, c, d, h, K.std({ color: '#d8d8d0', roughness: 1 })); });
+  rooms.forEach(([a, b, c, d, w, f, h]) => { flr(f, a, b, c, d); K.ceil(a, b, c, d, h, K.std({ color: '#c4c6bc', emissive: '#70726a', roughness: 1 })); });
   const W = (a, b, c, d, gaps, mat, h) => K.wall(a, b, c, d, gaps, { mat, h: h || WH });
   // pack room
   W(-14.2, -3300, 14.2, -3300, [], wP); W(-14.2, -3300, -14.2, -3332, [], wP); W(14.2, -3300, 14.2, -3332, [], wP); W(-14.2, -3332, 14.2, -3332, [[0, 4]], wP);
@@ -183,7 +185,7 @@ export function buildUpper(H0) {
   // side rooms (x beyond the corridor): 6 rooms 8 wide, 12 deep
   [[-1, -3390], [-1, -3408], [-1, -3426], [1, -3390], [1, -3408], [1, -3426]].forEach(([sd, zc]) => { const x0 = sd * 8.2, x1 = sd * 16.2; flr(fl2, Math.min(x0, x1), Math.max(x0, x1), zc - 9, zc + 9 > -3374 ? -3374 : zc + 9); });
   [-3381, -3399, -3417, -3435].forEach(z => { [-1, 1].forEach(sd => { W(sd * 8.2, z, sd * 16.2, z, [], wW, 3.4); }); }); [-1, 1].forEach(sd => W(sd * 16.2, -3372, sd * 16.2, -3437, [], wW, 3.4));
-  [-1, 1].forEach(sd => K.ceil(Math.min(sd * 8.2, sd * 16.2), Math.max(sd * 8.2, sd * 16.2), -3374, -3437, 3.4, K.std({ color: '#d8d8d0', roughness: 1 })));
+  [-1, 1].forEach(sd => K.ceil(Math.min(sd * 8.2, sd * 16.2), Math.max(sd * 8.2, sd * 16.2), -3374, -3437, 3.4, K.std({ color: '#c4c6bc', emissive: '#70726a', roughness: 1 })));
   W(-8.2, -3446, 8.2, -3446, [[0, 4]], wW, 3.4); // ward -> cafeteria
   // cafeteria
   W(-16.2, -3446, -16.2, -3508, [], wC, 4.2); W(16.2, -3446, 16.2, -3508, [], wC, 4.2); W(-16.2, -3508, 16.2, -3508, [], wC, 4.2); W(-16.2, -3446, -8.2, -3446, [], wC, 4.2); W(8.2, -3446, 16.2, -3446, [], wC, 4.2);

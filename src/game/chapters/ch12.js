@@ -81,12 +81,12 @@ export const steps = [
       const L = (arr) => arr.forEach(it => typeof it === 'function' ? cb(g, it) : g.say([it]));
       g.say([['dana', "Don't come in. Please. I can't tell what I'll do."]]); 
       L([['keem', "Mom. It's me. It's Keem."], (g) => { mom.root.rotation.y = 0; act(mom, 'reach', { sides: 'L', k: 1 }); cam(g, V(1.4, 1.6, Z(-3003.4)), V(0, 1.5, Z(-3008.5))); },
-        ['dana', "Keem? You got so tall."], (g) => { walk(D, nia, .3, Z(-3007.55), { sp: 3.2, anim: 'Jog_Fwd_Loop', face: PI, cb: () => { act(nia, 'hug', { k: 1 }); act(mom, 'hug', { k: 1, lean: .25 }); } }); walk(D, mom, 0, Z(-3008.1), { sp: .8 }); walk(D, g.player, .5, Z(-3005.7), { sp: 1.5 }); },
+        ['dana', "Keem? You got so tall."], (g) => { walk(D, nia, 0, Z(-3007.68), { sp: 3.2, anim: 'Jog_Fwd_Loop', face: PI, cb: () => { act(nia, 'hug', { k: 1 }); mom.play('Crouch_Idle_Loop'); act(mom, 'hug', { k: 1, lean: .15 }); } }); walk(D, mom, 0, Z(-3008.1), { sp: .8 }); walk(D, g.player, .5, Z(-3005.7), { sp: 1.5 }); },
         ['nia', "Mommy!"], (g) => cam(g, V(3.7, 1.4, Z(-3006.2)), V(.2, 1.3, Z(-3007.4))), ['dana', "Hi, baby. Hi. Look at the two of you."],
-        (g) => { walk(D, dad, 5.1, Z(-3003.4), { sp: 1.2, face: -PI / 2, cb: () => { dad.play('Sitting_Idle_Loop'); act(dad, null); dad.root.position.y = -.12; } }); },
+        (g) => { walk(D, dad, 5.3, Z(-3003.4), { sp: 1.2, face: -PI / 2, cb: () => { dad.play('Sitting_Idle_Loop'); act(dad, null); dad.root.position.y = 0; } }); },
         ['marcus', "Dana. You're really here. I'm… I'm just going to sit down for a second."], (g) => { cam(g, V(3.8, 1.2, Z(-3001.2)), V(5, .6, Z(-3003.4))); },
         ['marcus', "My legs have decided this for me."],
-        (g) => { cam(g, V(3.4, 1.5, Z(-3005.6)), V(.2, 1.5, Z(-3007.6))); grayEyes(mom, true); act(mom, 'clutch', { k: 1, head: [-.12, 0, 0] }); act(nia, null); walk(D, nia, 1.5, Z(-3006.6), { sp: 2 }); g.audio.heartbeat && g.audio.heartbeat(); g.shake(.2); },
+        (g) => { cam(g, V(3.4, 1.5, Z(-3005.6)), V(.2, 1.5, Z(-3007.6))); grayEyes(mom, true); mom.play('Idle_Loop'); act(mom, 'clutch', { k: 1, head: [-.12, 0, 0] }); act(nia, null); walk(D, nia, 1.5, Z(-3006.6), { sp: 2 }); g.audio.heartbeat && g.audio.heartbeat(); g.shake(.2); },
         ['dana', "Oh. It's the hum again."], ['dana', "It says my name. Somebody hold my hands. Please."],
         (g) => { act(mom, 'hold', { k: 1 }); act(g.player, 'hold', { k: 1 }); walk(D, g.player, 0, Z(-3007.3), { sp: 1.2 }); },
         ['keem', "I've got you, Mom. Look at me. Breathe with me."], ['dana', "…Okay. Okay. In. And out."],
