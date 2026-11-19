@@ -39,3 +39,12 @@ const Z = createZombies({ scene, W, camera, getPlayers: () => [{ x, z, ry, drv, 
 Notes: zombies are simulated per client (no net sync yet); `getPlayers()[0]` must be the local player (nav flow field targets it). Audio hooks: `createZombies({onEvent})` fires `'notice'` and `'kill'`.
 - [x] step 2: town.js assembly (renderer, HUD, input, camera, interactions: doors/loot/cars/shop, net evt), ui.js, cars.js draft; entry.js now enters the town. Smoke proof docs/mp-town-proof/smoke_start.png (844x390)
 - [x] step 3: tested in 844x390 headless: house doorway + shop door purchase + door open, interior (roof lifts), loot panel, car enter/drive/fuel gauge/out of fuel/refuel. Proofs docs/mp-town-proof/{house,loot,car}_*.png (headless software GL runs ~2 fps, so holds/timers are scaled in tests)
+
+## Integration status (town worker, final pass)
+- [x] Merged `feat/mp-town-props` (637258e) and wired it in `town.js`: `addGas`+`addLoot` as build hooks, `gasActions` (on foot and while in the car), `createZombies` (bodies from `BODIES`, `onHitPlayer`, `onEvent` -> story-game AudioSys groan/squelch, door and swing sounds), `createCars` (sets `W.cars`/`W.carPush`), `updateLoot`. Free fuel at the pumps (`gas.PRICE = 0`).
+- [x] Perf: zombie skinned meshes are frustum-culled, shadows only within 22 m, corpses hidden past 45 m. Still heavy in the worst spot (spawn street with bodies: ~750k tris headless before cull tuning; see flaws).
+- [x] Kenney car tint made stronger (palette multiply); cars show red/green/blue/dark variants.
+- [x] Docs: `docs/multiplayer.md` map line updated (25 houses -> 50 houses + 50 house items; doors are a shop item).
+- Proofs (844x390): `docs/mp-town-proof/` zombie_*.png (notice, chase, melee kill, bodies stay), place_*.png (store, gas forecourt/kiosk, pump refuel, streets), sync_*.png + log (two clients: door install/open, loot, car), house_*.png (retaken), cars_colors.png.
+- Measured: wiped all zombies -> 3 spawned back at road ends in 45 s (headless runs ~0.5x game speed); 9 edge spawns checked, 0 on-screen/inside fog (no pop-in).
+- Still owed: 50 houses (grow `CFG`) + 50 house customization items; zombies are simulated per client (not synced); no sound for car engine/pumps.
