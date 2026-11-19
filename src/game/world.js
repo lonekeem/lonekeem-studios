@@ -40,6 +40,7 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
   const boardMat = pbr('weathered_planks', 1, { color: '#7a6248' });
   const winDark = new THREE.MeshStandardMaterial({ color: '#0a0c0c', roughness: .1, metalness: .4, envMapIntensity: 1.2 });
   const winLit = new THREE.MeshStandardMaterial({ color: '#221a10', emissive: '#ff9a40', emissiveIntensity: .7 });
+  const houseList = [], carList = []; // town life: registries read by townlife.js (hinged doors, parked cars)
   const wallBox = (w, h, d, mat, x, y, z, solid = true) => { const geo = new THREE.BoxGeometry(w, h, d); const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.max(w, d) / 2.5, uv.getY(i) * h / 2.5);
     const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; scene.add(m); if (solid) { box(x - w / 2, x + w / 2, z - d / 2, z + d / 2); walls.push(m); } return m; };
   const gable = (cx, cz, w, d, y, alongZ, mat) => { const s = new THREE.Shape(); const span = alongZ ? w : d; s.moveTo(-span / 2 - .4, 0); s.lineTo(span / 2 + .4, 0); s.lineTo(0, span * .42); s.lineTo(-span / 2 - .4, 0);
@@ -49,7 +50,7 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
   function house(cx, cz, w, d, face, col, lit = false, board = true) {
     const h = 3.0, mat = plankMat(col); wallBox(w, h, d, mat, cx, h / 2, cz); gable(cx, cz, w, d, h, false, roofMat);
     const fx = cx + face * (w / 2 + 0.03);
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.1, 1.1), new THREE.MeshStandardMaterial({ color: '#3a2c22', roughness: .8 })); door.position.set(fx, 1.05, cz); scene.add(door);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.1, 1.1), new THREE.MeshStandardMaterial({ color: '#3a2c22', roughness: .8 })); door.position.set(fx, 1.05, cz); scene.add(door); houseList.push({ cx, cz, w, d, face, fx, door, lit });
     [-1, 1].forEach(s => { const wz = cz + s * d * 0.3; const pm = lit && s > 0 ? null : env.paneMat(); const wm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.1, 1.3), pm || winLit); wm.position.set(fx, 1.6, wz); scene.add(wm); env.windowDetail(fx, 1.6, wz, face, !!pm && env.paneIsHoley(pm)); if (board && Math.random() < .7) boards(fx + face * 0.05, 1.6, wz, 'z', 3, 1.5); });
     // porch
     const porch = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.25, d * 0.7), plankMat('#5c5048')); porch.position.set(fx + face * 0.9, 0.12, cz); porch.receiveShadow = true; scene.add(porch);
@@ -131,7 +132,7 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
     g.position.set(x, 0, z); g.rotation.y = rot + (opt.noVar ? 0 : (hj(6) - .5) * .06); scene.add(g);
     if (!opt.nocol) { const along = Math.abs(Math.sin(rot)) > .7; const hw = along ? L / 2 : 1, hd = along ? 1 : L / 2; const cc = { x0: x - hw, x1: x + hw, z0: z - hd, z1: z + hd, car: g }; colliders.push(cc); g.userData.col = cc; }
     if (opt.burnt) fire(x, 1.3, z, 0.8);
-    return g; }
+    carList.push({ g, x, z, rot, kind, L, opt }); return g; }
   function boxCar(x, z, rot, col, opt = {}) { const g = new THREE.Group(); const paint = new THREE.MeshStandardMaterial({ color: col, metalness: .5, roughness: opt.burnt ? 1 : .45, map: rust.map, normalMap: rust.normalMap });
     if (opt.burnt) paint.color.set('#2a2622');
     const L = opt.truck ? 5.4 : 4.4; const b = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.75, L), paint); b.position.y = 0.75; g.add(b);
@@ -410,7 +411,7 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
     const hb = new THREE.Mesh(new THREE.PlaneGeometry(3.2, .6), hM); hb.rotation.x = -Math.PI / 2; hb.position.set(0, .05, -2666); scene.add(hb);
     wallBox(6, 1, 3, new THREE.MeshStandardMaterial({ color: '#c8c8c0' }), 12, .5, -2600); sign(['AMBULANCE ONLY'], 12, 1.4, -2598.4, Math.PI, 2, .4, '#a01010');
     Z_pl(0, 8, -2664, '#ff4040', 14, 30); fire(-8, 0, -2560, .8); });
-  return { env, ch2, zones, signTex, colliders, walls, updaters, lights, fire, car, sign, frontDoor, doorCol, doorBoards, tanker, tankCol, KH, mud, update(dt, t, cam) { updaters.forEach(u => u(dt, t, cam)); } };
+  return { env, ch2, zones, houses: houseList, cars: carList, signTex, colliders, walls, updaters, lights, fire, car, sign, frontDoor, doorCol, doorBoards, tanker, tankCol, KH, mud, update(dt, t, cam) { updaters.forEach(u => u(dt, t, cam)); } };
 }
 function mergeTwo(a, b) { const g = new THREE.BufferGeometry(); ['position', 'normal', 'uv'].forEach(k => { const A = a.attributes[k].array, B = b.attributes[k].array, o = new Float32Array(A.length + B.length); o.set(A); o.set(B, A.length); g.setAttribute(k, new THREE.BufferAttribute(o, a.attributes[k].itemSize)); });
   const ia = a.index.array, ib = b.index.array, n = a.attributes.position.count, idx = new Uint16Array(ia.length + ib.length); idx.set(ia); for (let i = 0; i < ib.length; i++) idx[ia.length + i] = ib[i] + n; g.setIndex(new THREE.BufferAttribute(idx, 1)); return g; }

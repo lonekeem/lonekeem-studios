@@ -7,6 +7,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { townUpdate, townReset } from './townlife.js';
 import { buildWorld } from './world.js';
 import { CAST, randomLook, raiderLook, DEFAULT_LOOK } from './looks.js';
 import { bossProp, wrap, walkie } from './props.js';
@@ -109,7 +110,7 @@ export class Game {
     if (this.player && this.player.mat) { const LG = this._limbG || (this._limbG = [new THREE.CapsuleGeometry(.05, .35, 3, 6), new THREE.CapsuleGeometry(.07, .45, 3, 6)]); const lm = new THREE.Mesh(LG[0], this.player.mat); lm.visible = false; this.scene.add(lm); } // severed limbs = body shader without skinning
     const R = this.renderer, hid = []; this.scene.traverse(o => { if (!o.visible) { hid.push(o); o.visible = true; } }); const L = this.mLight, li = L ? L.intensity : 0;
     try { R.compile(this.scene, this.camera); R.render(this.scene, this.camera); } catch (e) { } hid.forEach(o => o.visible = false); if (L) L.intensity = li; }
-  clearActors() { this.zombies.forEach(z => { this.scene.remove(z.root); z.mixer.stopAllAction(); z.mixer.uncacheRoot(z.model); this.disposeTree(z.root); }); this.zombies = []; for (const k in this.npcs) { const n = this.npcs[k]; this.scene.remove(n.root); n.mixer.stopAllAction(); n.mixer.uncacheRoot(n.model); this.disposeTree(n.root); } this.npcs = {};
+  clearActors() { townReset(this); this.zombies.forEach(z => { this.scene.remove(z.root); z.mixer.stopAllAction(); z.mixer.uncacheRoot(z.model); this.disposeTree(z.root); }); this.zombies = []; for (const k in this.npcs) { const n = this.npcs[k]; this.scene.remove(n.root); n.mixer.stopAllAction(); n.mixer.uncacheRoot(n.model); this.disposeTree(n.root); } this.npcs = {};
     this.pickups.forEach(p => this.scene.remove(p.mesh)); this.pickups = []; this.props.forEach(p => { this.scene.remove(p); this.disposeTree(p); }); this.props = []; this.decalN = 0; this.decals.forEach(d => d.visible = false);
     if (this.truck) this.truck.driving = false; document.body.classList.remove('driving'); $('#drive')?.classList.add('hidden'); this.drv = {}; this.boss = null; $('#boss').classList.add('hidden'); this.dlgQ = []; this.dlgCur = null; $('#dlg').classList.remove('on'); }
   loadStep(i) {
@@ -427,6 +428,7 @@ export class Game {
     P.mixer.update(dt);
     if (!this.truck.driving) this.stepTrack(this.player, this.player.root.position, 'p'); this.chatter(dt);
     this.updateZ(dt); for (const k in this.npcs) { const n = this.npcs[k]; n.update && n.update(dt); n.mixer.update(dt); this.victimStruggle(n, dt); this.stepTrack(n, n.root.position, 'n'); if (n.bleed && Math.random() < dt * 3) { const p = n.root.position.clone(); p.y = .3; this.blood(p, V3(0, .6, 0), 3, 1.2); } }
+    townUpdate(this, dt);
     // pickups
     for (let i = this.pickups.length - 1; i >= 0; i--) { const p = this.pickups[i]; if (p.l.drop && (p.l.drop -= dt) <= 0) this.killPickup(p); }
     this.pickups.forEach(p => { p.m.rotation.y += dt * 1.6; p.m.position.y = Math.sin(this.t * 3) * .05; if (!p.l.story && !p.l.manual) { const d = Math.hypot(p.mesh.position.x - P.root.position.x, p.mesh.position.z - P.root.position.z); if (d < 1.0 && !T.driving) this.takePickup(p); } });
