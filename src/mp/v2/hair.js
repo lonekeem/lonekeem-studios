@@ -231,6 +231,10 @@ export function hairMaterial(c1, c2, hl = .35, skin = null) { // skin: blend the
           float u = vH.y; float r1 = fract(sin(floor(vH.z * 300.0) * 12.9898) * 43758.5453), r2 = fract(sin(floor(vH.z * 1100.0 + 3.0) * 78.233) * 43758.5453);
           float r3 = fract(sin(dot(floor(vObjP * 1500.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453); float fo = vE, fi = smoothstep(0.08, 0.0, u);
           if (max(fo, fi * 0.6) > 0.1 + 0.9 * (r1 * 0.35 + r2 * 0.25 + r3 * 0.4)) discard; float fs = smoothstep(0.0, 0.85, vE) * (0.75 + 0.25 * r2); c = mix(c * (1.0 + 0.15 * fs), uSk * 0.86, uSkF * fs * 0.62 * 0.3); }
+        else if (vH.w > 4.5 && vH.w < 5.1) { // other beard styles: opaque shell, strand-wispy feathered edge
+          float u = vH.y; float r1 = fract(sin(floor(vH.z * 300.0) * 12.9898) * 43758.5453), r2 = fract(sin(floor(vH.z * 1100.0 + 3.0) * 78.233) * 43758.5453);
+          float r3 = fract(sin(dot(floor(vObjP * 1500.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453); float fo = vE, fi = smoothstep(0.08, 0.0, u);
+          if (max(fo, fi * 0.6) > 0.1 + 0.9 * (r1 * 0.35 + r2 * 0.25 + r3 * 0.4)) discard; float fs = smoothstep(0.0, 0.85, vE) * (0.75 + 0.25 * r2); c = mix(c * (1.0 + 0.15 * fs), uSk * 0.86, uSkF * fs * 0.62); }
         else if (vH.w > 4.5) { // close-trimmed beard: thin fuzzy shell over the skin-shader stubble; fine stipple that thins out toward the cheek line / neck
           float u = vH.y; float r2 = fract(sin(floor(vH.z * 1100.0 + 3.0) * 78.233) * 43758.5453);
           float r3 = fract(sin(dot(floor(vObjP * 2400.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453); float fi = smoothstep(0.1, 0.0, u);
@@ -245,13 +249,13 @@ export function hairMaterial(c1, c2, hl = .35, skin = null) { // skin: blend the
           float spec = pow(sinTH, 60.0) * 0.35 + pow(sinTH, 12.0) * 0.08; float rimF = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 2.5);
           totalEmissiveRadiance += mix(diffuseColor.rgb, vec3(1.0), 0.35) * spec * (0.5 + 0.5 * vH.x) + diffuseColor.rgb * (0.05 + rimF * 0.2); }`);
   };
-  m.customProgramCacheKey = () => 'v2hair6'; _mats.set(key, m); return m;
+  m.customProgramCacheKey = () => 'v2hair7'; _mats.set(key, m); return m;
 }
 
 // ---------- facial hair: polar band around the mouth. Inner edge = first entry into the mask, outer edge = exit; both edges tuck under
 // the skin, so beards have clean smooth outlines and a clean opening around the lips.
 export const BEARD_STYLES = { // mask(p, a, L) on head-local surface points; T thickness, curl
-  full: { T: .0016, curl: .0006, fade: .016, mask: (p, a, L) => Math.abs(a) < 91 && offNeck(p) && p.y < cheekY(Math.abs(p.x)) && p.y > fullFloor(p) && !mouthHole(p, L, .016) },
+  full: { trim: 1, T: .0016, curl: .0006, fade: .016, mask: (p, a, L) => Math.abs(a) < 91 && offNeck(p) && p.y < cheekY(Math.abs(p.x)) && p.y > fullFloor(p) && !mouthHole(p, L, .016) },
   boxed: { T: .004, curl: .0008, mask: (p, a, L) => Math.abs(a) < 90 && offNeck(p) && p.y < topLine(a, L, .8) && !mouthHole(p, L, .008) },
   lumber: { T: .013, curl: .003, mask: (p, a, L) => Math.abs(a) < 92 && offNeck(p) && p.y < topLine(a, L, 1.15) && !mouthHole(p, L, .01) },
   goatee: { T: .006, curl: .0015, mask: (p, a, L) => Math.abs(p.x) < .034 && p.y < L.mouthY - .006 && p.z > .02 },
@@ -296,7 +300,7 @@ export function buildBand(head, st, opt = {}) {
   for (let j = 0; j <= NPH; j++) { const jj = j % NPH, ph = jj / NPH * Math.PI * 2; const w0 = tin[jj], w1 = tout[jj]; const band = Math.max(0, w1 - w0); const zero = empty[jj] || band < .5 * D2R; const pe = surf(head, dirOf(fr, w1, ph));
     for (let i = 0; i < NR; i++) { let th, t; if (i === 0) { th = Math.max(0, w0 - 1 * D2R); t = -.0025; } else if (i === NR - 1) { th = w1 + 1 * D2R; t = -.0025; } else { const u = (i - 1) / (NU); th = w0 + band * u; const e = ss(0, .2, u) * ss(1, .62, u); t = zero ? -.0025 : st.T * Math.pow(e, .7) + .0008 * (1 - e); }
       const d = dirOf(fr, th, ph); const p = surf(head, d); const n = normalAt(head, p); if (t > 0 && !opt.flat) t *= .5 + .5 * ss(-.03, -.13, p.y) + .15 * ss(.03, 0, Math.abs(p.x)); if (st.curl && t > 0) t += st.curl * (Math.abs(Math.sin(p.x * 260 + Math.sin(p.y * 200) * 2) * Math.sin(p.y * 260 + p.z * 150)) - .3) * (t / st.T); const dE = p.distanceTo(pe); const q = p.addScaledVector(n, t); aE.push(zero ? 1 : 1 - Math.min(1, dE / FL));
-      pos.push(q.x, q.y, q.z); const tg = new THREE.Vector3(0, -1, 0).addScaledVector(n, -(-n.y)).normalize(); tan.push(tg.x, tg.y, tg.z); aux.push(.5 + .5 * Math.sin(ph * 40), i / NR, ph / 6.283, 5); } }
+      pos.push(q.x, q.y, q.z); const tg = new THREE.Vector3(0, -1, 0).addScaledVector(n, -(-n.y)).normalize(); tan.push(tg.x, tg.y, tg.z); aux.push(.5 + .5 * Math.sin(ph * 40), i / NR, ph / 6.283, st.trim ? 5.2 : 5); } }
   for (let j = 0; j < NPH; j++) for (let i = 0; i < NR - 1; i++) { const a = j * NR + i, b = (j + 1) * NR + i; idx.push(a, b, a + 1, b, b + 1, a + 1); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aT', new THREE.Float32BufferAttribute(tan, 3)); g.setAttribute('aH', new THREE.Float32BufferAttribute(aux, 4)); g.setAttribute('aE', new THREE.Float32BufferAttribute(aE, 1)); g.setIndex(idx); g.computeVertexNormals(); return g;
 }

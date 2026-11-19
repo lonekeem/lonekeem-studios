@@ -73,3 +73,15 @@ Honest flaws left:
 - A faint tone/shading step remains where the neck meets the chest (blotchy flat shading from the base body normals), much weaker than before but visible on the girl up close.
 - Brim undersides are lit flat/pale rather than shaded; baseball-cap bills and the sun visor are still thin partial shells.
 - Fingers are only slightly curled (bind-pose rotation, no knuckle detail).
+
+## Fix pass 3 (Nov 19 2026, ~06:45-07:05 EST)
+- Guy full beard rebuilt as a close-trimmed beard: stubble is painted in the head skin shader (3D head-local mask: curved cheek line from sideburn down to the mouth corners, lip + lip-to-chin gap kept bare, jaw-hugging bottom edge, fine stipple density + tint) with only a ~1.6 mm fuzzy shell on top (stippled, thins toward the edges). Lighter, less saturated default beard colour (#6a4f38, hair-matched). The vertical wall at the mouth corners is gone (no LIP_CUT for this beard). Other beard styles keep the old opaque shell.
+- Scalp hairline: dither removed; hair colour now blends smoothly into the skin tone over ~2 cm (no discard, no grain).
+- Hats: each now has its own silhouette (acc.js): beanie = knit ribbed dome + folded cuff (+pom), baseball cap = rounded crown with panel seams + button + curved bill, bucket = tapered crown + downward brim, fedora = pinched crown + band + snap brim, western = dented crown + band + brim curled up at the sides, sun hat = low crown + wide flat brim + ribbon, beret = flat floppy disc pulled to one side + rim band + stalk, hard hat = ridged shell + brim with a front peak. Per-hat default colours (`HAT_DEFAULTS` in catalog.js, applied by the creator when a hat style is picked); brim undersides are lit (no black).
+- Tris unchanged: guy 86,029, girl 90,683.
+### Honest flaws left
+- Collar tips beside the neck are NOT fixed (jagged triangles in the base body mesh under the shirt; hiding the shell just exposes skin spikes).
+- Beard is shorter/lighter than the Snap ref's full beard on purpose; the stubble grain is visible up close and the shell sideburn near the ear still ends with a fairly straight cut.
+- Hairline is a smooth gradient, so it reads airbrushed rather than strand-by-strand.
+- Cap bills are flat-ish fans; hat underside shading is flat; hats do not yet resize for very wide hair (afro), and hat/hair clipping was only checked on default hair.
+- Faint tone step at neck/chest on the girl remains.
