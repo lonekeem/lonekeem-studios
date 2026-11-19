@@ -65,13 +65,13 @@ export const STYLES = {
   cornrows: S({ T: .0065, top: .0, side: 1, cornrow: 8, line: 'std', tilt: 30 }),
   bob: S({ T: .011, top: .012, side: .95, locks: 15, lockAmp: 0.0026, line: 'fem', ears: false, part: 1, drop: { front: 62, end: -0.14, flare: .01, curve: .6, tipTurn: -.012 } }),
   lob: S({ T: .011, top: .012, side: .95, locks: 15, lockAmp: 0.0026, line: 'fem', ears: false, part: 1, drop: { front: 62, end: -0.18, flare: .015, curve: .4, tipTurn: -.006 } }),
-  pixie: S({ T: .009, top: .016, side: .5, front: .012, locks: 20, lockAmp: .0028, tips: .8, sweep: 1, fade: .3 }),
+  pixie: S({ T: .0085, top: .02, side: .45, front: .012, frontLift: .8, locks: 14, lockAmp: .005, tips: 1.1, sweep: 1.2, fade: .3, line: 'nat', tufts: 20, minT: .0036 }),
   shoulder: S({ T: .011, top: .012, side: .95, locks: 16, lockAmp: 0.0026, line: 'fem', ears: false, part: 1, drop: { front: 62, end: -0.2, flare: .02, curve: .3, tipTurn: .008 } }),
   longstr: S({ T: .011, top: .012, side: .95, locks: 16, lockAmp: 0.0026, line: 'fem', ears: false, part: 1, drop: { sh: .03, front: 60, end: -0.42, flare: .02, curve: .2 } }),
   longwave: S({ T: .012, top: .014, side: .95, locks: 13, lockAmp: 0.003, line: 'fem', ears: false, part: 1, drop: { sh: .03, front: 60, end: -0.4, flare: .03, curve: .2, wave: .014, waveN: 8 } }),
   longcurl: S({ T: .014, top: .016, side: .95, curl: .004, curlN: 20, line: 'fem', ears: false, drop: { sh: .03, front: 60, end: -0.36, flare: .04, curve: .3, wave: .02, waveN: 10, ring: .006 } }),
   curtain: S({ T: .011, top: .012, side: .95, locks: 16, lockAmp: 0.0026, line: 'fem', ears: false, part: 3, bangs: .6, drop: { sh: .03, front: 52, end: -0.42, flare: .02, curve: .2 } }),
-  dreads: S({ T: .006, top: .004, side: .9, line: 'low', ears: false, locsN: 30, ex: [['locs', .3]] }),
+  dreads: S({ T: .008, top: .007, side: .95, line: 'low', ears: false, locsN: 46, ex: [['locs', .3]] }),
   twists: S({ T: .007, top: .004, side: .9, line: 'std', locsN: 44, ex: [['locs', .07]] }),
 };
 // aliases for old saved ids (removed styles -> closest kept style)
@@ -224,8 +224,11 @@ export function buildExtras(head, st) {
       for (const sd of [-1, 1]) { const pts = []; for (const [az, el] of [[sd * 16, 40], [sd * 20, 54], [sd * 30, 66], [sd * 70, 70], [sd * 128, 52], [sd * 148, 28], [sd * 155, 6]]) pts.push(scalpPt(head, az, el, st.T + .0015)); const last = pts[pts.length - 1]; pts.push(last.clone().add(new THREE.Vector3(sd * .01, -.05, -.03)), last.clone().add(new THREE.Vector3(sd * .03, -.15, -.07)), last.clone().add(new THREE.Vector3(sd * .05, -a1 * .75, -.08)), last.clone().add(new THREE.Vector3(sd * .055, -a1, -.07)));
         out.push(...lumpChain(pts, .017, .011, { step: .0105 })); const tip = pts[pts.length - 1]; out.push(...tube([tip.clone().add(new THREE.Vector3(0, .01, 0)), tip.clone().add(new THREE.Vector3(sd * .003, -.03, .002)), tip.clone().add(new THREE.Vector3(sd * .006, -.06, .006))], .011, .003, { seg: 8, rad: 8, groove: .15 })); } }
     else if (k === 'locs' && a1 < .1) { // short twists: small coils over the whole scalp
-      let i = 0; for (let el = 12; el <= 86; el += 8.5) { const n2 = Math.max(4, Math.round(34 * Math.cos(el * Math.PI / 180))); for (let j = 0; j < n2; j++) { const az = -180 + 360 * (j + .5 * (Math.round(el) % 2)) / n2; if (Math.abs(az) < 62 && el < 42) continue; i++; const p0 = scalpPt(head, az, el, st.T * .5); const n = p0.clone().normalize(); const tip = p0.clone().addScaledVector(n, .011 + .005 * hash(i)).add(new THREE.Vector3(0, -.003, 0)); out.push(...tube([p0.clone().addScaledVector(n, -.004), p0.clone().addScaledVector(n, .005), tip], .0095, .0085, { seg: 6, rad: 6, groove: .25, tipRound: 1 })); } } }
-    else if (k === 'locs') { const N = st.locsN || 30; for (let i = 0; i < N; i++) { const az = -170 + 340 * (i + .5) / N; if (Math.abs(az) < 50 && a1 > .1) continue; const el = 20 + 25 * Math.cos(i * 2.3) * .3; const p0 = scalpPt(head, az, el, st.T); const n = p0.clone().normalize(); const L = a1 * (.8 + .4 * hash(i)); const pts = [p0, p0.clone().addScaledVector(n, .03).add(new THREE.Vector3(0, -.02, 0)), p0.clone().addScaledVector(n, .045).add(new THREE.Vector3(0, -L * .5, 0)), p0.clone().addScaledVector(n, .05).add(new THREE.Vector3(0, -L, 0))]; out.push(...tube(pts, .008, .006, { seg: 12, rad: 6, groove: .18, tipRound: 1 })); } }
+      let i = 0; for (let el = 14; el <= 86; el += 8) { const n2 = Math.max(5, Math.round(34 * Math.cos(el * Math.PI / 180))); for (let j = 0; j < n2; j++) { const az = -180 + 360 * (j + .5 * (Math.round(el / 8) % 2)) / n2; if (Math.abs(az) < 62 && el < 42) continue; i++; const dEl = Math.min(el, 11); const r = .0078; const up = st.T * .5 + .002;
+        out.push(...tube([scalpPt(head, az, el + 4, up), scalpPt(head, az, el, up + .003), scalpPt(head, az, el - dEl * .55, up + .004), scalpPt(head, az, el - dEl, up + .001)], r, r * .75, { seg: 5, rad: 5, groove: .3, tipRound: 1 })); } } }
+    else if (k === 'locs') { const N = st.locsN || 30; for (let i = 0; i < N; i++) { const az = -172 + 344 * (i + .5) / N; if (Math.abs(az) < 56 && a1 > .1) continue; const el = 22 + 10 * Math.cos(i * 2.3) + (hash(i * 3.3) - .5) * 10; const p0 = scalpPt(head, az, el, st.T); const n = p0.clone().normalize(); const sd = Math.sin(az * D2R), bk = Math.cos(az * D2R); const L = a1 * (.78 + .44 * hash(i)); const sw = (hash(i * 5.1) - .5) * .03;
+      const pts = [p0.clone().addScaledVector(n, -.006), p0.clone().addScaledVector(n, .012), p0.clone().addScaledVector(n, .03).add(new THREE.Vector3(sd * .01 + sw, -.03, bk * .006)), p0.clone().addScaledVector(n, .04).add(new THREE.Vector3(sd * .012 + sw * 1.4, -L * .55, bk * .01)), p0.clone().addScaledVector(n, .036).add(new THREE.Vector3(sd * .01 + sw * 1.8, -L, bk * .006))];
+      out.push(...tube(pts, .0115, .0055, { seg: 16, rad: 7, groove: .2, tipRound: 1, pow: .8 })); } }
   }
   return out;
 }
