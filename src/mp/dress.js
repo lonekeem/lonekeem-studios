@@ -3,6 +3,10 @@ import * as THREE from 'three';
 import { skinTone } from './shaders.js';
 import { applyMorph } from './morph.js';
 import { garmentMaterial } from './garments.js';
+import { neckProfile } from './v2/headrig.js';
+import { buildShoes } from './v2/shoes.js';
+import { buildHood, HOODED } from './v2/hood.js';
+const _hm = new Map(); const hoodMat = c => { if (!_hm.has(c)) _hm.set(c, new THREE.MeshStandardMaterial({ color: c, roughness: .86, metalness: 0 })); return _hm.get(c); };
 import { shellMaterial } from './hair.js';
 import { Builder, rigid } from './build.js';
 import { makeCtx, HAT, GLASSES, EAR, PIERCE, NECK, WRIST, RING, BAG, BELT } from './acc.js';
@@ -25,17 +29,20 @@ function shell(av, key, kind, geo) {
   return null;
 }
 function addSkinned(av, mesh, order) { const s = av.skin; mesh.position.copy(s.position); mesh.quaternion.copy(s.quaternion); mesh.scale.copy(s.scale); s.parent.add(mesh); mesh.bind(s.skeleton, s.bindMatrix); mesh.frustumCulled = false; mesh.renderOrder = order || 0; mesh.castShadow = false; return mesh; }
-function bodyLayer(av, name, kind) { const L = av.layers; if (!L[name]) { const mat = garmentMaterial(kind); const m = new THREE.SkinnedMesh(av.skin.geometry, mat); addSkinned(av, m, 1); L[name] = m; } return L[name]; }
+function setLm(av, mat) { const P = av.tpl.P, U = mat.userData.U; const A = P.LeftArm, Hd = P.LeftHand; const d = Hd.clone().sub(A), L = d.length(); d.normalize();
+  U.uLm.value.set(P.Hips.y, P.neck.y, P.LeftUpLeg.y, (P.LeftFoot.y + P.RightFoot.y) / 2); U.uArmO.value.set(A.x, A.y, A.z, 0); { const h2 = av.head2; if (h2) { const r0 = (h2.g === 'f' ? .043 : .05) * h2.s; U.uNk.value.set(0, h2.C.z - .028 * h2.s, r0 + .014, r0 * .92 + .016); } } U.uArmD.value.set(d.x, d.y, d.z, L); }
+function bodyLayer(av, name, kind) { const L = av.layers; if (!L[name]) { const mat = garmentMaterial(kind); setLm(av, mat); const m = new THREE.SkinnedMesh(av.skin.geometry, mat); addSkinned(av, m, 1); L[name] = m; } return L[name]; }
 function headLayer(av, name, kind) { const L = av.layers; if (!L[name]) { const mat = shellMaterial(kind); const m = new THREE.SkinnedMesh(headGeometry(av), mat); addSkinned(av, m, 2); L[name] = m; } return L[name]; }
 
+const DET = { cropzip: [1, 1, 0, 0], zip: [1, 1, 0, 0], hoodiezip: [1, 1, 0, 0], track: [1, 1, 0, 0], bomber: [1, 1, 0, 0], puffer: [1, 0, 0, 0], hoodie: [0, 1, 0, 0], sweater: [0, 1, 0, 0], sweatshirt: [0, 1, 0, 0], cargojog: [0, 1, 1, 1], joggers: [0, 0, 1, 1], sweats: [0, 0, 1, 1], cargo: [0, 1, 0, 0], leggings: [0, 0, 0, 1] };
 function setGarment(av, name, kind, piece, tbl, g) {
-  const m = bodyLayer(av, name, kind); m.visible = !!piece; if (!piece) return; const s = tbl.find(t => t[0] === piece.id); if (!s) { m.visible = false; return; }
+  const m = bodyLayer(av, name, kind); setLm(av, m.material); m.visible = !!piece; if (!piece) return; const s = tbl.find(t => t[0] === piece.id); if (!s) { m.visible = false; return; }
   const U = m.material.userData.U, off = m.material.userData.off; U.uC1.value.set(piece.c); U.uC2.value.set(piece.c2 || '#ffffff'); U.uPat.value.set(piece.p || 0, 11 + (piece.ps || 0) * 8, 1, 0); U.uSole.value.set(.02, 0, 0, 0);
-  U.uShape.value.set(0, 0, 0, 0);
+  U.uShape.value.set(0, 0, 0, 0); { const d = DET[piece.id] || [0, 0, 0, 0]; U.uDet.value.set(...d); }
   if (kind === 0 || kind === 3) { const [id, nm, gd, sl, hem, nT, nD, nW, dl, tu, loose, flare, con] = s; if (kind === 3) { const [id2, n2, g2, sl2, hem2, nt2, oh, ot, dl2, tu2, lo2, fl2] = s; U.uG1.value.set(sl2, hem2, 0, 9); U.uG2.value.set(dl2, oh, ot, tu2); U.uN.value.set(nt2, .06, .13, -.03); U.uShape.value.set(0, lo2 * 2, 0, fl2); off.value = .0145 + lo2; U.uSole.value.set(.02, 0, 1, 0); }
     else { U.uG1.value.set(sl, hem, 0, 9); U.uG2.value.set(dl, .05, .5, tu); U.uN.value.set(nT, nD, nW, -.03); U.uShape.value.set(0, loose * 2, 0, flare); off.value = .0095 + loose; U.uSole.value.set(.02, 0, 0, con); } }
   else if (kind === 1) { const [id, nm, gd, le, wa, loose, fl, kb] = s; U.uG1.value.set(le, wa, 0, 9); U.uShape.value.set(kb, fl, 0, 0); off.value = .0062 + loose; }
-  else if (kind === 2) { const [id, nm, gd, sh, soleY, offs, cap] = s; U.uG1.value.set(sh, 0, 0, 9); U.uSole.value.set(soleY, cap, 0, 0); off.value = offs; U.uC3.value.set(piece.sole || '#f2f2f0'); U.uPat.value.z = (piece.p || 0) ? 1 : 0; }
+  else if (kind === 2) { const [id, nm, gd, sh, soleY, offs, cap] = s; U.uG1.value.set(sh, 0, id === 'socks' ? 1 : 0, 9); U.uSole.value.set(soleY, cap, 0, 0); off.value = offs; U.uC3.value.set(piece.sole || '#f2f2f0'); U.uPat.value.z = (piece.p || 0) ? 1 : 0; }
   else if (kind === 4) { const [id, nm, sh, offs] = s; U.uG1.value.set(sh, 0, 0, 9); off.value = offs; }
 }
 function setUnder(av, f, skinCol) { const m = bodyLayer(av, 'under', 5); const U = m.material.userData.U; m.material.userData.off.value = .0035; U.uC1.value.set(f ? '#2a2a30' : '#26272c'); U.uG1.value.set(0, 0, f ? 1 : 0, 9); m.visible = true; }
@@ -77,7 +84,7 @@ export function dress(av, look) {
   const sx = look.skinx; U.uMk2.value.set(sx.freckles / 3, sx.moles, sx.age, 0); U.uScar.value.set(sx.scar, sx.scarSide, 0, 0); U.uTat.value.set(sx.tattoo, sx.scarSide, 0, 0); U.uTatCol.value.set(sx.tattooCol);
   const bd = look.beard; U.uStub.value.set(bd.id === 'stubble' ? .55 + .3 * bd.len : 0, 1, 0, 0);
   // ---- clothes
-  const w = look.worn; setUnder(av, f); setGarment(av, 'top', 0, w.top, C.TOPS); setGarment(av, 'jacket', 3, w.jacket, C.JACKETS); setGarment(av, 'pants', 1, w.pants, C.PANTS); setGarment(av, 'shoes', 2, w.shoes, C.SHOES); setGarment(av, 'gloves', 4, w.gloves, C.GLOVES);
+  const w = look.worn; setUnder(av, f); setGarment(av, 'top', 0, w.top, C.TOPS); setGarment(av, 'jacket', 3, w.jacket, C.JACKETS); setGarment(av, 'pants', 1, w.pants, C.PANTS); setGarment(av, 'shoes', 2, w.shoes, C.SHOES); buildShoes(av, w.shoes); { const hp = (w.jacket && HOODED.has(w.jacket.id)) ? w.jacket : (w.top && HOODED.has(w.top.id) ? w.top : null); buildHood(av, hp, hp ? hoodMat(hp.c) : null); } setGarment(av, 'gloves', 4, w.gloves, C.GLOVES);
   buildHead(av, look); const ctx = headCtx(av, makeCtx(av)); av._ctx = ctx; const A = look.acc;
   // ---- hair / beard / mustache / mask shells (+ volumetric extras)
   const hat = A.hat && C.HATS.find(h => h[0] === A.hat.id); const hatFam = hat ? hat[2] : null; const covers = hat && !['headband', 'visor', 'crown'].includes(hatFam);

@@ -10,10 +10,15 @@ export function headFrame(av, g) { // head centre (bind space) + scale
   return { C: new THREE.Vector3(P.Head.x * 0 + o[0], P.Head.y + o[1] * s, P.Head.z + o[2] * s), s };
 }
 // cut the generated head out of the body mesh (the neck stays and tucks into the new head)
+export const neckCut = T => T.P.neck.y - .012;
+export function neckProfile(av) { // body neck cross-section (ellipse) per height, measured from the rest mesh before stripping
+  const T = av.tpl; if (T._nprof) return T._nprof; const p = T.geo.attributes.position, n = p.count, B = new Map();
+  for (let i = 0; i < n; i++) { if (T.aW[i * 8 + 4] > .5 || T.headW[i] > .4) continue; const x = p.getX(i), y = p.getY(i), z = p.getZ(i); if (Math.abs(x) > .09) continue; const k = Math.round(y / .005); let b = B.get(k); if (!b) B.set(k, b = { x: 0, zf: -9, zb: 9 }); b.x = Math.max(b.x, Math.abs(x)); b.zf = Math.max(b.zf, z); b.zb = Math.min(b.zb, z); }
+  return T._nprof = y => { const k0 = Math.round(y / .005); const r = { x: 0, zf: -9, zb: 9 }; let ok = false; for (let d = -3; d <= 3; d++) { const b = B.get(k0 + d); if (!b) continue; ok = true; r.x = Math.max(r.x, b.x); r.zf = Math.max(r.zf, b.zf); r.zb = Math.min(r.zb, b.zb); } if (typeof window !== 'undefined') (window.nprof = window.nprof || []).push([y, ok, r.x, r.zf, r.zb]); return ok ? r : null; }; }
 export function stripHead(av) {
   if (av._stripped) return; const T = av.tpl, g = av.skin.geometry, ix = g.index, hw = T.headW, pos = g.attributes.position; const keep = [];
   const cutY = T.P.Head.y - .005;
-  for (let i = 0; i < ix.count; i += 3) { const a = ix.getX(i), b = ix.getX(i + 1), c = ix.getX(i + 2); const head = hw[a] > .4 && hw[b] > .4 && hw[c] > .4; if (!head) keep.push(a, b, c); }
+  for (let i = 0; i < ix.count; i += 3) { const a = ix.getX(i), b = ix.getX(i + 1), c = ix.getX(i + 2); const head = hw[a] > .4 && hw[b] > .4 && hw[c] > .4; const nk = j => pos.getY(j) > neckCut(T) && (T.aW[j * 8] + T.aW[j * 8 + 1]) > .5; if (!head && !(nk(a) && nk(b) && nk(c))) keep.push(a, b, c); }
   g.setIndex(keep); av._stripped = true;
 }
 export function skinTo(av, geo, weights) { // weights(i, x, y, z) -> [[boneName, w], ...]
@@ -54,7 +59,12 @@ export function buildHead(av, look) {
     const ears = [1, -1].map(sd => { const e = buildEarGeometry(sd, L, H); e.scale(s, s, s); e.translate(C.x, C.y, C.z); e.setAttribute('aF', new THREE.BufferAttribute(new Float32Array(e.attributes.position.count), 1)); if (!e.attributes.uv) e.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(e.attributes.position.count * 2), 2)); skinTo(av, e, () => [['Head', 1]]); return e; });
     { // neck tube: from inside the head down into the chest (top -> Head, middle -> neck, bottom -> Spine)
       const P = av.tpl.P; const y0 = C.y - .06 * s, y1 = P.neck.y - .045, r0 = (g === 'f' ? .043 : .05) * s, r1 = r0 * 1.12; const ng = new THREE.CylinderGeometry(1, 1, 1, 28, 10, true); const np = ng.attributes.position;
-      for (let i = 0; i < np.count; i++) { const t = np.getY(i) + .5; const r = r1 + (r0 - r1) * t; np.setXYZ(i, np.getX(i) * r, y1 + (y0 - y1) * t, C.z - .028 * s + np.getZ(i) * r * .92 + (1 - t) * .004); }
+      const prof = neckProfile(av), cut = neckCut(av.tpl);
+      for (let i = 0; i < np.count; i++) { const t = np.getY(i) + .5; const y = y1 + (y0 - y1) * t; const r = r1 + (r0 - r1) * t; const ux = np.getX(i), uz = np.getZ(i);
+        let x = ux * r, z = C.z - .028 * s + uz * r * .92 + (1 - t) * .004; const b = prof(Math.min(y, cut + .004));
+        if (b && b.x > .02) { const w = y < cut - .004 ? 1 : 1 - Math.min(1, (y - (cut - .004)) / .035); const cz = (b.zf + b.zb) / 2, rz = (uz > 0 ? b.zf - cz : cz - b.zb); const grow = y < cut - .006 ? -.004 : .003;
+          const bx = ux * (b.x + grow), bz = cz + uz * (rz + grow); const ww = w * w * (3 - 2 * w); x = x + (bx - x) * ww; z = z + (bz - z) * ww; }
+        np.setXYZ(i, x, y, z); }
       ng.computeVertexNormals(); ng.setAttribute('aF', new THREE.BufferAttribute(new Float32Array(np.count), 1));
       skinTo(av, ng, (i, x, y) => { const t = (y - y1) / (y0 - y1); return t > .7 ? [['Head', Math.min(1, (t - .7) / .3)], ['neck', 1 - Math.min(1, (t - .7) / .3)]] : t > .25 ? [['neck', 1]] : [['neck', t / .25], ['Spine', 1 - t / .25]]; });
       ears.push(ng); }
