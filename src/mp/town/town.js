@@ -7,7 +7,7 @@ import { loadBase, Avatar } from '../avatar.js';
 import { dress } from '../dress.js';
 import { animate } from '../anim.js';
 import { stepMove, startRoll, startJump } from '../../game/pctl.js';
-import { makeMotion, driveRemote } from '../motion.js';
+import { makeMotion, driveRemote, makeKeemChar } from '../motion.js';
 import { Net } from '../net.js';
 import { buildTown, BOUNDS, CAR_SPAWNS, BODIES, SPAWN, CFG, SPECIAL } from './map.js';
 import { ITEMS, rollTable, Bag, DOOR_PRICE } from './loot.js';
@@ -64,7 +64,7 @@ export async function enterTown({ look, onExit } = {}) {
     for (const c of cars) { c.g.traverse(m => { if (m.isMesh) m.castShadow = false; }); const bl = new THREE.Mesh(new THREE.PlaneGeometry(c.L * .92 + .6, 2.5).rotateX(-Math.PI / 2).rotateY(Math.PI / 2), bm); bl.position.y = .07; bl.renderOrder = 1; bl.name = 'blob'; c.g.add(bl); } }
   const carBy = id => cars.find(c => c.id === id);
   const S = { roll: 0, atk: 0, atkHit: 0, vy: 0, y: 0, crouch: false, aim: false, shotT: 0, stun: 0, combo: 0, spd: 0 }; const me = { av: null, y: 0, x: SPAWN.x, z: SPAWN.z, ry: SPAWN.ry, sp: 0, drv: null, hp: 100, swing: 0, dead: 0, hitCd: 0 }; const remotes = new Map();
-  const mkAvatar = async lk => { const tpl = await loadBase(lk.base); const av = new Avatar(tpl); dress(av, lk); try { av.motion = await makeMotion(av); } catch (e) { console.warn('motion', e); } return av; };
+  const mkAvatar = async lk => { if (lk && lk.exclusive === 'skin.keem_story') { try { return await makeKeemChar(); } catch (e) { console.warn('keem', e); } } const tpl = await loadBase(lk.base); const av = new Avatar(tpl); dress(av, lk); try { av.motion = await makeMotion(av); } catch (e) { console.warn('motion', e); } return av; };
   me.av = await mkAvatar(look); scene.add(me.av.root); const myTag = nameTag(net.me.name); scene.add(myTag);
   // ---- bodies (persistent corpses, drawn by the zombies module if present) ----
   // sounds: the story game's AudioSys (samples + synth fallback); fails silent if audio is blocked

@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Char, CharLib } from '../game/chars.js';
-import { attachRig } from '../game/avatar.js';
+import { attachRig, loadRigs } from '../game/avatar.js';
 import { BASE_URL } from './avatar.js';
 
 let _lib = null;
@@ -27,4 +27,11 @@ export function driveRemote(P, dt, s) {
     else if (f & 1) { if ((s.spd || 0) > .3) P.play('Crouch_Fwd_Loop', { speed: Math.max(.4, Math.min(2.2, s.spd / .64)) }); else P.play('Crouch_Idle_Loop'); }
     else if ((s.spd || 0) > .35) { if (!P.locomote(s.spd, 1, dt)) P.play('Jog_Fwd_Loop'); } else P.play('Idle_Loop'); }
   P.mixer.update(dt);
+}
+
+// Original Keem (admin account only): the real story character - same model, look and animations as story mode (no Avatar morph body).
+export async function makeKeemChar() {
+  const lib = await getLib(); if (!lib.rigs || !lib.rigs.keem) lib.rigs = Object.assign(lib.rigs || {}, await loadRigs(BASE_URL, ['keem']));
+  const { DEFAULT_LOOK } = await import('../game/looks.js'); const P = new Char(lib, Object.assign({}, DEFAULT_LOOK, { rig: 'keem' }), STORY_SCALE);
+  P.motion = P; P.isKeem = true; P.dispose = () => {}; return P; // a Char already has root / bones / play / locomote / mixer; `.motion` points at itself so the town drives it like an avatar
 }

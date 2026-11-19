@@ -6,6 +6,7 @@ import { animate } from './anim.js';
 import * as C from './catalog.js';
 import * as K from './look.js';
 import { MORPHS } from './morph.js';
+import { getRole } from './online.js';
 
 const CSS = `
 #mpc{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:radial-gradient(120% 90% at 50% 30%,#3b4252 0%,#1c2029 70%);color:#eef0f4;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;touch-action:none;user-select:none}
@@ -137,6 +138,9 @@ export async function openCreator({ onClose, onPlay } = {}) {
     el('button', { on: { click: () => { push(); look = K.randomLook(look.base.startsWith('mp_f') === (Math.random() < .5) ? look.base : undefined); rebuild(look.base).then(() => { renderBody(); nameIn.value = look.name; }); } } }, '🎲'), el('button', { on: { click: () => { const u = undo.pop(); if (u) { look = u; rebuild(look.base).then(() => renderBody()); } } } }, '↶'),
     el('button', { on: { click: () => { push(); look = K.defaultLook(look.base); rebuild(look.base).then(() => { renderBody(); nameIn.value = look.name; }); } } }, 'Reset'), el('button', { cls: 'pri', on: { click: () => { K.saveLook(look); close(true); } } }, 'Save & enter'));
   stage.append(el('div', { cls: 'cam' }, ['full', 'upper', 'head', 'hands', 'feet'].map(v => el('button', { on: { click: () => setView(v) } }, v[0].toUpperCase() + v.slice(1))), el('button', { on: { click: e => { animMode.v = animMode.v === 'walk' ? 'idle' : 'walk'; e.target.classList.toggle('on'); } } }, 'Walk')));
+  // admin only (Google sign-in, role from the server): play as the original story Keem (his voice, look and animations)
+  { const kb = el('button', { cls: 'pri', style: 'display:none;background:#b8741c;border-color:#e0a050', on: { click: () => { K.saveLook(look); look = Object.assign({}, clone(look), { exclusive: 'skin.keem_story', name: 'Keem' }); close(true); } } }, 'Play as Keem'); hd.append(kb);
+    const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname); getRole().then(r => { if (r === 'admin' || (local && window.__MP_FORCE_ADMIN)) kb.style.display = ''; }).catch(() => {}); window.__mpKeemBtn = kb; }
   function close(play) { running = false; renderer.dispose(); av && av.dispose(); root.remove(); (play === true ? onPlay : onClose)?.(look); }
   renderTabs(); await rebuild(look.base); renderBody(); setView('full'); requestAnimationFrame(frame);
   return { get look() { return look; }, root, close, setLook: l => { look = K.normalize(l); return rebuild(look.base).then(() => renderBody()); }, setTab: i => { tab = i; renderTabs(); renderBody(); setView(viewFor(TABS[i][0])); }, tabs: TABS.map(t => t[0]), av: () => av, setView, spinTo: a => { spin = a; } };
