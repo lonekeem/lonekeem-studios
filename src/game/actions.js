@@ -8,20 +8,28 @@ const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const sstep = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
 
 // ---------- 1. procedural poses (rotations in mannequin bone-local space, [x,y,z] radians at full weight) ----------
+// arm(side, fwd, out, flex, twist): axes measured numerically on the rig (tools/arm_probe.mjs), same sign on both arms except abduction/twist:
+//   upper arm X+ = raise forward (1 rad ~ 47deg, ~1.9 = horizontal), Z+ (left) / Z- (right) = elbow out, Y = twist; forearm X+ = bend the elbow
+const arm = (sd, fwd = 0, out = 0, flex = 0, tw = 0) => sd === 'L'
+  ? { 'DEF-upper_arm.L': [fwd, tw, out], 'DEF-forearm.L': [flex, 0, 0] }
+  : { 'DEF-upper_arm.R': [fwd, -tw, -out], 'DEF-forearm.R': [flex, 0, 0] };
+const both = (a, b) => Object.assign({}, a, b);
 export const POSES = {
-  // left arm presented forward with the elbow bent, palm up: "show me the arm"
-  showL: { 'DEF-upper_arm.L': [0.15, -0.9, 0.2], 'DEF-forearm.L': [0, -1.0, 0] },
-  // right hand working the left sleeve: both forearms up in front of the chest
-  rollL: { 'DEF-upper_arm.L': [0.3, 0, 0.2], 'DEF-forearm.L': [0, -1.4, 0], 'DEF-upper_arm.R': [0, 0.9, -0.2], 'DEF-forearm.R': [0, 1.0, 0] },
-  // hiding the injured left arm against the belly
-  guardL: { 'DEF-upper_arm.L': [-0.25, 0, 0.1], 'DEF-forearm.L': [-1.25, 0, 0.3] },
-  pointR: { 'DEF-upper_arm.R': [-1.45, 0, -0.1], 'DEF-forearm.R': [-0.12, 0, 0] },
-  pointL: { 'DEF-upper_arm.L': [-1.45, 0, 0.1], 'DEF-forearm.L': [-0.12, 0, 0] },
-  offerR: { 'DEF-upper_arm.R': [-0.95, 0, -0.1], 'DEF-forearm.R': [-0.7, 0, 0] },
-  shrug: { 'DEF-upper_arm.L': [-0.2, 0, 0.5], 'DEF-upper_arm.R': [-0.2, 0, -0.5], 'DEF-forearm.L': [-0.9, 0, 0], 'DEF-forearm.R': [-0.9, 0, 0] },
-  hugArms: { 'DEF-upper_arm.L': [-1.0, 0, 0.45], 'DEF-upper_arm.R': [-1.0, 0, -0.45], 'DEF-forearm.L': [-0.8, 0, 0], 'DEF-forearm.R': [-0.8, 0, 0] },
-  coverEars: { 'DEF-upper_arm.L': [-0.3, 0, 0.35], 'DEF-upper_arm.R': [-0.3, 0, -0.35], 'DEF-forearm.L': [-2.2, 0, 0], 'DEF-forearm.R': [-2.2, 0, 0] },
-  headHands: { 'DEF-upper_arm.L': [-0.4, 0, 0.3], 'DEF-upper_arm.R': [-0.4, 0, -0.3], 'DEF-forearm.L': [-2.3, 0, 0], 'DEF-forearm.R': [-2.3, 0, 0] },
+  showL: both(arm('L', 0.0, 0.2, 1.0, 0), { 'DEF-upper_arm.L': [0.15, -0.9, 0.2] }),
+  rollL: both(arm('L', 0, 0.2, 1.4, 0.3), arm('R', 0, 0, 0, 0), { 'DEF-upper_arm.L': [0.3, 0, 0.2], 'DEF-upper_arm.R': [0, 0.9, -0.2], 'DEF-forearm.R': [0, 1.0, 0] }),
+  guardL: { 'DEF-upper_arm.L': [0.3, 0, 0.2], 'DEF-forearm.L': [0, -1.3, 0] },
+  pointR: arm('R', 1.8, 0.05, -0.35), pointL: arm('L', 1.8, 0.05, -0.35),
+  offerR: arm('R', 1.15, 0.1, 0.5),
+  shrug: both(arm('L', 0.5, 0.5, 1.1), arm('R', 0.5, 0.5, 1.1)),
+  hugArms: both(arm('L', 1.3, -0.3, 1.0), arm('R', 1.3, -0.3, 1.0)),
+  coverEars: both(arm('L', 0.3, 0.9, 2.1), arm('R', 0.3, 0.9, 2.1)),
+  headHands: both(arm('L', 0.5, 0.8, 2.2), arm('R', 0.5, 0.8, 2.2)),
+  haltBoth: both(arm('L', 0.8, 0.5, 1.5), arm('R', 0.8, 0.5, 1.5)),          // "hold up": both palms out
+  wheel: both(arm('L', 1.1, 0.05, 0.8), arm('R', 1.1, 0.05, 0.8)),           // hands on a steering wheel
+  grabBoth: both(arm('L', 1.6, -0.1, 0.4), arm('R', 1.6, -0.1, 0.4)),        // take someone by the shoulders
+  reachBoth: both(arm('L', 1.8, 0, -0.1), arm('R', 1.8, 0, -0.1)),           // arms out in front (hungry / grabbing)
+  mouthR: arm('R', 0.7, 0.35, 2.1),                                          // hand cupped at the mouth: radio / shout
+  aimBoth: both(arm('L', 1.8, 0, 0.3), arm('R', 1.8, 0, 0.3)),
 };
 // head-only behaviours (yaw sweeps etc.): fn(t) -> [pitch, yaw]
 export const HEADS = {
