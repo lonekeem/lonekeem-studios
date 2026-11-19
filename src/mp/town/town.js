@@ -12,6 +12,7 @@ import { addGas, pumpNear, fillCan, gasActions } from './gas.js';
 import { addLoot, updateLoot } from './loot.js';
 import { createZombies } from './zombies.js';
 import { prime, setLevel } from './lod.js';
+import { Input } from '../../game/input.js';
 import { mulberry, angDiff, clamp } from './kit.js';
 import { hash } from './building.js';
 import { CSS, el, drawGauge } from './ui.js';
@@ -21,18 +22,22 @@ function nameTag(text) { const c = document.createElement('canvas'); c.width = 2
 
 export async function enterTown({ look, onExit } = {}) {
   if (!document.getElementById('mpt-css')) document.head.append(el('style', { id: 'mpt-css' }, CSS));
-  const root = el('div', { id: 'mpt' }); const canvas = el('canvas', { cls: 'main' }); const info = el('div', { cls: 'info' }, 'Loading town…');
-  const stickKnob = el('i'); const stick = el('div', { cls: 'stick' }, stickKnob); const tip = el('div', { cls: 'tip' }); const prompt = el('div', { cls: 'prompt' }); const toastEl = el('div', { cls: 'toast' }); const vig = el('div', { cls: 'vig' });
-  const hpBar = el('div', { cls: 'bar' }, el('i')); const miniC = el('canvas', { cls: 'mini', width: 184, height: 184 }); const gaugeC = el('canvas', { cls: 'gauge', width: 208, height: 140 });
+  // ---- DOM: the town canvas + panels live in the story's #stage; controls and HUD are the story game's own (v1.9.7 layout) ----
+  const $q = q => document.querySelector(q); const root = el('div', { id: 'mpt' }); const canvas = el('canvas', { cls: 'main' });
+  const vig = el('div', { cls: 'vig' }); const gaugeC = el('canvas', { cls: 'gauge', width: 208, height: 140 });
   const dead = el('div', { cls: 'dead' }, el('div', {}, 'You were overrun'), el('div', { style: 'font-size:13px' }, 'Respawning at the street…'));
-  const panel = el('div', { cls: 'panel' });
-  let run = false, wantUse = false, useHeld = false, wantAlt = false, wantHit = false, hitHeld = false;
-  const runB = el('button', { on: { click: e => { run = !run; e.target.style.background = run ? '#d98a2b' : ''; } } }, 'Run');
-  const useB = el('button', { cls: 'use' }, 'Use'); const altB = el('button', {}, '—'); const hitB = el('button', { cls: 'hit' }, 'Hit'); const bagB = el('button', {}, 'Bag'); const shopB = el('button', {}, 'Shop');
-  const press = (b, down, up) => { b.addEventListener('pointerdown', e => { e.preventDefault(); down(); }); for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(ev, () => up && up()); };
-  press(useB, () => { wantUse = true; useHeld = true; }, () => { useHeld = false; }); press(altB, () => { wantAlt = true; }); press(hitB, () => { wantHit = true; hitHeld = true; }, () => { hitHeld = false; });
-  bagB.addEventListener('click', () => togglePanel('bag')); shopB.addEventListener('click', () => togglePanel('shop'));
-  root.append(canvas, el('div', { cls: 'top' }, el('button', { on: { click: () => exit() } }, '‹ Exit'), info, el('button', { on: { click: () => { net.me.look.__edit = 1; exit(true); } } }, 'Look')), el('div', { cls: 'bars' }, hpBar), miniC, vig, stick, el('div', { cls: 'btns' }, useB, hitB, altB, runB, bagB, shopB), gaugeC, prompt, toastEl, tip, panel, dead); document.body.append(root);
+  const panel = el('div', { cls: 'panel' }); const pausePanel = el('div', { cls: 'pausep' });
+  let wantUse = false, wantAlt = false, wantHit = false, hitHeld = false, chan = false, fp = false, fpPitch = 0, aimZoom = false; const drv = { gas: 0, brake: 0, l: 0, r: 0 };
+  const SET = (() => { let q = {}; try { q = JSON.parse(localStorage.getItem('atq3.settings') || '{}') || {}; } catch (e) { /* ignore */ } return Object.assign({ ctl: 'twin', sens: 1, hand: 'right', stick: 'float', invertY: false, padSens: 1, padDead: .15, hudv2: false }, q); })();
+  const shim = window.__mpShim || (window.__mpShim = { settings: SET, paused: false, state: { crouch: false }, skipLine() { /* no dialogue in MP */ }, onPause: null }); shim.settings = SET;
+  const stage = $q('#stage'), hudEl = $q('#hud'), touchEl = $q('#touch'), driveEl = $q('#drive'), glEl = $q('#gl'); const hideIds = ['#pages', '#combo', '#boss', '#wp', '#xhair', '#rld', '#skipObj']; const saved = [];
+  for (const q of hideIds) { const e = $q(q); if (e) { saved.push([e, e.style.display]); e.style.display = 'none'; } } glEl && (glEl.style.display = 'none');
+  stage.classList.remove('hidden'); hudEl.classList.remove('hidden'); touchEl.classList.toggle('hidden', !(matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window)); driveEl && driveEl.classList.add('hidden');
+  const inp = window.__mpInput || (window.__mpInput = new Input(shim));
+  // small extra buttons in the same round style: Bag, Shop, Exit (second row under the story's grenade / swap / view / pause buttons)
+  const hudr2 = el('div', { id: 'hudr2' }); const xb = (t, fn) => { const b = el('button', { cls: 'rb' }, t); b.addEventListener('click', e => { e.stopPropagation(); fn(); }); b.addEventListener('touchstart', e => e.stopPropagation(), { passive: true }); hudr2.append(b); return b; };
+  xb('Bag', () => togglePanel('bag')); xb('Shop', () => togglePanel('shop')); xb('Exit', () => exit()); hudEl.append(hudr2);
+  root.append(canvas, vig, gaugeC, panel, pausePanel, dead); stage.append(root);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true }); renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const scene = new THREE.Scene(); const FOG_FAR = 105; scene.background = new THREE.Color('#aab5b8'); scene.fog = new THREE.Fog('#aab5b8', 28, FOG_FAR);
   scene.add(new THREE.HemisphereLight('#dfe8f0', '#59614a', 1.25)); const sun = new THREE.DirectionalLight('#ffeccc', 2.1); sun.position.set(36, 60, 28); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = sc.bottom = -34; sc.right = sc.top = 34; sc.near = 5; sc.far = 160; sun.shadow.bias = -.0006; sun.shadow.normalBias = .04; scene.add(sun, sun.target);
@@ -42,7 +47,7 @@ export async function enterTown({ look, onExit } = {}) {
   const net = new Net('town'); net.me = { name: look.name || 'Survivor', look }; net.hello();
   const models = await loadCarModels(); const carMgr = createCars({ scene, W, models }); const cars = carMgr.cars; for (const c of cars) W.containers.push(c.cabin, c.trunk);
   const carBy = id => cars.find(c => c.id === id);
-  const me = { av: null, x: SPAWN.x, z: SPAWN.z, ry: SPAWN.ry, sp: 0, drv: null, hp: 100, swing: 0, dead: 0, hitCd: 0 }; const remotes = new Map();
+  const me = { av: null, y: 0, x: SPAWN.x, z: SPAWN.z, ry: SPAWN.ry, sp: 0, drv: null, hp: 100, swing: 0, dead: 0, hitCd: 0 }; const remotes = new Map();
   const mkAvatar = async lk => { const tpl = await loadBase(lk.base); const av = new Avatar(tpl); dress(av, lk); return av; };
   me.av = await mkAvatar(look); scene.add(me.av.root); const myTag = nameTag(net.me.name); scene.add(myTag);
   // ---- bodies (persistent corpses, drawn by the zombies module if present) ----
@@ -57,8 +62,8 @@ export async function enterTown({ look, onExit } = {}) {
   let lastGroan = 0; const zEvent = (ev, z) => { try { if (!aud.ctx) return; const p = z.root.position; if (ev === 'notice') { const n = performance.now(); if (n - lastGroan > 700) { lastGroan = n; aud.at(p).groan(.12); } } else if (ev === 'kill') aud.at(p).squelch(.5); } catch (e) { /* ignore */ } };
   const Z = await createZombies({ scene, W, camera: cam, bodies: BODIES, fogFar: FOG_FAR, getPlayers: () => [{ x: me.x, z: me.z, ry: me.ry, drv: !!me.drv, id: 'me', crouch: false }, ...[...remotes.values()].filter(r => r.av).map(r => ({ x: r.x, z: r.z, id: r.id, drv: false }))], onHitPlayer: (dmg, from) => hurt(dmg, from), onEvent: (ev, z) => zEvent(ev, z) });
   // ---- toasts / hurt ----
-  let toastT = 0; const toast = (m, s = 1.8) => { toastEl.textContent = m; toastEl.style.opacity = 1; toastT = s; };
-  const hurt = (dmg) => { if (me.dead) return; me.hp = Math.max(0, me.hp - dmg); vig.style.opacity = 1; setTimeout(() => vig.style.opacity = 0, 180); if (me.hp <= 0) die(); };
+  let toastTm = 0; const toast = (m, sec = 1.8) => { const e = $q('#toast'); if (!e) return; e.textContent = m; e.classList.add('on'); clearTimeout(toastTm); toastTm = setTimeout(() => e.classList.remove('on'), sec * 1000); };
+  const hurt = (dmg) => { if (me.dead || roll > 0) return; me.hp = Math.max(0, me.hp - dmg); vig.style.opacity = 1; setTimeout(() => vig.style.opacity = 0, 180); if (me.hp <= 0) die(); };
   const die = () => { me.dead = 3.2; dead.style.display = 'flex'; if (me.drv) exitCar(true); const lost = Math.floor(bag.count('cash') / 2); bag.remove('cash', lost); };
   // ---- doors ----
   const doorBy = id => W.doors.find(d => d.id === id);
@@ -110,43 +115,57 @@ export async function enterTown({ look, onExit } = {}) {
   // ---- combat ----
   const swingHit = () => { if (me.hitCd > 0 || me.drv || me.dead) return; const w = bag.best(); me.hitCd = .55 + (w.dmg > 2 ? .1 : 0); me.swing = 1; try { aud.swing(); } catch (e) { /* ignore */ } const fx = Math.sin(me.ry), fz = Math.cos(me.ry); setTimeout(() => { if (Z && Z.killNear) { const n = Z.killNear(me.x + fx * w.reach * .75, me.z + fz * w.reach * .75, w.reach * .7 + .2, 22 * w.dmg, { x: fx, z: fz }); if (n) noise(me.x, me.z, 12); } noise(me.x, me.z, 7); }, 160); };
   // ---- input ----
-  const keys = {}; const kd = e => { if (e.repeat) return; keys[e.code] = true; if (e.code === 'KeyE') { wantUse = true; useHeld = true; } if (e.code === 'KeyF') wantAlt = true; if (e.code === 'Space') { wantHit = true; hitHeld = true; } if (e.code === 'KeyB') togglePanel('bag'); if (e.code === 'KeyP') togglePanel('shop'); }, ku = e => { keys[e.code] = false; if (e.code === 'KeyE') useHeld = false; if (e.code === 'Space') hitHeld = false; }; addEventListener('keydown', kd); addEventListener('keyup', ku);
-  const joy = { x: 0, y: 0, id: null }; const mv = e => { const r = stick.getBoundingClientRect(); let x = (e.clientX - r.left - r.width / 2) / (r.width / 2), y = (e.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; stickKnob.style.transform = `translate(${x * 36}px,${y * 36}px)`; };
-  stick.addEventListener('pointerdown', e => { joy.id = e.pointerId; stick.setPointerCapture(e.pointerId); mv(e); }); stick.addEventListener('pointermove', e => { if (e.pointerId === joy.id) mv(e); }); const rel = () => { joy.id = null; joy.x = joy.y = 0; stickKnob.style.transform = ''; }; stick.addEventListener('pointerup', rel); stick.addEventListener('pointercancel', rel);
-  let camYaw = SPAWN.ry, camPitch = .42, camDist = 4.8, drag = null; canvas.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; }); canvas.addEventListener('pointermove', e => { if (drag) { camYaw -= (e.clientX - drag[0]) * .006; camPitch = clamp(camPitch + (e.clientY - drag[1]) * .003, .18, 1.0); drag = [e.clientX, e.clientY]; } }); canvas.addEventListener('pointerup', () => drag = null);
+  // keyboard extras (story Input already maps E/F use, Space jump, Ctrl roll, C crouch, V view, Q swap, G grenade, R = alt action, J fire); B = bag
+  const kd = e => { if (e.repeat) return; if (e.code === 'KeyB') togglePanel('bag'); if (e.code === 'KeyN') togglePanel('shop'); }; addEventListener('keydown', kd);
+  let camYaw = SPAWN.ry, camPitch = .42, camDist = 4.8, drag = null; // desktop mouse drag-look (touch look comes from the story Input)
+  canvas.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') drag = [e.clientX, e.clientY]; }); canvas.addEventListener('pointermove', e => { if (drag && e.pointerType === 'mouse') { camYaw -= (e.clientX - drag[0]) * .006; camPitch = clamp(camPitch + (e.clientY - drag[1]) * .003, .18, 1.0); drag = [e.clientX, e.clientY]; } }); canvas.addEventListener('pointerup', () => drag = null);
+  // driving buttons (same four as the story's truck HUD)
+  const drvBind = [['#dGas', 'gas'], ['#dBrake', 'brake'], ['#dL', 'l'], ['#dR', 'r']].map(([id, k]) => { const e = $q(id); if (!e) return null; const on = v => ev => { ev.preventDefault(); drv[k] = v ? 1 : 0; e.classList.toggle('on', v); }; const dn = on(true), up = on(false); e.addEventListener('pointerdown', dn); ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => e.addEventListener(t, up)); return [e, dn, up]; });
+  // pause (story's II button / Esc): Resume, Change look, Exit
+  const togglePause = () => { const on = pausePanel.style.display !== 'flex'; pausePanel.style.display = on ? 'flex' : 'none'; if (on) { pausePanel.innerHTML = ''; pausePanel.append(el('h3', {}, 'Paused'), el('button', { on: { click: () => { pausePanel.style.display = 'none'; } } }, 'Resume'), el('button', { on: { click: () => { net.me.look.__edit = 1; exit(true); } } }, 'Change look'), el('button', { on: { click: () => exit() } }, 'Exit to menu')); } };
+  shim.onPause = togglePause; const pauseB = $q('#btnPause'); const pauseH = e => { e.preventDefault(); e.stopPropagation(); togglePause(); }; pauseB.addEventListener('touchstart', pauseH, { passive: false }); pauseB.addEventListener('click', pauseH);
+  // swap weapon: cycle through melee items in the bag; grenade: none in the town yet
+  const swapWeapon = () => { const list = ['fists', ...Object.keys(bag.items).filter(k => ITEMS[k] && ITEMS[k].melee)]; const i = (list.indexOf(bag.pref || 'fists') + 1) % list.length; bag.pref = list[i]; toast(bag.best().name); };
+  let roll = 0, jumpVy = 0;
   // ---- main loop ----
   let running = true, last = performance.now(), t = 0, sendAcc = 0; const sp = { v: 0 }; let stAcc = 0, navAcc = 0, minAcc = 0, camIn = 0; const camPos = new THREE.Vector3(); let camInit = false;
-  const mini = miniC.getContext('2d'); const MS = 184 / 150; // minimap: 150 m window around the player
-  function drawMini() { const g = mini; g.clearRect(0, 0, 184, 184); g.save(); g.beginPath(); g.arc(92, 92, 90, 0, 7); g.clip(); g.fillStyle = '#2e3a2a'; g.fillRect(0, 0, 184, 184); const X = x => 92 + (x - me.x) * MS, Z2 = z => 92 + (z - me.z) * MS; g.fillStyle = '#4a4d52'; for (const z of [-24, 24]) g.fillRect(0, Z2(z) - 4 * MS, 184, 8 * MS); for (const x of [-24, 24]) g.fillRect(X(x) - 4 * MS, 0, 8 * MS, 184);
+  const miniEl = $q('#mini'); const MSZ = miniEl.width, mini = miniEl.getContext('2d'); const MS = MSZ / 150; // minimap (the story's #mini canvas): 150 m window around the player
+  function drawMini() { const g = mini; g.clearRect(0, 0, MSZ, MSZ); g.save(); g.beginPath(); g.arc(MSZ / 2, MSZ / 2, MSZ / 2 - 2, 0, 7); g.clip(); g.fillStyle = '#2e3a2a'; g.fillRect(0, 0, MSZ, MSZ); const X = x => MSZ / 2 + (x - me.x) * MS, Z2 = z => MSZ / 2 + (z - me.z) * MS; g.fillStyle = '#4a4d52'; for (const z of [-24, 24]) g.fillRect(0, Z2(z) - 4 * MS, MSZ, 8 * MS); for (const x of [-24, 24]) g.fillRect(X(x) - 4 * MS, 0, 8 * MS, MSZ);
     g.fillStyle = '#b8b0a0'; for (const b of W.buildings) g.fillRect(X(b.rect.x0), Z2(b.rect.z0), (b.rect.x1 - b.rect.x0) * MS, (b.rect.z1 - b.rect.z0) * MS); g.fillStyle = '#7d7468'; for (const l of W.lots) if (!l.enterable) g.fillRect(X(l.cx) - 4 * MS, Z2(l.cz) - 4 * MS, 8 * MS, 8 * MS);
     g.fillStyle = '#e8c04a'; for (const c of cars) g.fillRect(X(c.x) - 2, Z2(c.z) - 2, 4, 4); if (Z) { g.fillStyle = '#e0443a'; for (const z of Z.zombies) { if (z.dead) continue; const p = z.root.position; g.fillRect(X(p.x) - 1.5, Z2(p.z) - 1.5, 3, 3); } } g.fillStyle = '#6ac7ff'; for (const r of remotes.values()) g.fillRect(X(r.x) - 2.5, Z2(r.z) - 2.5, 5, 5);
-    g.restore(); g.fillStyle = '#fff'; g.save(); g.translate(92, 92); g.rotate(-me.ry + Math.PI); g.beginPath(); g.moveTo(0, -7); g.lineTo(5, 5); g.lineTo(-5, 5); g.fill(); g.restore(); g.strokeStyle = '#fff6'; g.lineWidth = 2; g.beginPath(); g.arc(92, 92, 90, 0, 7); g.stroke(); }
+    g.restore(); g.fillStyle = '#fff'; g.save(); g.translate(MSZ / 2, MSZ / 2); g.rotate(-me.ry + Math.PI); g.beginPath(); g.moveTo(0, -7); g.lineTo(5, 5); g.lineTo(-5, 5); g.fill(); g.restore(); g.strokeStyle = '#fff6'; g.lineWidth = 2; g.beginPath(); g.arc(MSZ / 2, MSZ / 2, MSZ / 2 - 2, 0, 7); g.stroke(); }
   const insideB = (x, z) => { for (const b of W.buildings) { const r = b.rect; if (x > r.x0 - .1 && x < r.x1 + .1 && z > r.z0 - .1 && z < r.z1 + .1) return b; } return null; };
   function frame(now) {
     if (!running) return; requestAnimationFrame(frame); const rawDt = (now - last) / 1000, dt = Math.min(window.__MP_DTCAP || .05, rawDt); last = now; t += dt; const w = innerWidth, h = innerHeight; if (canvas.width !== Math.floor(w * renderer.getPixelRatio()) || canvas.height !== Math.floor(h * renderer.getPixelRatio())) { renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
-    if (toastT > 0) { toastT -= dt; if (toastT <= 0) toastEl.style.opacity = 0; }
     if (me.dead > 0) { me.dead -= dt; if (me.dead <= 0) { me.hp = 100; me.x = SPAWN.x; me.z = SPAWN.z; dead.style.display = 'none'; } }
-    const busy = panelKind === 'loot'; let ix = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + joy.x, iy = (keys.KeyS || keys.ArrowDown ? 1 : 0) - (keys.KeyW || keys.ArrowUp ? 1 : 0) + joy.y; const il = Math.hypot(ix, iy); if (il > 1) { ix /= il; iy /= il; } if (me.dead > 0) { ix = iy = 0; }
+    const busy = panelKind === 'loot' || pausePanel.style.display === 'flex'; inp.poll(dt); let ix = inp.move.x, iy = inp.move.y; { const il0 = Math.hypot(ix, iy); if (il0 > 1) { ix /= il0; iy /= il0; } } const il = Math.hypot(ix, iy); if (me.dead > 0) { ix = iy = 0; }
+    // story controls -> town actions
+    camYaw -= inp.look.x; if (fp) fpPitch = clamp(fpPitch - inp.look.y, -1.2, 1.1); else camPitch = clamp(camPitch + inp.look.y * .5, .12, 1.0); inp.look.set(0, 0);
+    if (inp.pressed('use')) wantUse = true; if (inp.pressed('reload')) wantAlt = true; if (inp.pressed('swap')) swapWeapon(); if (inp.pressed('gren')) toast('No grenades'); if (inp.pressed('view')) { fp = !fp; toast(fp ? 'First person' : 'Third person'); }
+    if (inp.pressed('crouch')) { shim.state.crouch = !shim.state.crouch; } if (inp.pressed('atk') || inp.atk) wantHit = true; if (inp.pressed('jump') && !me.drv && me.y <= 0 && me.dead <= 0) jumpVy = 5.4; if (inp.pressed('roll') && !me.drv && roll <= 0 && me.dead <= 0) { roll = .55; }
+    aimZoom = inp.aim; hitHeld = !!(inp.atk || inp.btn.atk); // while driving the FIRE button is the handbrake
+    if (me.drv) { const g = drv.gas - (drv.brake && me.drv.v < .5 ? 1 : 0); if (g) iy = -g; if (drv.l || drv.r) ix = drv.r - drv.l; if (drv.brake && me.drv.v >= .5) hitHeld = true; }
     // interactions
     acts = me.dead > 0 ? [] : gather(); const prim = acts.find(a => !a.alt), alt = acts.find(a => a.alt);
-    if (hold.act) { const cur = acts.find(a => a.label === hold.act.label); if (!useHeld || !cur) { hold.act = null; hold.t = 0; } else hold.act = cur; }
-    if (wantUse) { wantUse = false; if (prim && !busy) { if (prim.dur) { hold.act = prim; hold.t = 0; } else prim.run(); } }
-    if (wantAlt) { wantAlt = false; if (alt && !busy) { if (alt.dur) { hold.act = alt; hold.t = 0; useHeld = true; setTimeout(() => { }, 0); } else alt.run(); } }
-    if (hold.act) { hold.t += Math.min(rawDt, .6); if (hold.t >= hold.act.dur) { const a = hold.act; hold.act = null; hold.t = 0; useHeld = false; a.run(); } }
-    const showA = hold.act || prim || alt; prompt.style.display = showA && !busy && !me.dead ? 'block' : 'none'; if (showA) { const a = hold.act || prim || alt; prompt.innerHTML = ''; prompt.append(a.label + (a.dur ? ' (hold)' : ''), el('b', {}, el('i', { style: `width:${hold.act ? Math.min(100, hold.t / hold.act.dur * 100) : 0}%` }))); }
-    useB.textContent = me.drv ? 'Exit' : prim ? 'Use' : 'Use'; altB.textContent = alt ? 'Alt' : '—'; altB.style.opacity = alt ? 1 : .35; hitB.textContent = me.drv ? 'Brake' : 'Hit';
+    if (hold.act) { const cur = acts.find(a => a.label === hold.act.label); if (!chan || !cur || il > .4) { hold.act = null; hold.t = 0; chan = false; } else hold.act = cur; }
+    if (wantUse) { wantUse = false; if (prim && !busy) { if (prim.dur) { hold.act = prim; hold.t = 0; chan = true; } else prim.run(); } }
+    if (wantAlt) { wantAlt = false; if (alt && !busy) { if (alt.dur) { hold.act = alt; hold.t = 0; chan = true; } else alt.run(); } }
+    if (hold.act) { hold.t += Math.min(rawDt, .6); if (hold.t >= hold.act.dur) { const a = hold.act; hold.act = null; hold.t = 0; chan = false; a.run(); } }
+    { const showA = hold.act || prim || alt; const pe = $q('#prompt'); if (showA && !busy && !me.dead) { const a = hold.act || prim; let txt = a ? '✋ ' + a.label + (hold.act ? ' · ' + Math.round(Math.min(100, hold.t / hold.act.dur * 100)) + '%' : a.dur ? ' (hold ' + a.dur.toFixed(1) + 's)' : '') : ''; if (alt && !hold.act) txt += (txt ? '   ·   ' : '') + '⟳ ' + alt.label; pe.textContent = txt; } else pe.textContent = ''; }
     if (wantHit) { wantHit = false; if (!me.drv && !busy) swingHit(); } me.hitCd = Math.max(0, me.hitCd - dt); me.swing = Math.max(0, me.swing - dt * 3);
     // movement
     const c = me.drv; if (c) { c.update(dt, { gas: me.dead > 0 ? 0 : -iy, steer: ix, brake: hitHeld }, col, cars); me.x = c.x; me.z = c.z; me.ry = c.ry; me.sp = Math.abs(c.v) / 6; if (Z && Z.runOver && Math.abs(c.v) > 3.5) { const n = Z.runOver(c); if (n) { toast('Splat', .6); c.v *= .93; } } sendAcc += dt; if (sendAcc > .09) { sendAcc = 0; net.car(c.netState()); }
       if (c.fuel <= 0 && c.engine === false && c.stalled) { c.stalled = false; toast('Out of fuel! Find gas.', 3); } }
-    else if (!busy) { const spd = (run ? 4.8 : 2.1) * il; if (il > .05 && me.dead <= 0) { const fx = Math.sin(camYaw), fz = Math.cos(camYaw); const vx = (-iy) * fx + ix * (-fz), vz = (-iy) * fz + ix * fx; me.x += vx * spd / Math.max(il, .01) * il * dt; me.z += vz * spd / Math.max(il, .01) * il * dt; me.ry = Math.atan2(vx, vz); }
-      let [px, pz] = col.push(me.x, me.z, .34); for (const k of cars) for (const [cx, cz] of k.circles()) { const dx = px - cx, dz = pz - cz, d = Math.hypot(dx, dz); if (d < k.rad + .34 && d > 1e-4) { px = cx + dx / d * (k.rad + .34); pz = cz + dz / d * (k.rad + .34); } } me.x = clamp(px, -BOUNDS.x + 3, BOUNDS.x - 3); me.z = clamp(pz, -BOUNDS.z + 3, BOUNDS.z - 3); sp.v += (il * (run ? 2 : 1) - sp.v) * Math.min(1, dt * 8); me.sp = sp.v; }
-    else { me.sp = 0; }
+    else if (!busy) { const crouch = shim.state.crouch, run = (inp.run || (il > .95 && inp.touchRun)) && !crouch; const spd = crouch ? 1.6 : run ? 6.2 : 3.1; /* story v1.9.7 speeds */
+      if (roll > 0 && me.dead <= 0) { roll -= dt; me.x += Math.sin(me.ry) * 6.5 * dt; me.z += Math.cos(me.ry) * 6.5 * dt; } else if (il > .05 && me.dead <= 0) { const fx = Math.sin(camYaw), fz = Math.cos(camYaw); const vx = (-iy) * fx + ix * (-fz), vz = (-iy) * fz + ix * fx; const vl = Math.hypot(vx, vz) || 1; me.x += vx / vl * spd * il * dt; me.z += vz / vl * spd * il * dt; me.ry = Math.atan2(vx, vz); }
+      if (fp && !(roll > 0)) me.ry = camYaw; if (jumpVy !== 0 || me.y > 0) { jumpVy -= 14 * dt; me.y += jumpVy * dt; if (me.y <= 0) { me.y = 0; jumpVy = 0; } }
+      let [px, pz] = col.push(me.x, me.z, .34); for (const k of cars) for (const [cx, cz] of k.circles()) { const dx = px - cx, dz = pz - cz, d = Math.hypot(dx, dz); if (d < k.rad + .34 && d > 1e-4) { px = cx + dx / d * (k.rad + .34); pz = cz + dz / d * (k.rad + .34); } } me.x = clamp(px, -BOUNDS.x + 3, BOUNDS.x - 3); me.z = clamp(pz, -BOUNDS.z + 3, BOUNDS.z - 3); sp.v += (il * (run ? 2 : crouch ? .6 : 1) - sp.v) * Math.min(1, dt * 8); me.sp = sp.v; }
+    else { me.sp = 0; roll = 0; jumpVy = 0; me.y = 0; }
     for (const k of cars) { if (k !== c) { if (k.net && performance.now() - (k.netAt || 0) > 1500) { k.net = null; k.driver = null; k.engine = false; } k.update(dt, null, col, cars); } }
-    me.av.root.visible = !c; me.av.root.position.set(me.x, 0, me.z); me.av.root.rotation.y = me.ry; animate(me.av, t, me.sp);
+    me.av.root.visible = !c && !fp; me.av.root.rotation.order = 'YXZ'; me.av.root.position.set(me.x, me.y + (roll > 0 ? .45 : 0), me.z); me.av.root.rotation.y = me.ry; me.av.root.scale.y = shim.state.crouch && !c ? .82 : 1; animate(me.av, t, me.sp);
     if (me.swing > 0 && me.av.bones.RightArm) { const s = Math.sin(me.swing * Math.PI); me.av.bones.RightArm.rotateX?.(0); const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -s * 1.9); me.av.bones.RightArm.quaternion.premultiply(q); me.av.bones.RightForeArm && me.av.bones.RightForeArm.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -s * .6)); }
-    if (me.dead > 0) { me.av.root.rotation.x = -1.4; me.av.root.position.y = .15; } else me.av.root.rotation.x = 0;
-    myTag.position.set(me.x, 1.95, me.z); myTag.visible = !c;
+    if (me.dead > 0) { me.av.root.rotation.x = -1.4; me.av.root.position.y = .15; } else me.av.root.rotation.x = roll > 0 ? (1 - roll / .55) * Math.PI * 2 : 0;
+    myTag.position.set(me.x, 1.95 + me.y, me.z); myTag.visible = !c && !fp;
     // doors animate
     for (const D of W.doors) { if (!D.installed) continue; const tg = D.target; if (Math.abs(D.open - tg) > .001) { D.open += Math.sign(tg - D.open) * dt * 2.2; if ((tg > D.open) === (D.open < tg) && Math.abs(D.open - tg) < .03) D.open = tg; D.pivot.rotation.y = D.swing * D.open * (D.state === 'broken' ? 1.95 : 1.55); }
       if (D.state === 'closing' && D.open <= .02) { D.state = 'closed'; D.open = 0; D.pivot.rotation.y = 0; col.set(D.col, true); } }
@@ -159,21 +178,24 @@ export async function enterTown({ look, onExit } = {}) {
     navAcc += dt; if (navAcc > .45) { navAcc = 0; W.nav.field(me.x, me.z); } try { if (aud.ctx && aud.listen) aud.listen(cam, false); } catch (e) { /* ignore */ } perfLOD(dt); if (Z) { Z.update(dt, t); zombieLOD(); } updateLoot(W, dt);
     // roofs + camera
     const inb = insideB(me.x, me.z); for (const b of W.buildings) if (b.roof) b.roof.visible = b !== inb; W.closed.update(me.x, me.z);
-    const tgt = new THREE.Vector3(me.x, c ? 1.5 : 1.45, me.z); const pitch = c ? .36 : inb ? Math.max(camPitch, .85) : camPitch; const dd = c ? 8.6 : inb ? 5.2 : camDist; const yawEff = c ? me.ry : camYaw; if (c) camYaw = me.ry;
-    const want = new THREE.Vector3(tgt.x - Math.sin(yawEff) * Math.cos(pitch) * dd, tgt.y + Math.sin(pitch) * dd, tgt.z - Math.cos(yawEff) * Math.cos(pitch) * dd); if (!camInit) { camPos.copy(want); camInit = true; } camPos.lerp(want, Math.min(1, dt * (c ? 5 : 9))); cam.position.copy(camPos); cam.lookAt(tgt);
+    if (fp && !c) { const eye = new THREE.Vector3(me.x, me.y + 1.62, me.z); camPos.copy(eye); cam.position.copy(eye); cam.lookAt(eye.x + Math.sin(camYaw) * Math.cos(fpPitch), eye.y + Math.sin(fpPitch), eye.z + Math.cos(camYaw) * Math.cos(fpPitch)); }
+    else { const tgt = new THREE.Vector3(me.x, (c ? 1.5 : 1.45) + me.y, me.z); const pitch = c ? .36 : inb ? Math.max(camPitch, .85) : camPitch; const dd = (c ? 8.6 : inb ? 5.2 : camDist) * (aimZoom && !c ? .72 : 1); const yawEff = c ? me.ry : camYaw; if (c) camYaw = me.ry;
+      const dir = new THREE.Vector3(-Math.sin(yawEff) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yawEff) * Math.cos(pitch)); let dist = dd, hit = false;
+      // camera collision: walk out from the player along the camera ray and stop short of walls, trees and cars
+      for (let d = .6; d <= dd + .01; d += .35) { const px = tgt.x + dir.x * d, py = tgt.y + dir.y * d, pz = tgt.z + dir.z * d; let bad = py < .15 || (py < 2.7 && col.hit(px, pz, .28)); if (!bad && py < 2.4) for (const k of cars) { if (!k.g.visible) continue; if (Math.hypot(px - k.x, pz - k.z) < k.rad + .3) { for (const [cx, cz] of k.circles()) if (Math.hypot(px - cx, pz - cz) < .95) { bad = true; break; } } if (bad) break; } if (bad) { dist = Math.max(.7, d - .45); hit = true; break; } }
+      const want = new THREE.Vector3(tgt.x + dir.x * dist, tgt.y + dir.y * dist, tgt.z + dir.z * dist); if (!camInit) { camPos.copy(want); camInit = true; } if (hit) camPos.copy(want); else camPos.lerp(want, Math.min(1, dt * (c ? 5 : 9))); cam.position.copy(camPos); cam.lookAt(tgt); }
     sun.position.set(me.x + 36, 60, me.z + 28); sun.target.position.set(me.x, 0, me.z); sun.target.updateMatrixWorld();
     // HUD
-    hpBar.firstChild.style.width = me.hp + '%'; info.textContent = `Players ${net.peers.size + 1} · $${bag.count('cash')} · ${bag.weight.toFixed(0)}/${bag.cap}kg` + (Z ? ` · zombies ${Z.stats().alive}` : '');
-    if (c) { gaugeC.style.display = 'block'; drawGauge(gaugeC, c.fuelFrac, Math.abs(c.v) * 3.6, c.fuelFrac < .15, t); } else gaugeC.style.display = 'none';
+    { const hb = $q('#hpb i'); if (hb) hb.style.width = me.hp + '%'; $q('#hpTxt').textContent = `Health : ${Math.ceil(me.hp)}  ·  $${bag.count('cash')}  ·  ${bag.weight.toFixed(0)}/${bag.cap}kg`; $q('#ammoTxt').textContent = c ? `${c.kind || 'Car'}  ·  ${Math.round(c.fuel)} L` : bag.best().name; const ob = $q('#obj'); ob.innerHTML = `<b>QUIET FALLS</b><span>Players ${net.peers.size + 1}${Z ? ` · Zombies ${Z.stats().alive}` : ''}</span>`;
+      document.body.classList.toggle('driving', !!c); driveEl && driveEl.classList.toggle('hidden', !c); gaugeC.style.display = c ? 'block' : 'none'; if (c) drawGauge(gaugeC, c.fuelFrac, Math.abs(c.v) * 3.6, c.fuelFrac < .15, t); const tu = $q('#tUse'); if (tu && !SET.hudv2) tu.textContent = '✋'; }
     minAcc += dt; if (minAcc > .12) { minAcc = 0; drawMini(); }
-    tip.textContent = me.dead > 0 ? '' : c ? (c.fuel <= 0 ? 'Out of fuel: get out and find a gas can' : 'Stick: gas / steer · Brake button · Exit to leave') : '';
     renderer.render(scene, cam);
   }
   net.onHello = async p => { let r = remotes.get(p.id); if (!r) { r = { id: p.id, x: 0, z: 0, ry: 0, sp: 0 }; remotes.set(p.id, r); } if (!p.look) return; const av = await mkAvatar(p.look); if (r.av) { scene.remove(r.av.root); r.av.dispose(); } r.av = av; scene.add(av.root); if (r.tag) scene.remove(r.tag); r.tag = nameTag(p.name || 'Player'); scene.add(r.tag); };
   net.onLeave = p => { const r = remotes.get(p.id); if (r) { r.av && (scene.remove(r.av.root), r.av.dispose()); r.tag && scene.remove(r.tag); remotes.delete(p.id); } };
-  function exit(edit) { running = false; removeEventListener('keydown', kd); removeEventListener('keyup', ku); net.close(); renderer.dispose(); root.remove(); delete window.__mpTown; delete window.__mpLobby; if (edit === true) { import('../creator.js').then(m => m.openCreator({ onClose: onExit, onPlay: l => enterTown({ look: l, onExit }) })).then(c => { window.__mpCreator = c; }); } else onExit && onExit(); }
+  function exit(edit) { running = false; removeEventListener('keydown', kd); shim.onPause = null; for (const [e, , up] of drvBind.filter(Boolean)) e.classList.remove('on'); for (const [e, d] of saved) e.style.display = d; glEl && (glEl.style.display = ''); hudr2.remove(); document.body.classList.remove('driving'); driveEl && driveEl.classList.add('hidden'); hudEl.classList.add('hidden'); touchEl.classList.add('hidden'); stage.classList.add('hidden'); net.close(); renderer.dispose(); root.remove(); delete window.__mpTown; delete window.__mpLobby; if (edit === true) { import('../creator.js').then(m => m.openCreator({ onClose: onExit, onPlay: l => enterTown({ look: l, onExit }) })).then(c => { window.__mpCreator = c; }); } else onExit && onExit(); }
   W.closed.update(me.x, me.z); renderer.compile(scene, cam);
   const api = { W, me, net, cars, bag, gather, scene, cam, remotes, get Z() { return Z; }, acts: () => acts.map(a => a.label), toast, hurt,
-    setPos: (x, z) => { me.x = x; me.z = z; camInit = false; }, key: (k, v) => { keys[k] = v; }, camYaw: v => { camYaw = v; }, setCam: (yaw, pitch, dist) => { if (yaw != null) camYaw = yaw; if (pitch != null) camPitch = pitch; if (dist != null) camDist = dist; }, use: () => { wantUse = true; }, useHold: (v) => { useHeld = v; if (v) wantUse = true; }, alt: () => { wantAlt = true; }, hit: () => { wantHit = true; }, enter: car => enterCar(car), exitCar, peers: () => net.peers.size, setDoor, openLoot, closePanel, togglePanel, take, lootOf, buyDoor, noise, brakes: v => { hitHeld = v; }, stats: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, closedShown: W.closed.shown, closedHi: W.closed.shownHi }), renderer };
-  window.__mpTown = api; window.__mpLobby = api; info.textContent = 'Quiet Falls'; requestAnimationFrame(frame); return api;
+    setPos: (x, z) => { me.x = x; me.z = z; camInit = false; }, key: (k, v) => { inp.keys[k] = v; }, camYaw: v => { camYaw = v; }, setCam: (yaw, pitch, dist) => { if (yaw != null) camYaw = yaw; if (pitch != null) camPitch = pitch; if (dist != null) camDist = dist; }, use: () => { wantUse = true; }, useHold: (v) => { useHeld = v; if (v) wantUse = true; }, alt: () => { wantAlt = true; }, hit: () => { wantHit = true; }, enter: car => enterCar(car), exitCar, peers: () => net.peers.size, setDoor, openLoot, closePanel, togglePanel, take, lootOf, buyDoor, noise, brakes: v => { hitHeld = v; }, stats: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, closedShown: W.closed.shown, closedHi: W.closed.shownHi }), renderer };
+  window.__mpTown = api; window.__mpLobby = api; requestAnimationFrame(frame); return api;
 }
