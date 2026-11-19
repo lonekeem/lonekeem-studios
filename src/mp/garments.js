@@ -69,6 +69,7 @@ vec3 garment(vec3 p, vec3 n, vec4 R){
   else if (kind < 2.5) { if (footW < 0.5 && legW > 0.3 && uG1.x < 0.95) { edge = (ls - uG1.x) * LL; vis = edge > 0.0; } else if (uG1.z > 0.5) { vis = legW > 0.3 && (footW > 0.5 || ls > uG1.x); edge = 0.5; } }
   else if (kind < 4.5) { if (handW > 0.5) { vis = true; edge = 0.5; } else if (isArm) { edge = (as - uG1.x) * uArmD.w; vis = edge > 0.0; } }
   else { if (!isArm) { float eb = min((0.06 - t) * H, (0.1 - ls) * LL); vis = eb > 0.0 && t > -0.3 && footW < 0.5; edge = eb; if (uG1.z > 0.5 && t > 0.6 && t < 0.78 && ax < 0.25) { vis = true; edge = 0.5; } } }
+  if (!gl_FrontFacing && !isArm && p.y > uLm.y - 0.035 && ax < 0.17) vis = false; // inner faces of the collar lip showed as dark specks beside the neck
   if (!vis) discard;
   float ec = min(edge, 0.01); float fw = clamp(fwidth(ec), 1e-5, 0.004); gA = smoothstep(0.0, fw * 1.5, ec);
   vec3 c = uC1; if (uSole.w > 0.5 && isArm) c = uC2; float pv = pat(p, uPat.x, uPat.y); if (uSole.w < 0.5) c = mix(c, uC2, pv * uPat.z); else if (!isArm) c = mix(c, uC2, pv * uPat.z);
