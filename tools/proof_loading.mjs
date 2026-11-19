@@ -1,0 +1,9 @@
+import { chromium } from 'playwright'; import fs from 'fs'; import { sheet } from './proof_lib.mjs';
+const port = process.argv[2] || 4301, out = '/workspace/atqr-proof/loading'; fs.mkdirSync(out, { recursive: true });
+const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
+const ctx = await b.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true }); const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
+await p.goto(`http://localhost:${port}/`, { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(1500);
+await p.evaluate(() => { const b = document.querySelector('#btnWarn'); b && b.click(); });
+await p.waitForTimeout(9000); await p.evaluate(() => { window.__log = []; const t0 = performance.now(); const iv = setInterval(() => { const L = document.querySelector('#loading'), f = document.querySelector('#fade'); window.__log.push([Math.round(performance.now() - t0), getComputedStyle(L).display, document.querySelector('#loading .lpc').textContent, getComputedStyle(f).opacity, document.querySelector('#stage').className]); if (performance.now() - t0 > 7000) clearInterval(iv); }, 100); document.querySelector('#btnNew').click(); });
+const files = []; for (let i = 0; i < 8; i++) { await p.waitForTimeout(i === 0 ? 60 : 700); const f = `${out}/load_${i}.png`; await p.screenshot({ path: f }); files.push(f); }
+console.log(JSON.stringify(await p.evaluate(() => window.__log.filter((x, i) => i % 3 === 0)))); console.log(errs.slice(0, 3), await p.evaluate(() => [document.querySelector('#loading').className, document.querySelector('#loading .lpc')?.textContent, document.querySelector('#loading .lq')?.textContent])); sheet(files, `${out}/LOADING_sheet.png`, 2, 0.75); await b.close();
