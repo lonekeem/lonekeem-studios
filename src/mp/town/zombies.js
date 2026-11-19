@@ -7,12 +7,13 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { CharLib, Char } from '../../game/chars.js';
 import { loadRigs } from '../../game/avatar.js';
 import { randomLook } from '../../game/looks.js';
+import { addWound, bloodyMouth, setHandBlood } from '../../game/gore.js'; // the story's wound / blood shader marks (rigged zombies)
 import { BASE, mulberry, bloodTex, angDiff } from './kit.js';
 import { CFG, BOUNDS } from './map.js';
 
 let _models = null;
 export function loadZombieModels(base = BASE) { return _models || (_models = (async () => { const gltf = await new GLTFLoader().loadAsync(base + 'models/AnimationLibrary_Godot_Standard.gltf');
-  const lib = new CharLib(gltf); lib.rigs = await loadRigs(base, ['zombie2', 'genm', 'genf']); return { lib }; })()); }
+  const lib = new CharLib(gltf); lib.rigs = await loadRigs(base, ['zombie2', 'genm', 'genf', 'zombie_male', 'zombie_office', 'zombie_elder', 'zombie_big', 'zombie_cop', 'zombie_worker']); /* the full story zombie set (was only zombie2 -> every other zombie fell back to the headless procedural body) */ return { lib }; })()); }
 
 // road graph: nodes at the road ends, intersections and two spurs (store door, gas station) -> zombies drift along the streets
 function roadGraph() {
@@ -44,10 +45,10 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     let m; if (pools.length >= BLOOD_MAX) { m = pools.shift(); } else { m = new THREE.Mesh(blood.g, blood.mt); m.renderOrder = 2; scene.add(m); } m.position.set(x, .045, z); m.rotation.y = R(0, 6.28); m.scale.setScalar(s); pools.push(m); return m; };
 
   function make(x, z, o = {}) {
-    const look = Object.assign(randomLook((zseed++ * 7919 + (seed * 104729)) | 0, true), { grime: 1, blood: R(.5, 1) }); if (rnd() < .3) look.hair = 'balding';
+    const look = Object.assign(randomLook((zseed++ * 7919 + (seed * 104729)) | 0, true), { grime: 1, blood: R(.5, 1) }); if (o.rig !== undefined) look.rig = o.rig; /* same override as story spawnZ */ if (rnd() < .3) look.hair = 'balding';
     const c = new Char(lib, look, o.scale || R(.9, 1.1)); c.root.position.set(x, 0, z); c.root.rotation.y = R(0, 6.28); scene.add(c.root);
     const runner = o.runner ?? rnd() < .15;
-    Object.assign(c, { z: true, hp: runner ? 50 : 70, maxHp: runner ? 50 : 70, runner, speed: runner ? R(3.4, 4.2) : R(1.1, 1.6), st: 'wander', cd: R(0, 1), dead: false, deadT: 0, id: R(0, 10), vel: new THREE.Vector3(), off: [R(-2.6, 2.6), R(-2.6, 2.6)], node: -1, prev: -1, tgt: null, hitAt: 0, hitCd: 0, tgT: 0, hurtT: 0 });
+    Object.assign(c, { z: true, hp: runner ? 50 : 70, maxHp: runner ? 50 : 70, runner, speed: runner ? R(3.4, 4.2) : R(1.1, 1.6), st: 'wander', cd: R(0, 1), dead: false, deadT: 0, id: R(0, 10), vel: new THREE.Vector3(), off: [R(-2.6, 2.6), R(-2.6, 2.6)], node: -1, prev: -1, tgt: null, hitAt: 0, hitCd: 0, tgT: 0, hurtT: 0, noHead: false, hp0: runner ? 50 : 70 });
     c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.1 : .62 }); const a = c.act('Walk_Loop'); if (a) a.time = R(0, 1);
     pickNode(c); zs.push(c); S.spawned++; return c;
   }
@@ -84,7 +85,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     dt = Math.min(dt, .1); t += dt; const P = getPlayers(); if (!P.length) return; const p0 = P[0];
     if ((navT -= dt) <= 0) { navT = .5; nav && nav.field(p0.x, p0.z); }
     let alive = 0, dead = 0;
-    for (let i = 0; i < zs.length; i++) { const z = zs[i], pp = z.root.position;
+    for (let i = 0; i < zs.length; i++) { const z = zs[i], pp = z.root.position; if (z.hp < z.hp0) { { const vl = Math.hypot(z.vel.x, z.vel.z); if (vl > .05) wound(z, { x: z.vel.x / vl, z: z.vel.z / vl }, false); } z.hp0 = z.hp; if (z.hp > 0) z.mat.userData.u.uBlood.value = Math.min(1.3, z.mat.userData.u.uBlood.value + .15); }
       if (z.dead) { dead++; z.deadT += dt; if (z.deadT >= 3.2 && !z.settled && z.root.visible && nd0(z) < 60) { z.settled = 1; settleCorpse(z); } if (z.deadT < 3.2) { z.mixer.update(dt); if (z.vel.lengthSq() > .01) { const [nx, nz] = col.push(pp.x + z.vel.x * dt, pp.z + z.vel.z * dt, .3); pp.x = nx; pp.z = nz; z.vel.multiplyScalar(.9); } if (z.pool && z.poolGrow && z.pool.scale.x < 1.5) z.pool.scale.setScalar(z.pool.scale.x + dt * .5); } continue; }
       alive++; let near = null, nd = 1e9, ni = 0; P.forEach((p, k) => { const d = Math.hypot(p.x - pp.x, p.z - pp.z); if (d < nd) { nd = d; near = p; ni = k; } });
       z.root.visible = nd < fogFar - (z.root.visible ? 1 : 5); // hysteresis, and only vanish once ~90% fogged (no pop in view)
@@ -122,5 +123,11 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
   }
   function zBones(z) { const b = z.bones; if (z.dead || z.oneShot) return; // reaching arms, lolling head (same pose as the story zombies)
     ['DEF-upper_arm.L', 'DEF-upper_arm.R'].forEach((n, k) => { const bn = b[n]; if (bn) { bn.rotateX(z.runner ? -.5 : -1.05); bn.rotateZ((k ? -1 : 1) * .12); } }); if (b['DEF-head']) b['DEF-head'].rotateZ(Math.sin(t * 1.3 + z.id) * .25 + .2); if (b['DEF-spine.002']) b['DEF-spine.002'].rotateX(.18); }
+  // head hitbox, identical to story's shot test (game.js: z.worldOf('DEF-head') + .08*scale, radius .17 m; skip when z.noHead)
+  const _hp = new THREE.Vector3(); out.HEAD_R = .17; out.headPos = (z, v = _hp) => { z.worldOf('DEF-head', v); v.y += .08 * z.scale; return v; };
+  // story wound marks (gore.js addWound, same part picking as Game.woundFrom): a mark where a zombie was hit, on the rigged (skinned) zombie models
+  function wound(z, dir, head) { if (!z.skin || !dir) return; const a = z.root.rotation.y; let wx = -dir.x, wz = -dir.z; const l = Math.hypot(wx, wz) || 1; wx /= l; wz /= l; const c = Math.cos(-a), sn = Math.sin(-a), lx = wx * c + wz * sn, lz = -wx * sn + wz * c; const side = lx > 0 ? 'L' : 'R', r = Math.random();
+    const part = head ? 'head' : r < .3 ? 'chest' : r < .45 ? 'belly' : r < .7 ? (Math.random() < .5 ? 'uarm' : 'farm') + side : r < .85 ? 'thigh' + side : r < .95 ? 'shin' + side : 'neck'; addWound(z, { kind: 'bullet', part, nx: lx * .9, nz: lz * .9 || .1, size: .045 * R(.9, 1.2), run: R(.12, .3) }); }
+  out.wound = wound;
   out.update = update; return out;
 }
