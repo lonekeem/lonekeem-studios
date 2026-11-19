@@ -1,7 +1,7 @@
 // Respawn proof: die (forced damage) -> death screen + countdown -> respawn with protection (blink, <=2 s) -> wait 3 s -> zombie hit lowers hp, FIRE uses ammo + damages a zombie. Solo + 2 players, 3 cycles each, plus edge cases.
 // usage: TOWN_URL=http://127.0.0.1:5391/ node tools/mp/t_respawn.mjs <solo|two|edge>
 import { launch, client, ctxOpts } from '../mpfix/lib.mjs'; import fs from 'fs';
-const MODE = process.argv[2] || 'solo', OUT = '/workspace/atqresp/docs/mp-respawn'; fs.mkdirSync(OUT, { recursive: true });
+const MODE = process.argv[2] || 'solo', OUT = process.env.OUT || '/workspace/atqresp/docs/mp-respawn'; fs.mkdirSync(OUT, { recursive: true });
 const b = await launch(); const res = []; const rec = (n, ok, d) => { res.push({ n, ok, d }); console.log(ok ? 'PASS' : 'FAIL', n, JSON.stringify(d)); };
 const mk = async name => { const ctx = await b.newContext(ctxOpts); const p = await client(ctx, name); p.name = name; p.errs = []; p.on('pageerror', e => p.errs.push(e.message)); await p.evaluate(() => { window.__MP_DTCAP = .2; window.__mpTown.Z.killNear(0, 0, 400, 9999); }); return p; };
 const until = async (p, fn, arg, ms = 60000) => { try { await p.waitForFunction(fn, arg, { timeout: ms, polling: 100 }); return true; } catch (e) { return false; } };
