@@ -186,8 +186,8 @@ export class Game {
     else if (l.kind === 'grenade') m = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, .2, 8), new THREE.MeshStandardMaterial({ color: '#555', metalness: .6 }));
     else if (l.kind === 'page') m = new THREE.Mesh(new THREE.PlaneGeometry(.25, .33), new THREE.MeshStandardMaterial({ color: '#efe6c8', emissive: '#554a20', side: THREE.DoubleSide }));
     else if (l.kind === 'weapon') m = weaponMesh(l.item).clone();
-    else if (l.kind === 'key') m = keyModel();
-    else if (l.kind === 'keycard') m = cardModel();
+    else if (l.kind === 'key') { m = keyModel(); m.scale.setScalar(2); }
+    else if (l.kind === 'keycard') { m = cardModel(); m.scale.setScalar(2); }
     else if (l.kind === 'backpack') m = backpack();
     else m = new THREE.Mesh(new THREE.BoxGeometry(.3, .15, .25), new THREE.MeshStandardMaterial({ color: '#555' }));
     g.add(m); const ring = new THREE.Mesh(new THREE.RingGeometry(.25, .34, 24), glow); ring.rotation.x = -Math.PI / 2; ring.position.y = -l.pos[1] + 0.04; g.add(ring);

@@ -9,7 +9,7 @@ for (const spec of specs) { const [step, mode = 'tp', pos, yaw, extra] = spec.sp
   await p.goto(`http://localhost:${port}/?step=${step}&god`, { waitUntil: 'load' });
   await p.waitForFunction(() => window.__atq && window.__atq.game && window.__atq.game.running, null, { timeout: 180000 }); await p.waitForTimeout(2500);
   const info = await p.evaluate(([mode, pos, yaw, extra]) => { const g = window.__atq.game; g.god = true; g.paused = true; for (let i = 0; i < 60; i++) { if (g.dlgCur) g.skipLine(); g.update(1 / 30, 1 / 30); } g.cut = null; g.dlgCur = null;
-    g.zombies && g.zombies.forEach(z => { if (z.root) z.root.visible = false; }); if (extra === 'nz') g.zombies.length = 0; if (extra === 'key') { const q = g.player.root.position; g.addPickup({ kind: 'key', story: true, label: 'Rusty key', pos: [q.x - 2.5, 1.0, q.z - 5] }); g.addPickup({ kind: 'keycard', story: true, label: 'Security keycard', pos: [q.x + 3, 1.0, q.z - 7] }); }
+    g.zombies && g.zombies.forEach(z => { if (z.root) z.root.visible = false; }); if (extra === 'nz') g.zombies.length = 0; if (extra === 'key') { const q = g.player.root.position; g.addPickup({ kind: 'key', story: true, label: 'Rusty key', pos: [q.x + 0.9, 1.0, q.z - 2.2] }); g.addPickup({ kind: 'keycard', story: true, label: 'Security keycard', pos: [q.x + 2.2, 1.0, q.z - 3.4] }); }
     if (pos) { const [x, z] = pos.split(',').map(Number); g.player.root.position.set(x, g.player.root.position.y, z); }
     if (yaw !== undefined && yaw !== '') g.cam.yaw = +yaw; g.cam.fp = mode === 'fp';
     for (let i = 0; i < 20; i++) g.update(1 / 30, 1 / 30);
