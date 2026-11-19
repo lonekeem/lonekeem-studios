@@ -50,7 +50,7 @@ export const CAR_SPAWNS = [
   { id: 'c1', m: 'sedan', x: -12, z: 26.1, ry: Math.PI / 2, fuel: .55, lock: 0, tint: '#8a3b34' }, { id: 'c2', m: 'suv', x: 8, z: 21.8, ry: -Math.PI / 2 + .06, fuel: .22, lock: 1, tint: '#3d5a73' },
   { id: 'c3', m: 'hatchback-sports', x: 33, z: 25.5, ry: Math.PI / 2 + .35, fuel: .8, lock: 1, tint: '#c2a23a' }, { id: 'c4', m: 'van', x: -26, z: 10, ry: .05, fuel: .08, lock: 1, tint: '#d8d4c6' },
   { id: 'c5', m: 'sedan', x: -10, z: -21.8, ry: Math.PI / 2 + .1, fuel: .4, lock: 1, tint: '#4b6b4b' }, { id: 'c6', m: 'suv-luxury', x: 10, z: -26.2, ry: -Math.PI / 2 - .12, fuel: .7, lock: 1, tint: '#232529' },
-  { id: 'c7', m: 'truck', x: 41, z: -13, ry: 0, fuel: .0, lock: 1, tint: '#8e5b2e' }, { id: 'c8', m: 'sedan', x: 51, z: -13, ry: 0, fuel: .12, lock: 0, tint: '#7a7f86' },
+  { id: 'c7', m: 'truck', x: 41, z: -15.9, ry: Math.PI / 2, fuel: .0, lock: 0, tint: '#8e5b2e' }, { id: 'c8', m: 'sedan', x: 52, z: -11.1, ry: -Math.PI / 2, fuel: .12, lock: 0, tint: '#7a7f86' },
   { id: 'c9', m: 'hatchback-sports', x: 2, z: -12, ry: .55, fuel: .35, lock: 2, tint: '#a8322d' }, { id: 'c10', m: 'suv', x: -48, z: -26, ry: Math.PI / 2, fuel: .9, lock: 1, tint: '#6b7a52' },
   { id: 'c11', m: 'sedan', x: 22, z: -8, ry: Math.PI + .1, fuel: .5, lock: 1, tint: '#9a8f78' }, { id: 'c12', m: 'van', x: -23.8, z: -44, ry: .1, fuel: .3, lock: 0, tint: '#3c4a63' },
   { id: 'c13', m: 'sedan', x: 20, z: -22, ry: -Math.PI / 2, fuel: .65, lock: 0, tint: '#b8b3a6' }, { id: 'c14', m: 'suv', x: 24.2, z: 44, ry: Math.PI + .6, fuel: .45, lock: 1, tint: '#7c3b52' },
