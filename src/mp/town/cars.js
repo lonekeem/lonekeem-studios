@@ -72,7 +72,7 @@ export function createCars({ scene, W, models, specs = CAR_SPAWNS, onCrash }) {
     exit(car) { car.driver = null; car.engine = false; const s = Math.sin(car.ry), c = Math.cos(car.ry); for (const side of [1, -1]) for (const k of [1.9, 2.4]) { const x = car.x + c * k * side, z = car.z - s * k * side; if (!W.col.hit(x, z, .4) && !pushOut(x, z, .4, car)[2]) return { x, z }; } return { x: car.x + c * 2, z: car.z - s * 2 }; },
     seat(car) { return { x: car.x, z: car.z, ry: car.ry }; },
     /** per frame: ctl = {gas, steer, brake} for the car the local player drives */
-    update(dt, ctl) { for (const c of cars) { c.update(dt, c.driver === 'me' ? ctl : {}, W.col, cars); if (c.hp <= 0 && c.engine) { c.engine = false; c.stalled = true; } } },
+    update(dt, ctl) { for (const c of cars) { if (c.driver && !c.engine && c.fuel > 0 && c.hp > 0) { c.engine = true; c.stalled = false; } /* engine restarts by itself once there is fuel again (no hotwire) */ c.update(dt, c.driver === 'me' ? ctl : {}, W.col, cars); if (c.hp <= 0 && c.engine) { c.engine = false; c.stalled = true; } } },
   };
   return api;
 }
