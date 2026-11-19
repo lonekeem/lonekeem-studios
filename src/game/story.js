@@ -1,20 +1,6 @@
 import * as THREE from 'three';
-const V = (x, y, z) => new THREE.Vector3(x, y, z);
-const PI = Math.PI;
-const rnd = (a, b) => a + Math.random() * (b - a);
-const dist2 = (g, x, z) => Math.hypot(g.player.root.position.x - x, g.player.root.position.z - z);
-function follow(g, n, off) { n.update = (dt) => { const P = g.player.root.position, p = n.root.position; const tx = P.x + off[0], tz = P.z + off[1]; const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
-  if (d > 1.2) { const sp = Math.min(d, 1) * (d > 4 ? 5 : 2.8); p.x += dx / d * sp * dt; p.z += dz / d * sp * dt; n.root.rotation.y = Math.atan2(dx, dz); n.play(d > 4 ? 'Jog_Fwd_Loop' : 'Walk_Loop'); } else n.play('Idle_Loop'); }; }
-// v1.9.4: never snap the player to a far checkpoint mid-play — fade to black with the next objective instead
-function goto(g, i, xp = 100) { const tok = g.stepTok; g.addXP(xp); g.audio.pickup(); setTimeout(() => { if (g.stepTok !== tok) return; const cp = STORY[i] && STORY[i].cp, P = g.player.root.position; if (cp && Math.hypot(cp[0] - P.x, cp[1] - P.z) > 4 && g.fadeStep) g.fadeStep(i); else g.loadStep(i); }, 50); }
-// v1.9.7: after a boss (or a big fight) ends, let the death play out (slow-mo + collapse), then give Keem a few seconds of free control
-// ("BOSS DOWN"), and only then run dialogue / fades / step changes. Real-time, skips paused time, cancelled if the step changes.
-function afterBoss(g, fn, secs = 4.5, label = true) { const tok = g.stepTok; let t = 0, shown = false; const iv = setInterval(() => { if (g.stepTok !== tok) { clearInterval(iv); return; } if (g.paused || g.dead || g.dying) return; t += .1;
-  if (label && !shown && t >= 1.4) { shown = true; g.toast('BOSS DOWN', 2.5); g.objective('Boss down', 'Take a breath.'); } if (t >= secs + (g.boss && g.boss.dead && g.boss.deadT < 2.5 ? 99 : 0) - (t > 12 ? 99 : 0)) { clearInterval(iv); fn(); } }, 100); }
-// v1.9.4: fight cleared → point at the next checkpoint and advance only when the player walks there (was: instant jump to the next area)
-function clearThen(g, D, i, xp, label) { if (D.clr0 == null) D.clr0 = g.t; if (!D.go && g.t - D.clr0 < 2) return; // v1.9.7: let the last death play out before 'Area clear'
-  if (D.go === 'walk') { const cp = STORY[i].cp; if (dist2(g, cp[0], cp[1]) < 2.5 && !g.cut) { D.go = true; goto(g, i, xp); } return; }
-  if (!D.go) { D.go = 'walk'; const cp = STORY[i].cp; g.wpTarget = [cp[0], 1.2, cp[1]]; g.objective(label, 'Area clear. Follow the marker.'); g.toast('Area clear', 1.6); } }
+import { V, PI, rnd, dist2, $q, follow, goto, afterBoss, clearThen, fam, dadGun, dadTick, boss, raiders, rnd2, bindStory } from './chapters/helpers.js';
+import { NEW_STEPS, NEW_LOOT, SPEAKER_NAMES as NEW_SPEAKERS, CHAPTER_LIST } from './chapters/index.js';
 
 // Chapter 1 — The Day Before … it ends. Opens at night in Keem's boarded-up house in Riverside, Maine.
 export const STORY = [
@@ -396,19 +382,20 @@ export const STORY = [
       if (D.left <= 0 && al === 0 && (D.wave === 0 || D.clear)) { D.gap -= dt; if (D.gap <= 0) { D.wave++; D.clear = false; D.left = 5 + D.wave * 3; D.sp = 0; g.zombies = g.zombies.filter(z => { if (z.dead) g.scene.remove(z.root); return !z.dead; }); g.audio.roar && g.audio.roar(); } }
       const txt = 'Survival · Wave ' + D.wave + ' · ' + (D.wave && !D.clear ? (al + D.left) + ' left' : 'next wave in ' + Math.ceil(Math.max(0, D.gap)) + 's') + ' · Best ' + D.best; if (txt !== D.lt) { D.lt = txt; g.objective(txt, 'Pause → Armory to buy guns, ammo & upgrades with your cash.'); } } },
 ];
-const $q = (s) => document.querySelector(s);
 
-// v1.6 chapter helpers
-const CH_START = { 1: 0, 2: 7, 3: 13, 4: 18, 5: 23, 6: 28, 7: 33, 8: 36, 9: 40, 10: 45, 11: 50 };
+// ---- chapter registry: chapters 12+ live in src/game/chapters/chNN.js and plug in here (see docs/CHAPTERS_DEV.md) ----
+{ const si = STORY.findIndex(s => s.survival); STORY.splice(si < 0 ? STORY.length : si, 0, ...NEW_STEPS); }
+bindStory(STORY);
 export function chOf(i) { const s = STORY[i]; return s && s.ch ? s.ch : 1; }
-export { CH_START };
+// first step index of every chapter, derived from the step list (CH_START[n])
+export const CH_START = {}; STORY.forEach((s, i) => { if (!s.survival && s.ch && CH_START[s.ch] == null) CH_START[s.ch] = i; });
 export const SURVIVAL_STEP = STORY.findIndex(s => s.survival);
-function fam(g, D, z, x = 0, noDad) { g.openGate(true); if (!noDad) { const d = g.npc('marcus', 'marcus', x + 1.6, z + 1.5, PI, 'Walk_Loop'); follow(g, d, [1.6, 1.2]); D.dad = d; } const n = g.npc('nia', 'nia', x - 1.4, z + 1.5, PI, 'Walk_Loop', .62); follow(g, n, [-1.2, .9]); D.nia = n; }
-function dadGun(g, D) { D.dadGun = true; }
-function dadTick(g, D, dt) { if (!D.dad || !D.dadGun || (D.dcd = (D.dcd || 0) - dt) > 0) return; D.dcd = .9; const dp = D.dad.root.position; let best = null, bd = 18; g.alive().forEach(z => { if (z.boss) return; const d = z.root.position.distanceTo(dp); if (d < bd) { bd = d; best = z; } }); if (best) { const dir = best.root.position.clone().sub(dp).normalize(); g.damageZ(best, 60, dir, { head: Math.random() < .35 }); g.audio.shot('shotgun'); } }
-function boss(g, x, z, hp, shirt, name) { const b = g.spawnZ(x, z, { boss: true, hp, scale: 1.75, runner: false }); b.cd = 2; b.aggro = 99; b.mat.userData.u.uShirt.value.set(shirt); b.mat.userData.u.uBlood.value = g.settings.gore ? 1.4 : .2; g.boss = b; $q('#bossn').textContent = name; g.audio.roar && setTimeout(() => g.audio.roar(), 900); return b; }
-function raiders(g, n, pts) { for (let i = 0; i < n; i++) { const p = pts[i % pts.length]; const r = g.spawnZ(p[0] + rnd2(), p[1] + rnd2(), { raider: true, gun: ['rifle', 'pistol', 'shotgun', 'smg'][i % 4] }); r.aggro = 40; } }
-const rnd2 = () => (Math.random() - .5) * 5;
+export const LAST_CH = Math.max(...Object.keys(CH_START).map(Number));
+export const LAST_STORY_STEP = STORY.map((s, i) => (!s.survival && s.ch === LAST_CH ? i : -1)).reduce((a, b) => Math.max(a, b), 0);
+// chapter table for menus / end cards: CHAPTERS[n] = { n, title, endQuote, start, stub }
+export const CHAPTERS = [null]; CHAPTER_LIST.forEach(m => { CHAPTERS[m.n] = { ...m, start: CH_START[m.n] }; });
+export const SPEAKER_NAMES = { ...NEW_SPEAKERS };
+
 let n = 0; const id = () => 'l' + (n++);
 const pg = (x, z, text, ms = 0) => ({ id: 'pg_' + x + '_' + z, kind: 'page', manual: false, text, pos: [x, 0.9, z], minStep: ms });
 export const LOOT = [
@@ -437,3 +424,8 @@ export const LOOT = [
   { id: 'c11a', kind: 'ammo', item: 'fuel', n: 150, pos: [-6, .25, -2440], minStep: 50 }, { id: 'c11b', kind: 'med', pos: [-8, .25, -2612], minStep: 52 }, { id: 'c11c', kind: 'weapon', item: 'launcher', pos: [6, .25, -2636], label: 'M32 grenade launcher', minStep: 52 }, { id: 'c11d', kind: 'ammo', item: 'gl', n: 18, pos: [7, .25, -2638], minStep: 52 }, { id: 'c11e', kind: 'grenade', n: 3, pos: [-6, .25, -2638], minStep: 53 },
   pg(-24, -330, 'Captain Riverside #15: "Breaker Breaker"', 13), pg(28, -404, 'Captain Riverside #16: "Room 4"', 15), pg(-28, -478, 'Captain Riverside #17: "Everybody Pays"', 18), pg(26, -560, 'Captain Riverside #18: "Food Court of the Dead"', 23), pg(-12, -604, 'Captain Riverside #19: "Ho Ho Horror"', 24), pg(-34, -672, 'Captain Riverside #20: "The Light Keeps"', 28),
 ];
+
+// chapter 12+ loot: entries use `at: '<step id>'` instead of a numeric minStep (resolved here from the final step list)
+NEW_LOOT.forEach(l => { const { at, ...rest } = l; const ix = at ? STORY.findIndex(s => s.id === at) : (rest.minStep || 0); LOOT.push({ ...rest, minStep: Math.max(0, ix) }); });
+// total comic pages in the game (was hard-coded 20)
+export const TOTAL_PAGES = LOOT.filter(l => l.kind === 'page').length;

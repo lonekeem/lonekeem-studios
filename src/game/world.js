@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { signTex, grassBladeTex, rnd, canvasTex } from './util.js';
+import { ZONE_BUILDERS } from './chapters/index.js';
 import { furnishKeemHouse } from './interiors.js';
 import { makeEnv } from './env.js';
 
@@ -411,6 +412,12 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
     const hb = new THREE.Mesh(new THREE.PlaneGeometry(3.2, .6), hM); hb.rotation.x = -Math.PI / 2; hb.position.set(0, .05, -2666); scene.add(hb);
     wallBox(6, 1, 3, new THREE.MeshStandardMaterial({ color: '#c8c8c0' }), 12, .5, -2600); sign(['AMBULANCE ONLY'], 12, 1.4, -2598.4, Math.PI, 2, .4, '#a01010');
     Z_pl(0, 8, -2664, '#ff4040', 14, 30); fire(-8, 0, -2560, .8); });
+  // ===== v2.0 CHAPTERS 12+ · registered from src/game/chapters/chNN.js (each owns a 300 m band; zones show only during their chapter) =====
+  // bands: ch12 z -2900..-3200 · ch13 -3300..-3600 · ch14 -3700..-4000 · ch15 -4100..-4400 · ch16 -4500..-4800
+  box(-300, -48, -4900, -2790); box(48, 300, -4900, -2790); box(-300, 300, -4960, -4900);
+  { const gN = new THREE.Mesh(new THREE.PlaneGeometry(300, 2120), groundMat); gN.rotation.x = -Math.PI / 2; gN.position.set(0, -0.006, -3850); gN.receiveShadow = true; scene.add(gN);
+    const kitCtx = { THREE, scene, Q, box, wallBox, sign, road, Z_pl, Z_lamp, fire, car, plankMat, swMat, groundMat, signTex, lights, walls, updaters, colliders };
+    Object.keys(ZONE_BUILDERS).forEach(n => zone(+n, () => ZONE_BUILDERS[n](kitCtx))); }
   return { env, ch2, zones, houses: houseList, cars: carList, signTex, colliders, walls, updaters, lights, fire, car, sign, frontDoor, doorCol, doorBoards, tanker, tankCol, KH, mud, update(dt, t, cam) { updaters.forEach(u => u(dt, t, cam)); } };
 }
 function mergeTwo(a, b) { const g = new THREE.BufferGeometry(); ['position', 'normal', 'uv'].forEach(k => { const A = a.attributes[k].array, B = b.attributes[k].array, o = new Float32Array(A.length + B.length); o.set(A); o.set(B, A.length); g.setAttribute(k, new THREE.BufferAttribute(o, a.attributes[k].itemSize)); });
