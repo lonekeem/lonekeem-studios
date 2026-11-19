@@ -269,8 +269,8 @@ export class Game {
     this.tracer = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V3(), V3()]), new THREE.LineBasicMaterial({ color: '#ffe0a0', transparent: true, opacity: .8 })); this.tracer.frustumCulled = false; this.tracer.visible = false; s.add(this.tracer);
     this.booms = []; this.gibs = []; this.grenadesLive = [];
     this.fireSprite = fm; }
-  blood(pos, dir, n = 14, speed = 3, size = 1) { const gore = this.settings.gore; if (!gore) n = Math.ceil(n / 3); else { n = Math.ceil(n * 1.6); speed *= 1.25; }
-    for (let i = 0; i < n; i++) { const d = this.pd[this.pI = (this.pI + 1) % this.pd.length]; d.p.copy(pos); d.v.set(dir.x * speed + rnd(-1.5, 1.5), rnd(0.5, 3) + dir.y * speed, dir.z * speed + rnd(-1.5, 1.5)); d.life = rnd(.6, 1.4); d.s = rnd(.018, .05) * size * (gore ? 1 : .6); d.dec = gore && Math.random() < .12; }
+  blood(pos, dir, n = 14, speed = 3, size = 1) { const gore = this.settings.gore; if (!gore) n = Math.ceil(n / 3); else { n = Math.ceil(n * .55); speed *= 1.1; }
+    for (let i = 0; i < n; i++) { const d = this.pd[this.pI = (this.pI + 1) % this.pd.length]; d.p.copy(pos); d.v.set(dir.x * speed + rnd(-1.5, 1.5), rnd(0.5, 3) + dir.y * speed, dir.z * speed + rnd(-1.5, 1.5)); d.life = rnd(.3, .65); d.s = rnd(.018, .05) * size * (gore ? 1 : .6); d.dec = gore && Math.random() < .3; }
     this.pMat.color.set(gore ? '#5a0505' : '#3a3a34'); }
   // lasting wound mark on anyone hurt: from = attacker position (or dir = attack direction), kind melee (bite/claw) | bullet | claw
   woundFrom(ch, from, kind, dir, head) { if (!ch || !ch.skin) return; const a = ch.root.rotation.y; let wx, wz;
@@ -601,7 +601,8 @@ export class Game {
     if ((D.t > 2.6 || performance.now() - D.t0 > 4200) && !D.done) { D.done = 1; this.paused = true; this.onDeath && this.onDeath(); } }
   updateFX(dt) { const M = new THREE.Matrix4(), q = new THREE.Quaternion(), s = V3();
     for (let i = 0; i < this.pd.length; i++) { const d = this.pd[i]; if (d.life > 0) { d.life -= dt; d.v.y -= 12 * dt; d.p.addScaledVector(d.v, dt); if (d.p.y < .03) { d.p.y = .03; d.v.set(0, 0, 0); if (d.dec) { d.dec = false; this.decal(d.p.x, d.p.z, .35); } } if (d.life <= 0) d.p.y = -99; }
-      M.compose(d.p, q, s.setScalar(d.life > 0 ? d.s : 0)); this.parts.setMatrixAt(i, M); }
+      { /* small streaks stretched along their flight, not balls */ const sp = d.v.length(), k = d.life > 0 ? d.s : 0; const T = this._pT || (this._pT = { z: V3(0, 0, 1), d: V3(), q: new THREE.Quaternion(), s: V3() }); if (sp > .15) T.q.setFromUnitVectors(T.z, T.d.copy(d.v).multiplyScalar(1 / sp)); else T.q.identity();
+        M.compose(d.p, T.q, T.s.set(k * .14, k * .14, sp > .15 ? k * (.35 + Math.min(sp * .09, 1.2)) : k * .2)); this.parts.setMatrixAt(i, M); } }
     this.parts.instanceMatrix.needsUpdate = true;
     if (this.spurts) for (let i = this.spurts.length - 1; i >= 0; i--) { const q = this.spurts[i]; q.t -= dt; if (q.t <= 0) { this.spurts.splice(i, 1); continue; } if (Math.random() < dt * 22) { const p = V3(); q.z.worldOf(q.bone, p); this.blood(p, V3(rnd(-.3, .3), 1.4, rnd(-.3, .3)), 3, 3 * q.t, 1); } }
     for (let i = this.gibs.length - 1; i >= 0; i--) { const g = this.gibs[i]; g.life -= dt; if (g.m.position.y > .04 || g.v.y > 0) { g.v.y -= 14 * dt; if (g.big && g.m.position.y + g.v.y * dt < .08 && g.v.y < -2) { g.v.y *= -.3; g.v.x *= .5; g.v.z *= .5; g.r.multiplyScalar(.4); if (this.settings.gore) this.decal(g.m.position.x, g.m.position.z, .7); } g.m.position.addScaledVector(g.v, dt); g.m.rotation.x += g.r.x * dt; g.m.rotation.y += g.r.y * dt; } else { g.m.position.y = .04; } if (g.life <= 0) { this.scene.remove(g.m); this.gibs.splice(i, 1); } }
