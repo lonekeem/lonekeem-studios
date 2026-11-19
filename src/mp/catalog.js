@@ -89,7 +89,7 @@ export const HATS = [
 export const GLASSES_LIST = [];
 for (const [sid, sn, o] of [['round', 'Round', { shape: 'round' }], ['square', 'Square', { shape: 'square' }], ['hex', 'Hex', { shape: 'hex' }], ['cat', 'Cat-eye', { shape: 'cat' }], ['oval', 'Oval', { shape: 'oval', w: .03, h: .018 }], ['big', 'Oversized', { shape: 'round', w: .036, h: .034 }], ['avi', 'Aviator', { shape: 'oval', aviator: 1, w: .032, h: .026 }], ['thin', 'Thin square', { shape: 'square', w: .028, h: .015, th: .0022 }]])
   for (const [lid, ln, lo] of [['clear', 'clear', {}], ['dark', 'shades', { dark: 1 }]]) GLASSES_LIST.push(H(sid + lid, sn + ' ' + ln, 'frame', { ...o, ...lo }));
-GLASSES_LIST.push(H('goggles', 'Goggles', 'goggles'), H('visorg', 'Visor shades', 'visor'));
+// goggles / visor shades removed in v2: their straps could not fit the new head cleanly
 export const EARRINGS = [];
 for (const [r, n] of [[.0045, 'Tiny'], [.006, 'Small'], [.008, 'Big']]) { EARRINGS.push(H('stud' + n, n + ' stud', 'stud', { r })); EARRINGS.push(H('gstud' + n, n + ' gem stud', 'stud', { r, gem: 1 })); }
 for (const [R, n] of [[.011, 'Tiny'], [.016, 'Small'], [.022, 'Medium'], [.03, 'Large'], [.04, 'Huge']]) EARRINGS.push(H('hoop' + n, n + ' hoop', 'hoop', { R }));

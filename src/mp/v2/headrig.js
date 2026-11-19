@@ -106,7 +106,7 @@ export function buildHairMesh(av, look, opt = {}) {
   if (av._hairKey === key) { if (av._hair) av._hair.material = hairMaterial(look.hair.c, look.hair.c2 || look.hair.c, look.hair.hl ?? .35); return av._hair; }
   if (av._hair) { av._hair.parent && av._hair.parent.remove(av._hair); av._hair.geometry.dispose(); av._hair = null; }
   av._hairKey = key; if (!st0) return null;
-  let st = st0; if (opt.hatCut) st = Object.assign({}, st0, { top: Math.min(st0.top, .003), front: 0, spikes: 0, round: 0, T: Math.min(st0.T, .012), curl: Math.min(st0.curl, .002), ex: (st0.ex || []).filter(e => e[0] === 'dutch' || e[0] === 'locs' || (e[0] === 'bun' && e[1] === 'low') || (e[0] === 'pony' && e[1] === 'low') || e[0] === 'braidpony' || e[0] === 'pigtails') });
+  let st = st0; if (opt.hatCut) st = Object.assign({}, st0, { top: Math.min(st0.top, .003), front: 0, spikes: 0, round: 0, locks: 0, lockAmp: 0, tips: 0, frontLift: 0, waves: 0, T: Math.min(st0.T, .008), curl: Math.min(st0.curl, .002), ex: (st0.ex || []).filter(e => e[0] === 'dutch' || (e[0] === 'locs' && e[1] > .1) || (e[0] === 'bun' && e[1] === 'low') || (e[0] === 'pony' && e[1] === 'low') || e[0] === 'braidpony' || e[0] === 'pigtails') });
   const parts = [...buildCap(h, st), ...buildExtras(h, st)];
   const geo = mergeGeometries(parts.map(g => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'aT', 'aH'].includes(k)) g.deleteAttribute(k); return g.index ? g : g; }), false);
   geo.scale(h.s, h.s, h.s); geo.translate(h.C.x, h.C.y, h.C.z);

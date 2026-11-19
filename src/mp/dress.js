@@ -60,7 +60,7 @@ function accMaterial(key, o) { const k = key + JSON.stringify(o); if (matCache.h
 function stylize(geo, hair) { // per-vertex streak variation for hair, soft fabric shading elsewhere
   if (!hair) return geo; const p = geo.attributes.position, n = p.count, c = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i); const f = .72 + .34 * (.5 + .5 * Math.sin(x * 260 + z * 210 + Math.sin(y * 40) * 3)) + .1 * (Math.sin(y * 90 + x * 40) * .5); c[i * 3] = c[i * 3 + 1] = c[i * 3 + 2] = Math.min(1.1, f); } geo.setAttribute('color', new THREE.BufferAttribute(c, 3)); return geo; }
 function mount(av, name, B, mats, bone) {
-  clearAcc(av, name); const out = []; for (const key of B.keys()) { const geo = B.geos(key); if (!geo) continue; const spec = mats[key] || mats.a; const isHair = spec.hair; stylize(geo, isHair); const mat = accMaterial(isHair ? 'hair' : key === 'lens' ? 'lens' : 'std', spec);
+  clearAcc(av, name); const out = []; for (const key of B.keys()) { const geo = B.geos(key); if (!geo) continue; const spec = mats[key] || mats.a; const isHair = spec.hair; stylize(geo, isHair); const mat = accMaterial(isHair ? 'hair' : (key === 'lens' || spec.op != null) ? 'lens' : 'std', spec);
     const mesh = rigid(av, geo, bone, mat); addSkinned(av, mesh, 3); mesh.castShadow = false; out.push(mesh); } av.acc[name] = out; }
 // geometry builders write into material keys a,b,m,g,k; map to colours
 const metalOf = it => ({ c: C.SWATCH.metal[it.m ?? 0], mt: .35, r: .38 });
@@ -89,7 +89,7 @@ export function dress(av, look) {
   // ---- hair / beard / mustache / mask shells (+ volumetric extras)
   const hat = A.hat && C.HATS.find(h => h[0] === A.hat.id); const hatFam = hat ? hat[2] : null; const covers = hat && !['headband', 'visor', 'crown'].includes(hatFam);
   buildHairMesh(av, look, { hatCut: covers ? 1 : 0 }); buildFacialHair(av, look);
-  const mi = look.mask && C.MASKS.find(x => x[0] === look.mask.id); buildMask(av, mi ? look.mask : null);
+  const mi = look.mask && C.MASKS.find(x => x[0] === look.mask.id); buildMask(av, mi ? look.mask : null); if (av._fh) av._fh.visible = !mi; // a face mask goes over the beard (the beard is tucked under it)
   // ---- rigid accessories
   if (hat) { const B = new Builder(); HAT[hat[2]](B, ctx, hat[3]); mount(av, 'hat', B, { a: { c: A.hat.c, r: .8, side: true }, b: { c: A.hat.c2 || '#222', r: .8, side: true }, m: metalOf(A.hat), g: { c: C.SWATCH.gem[A.hat.g ?? 0], r: .25 }, k: { c: '#16171a' } }, 'Head'); } else clearAcc(av, 'hat');
   const gl = A.glasses && C.GLASSES_LIST.find(h => h[0] === A.glasses.id); if (gl) { const B = new Builder(); const o = { ...gl[3] }; GLASSES[gl[2]](B, ctx, o); const dark = o.dark; mount(av, 'glasses', B, { a: { c: C.SWATCH.metal[A.glasses.m ?? 3], mt: .3, r: .4 }, g: dark ? { c: '#0c0d10', op: .9 } : { c: C.SWATCH.gem[A.glasses.g === undefined || A.glasses.g === 0 ? 6 : A.glasses.g], op: .22 }, k: { c: '#0c0d10', op: .9 } }, 'Head'); const mm = av.acc.glasses; mm.forEach(m => { if (m.material.transparent) m.renderOrder = 6; }); } else clearAcc(av, 'glasses');

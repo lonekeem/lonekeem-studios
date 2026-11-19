@@ -17,12 +17,14 @@ function footBins(av, sd) {
   const key = '_fb' + sd; if (av[key]) return av[key];
   const g = av.skin.geometry, p = g.attributes.aP0 || g.attributes.position, w2 = g.attributes.aW2, n = p.count;
   let z0 = 9, z1 = -9; const pts = [];
-  for (let i = 0; i < n; i++) { if (w2.getZ(i) < .5) continue; const x = p.getX(i); if (Math.sign(x) !== sd) continue; const y = p.getY(i), z = p.getZ(i); pts.push([x, y, z]); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+  const ankY = av.tpl.P[(sd > 0 ? 'Left' : 'Right') + 'Foot'].y;
+  for (let i = 0; i < n; i++) { const x = p.getX(i); if (Math.sign(x) !== sd) continue; const y = p.getY(i), z = p.getZ(i); if (!(w2.getZ(i) > .5 || (y < ankY + .09 && w2.getY(i) + w2.getZ(i) > .5))) continue; pts.push([x, y, z]); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
   const B = []; for (let k = 0; k < NU; k++) B.push({ x0: 9, x1: -9, y0: 9, y1: -9, n: 0 });
   for (const [x, y, z] of pts) { const k = Math.min(NU - 1, Math.floor((z - z0) / (z1 - z0) * NU)); const b = B[k]; b.x0 = Math.min(b.x0, x); b.x1 = Math.max(b.x1, x); b.y0 = Math.min(b.y0, y); b.y1 = Math.max(b.y1, y); b.n++; }
   for (let k = 0; k < NU; k++) if (!B[k].n) Object.assign(B[k], B[k - 1] || B[k + 1]);
   const sm = f => { for (let it = 0; it < 3; it++) { const v = B.map(b => b[f]); for (let k = 1; k < NU - 1; k++) B[k][f] = (v[k - 1] + 2 * v[k] + v[k + 1]) / 4; } };
   // the top of the foot falls monotonically from ankle to toe (cut the ankle bulge off at the heel)
+  { const x0 = B.map(b => b.x0), x1 = B.map(b => b.x1); for (let k = 0; k < NU; k++) { for (let d = -3; d <= 3; d++) { const j = k + d; if (j < 0 || j >= NU) continue; B[k].x0 = Math.min(B[k].x0, x0[j] + Math.abs(d) * .002); B[k].x1 = Math.max(B[k].x1, x1[j] - Math.abs(d) * .002); } } }
   ['x0', 'x1', 'y1'].forEach(sm);
   return av[key] = { B, z0, z1, ground: Math.min(...B.map(b => b.y0)) };
 }
@@ -32,10 +34,9 @@ function loft(av, sd, st) {
   const pos = [], uv = [], idx = [];
   const rings = []; const capN = 5;
   const sect = (k) => { const b = B[k]; const u = (k + .5) / NU; let x0 = b.x0 - m, x1 = b.x1 + m; const toeK = Math.max(0, (u - .7) / .3); const extra = st.bulk * Math.sin(Math.min(1, u * 1.4) * Math.PI * .5); x0 -= extra * .4; x1 += extra * .4;
-    let top = Math.min(b.y1, ank.y + .01) + m + extra * .6; const colY = ank.y + st.col; if (u < .38) top = Math.max(Math.min(top, colY + .04), colY) * (1 - ss(.22, .38, u)) + top * ss(.22, .38, u);
-    if (st.col < 0) { const lo = ank.y + st.col; top = u < .45 ? Math.min(top, lo + (top - lo) * ss(.2, .55, u)) : top; }
+    let top = b.y1 + m + extra * .6; if (st.col >= 0) top = Math.min(top, ank.y + .03 + st.col + .045 * ss(.22, .42, u) * (1 - ss(.55, .8, u))); else { const lo = ank.y + st.col; top = u < .5 ? Math.min(top, lo + (top - lo) * ss(.25, .6, u)) : top; }
     top = Math.max(top, ground + st.sole + .025 * (1 - toeK * .6)); return { x0, x1, y0: ground - .003, y1: top, z: z0 + u * len }; };
-  for (let k = 0; k < NU; k++) rings.push(sect(k));
+  for (let k = 0; k < NU; k++) rings.push(sect(k)); if (st.col >= 0) for (let k = 1; k < NU; k++) { const r = rings[k], pr = rings[k - 1]; r.y1 = Math.max(r.y1, Math.min(pr.y1, pr.y1 - 1.3 * (r.z - pr.z))); }
   // rounded heel and toe caps
   const heel = rings[0], toe = rings[NU - 1]; const out = [];
   for (let c = capN; c >= 1; c--) { const a = c / capN * Math.PI / 2; const f = Math.cos(a); const r = { ...heel }; const hw = (heel.x1 - heel.x0) / 2, xc = (heel.x1 + heel.x0) / 2; r.x0 = xc - hw * Math.max(.15, f); r.x1 = xc + hw * Math.max(.15, f); r.y1 = heel.y0 + (heel.y1 - heel.y0) * Math.max(.3, .3 + .7 * f); r.z = heel.z - .028 * Math.sin(a) - m * .3; r.u = 0; out.push(r); }
@@ -60,7 +61,7 @@ function strap(av, sd, st, L) { // clog heel strap: half ring behind the ankle
 const MATS = new Map();
 function shoeMaterial(up, sole, st) {
   const key = up + sole + st.d + (st.line || 0); if (MATS.has(key)) return MATS.get(key);
-  const m = new THREE.MeshStandardMaterial({ color: '#fff', roughness: .62, metalness: 0 });
+  const m = new THREE.MeshStandardMaterial({ color: '#fff', roughness: .62, metalness: 0, side: THREE.DoubleSide });
   const U = { uUp: { value: new THREE.Color(up) }, uSo: { value: new THREE.Color(sole) }, uSt: { value: new THREE.Vector4(st.d, st.sole, st.line || 0, st.strap || 0) } };
   m.onBeforeCompile = sh => { Object.assign(sh.uniforms, U);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aS; varying vec4 vS; varying vec3 vB;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvS = aS; vB = position;');
