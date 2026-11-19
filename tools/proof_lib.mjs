@@ -13,7 +13,7 @@ export async function openGame(port, step, { w = 844, h = 390, qual = 'low', que
   return { b, ctx, p, errs };
 }
 // advance the simulation by n fixed steps then let the renderer present, then screenshot
-export async function stepShot(p, path, n = 6, dt = 1 / 30, wait = 450) { await p.evaluate(([n, dt]) => { const g = window.__atq.game; g.paused = true; for (let i = 0; i < n; i++) g.update(dt, dt); }, [n, dt]); await p.waitForTimeout(wait); await p.screenshot({ path, timeout: 120000 }); }
+export async function stepShot(p, path, n = 6, dt = 1 / 30, wait = 450) { await p.evaluate(([n, dt]) => { const g = window.__atq.game; g.paused = true; for (let i = 0; i < n; i++) g.update(dt, dt); if (window.__lit !== false) { /* proof-only fill light that follows the camera so frames are readable */ if (!g.__pl) { g.__pl = new g.faceL.constructor('#fff0dc', 2.2, 12, 1.4); g.scene.add(g.__pl); } g.__pl.position.copy(g.camera.position).add({ x: 0, y: 0.6, z: 0 }); g.__pl.visible = true; } }, [n, dt]); await p.waitForTimeout(wait); await p.screenshot({ path, timeout: 120000 }); }
 export function sheet(files, out, cols = 4, scale = 0.62, label = true) {
   const py = `
 import sys

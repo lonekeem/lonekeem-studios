@@ -1,5 +1,5 @@
 import { chromium } from 'playwright'; import fs from 'fs'; import { sheet } from './proof_lib.mjs';
-const port = process.argv[2] || 4301, out = '/workspace/atqr-proof/loading'; fs.mkdirSync(out, { recursive: true });
+const port = process.argv[2] || 4301, out = process.argv[3] || '/workspace/atqr-proof/loading'; fs.mkdirSync(out, { recursive: true });
 const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
 const ctx = await b.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true }); const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
 await p.goto(`http://localhost:${port}/`, { waitUntil: 'domcontentloaded' }); await p.waitForTimeout(1500);

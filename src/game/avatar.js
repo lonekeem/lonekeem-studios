@@ -40,15 +40,15 @@ function processHands(skin) {
   HANDS.set(g0, out); return out;
 }
 function buildMitten(info, thumbDir, mat) {
-  const grp = new THREE.Group(); const { axis: a, L } = info; const palmW = Math.max(info.rM * .7, L * .27), palmT = palmW * .62, wr = Math.min(info.rf * .98, info.rM * .7);
+  const grp = new THREE.Group(); const { axis: a, L } = info; const palmW = Math.max(info.rM * .7, L * .27) * .8, palmT = palmW * .6, wr = Math.min(info.rf * .98, info.rM * .7);
   const up = new THREE.Vector3(0, 1, 0), q = new THREE.Quaternion().setFromUnitVectors(up, a); const u = thumbDir.clone().addScaledVector(a, -thumbDir.dot(a)).normalize(); // thumb side
   // basis: local Y = bone axis, local X = thumb side, local Z = palm normal
   const X = u, Y = a.clone(), Z = new THREE.Vector3().crossVectors(X, Y).normalize(); const bm = new THREE.Matrix4().makeBasis(X, Y, Z); grp.quaternion.setFromRotationMatrix(bm);
   const mk = (geo, x, y, z, sx, sy, sz, rz = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); m.rotation.z = rz; m.castShadow = true; grp.add(m); return m; };
   const S = new THREE.SphereGeometry(1, 16, 12), C = new THREE.CapsuleGeometry(1, 1, 6, 12);
   { const wm = mk(S, 0, L * .06, 0, wr, L * .24, wr * .9); const cfl = info.cf.clone().addScaledVector(a, -info.cf.dot(a)); wm.position.add(cfl.applyQuaternion(grp.quaternion.clone().invert())); } // rounded wrist that closes the cut inside the sleeve, centred on the real forearm
-  mk(S, 0, L * .56, 0, palmW * .92, L * .46, palmT); // palm + fingers as one rounded mitten
-  const th = mk(C, palmW * .9, L * .5, palmT * .15, palmT * .5, L * .16, palmT * .5, -0.5); // thumb
+  mk(S, 0, L * .52, 0, palmW * .92, L * .38, palmT); // palm + fingers as one rounded mitten
+  const th = mk(C, palmW * .88, L * .46, palmT * .15, palmT * .5, L * .12, palmT * .5, -0.5); // thumb
   return grp;
 }
 

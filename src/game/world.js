@@ -39,18 +39,24 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
   const roofMat = pbr('asphalt_02', 3, { color: '#3a3532', roughness: .9 });
   const boardMat = pbr('weathered_planks', 1, { color: '#7a6248' });
   const winDark = new THREE.MeshStandardMaterial({ color: '#0a0c0c', roughness: .1, metalness: .4, envMapIntensity: 1.2 });
-  const winLit = new THREE.MeshStandardMaterial({ color: '#221a10', emissive: '#ff9a40', emissiveIntensity: .7 });
+  const winLit = new THREE.MeshStandardMaterial({ color: '#221a10', emissive: '#d9823a', emissiveIntensity: .3 });
   const wallBox = (w, h, d, mat, x, y, z, solid = true) => { const geo = new THREE.BoxGeometry(w, h, d); const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.max(w, d) / 2.5, uv.getY(i) * h / 2.5);
     const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; scene.add(m); if (solid) { box(x - w / 2, x + w / 2, z - d / 2, z + d / 2); walls.push(m); } return m; };
   const gable = (cx, cz, w, d, y, alongZ, mat) => { const s = new THREE.Shape(); const span = alongZ ? w : d; s.moveTo(-span / 2 - .4, 0); s.lineTo(span / 2 + .4, 0); s.lineTo(0, span * .42); s.lineTo(-span / 2 - .4, 0);
     const g = new THREE.ExtrudeGeometry(s, { depth: (alongZ ? d : w) + .6, bevelEnabled: false }); g.translate(0, 0, -((alongZ ? d : w) + .6) / 2); const m = new THREE.Mesh(g, mat); m.position.set(cx, y, cz); if (!alongZ) m.rotation.y = Math.PI / 2; m.castShadow = true; m.receiveShadow = true; scene.add(m); return m; };
   const boards = (x, y, z, along, n = 4, wid = 1.6) => { for (let i = 0; i < n; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(along === 'z' ? 0.06 : wid, 0.16, along === 'z' ? wid : 0.06), boardMat); b.position.set(x, y - 0.45 + i * 0.3, z); b.rotation[along === 'z' ? 'x' : 'z'] = rnd(-.15, .15); b.castShadow = true; scene.add(b); } };
+  // v2.1 window trim (dark wood frame + sill) anchors the glass to the wall; lit windows also throw a soft warm glow onto the siding
+  const trimMat = new THREE.MeshStandardMaterial({ color: '#2a2118', roughness: .9 });
+  const glowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 2, 32, 32, 31); g.addColorStop(0, 'rgba(255,170,90,.55)'); g.addColorStop(1, 'rgba(255,170,90,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const glowMat = new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: .16 });
+  function trim(fx, y, z, face, lit) { const o = face * 0.045; const mk = (sx, sy, sz, px, py, pz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), trimMat); m.position.set(fx + o, py, pz); scene.add(m); }; mk(0.1, 0.1, 1.5, 0, y + 0.6, z); mk(0.1, 0.1, 1.5, 0, y - 0.6, z); mk(0.1, 1.3, 0.1, 0, y, z - 0.7); mk(0.1, 1.3, 0.1, 0, y, z + 0.7); mk(0.18, 0.06, 1.62, 0, y - 0.67, z);
+    if (lit) { mk(0.07, 1.2, 0.06, 0, y, z); mk(0.07, 0.06, 1.4, 0, y, z); const gm = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 2.6), glowMat); gm.position.set(fx + face * 0.08, y, z); gm.rotation.y = face > 0 ? Math.PI / 2 : -Math.PI / 2; scene.add(gm); } }
   // generic house: face = direction of front door (+1 = facing +x, -1 = facing -x)
   function house(cx, cz, w, d, face, col, lit = false, board = true) {
-    const h = 3.0, mat = plankMat(col); wallBox(w, h, d, mat, cx, h / 2, cz); gable(cx, cz, w, d, h, false, roofMat);
+    const h = 3.0, mat = plankMat(col); mat.emissive = new THREE.Color(col).multiplyScalar(0.055); wallBox(w, h, d, mat, cx, h / 2, cz); gable(cx, cz, w, d, h, false, roofMat); // v2.1: faint self-lift above so night walls read as walls
     const fx = cx + face * (w / 2 + 0.03);
     const door = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.1, 1.1), new THREE.MeshStandardMaterial({ color: '#3a2c22', roughness: .8 })); door.position.set(fx, 1.05, cz); scene.add(door);
-    [-1, 1].forEach(s => { const wz = cz + s * d * 0.3; const pm = lit && s > 0 ? null : env.paneMat(); const wm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.1, 1.3), pm || winLit); wm.position.set(fx, 1.6, wz); scene.add(wm); env.windowDetail(fx, 1.6, wz, face, !!pm && env.paneIsHoley(pm)); if (board && Math.random() < .7) boards(fx + face * 0.05, 1.6, wz, 'z', 3, 1.5); });
+    [-1, 1].forEach(s => { const wz = cz + s * d * 0.3; const pm = lit && s > 0 ? null : env.paneMat(); const wm = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.1, 1.3), pm || winLit); wm.position.set(fx, 1.6, wz); scene.add(wm); trim(fx, 1.6, wz, face, !pm); env.windowDetail(fx, 1.6, wz, face, !!pm && env.paneIsHoley(pm)); if (board && Math.random() < .7) boards(fx + face * 0.05, 1.6, wz, 'z', 3, 1.5); });
     // porch
     const porch = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.25, d * 0.7), plankMat('#5c5048')); porch.position.set(fx + face * 0.9, 0.12, cz); porch.receiveShadow = true; scene.add(porch);
     env.grime(cx + face * (w / 2), cz, 'x', face, d, h); env.grime(cx, cz + d / 2, 'z', 1, w, h); env.grime(cx, cz - d / 2, 'z', -1, w, h);

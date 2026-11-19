@@ -10,9 +10,9 @@ const sstep = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * 
 // ---------- 1. procedural poses (rotations in mannequin bone-local space, [x,y,z] radians at full weight) ----------
 export const POSES = {
   // left arm presented forward with the elbow bent, palm up: "show me the arm"
-  showL: { 'DEF-upper_arm.L': [-0.35, 0, 0.1], 'DEF-forearm.L': [-2.1, 0, 0] },
+  showL: { 'DEF-upper_arm.L': [0.15, -0.9, 0.2], 'DEF-forearm.L': [0, -1.0, 0] },
   // right hand working the left sleeve: both forearms up in front of the chest
-  rollL: { 'DEF-upper_arm.L': [-0.5, 0, 0.1], 'DEF-forearm.L': [-1.6, 0, 0], 'DEF-upper_arm.R': [-0.6, 0, -0.15], 'DEF-forearm.R': [-1.7, 0, 0] },
+  rollL: { 'DEF-upper_arm.L': [0.3, 0, 0.2], 'DEF-forearm.L': [0, -1.4, 0], 'DEF-upper_arm.R': [0, 0.9, -0.2], 'DEF-forearm.R': [0, 1.0, 0] },
   // hiding the injured left arm against the belly
   guardL: { 'DEF-upper_arm.L': [-0.25, 0, 0.1], 'DEF-forearm.L': [-1.25, 0, 0.3] },
   pointR: { 'DEF-upper_arm.R': [-1.45, 0, -0.1], 'DEF-forearm.R': [-0.12, 0, 0] },
@@ -102,7 +102,7 @@ const on = (c, o, stick) => { if (!c) return; actStart(c, o); J.line.push(c); if
 const turnToward = (c, tx, tz) => { if (c && c !== undefined) J.turns.push({ c, tx, tz, t: 1.6 }); };
 export const RULES = [
   // --- Dad's bitten arm (story: motel scene) ---
-  { id: 'dad_sleeve_wet', w: 'nia', re: /sleeve.*wet/i, fn: (g, s, l, d) => { const dad = npcOf(g, 'marcus'); if (dad) { const S = makeSleeve(dad, 'Left', -1.57); S && S.set(0, 0, 1); g.save && (g.save.dadStain = 1); on(s, { pose: 'pointR', dur: 2.2 }); turnToward(s, dad.root.position.x, dad.root.position.z); on(dad, { pose: 'guardL' }, true); } } },
+  { id: 'dad_sleeve_wet', w: 'nia', re: /sleeve.*wet/i, fn: (g, s, l, d) => { const dad = npcOf(g, 'marcus'); if (dad) { const S = makeSleeve(dad, 'Left', 1.57); S && S.set(0, 0, 1); g.save && (g.save.dadStain = 1); on(s, { pose: 'pointR', dur: 2.2 }); turnToward(s, dad.root.position.x, dad.root.position.z); on(dad, { pose: 'guardL' }, true); } } },
   { id: 'dad_hides_arm', w: 'marcus', re: /it'?s nothing|just (a )?(glass|scratch)|glass\. from the gate/i, fn: (g, s) => { on(s, { pose: 'guardL', head: 'down', hold: true }, true); } },
   { id: 'show_me_arm', w: 'keem', re: /(lemme|let me) see (your|that) arm/i, fn: (g, s, l) => { on(s, { pose: 'offerR', dur: 2.4 }); on(npcOf(g, 'marcus'), { pose: 'guardL', head: 'down', hold: true }, true); } },
   { id: 'dad_roll_prompt', w: 'keem', re: /^\s*dad\.\s*roll up the sleeve/i, fn: (g, s) => { on(s, { pose: 'offerR', dur: 2.4 }); on(npcOf(g, 'marcus'), { pose: 'guardL', head: 'down', hold: true }, true); } },
@@ -134,7 +134,7 @@ export function cueLine(g, it) {
 }
 export function cueEnd(g) { for (const c of J.line) actStop(c); J.line = []; J.sticky.forEach(c => actStop(c)); J.sticky.clear(); J.turns.length = 0; if (J.job) { J.job = null; g.camShot = null; } }
 // the roll itself: Dad grips the cuff with his free hand, the cuff rolls up the forearm, bare skin and the bite appear, then the arm is held out
-export function startRoll(g, dad) { const S = makeSleeve(dad, 'Left', -1.57); if (!S) return; actStart(dad, { pose: 'rollL', hold: true, head: 'down' }); J.sticky.add(dad); J.job = { dad, S, t: 0, done: false }; g.save && (g.save.dadBite = 1); mark('dad_sleeve_rolls_up'); }
+export function startRoll(g, dad) { const S = makeSleeve(dad, 'Left', 1.57); if (!S) return; actStart(dad, { pose: 'rollL', hold: true, head: 'down' }); J.sticky.add(dad); J.job = { dad, S, t: 0, done: false }; g.save && (g.save.dadBite = 1); mark('dad_sleeve_rolls_up'); }
 const _a = V(), _b = V(), _c = V();
 export function actUpdate(g, dt) {
   const j = J.job;
@@ -142,8 +142,8 @@ export function actUpdate(g, dt) {
     if (!j.done && j.t > 2.7) { j.done = true; const a = j.dad.ax; if (a) a.pose = 'showL'; mark('dad_shows_bite'); }
     // close-up camera on the forearm while the sleeve rolls and the bite is shown
     const bs = j.dad.skin && j.dad.skin.skeleton.bones, fb = bs && bs.find(x => x.name === 'LeftForeArm'), hb = bs && bs.find(x => x.name === 'LeftHand');
-    if (fb && hb && j.t < 6.5) { fb.getWorldPosition(_a); hb.getWorldPosition(_b); _c.copy(_a).add(_b).multiplyScalar(0.5); { const hd = bs.find(x => x.name === 'Head'); if (hd) { hd.getWorldPosition(_a); _c.lerp(_a, 0.2); } } const P = g.player.root.position, d = j.dad.root.position; _a.set(P.x - d.x, 0, P.z - d.z); if (_a.lengthSq() < 0.01) _a.set(0, 0, 1); _a.normalize();
-      const cs = g.camShot || (g.camShot = { cam: V(), look: V() }); cs.look.copy(_c); cs.cam.set(_c.x + _a.x * 0.3 + _a.z * 0.62, _c.y + 0.3, _c.z + _a.z * 0.3 - _a.x * 0.62); } else if (j.t >= 6.5) g.camShot = null; }
+    if (fb && hb && j.t < 6.5) { fb.getWorldPosition(_a); hb.getWorldPosition(_b); _c.copy(_a).add(_b).multiplyScalar(0.5); { const hd = bs.find(x => x.name === 'Head'); if (hd) { hd.getWorldPosition(_a); _c.lerp(_a, 0.2); } } const ry = j.dad.root.rotation.y; _a.set(Math.sin(ry), 0, Math.cos(ry)); /* Dad's own facing: the shot is always from his front-left, where the bitten arm is */
+      const cs = g.camShot || (g.camShot = { cam: V(), look: V() }); cs.look.copy(_c); cs.cam.set(_c.x + _a.x * 1.0 + _a.z * 0.5, _c.y + 0.3, _c.z + _a.z * 1.0 - _a.x * 0.5); } else if (j.t >= 6.5) g.camShot = null; }
   for (let i = J.turns.length - 1; i >= 0; i--) { const t = J.turns[i]; t.t -= dt; if (t.t <= 0 || !t.c.root.parent) { J.turns.splice(i, 1); continue; } const r = t.c.root, y = Math.atan2(t.tx - r.position.x, t.tz - r.position.z); let dd = ((y - r.rotation.y + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; r.rotation.y += dd * Math.min(1, dt * 5); }
 }
-export function restoreBite(g, ch) { if (!ch || !g.save) return; if (g.save.dadBite) { const S = makeSleeve(ch, 'Left', -1.57); S && S.set(1, 1, 1); } else if (g.save.dadStain) { const S = makeSleeve(ch, 'Left', -1.57); S && S.set(0, 0, 1); } }
+export function restoreBite(g, ch) { if (!ch || !g.save) return; if (g.save.dadBite) { const S = makeSleeve(ch, 'Left', 1.57); S && S.set(1, 1, 1); } else if (g.save.dadStain) { const S = makeSleeve(ch, 'Left', 1.57); S && S.set(0, 0, 1); } }
