@@ -12,7 +12,7 @@ import { CFG, BOUNDS } from './map.js';
 
 let _models = null;
 export function loadZombieModels(base = BASE) { return _models || (_models = (async () => { const gltf = await new GLTFLoader().loadAsync(base + 'models/AnimationLibrary_Godot_Standard.gltf');
-  const lib = new CharLib(gltf); lib.rigs = await loadRigs(base, ['zombie2', 'genm', 'genf']); return { lib }; })()); }
+  const lib = new CharLib(gltf); lib.rigs = await loadRigs(base, ['zombie2', 'genm', 'genf', 'zombie_male', 'zombie_office', 'zombie_elder', 'zombie_big', 'zombie_cop', 'zombie_worker']); /* the full story zombie set (was only zombie2 -> every other zombie fell back to the headless procedural body) */ return { lib }; })()); }
 
 // road graph: nodes at the road ends, intersections and two spurs (store door, gas station) -> zombies drift along the streets
 function roadGraph() {
@@ -44,7 +44,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     let m; if (pools.length >= BLOOD_MAX) { m = pools.shift(); } else { m = new THREE.Mesh(blood.g, blood.mt); m.renderOrder = 2; scene.add(m); } m.position.set(x, .045, z); m.rotation.y = R(0, 6.28); m.scale.setScalar(s); pools.push(m); return m; };
 
   function make(x, z, o = {}) {
-    const look = Object.assign(randomLook((zseed++ * 7919 + (seed * 104729)) | 0, true), { grime: 1, blood: R(.5, 1) }); if (rnd() < .3) look.hair = 'balding';
+    const look = Object.assign(randomLook((zseed++ * 7919 + (seed * 104729)) | 0, true), { grime: 1, blood: R(.5, 1) }); if (o.rig !== undefined) look.rig = o.rig; /* same override as story spawnZ */ if (rnd() < .3) look.hair = 'balding';
     const c = new Char(lib, look, o.scale || R(.9, 1.1)); c.root.position.set(x, 0, z); c.root.rotation.y = R(0, 6.28); scene.add(c.root);
     const runner = o.runner ?? rnd() < .15;
     Object.assign(c, { z: true, hp: runner ? 50 : 70, maxHp: runner ? 50 : 70, runner, speed: runner ? R(3.4, 4.2) : R(1.1, 1.6), st: 'wander', cd: R(0, 1), dead: false, deadT: 0, id: R(0, 10), vel: new THREE.Vector3(), off: [R(-2.6, 2.6), R(-2.6, 2.6)], node: -1, prev: -1, tgt: null, hitAt: 0, hitCd: 0, tgT: 0, hurtT: 0 });

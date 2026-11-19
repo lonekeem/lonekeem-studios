@@ -1,0 +1,6 @@
+import { client, ctxOpts, launch } from '../mpfix/lib.mjs';
+const b = await launch(); const ctx = await b.newContext(ctxOpts); const p = await client(ctx);
+const r = await p.evaluate(async () => { window.__MP_NOLOD = true; const T = window.__mpTown; const z = T.Z.spawnAt(0, 0, { rig: null }); await new Promise(r => setTimeout(r, 2000)); z.root.updateMatrixWorld(true); const out = {};
+  out.parts = z.parts.map(m => { const g = m.geometry; g.computeBoundingBox(); const bb = g.boundingBox; const wp = new bb.min.constructor(); m.getWorldPosition(wp); const ws = new bb.min.constructor(); m.getWorldScale(ws); return { bb: [bb.min.toArray().map(v => +v.toFixed(2)), bb.max.toArray().map(v => +v.toFixed(2))], wp: wp.toArray().map(v => +v.toFixed(2)), ws: ws.toArray().map(v => +v.toFixed(2)), layers: m.layers.mask, rO: m.renderOrder, dw: m.material.depthWrite, tr: m.material.transparent, side: m.material.side, col: m.material.color && m.material.color.getHexString(), vc: m.material.vertexColors, hasCol: !!g.attributes.color }; });
+  const hb = z.bone('DEF-head'); const ws = new hb.position.constructor(); hb.getWorldScale(ws); out.headWS = ws.toArray(); out.scale = z.scale; out.modelScale = z.model.scale.toArray(); out.rootScale = z.root.scale.toArray(); return out; });
+console.log(JSON.stringify(r)); await b.close();
