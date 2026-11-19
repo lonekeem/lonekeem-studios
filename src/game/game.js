@@ -17,6 +17,7 @@ import { loadRigs } from './avatar.js';
 import { WEAPONS, WEAPON_ORDER, stat, perk, xpFor, PERKS, writeSave } from './data.js';
 import { V3, clamp, lerp, rnd, angLerp, bloodTex } from './util.js';
 import { Input } from './input.js';
+import { stepMove, startRoll, startJump, stepVehicle } from './pctl.js';
 import { syncWounds, addWound, bloodyMouth, makePool, tickPools, setHandBlood } from './gore.js';
 import { STORY, LOOT, chOf } from './story.js';
 
@@ -403,9 +404,8 @@ export class Game {
     const rate = this.ws.rate; s.atk = rate; const anim = this.save.cur === 'fists' ? (s.combo % 2 ? 'Punch_Cross' : 'Punch_Jab') : 'Sword_Attack';
     s.atkHit = rate * (this.save.cur === 'fists' ? .34 : .38); // v1.9.11: contact lands when the arm/weapon is at full extension (clip peaks ~30% in; was .45)
     P.play(anim, { once: true, force: true, speed: (this.lib.clips[anim].duration / rate) * .8, cb: () => { P.curName = ''; } }); this.audio.swing(); }
-  roll() { const s = this.state; if (s.roll > 0 || this.truck.driving || this.cut) return; s.roll = 0.62; this.audio.rollS && this.audio.rollS(); this.player.play('Roll', { once: true, force: true, speed: 1.35, cb: () => { this.player.curName = ''; } });
-    const mv = this.input.move; if (mv.lengthSq() > .04) this.player.root.rotation.y = Math.atan2(mv.x, mv.y) + this.cam.yaw; }
-  jump() { const s = this.state; if (s.y > 0.01 || this.truck.driving || this.cut) return; s.vy = 4.8; this.audio.jumpS && this.audio.jumpS(); this.player.play('Jump_Start', { once: true, force: true, speed: 1.5, cb: () => this.player.play('Jump_Loop') }); }
+  roll() { const s = this.state; if (s.roll > 0 || this.truck.driving || this.cut) return; startRoll({ P: this.player, s, I: this.input, yaw: this.cam.yaw, audio: this.audio }); }
+  jump() { const s = this.state; if (s.y > 0.01 || this.truck.driving || this.cut) return; startJump({ P: this.player, s, audio: this.audio }); }
   grenade() { if (this.save.grenades <= 0) { this.toast('No grenades'); return; } if (this.truck.driving || this.cut) return; this.save.grenades--; const P = this.player;
     const m = new THREE.Mesh(this._grenG || new THREE.CylinderGeometry(.05, .05, .2, 8), this._grenM || new THREE.MeshStandardMaterial({ color: '#444' })); const p = P.root.position.clone(); p.y = 1.6; m.position.copy(p); this.scene.add(m);
     const f = V3(); this.camera.getWorldDirection(f); this.grenadesLive.push({ m, v: f.multiplyScalar(13).add(V3(0, 4.5, 0)), t: 1.7 }); this.audio.swing(); }
@@ -456,24 +456,7 @@ export class Game {
     if (I.pressed('swap')) this.swap(1); if (I.pressed('reload')) this.reload(); if (I.pressed('gren')) this.grenade(); if (I.pressed('heal')) this.heal(); if (I.pressed('jump')) this.jump(); if (I.pressed('roll')) this.roll(); if (I.pressed('use')) this.use();
     if (I.pressed('crouch')) s.crouch = !s.crouch; if (I.pressed('view')) { this.cam.fp = !this.cam.fp; this.settings.fp = this.cam.fp; }
     s.aim = I.aim && gun; { const tap = I.pressed('atk'); if (tap || (I.atk && (!gun || w.auto)) || (gun && I.atk && tap)) this.attack(); }
-    const mv = I.move; const mag = Math.min(1, mv.length()); const run = (I.run || mag > .95 && I.touchRun) && !s.crouch && !s.aim;
-    let spd = s.crouch ? 1.6 : run ? 6.2 * (perk(this.save, 7) ? 1.15 : 1) : 3.1; if (s.aim) spd = 2.2; if (s.atk > 0) spd *= .3; if (s.stun > 0) { spd = 0; s.stun -= dt; }
-    const yaw = this.cam.yaw; let dx = 0, dz = 0; if (s.shotT > 0) s.shotT -= dt; const faceAim = (gun && (s.aim || s.shotT > 0)) || this.cam.fp; // v1.9.2: face the crosshair only while aiming/firing (or first-person); otherwise turn toward travel
-    if (mag > .08) { const a = Math.atan2(mv.x, mv.y) + yaw; dx = Math.sin(a) * spd * mag; dz = Math.cos(a) * spd * mag;
-      if (!faceAim && s.atk <= 0 && s.roll <= 0) P.root.rotation.y = angLerp(P.root.rotation.y, a, Math.min(1, dt * (this.settings.smoothMove ? 16 : 12))); }
-    if (faceAim) P.root.rotation.y = angLerp(P.root.rotation.y, yaw + Math.PI, Math.min(1, dt * 18));
-    if (run && mag > .5 && !s.crouch) { s.brT = (s.brT || 0) - dt; s.runT = (s.runT || 0) + dt; if (s.brT <= 0 && s.runT > 2.5) { s.brT = rnd(1.1, 1.5); this.audio.breathe && this.audio.breathe(Math.min(.35, .1 + s.runT * .02)); } } else s.runT = Math.max(0, (s.runT || 0) - dt * 2);
-    if (s.roll > 0) { s.roll -= dt; const f = 6.5; dx = Math.sin(P.root.rotation.y) * f; dz = Math.cos(P.root.rotation.y) * f; }
-    if (s.atk > 0) { s.atk -= dt; if (s.atkHit > 0) { s.atkHit -= dt; if (s.atkHit <= 0) this.meleeHit(); } }
-    // v2.0 smooth movement: ease toward the target velocity (same top speeds), roll/stun stay instant; animation speed follows real ground speed
-    const MV = s.mv || (s.mv = { x: 0, z: 0 }); if (!this.settings.smoothMove || s.roll > 0 || s.stun > 0 || dt <= 0) { MV.x = dx; MV.z = dz; } else { const ex = dx - MV.x, ez = dz - MV.z, el = Math.hypot(ex, ez), acc = ((dx * dx + dz * dz) > (MV.x * MV.x + MV.z * MV.z) ? 34 : 46) * dt; if (el <= acc) { MV.x = dx; MV.z = dz; } else { MV.x += ex / el * acc; MV.z += ez / el * acc; } }
-    const p = P.root.position; const px0 = p.x, pz0 = p.z; this.moveCollide(p, MV.x * dt, MV.z * dt, 0.35); if (dt > 0) s.spd = lerp(s.spd || 0, Math.hypot(p.x - px0, p.z - pz0) / dt, Math.min(1, dt * 14));
-    // vertical
-    if (s.y > 0 || s.vy > 0) { s.vy -= 14 * dt; s.y = Math.max(0, s.y + s.vy * dt); if (s.y === 0) { s.vy = 0; this.audio.land && this.audio.land(); P.play('Jump_Land', { once: true, force: true, speed: 1.6, cb: () => P.curName = '' }); } } p.y = s.y;
-    // locomotion anims
-    if (!P.oneShot) { if (s.y > 0) P.play('Jump_Loop'); else if (!this.settings.smoothMove && mag > .08) { /* v1.9.7 classic locomotion */ if (s.crouch) P.play('Crouch_Fwd_Loop'); else if (run) P.play('Sprint_Loop'); else if (spd * mag > 2.6) P.play('Jog_Fwd_Loop', { speed: .9 }); else P.play('Walk_Loop', { speed: 1.1 }); }
-      else if (this.settings.smoothMove && (mag > .08 || (s.spd || 0) > .35)) { const sp = s.spd || 0; if (s.crouch) P.play('Crouch_Fwd_Loop', { speed: clamp(sp / .64, .4, 2.2) }); else { const fy = P.root.rotation.y, bk = faceAim && sp > .3 && (Math.sin(fy) * MV.x + Math.cos(fy) * MV.z) < -.5 * sp; if (!P.locomote(sp, bk ? -1 : 1, dt)) P.play(run ? 'Sprint_Loop' : 'Jog_Fwd_Loop'); } }
-      else if (s.crouch) P.play('Crouch_Idle_Loop'); else if (gun) P.play(s.aim ? 'Pistol_Aim_Neutral' : 'Pistol_Idle_Loop'); else P.play('Idle_Loop'); }
+    const mvr = stepMove({ P, s, I, set: this.settings, yaw: this.cam.yaw, fp: this.cam.fp, gun, runMul: perk(this.save, 7) ? 1.15 : 1, audio: this.audio, onMeleeHit: () => this.meleeHit(), collide: (p, dx, dz, r) => this.moveCollide(p, dx, dz, r) }, dt);
     }
   // v2.0 aim assist (opt-in: "Simple" control scheme or the Aim-assist slider; default off = unchanged gameplay).
   // Gently steers the camera toward the best target near the crosshair while firing/aiming; optional auto-fire when a visible enemy is under it.
@@ -500,15 +483,7 @@ export class Game {
       if (ox < oz) nx = nx - (c.x0 + c.x1) / 2 < 0 ? c.x0 - r : c.x1 + r; else nz = nz - (c.z0 + c.z1) / 2 < 0 ? c.z0 - r : c.z1 + r; } }
     const hitWall = Math.abs(nx - p.x - dx) + Math.abs(nz - p.z - dz) > 1e-4; p.x = nx; p.z = nz; return hitWall; }
   // v1.4 arcade handling: smoothed speed-sensitive steering, high grip, auto-straighten, gentle bumps
-  updateTruck(dt) { const T = this.truck, I = this.input, D = this.drv || (this.drv = {}); let gas = D.gas ? 1 : 0, brk = D.brake ? 1 : 0, st = (D.r ? 1 : 0) - (D.l ? 1 : 0);
-    if (!D.gas && !D.brake) { gas = Math.max(0, -I.move.y) + (I.atk ? 1 : 0); brk = Math.max(0, I.move.y); } if (!st) st = clamp(I.move.x, -1, 1);
-    const gp = navigator.getGamepads ? [...navigator.getGamepads()].find(x => x) : null; if (gp) { const rt = gp.buttons[7]?.value || 0, lt = gp.buttons[6]?.value || 0; if (rt > .05) gas = rt; if (lt > .05) brk = lt; if (Math.abs(gp.axes[0]) > .15) st = gp.axes[0]; }
-    gas = clamp(gas, 0, 1); brk = clamp(brk, 0, 1); T.st = T.st || 0; T.st += (st - T.st) * Math.min(1, dt * (st ? 5 : 8));
-    if (gas) T.v += gas * 9 * dt * (T.v < 0 ? 2 : 1); if (brk) T.v -= brk * (T.v > 0.2 ? 18 : 6) * dt; if (!gas && !brk) T.v *= (1 - dt * .7); if (Math.abs(T.v) < .05 && !gas && !brk) T.v = 0;
-    T.v = clamp(T.v, -6, 17); const sp = Math.abs(T.v); T.head -= T.st * dt * 1.9 * Math.min(1, sp / 3) / (1 + sp / 12) * Math.sign(T.v || 1);
-    T.g.rotation.y = T.head; const p = T.g.position; const fx = Math.sin(T.head) * T.v * dt, fz = Math.cos(T.head) * T.v * dt;
-    if (this.moveCollide(p, fx, fz, 1.3)) { if (sp > 8) { this.shake(.2); this.audio.crash(); this.carAlarm(p); } T.v *= -0.15; }
-    T.spin = (T.spin || 0) + T.v * dt / .38; ['wheel-front-left', 'wheel-front-right', 'wheel-back-left', 'wheel-back-right'].forEach(n => { const w = T.g.getObjectByName(n); if (w) { w.rotation.x = T.spin; if (n.includes('front')) w.rotation.y = -T.st * .45; } });
+  updateTruck(dt) { const T = this.truck, I = this.input, D = this.drv || (this.drv = {}); const p = T.g.position; const R = stepVehicle(T, I, D, dt, { move: (fx, fz) => this.moveCollide(p, fx, fz, 1.3), onHit: (sp) => { if (sp > 8) { this.shake(.2); this.audio.crash(); this.carAlarm(p); } } }); const brk = R.brk, sp = R.sp; T.g.rotation.y = T.head; ['wheel-front-left', 'wheel-front-right', 'wheel-back-left', 'wheel-back-right'].forEach(n => { const w = T.g.getObjectByName(n); if (w) { w.rotation.x = T.spin; if (n.includes('front')) w.rotation.y = -T.st * .45; } });
     this.audio.engine(true, sp / 17); this.audio.tires && this.audio.tires(true, Math.abs(T.st || 0) * sp / 30 + (brk && T.v > 3 ? sp / 30 : 0));
     this.alive().forEach(z => { const d = z.root.position.distanceTo(p); if (d < 2.1) { if (sp > 3.5) { const dir = z.root.position.clone().sub(p).setY(0).normalize(); this.damageZ(z, 200, dir, { boom: true }); this.shake(.2); this.hitstop = .03; this.audio.thud(); T.v *= .95; } else { z.st = 'chase'; } } });
     this.player.root.position.copy(p); this.updateTruckCol(); }

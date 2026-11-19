@@ -41,7 +41,7 @@ export function genLots() { // houses along every east-west road, both sides, in
     for (let k = 0; k < n; k++) { const cx = a + off + (k + .5) * pitch; const d = 9; const cz = z0 + side * (10 + d / 2); lots.push({ cx, cz, w: 9, d, face: side > 0 ? 'N' : 'S', road: z0, side }); } }
   lots.sort((p, q) => Math.hypot(p.cx, p.cz) - Math.hypot(q.cx, q.cz)); lots.forEach((l, i) => { l.id = 'L' + i; }); return lots;
 }
-export const SPECIAL = [{ id: 'store', kind: 'store', cx: 0, cz: -18, w: 18, d: 12, face: 'S', ci: 3, locked: 0 },   { id: 'shed1', kind: 'shed', cx: -40, cz: 1, w: 4, d: 3.4, face: 'S', ci: 1, locked: 1 }, { id: 'shed2', kind: 'shed', cx: 40, cz: 6, w: 4, d: 3.4, face: 'W', ci: 4, locked: 0 }, { id: 'shed3', kind: 'shed', cx: -14, cz: 0, w: 4, d: 3.4, face: 'N', ci: 8, locked: 1 }];
+export const SPECIAL = [{ id: 'store', kind: 'store', cx: 0, cz: -11, w: 18, d: 12, face: 'S', ci: 3, locked: 0 },   { id: 'shed1', kind: 'shed', cx: -40, cz: 1, w: 4, d: 3.4, face: 'S', ci: 1, locked: 1 }, { id: 'shed2', kind: 'shed', cx: 40, cz: 6, w: 4, d: 3.4, face: 'W', ci: 4, locked: 0 }, { id: 'shed3', kind: 'shed', cx: -14, cz: 0, w: 4, d: 3.4, face: 'N', ci: 8, locked: 1 }];
 // Reserved free lot for the gas station (faces the road z=-24, i.e. pumps near z=-13.5, kiosk behind): x 31..62, z -20..-1. Houses never use it.
 export const GAS_LOT = { x0: 31, x1: 62, z0: -20, z1: -1, roadZ: -24, pumpZ: -13.5, kioskCX: 46, kioskCZ: -5.5 };
 // Player start (a few steps from c1/c13 on the main cross street) and respawn.
@@ -51,12 +51,12 @@ export const CAR_SPAWNS = [
   { id: 'c3', m: 'hatchback-sports', x: 33, z: 25.5, ry: Math.PI / 2 + .35, fuel: .8, lock: 1, tint: '#c2a23a' }, { id: 'c4', m: 'van', x: -26, z: 10, ry: .05, fuel: .08, lock: 1, tint: '#d8d4c6' },
   { id: 'c5', m: 'sedan', x: -10, z: -21.8, ry: Math.PI / 2 + .1, fuel: .4, lock: 1, tint: '#4b6b4b' }, { id: 'c6', m: 'suv-luxury', x: 10, z: -26.2, ry: -Math.PI / 2 - .12, fuel: .7, lock: 1, tint: '#232529' },
   { id: 'c7', m: 'truck', x: 41, z: -15.9, ry: Math.PI / 2, fuel: .0, lock: 0, tint: '#8e5b2e' }, { id: 'c8', m: 'sedan', x: 52, z: -11.1, ry: -Math.PI / 2, fuel: .12, lock: 0, tint: '#7a7f86' },
-  { id: 'c9', m: 'hatchback-sports', x: 2, z: -12, ry: .55, fuel: .35, lock: 2, tint: '#a8322d' }, { id: 'c10', m: 'suv', x: -48, z: -26, ry: Math.PI / 2, fuel: .9, lock: 1, tint: '#6b7a52' },
+  { id: 'c9', m: 'hatchback-sports', x: 4, z: -22.6, ry: .55, fuel: .35, lock: 2, tint: '#a8322d' }, { id: 'c10', m: 'suv', x: -48, z: -26, ry: Math.PI / 2, fuel: .9, lock: 1, tint: '#6b7a52' },
   { id: 'c11', m: 'sedan', x: 22, z: -8, ry: Math.PI + .1, fuel: .5, lock: 1, tint: '#9a8f78' }, { id: 'c12', m: 'van', x: -23.8, z: -44, ry: .1, fuel: .3, lock: 0, tint: '#3c4a63' },
   { id: 'c13', m: 'sedan', x: 20, z: -22, ry: -Math.PI / 2, fuel: .65, lock: 0, tint: '#b8b3a6' }, { id: 'c14', m: 'suv', x: 24.2, z: 44, ry: Math.PI + .6, fuel: .45, lock: 1, tint: '#7c3b52' },
 ];
 export const BODIES = [{ x: -4, z: 23, ry: 1.1, k: 'h' }, { x: 12, z: -22, ry: .3, k: 'h' }, { x: 26, z: -24, ry: 4, k: 'z' }, { x: -24.5, z: 0, ry: 5, k: 'h' }, { x: -23, z: -12, ry: 1.7, k: 'z' }, { x: 24.5, z: 12, ry: 2, k: 'h' },
-  { x: 44, z: -10, ry: 3, k: 'h' }, { x: 49, z: -11, ry: 1, k: 'z' }, { x: -7, z: -17, ry: 2.8, k: 'h' }, { x: 1, z: -11.5, ry: .2, k: 'z' }, { x: 17, z: 23.5, ry: 4.4, k: 'h' }, { x: -23.5, z: 33, ry: 1.9, k: 'h' }, { x: -34, z: -22, ry: 5.7, k: 'z' }];
+  { x: 44, z: -10, ry: 3, k: 'h' }, { x: 49, z: -11, ry: 1, k: 'z' }, { x: -7, z: -19, ry: 2.8, k: 'h' }, { x: 1, z: -19.3, ry: .2, k: 'z' }, { x: 17, z: 23.5, ry: 4.4, k: 'h' }, { x: -23.5, z: 33, ry: 1.9, k: 'h' }, { x: -34, z: -22, ry: 5.7, k: 'z' }];
 
 // ---------- closed (instanced) house variants ----------
 function part(geos, mat, x0, x1, y0, y1, z0, z1, color) { const g = boxGeo(x1 - x0, y1 - y0, z1 - z0, 2, [(x0 * 3.1) % 1, (y0 * 1.7) % 1]); g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); const n = g.attributes.position.count, c = new THREE.Color(color), a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); geos.push(g.toNonIndexed()); }

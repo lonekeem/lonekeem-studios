@@ -20,7 +20,7 @@ function roadGraph() {
   const BX = BOUNDS.x - 6, BZ = BOUNDS.z - 6; const grid = {};
   for (const zr of CFG.ZR) for (const xr of CFG.XR) grid[xr + ',' + zr] = add(xr, zr);
   for (const zr of CFG.ZR) { const row = CFG.XR.map(xr => grid[xr + ',' + zr]); const a = add(-BX, zr), b = add(BX, zr);
-    const spurs = []; if (zr === CFG.ZR[0]) { spurs.push([0, -14], [46, -15]); }
+    const spurs = []; if (zr === CFG.ZR[0]) { spurs.push([0, -18.6], [46, -15]); }
     const pts = [{ x: -BX, i: a }, ...CFG.XR.map(xr => ({ x: xr, i: grid[xr + ',' + zr] })), { x: BX, i: b }];
     for (const [sx, sz] of spurs) { const s = add(sx, sz); const r = add(sx, zr); pts.push({ x: sx, i: r }); link(r, s); } pts.sort((p, q) => p.x - q.x); for (let k = 0; k < pts.length - 1; k++) link(pts[k].i, pts[k + 1].i); }
   for (const xr of CFG.XR) { const a = add(xr, -BZ), b = add(xr, BZ); const col = CFG.ZR.map(zr => grid[xr + ',' + zr]); link(a, col[0]); for (let k = 0; k < col.length - 1; k++) link(col[k], col[k + 1]); link(col[col.length - 1], b); }
