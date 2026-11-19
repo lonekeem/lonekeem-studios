@@ -50,6 +50,9 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.14
+- New voices: 272 Keem and Nia lines (185 Keem, 87 Nia, dialogue and combat barks) re-voiced with ElevenLabs "Young Jamal" (Keem) and "Myriam" (Nia), loudness-matched to Dad's existing lines (-18 LUFS). Dad's voice is unchanged. 18 lines the voice provider's content filter refused to speak (strong-language lines) keep their previous voice for now.
+
 ### v1.9.13
 - Grass: about half the height, thinned near the camera, and cleared from the camera-to-player line of sight and a patch around the player's feet, so Keem's whole body is always visible while the field stays lush at a distance.
 
