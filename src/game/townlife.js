@@ -53,7 +53,7 @@ export function doorShut(g, D) { D.to = 0; }
 const near = (g, x, z, r) => hyp(g.player.root.position.x - x, g.player.root.position.z - z) < r;
 
 // ---------------------------------------------------------------- state
-function fresh(g) { return { world: g.world, doors: [], pool: [], npcs: [], bodies: [], ev: null, cd: 10, t: 0, hooks: Object.assign({}, TOWN_HOOKS), built: false, count: 0, log: [] }; }
+function fresh(g) { const T = { world: g.world, doors: [], pool: [], npcs: [], bodies: [], ev: null, cd: 10, t: 0, hooks: Object.assign({}, TOWN_HOOKS), built: false, count: 0, log: [] }; T.force = (fate, o) => startEvent(g, T, fate, o); return T; }
 function kill(g, T, n, dispose) { const i = T.npcs.indexOf(n); if (i >= 0) T.npcs.splice(i, 1); delete g.npcs[n.key]; g.scene.remove(n.root); if (dispose) { n.mixer.stopAllAction(); n.mixer.uncacheRoot(n.model); g.disposeTree && g.disposeTree(n.root); } }
 export function townReset(g) {
   const T = g.town; if (!T) return; for (const n of T.npcs.slice()) kill(g, T, n, true); for (const b of T.bodies) { g.scene.remove(b.root); b.mixer.stopAllAction(); b.mixer.uncacheRoot(b.model); g.disposeTree && g.disposeTree(b.root); } T.bodies = [];
@@ -122,12 +122,12 @@ export function townUpdate(g, dt) {
   if (g.alive().filter(z => z.st !== 'eat').length > 5 || T.npcs.length) { T.cd = 8; return; }
   startEvent(g, T, null) ? (T.cd = rnd(40, 70)) : (T.cd = 6);
 }
-export function startEvent(g, T, force) {
+export function startEvent(g, T, force, o = {}) { const SD = o.sd || 46;
   const P = g.player.root.position, houses = (g.world.houses || []).filter(h => h.tdoor && dFromP(g, h.fx, h.cz) > 9 && dFromP(g, h.fx, h.cz) < 34); if (!houses.length) return false;
-  const fate = force || pick(['door', 'door', 'caught', 'caught', 'away']); let H = null, spawn = null, dir = Math.random() < .5 ? 1 : -1;
-  for (let k = 0; k < 2 && !spawn; k++, dir = -dir) {
-    const lane = (Math.random() < .5 ? 1 : -1) * rnd(2.2, 3.8), tryPts = fate === 'away' ? [[-Math.sign(P.x || 1) * 48, P.z + rnd(-12, 12), 'woods'], [lane, P.z + dir * 46, 'road']] : [[lane, P.z + dir * 46, 'road']];
-    for (const [x, z, kind] of tryPts) { if (g.inCol(x, z, 1) || onScreen(g, x, z, 8) || dFromP(g, x, z) < 30) continue; spawn = { x, z, kind, dir }; break; } }
+  const fate = force || pick(['door', 'door', 'caught', 'caught', 'away']); let H = null, spawn = null, dir = o.dir || (Math.random() < .5 ? 1 : -1);
+  for (let k = 0; k < 8 && !spawn; k++, dir = o.dir ? dir : -dir) {
+    const lane = (Math.random() < .5 ? 1 : -1) * rnd(2.2, 3.8), tryPts = fate === 'away' ? [[-Math.sign(P.x || 1) * 48, P.z + rnd(-12, 12), 'woods'], [lane, P.z + dir * SD, 'road']] : [[lane, P.z + dir * SD, 'road']];
+    for (const [x, z, kind] of tryPts) { if (g.inCol(x, z, 1) || (!o.near && (onScreen(g, x, z, 8) || dFromP(g, x, z) < 30))) continue; spawn = { x, z, kind, dir }; break; } }
   if (!spawn) return false;
   if (fate === 'door') { H = houses.sort((a, b) => Math.abs(a.cz - P.z) - Math.abs(b.cz - P.z))[0]; }
   const c = T.spare || makeChar(g); T.spare = null; const key = 'tn' + (++T.count);
