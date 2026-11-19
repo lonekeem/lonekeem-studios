@@ -8,7 +8,7 @@ import { clamp, lerp, rnd, angLerp, V3 } from './util.js';
 export function stepMove(C, dt) {
   const { P, s, I, set, gun } = C;
     const mv = I.move; const mag = Math.min(1, mv.length()); const run = (I.run || mag > .95 && I.touchRun) && !s.crouch && !s.aim;
-    let spd = s.crouch ? 1.6 : run ? 6.2 * C.runMul : 3.1; if (s.aim) spd = 2.2; if (s.atk > 0) spd *= .3; if (s.stun > 0) { spd = 0; s.stun -= dt; }
+    let spd = s.crouch ? 1.6 : run ? 6.2 * C.runMul : 3.1; if (s.aim) spd = 2.2; if (C.slow) spd *= C.slow; if (s.atk > 0) spd *= .3; if (s.stun > 0) { spd = 0; s.stun -= dt; }
     const yaw = C.yaw; let dx = 0, dz = 0; if (s.shotT > 0) s.shotT -= dt; const faceAim = (gun && (s.aim || s.shotT > 0)) || C.fp; // v1.9.2: face the crosshair only while aiming/firing (or first-person); otherwise turn toward travel
     if (mag > .08) { const a = Math.atan2(mv.x, mv.y) + yaw; dx = Math.sin(a) * spd * mag; dz = Math.cos(a) * spd * mag;
       if (!faceAim && s.atk <= 0 && s.roll <= 0) P.root.rotation.y = angLerp(P.root.rotation.y, a, Math.min(1, dt * (set.smoothMove ? 16 : 12))); }

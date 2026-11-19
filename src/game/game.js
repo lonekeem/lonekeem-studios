@@ -19,7 +19,7 @@ import { V3, clamp, lerp, rnd, angLerp, bloodTex } from './util.js';
 import { Input } from './input.js';
 import { stepMove, startRoll, startJump, stepVehicle } from './pctl.js';
 import { syncWounds, addWound, bloodyMouth, makePool, tickPools, setHandBlood } from './gore.js';
-import { STORY, LOOT, chOf } from './story.js';
+import { STORY, LOOT, chOf, TOTAL_PAGES, SPEAKER_NAMES } from './story.js';
 
 const $ = (s) => document.querySelector(s);
 export const PRESETS = {
@@ -57,7 +57,7 @@ export class Game {
     if (hdr) { const pm = new THREE.PMREMGenerator(r); const env = pm.fromEquirectangular(hdr).texture; scene.environment = env; scene.environmentIntensity = 0.32; scene.background = env; scene.backgroundIntensity = 0.06; scene.backgroundBlurriness = 0.35; hdr.dispose(); }
     // night lighting
     const GRADE = /[?&]grade=1/.test(location.search); // optional visual-only night grade (test shots): cooler moon, warmer fill, slightly lifted fog
-    scene.add(GRADE ? new THREE.HemisphereLight('#4a5f78', '#2a2418', 0.85) : new THREE.HemisphereLight('#3a4a5a', '#151a12', 0.55));
+    scene.add(this.hemi = GRADE ? new THREE.HemisphereLight('#4a5f78', '#2a2418', 0.85) : new THREE.HemisphereLight('#3a4a5a', '#151a12', 0.55));
     if (GRADE) { scene.fog.color.set('#1b2628'); scene.fog.density *= .8; scene.background = new THREE.Color('#16201f'); }
     const moon = this.moon = new THREE.DirectionalLight(GRADE ? '#a9c0e0' : '#9fb4d0', GRADE ? 1.25 : 0.9); moon.position.set(-30, 50, 20); moon.castShadow = Q.shadows; moon.shadow.mapSize.set(Q.shadowMap, Q.shadowMap);
     const sc = moon.shadow.camera; sc.left = sc.bottom = -26; sc.right = sc.top = 26; sc.near = 1; sc.far = 140; moon.shadow.bias = -0.0005; moon.shadow.normalBias = 0.03; scene.add(moon, moon.target);
@@ -115,6 +115,13 @@ export class Game {
   clearActors() { townReset(this); this.zombies.forEach(z => { this.scene.remove(z.root); z.mixer.stopAllAction(); z.mixer.uncacheRoot(z.model); this.disposeTree(z.root); }); this.zombies = []; for (const k in this.npcs) { const n = this.npcs[k]; this.scene.remove(n.root); n.mixer.stopAllAction(); n.mixer.uncacheRoot(n.model); this.disposeTree(n.root); } this.npcs = {};
     this.pickups.forEach(p => this.scene.remove(p.mesh)); this.pickups = []; this.props.forEach(p => { this.scene.remove(p); this.disposeTree(p); }); this.props = []; this.decalN = 0; this.decals.forEach(d => d.visible = false); (this.pools || []).forEach(o => { this.scene.remove(o); o.material.dispose(); }); this.pools = [];
     if (this.truck) this.truck.driving = false; document.body.classList.remove('driving'); $('#drive')?.classList.add('hidden'); this.drv = {}; this.boss = null; $('#boss').classList.add('hidden'); this.dlgQ = []; this.dlgCur = null; $('#dlg').classList.remove('on'); }
+  // v1.9.17: lighting modes for the hospital chapters. null = the usual night; 'dark' = Sublevel B (flashlight + emergency lights); 'ward' = lit upper floors.
+  setLight(mode) { const S = this.scene, f = this.world.flags, sky = this.world.env && this.world.env.sky; if (!this._L0) this._L0 = { moon: this.moon.intensity, hemi: this.hemi.intensity, hc: this.hemi.color.clone(), hg: this.hemi.groundColor.clone(), env: S.environmentIntensity, fog: S.fog.density, fc: S.fog.color.clone() };
+    const o = this._L0, ind = !!mode; if (f) f.indoor = ind; if (sky) sky.visible = !ind; this.moon.visible = !ind; this.moon.intensity = ind ? 0 : o.moon;
+    if (!ind) { this.hemi.intensity = o.hemi; this.hemi.color.copy(o.hc); this.hemi.groundColor.copy(o.hg); S.environmentIntensity = o.env; S.fog.density = o.fog; S.fog.color.copy(o.fc); S.background = this.world.env && sky ? null : S.background; return; }
+    if (mode === 'dark') { this.hemi.intensity = 1.0; this.hemi.color.set('#5a7a78'); this.hemi.groundColor.set('#2a3634'); S.environmentIntensity = .1; S.fog.density = o.fog * .55; S.fog.color.set('#0a1214'); }
+    else { this.hemi.intensity = 1.5; this.hemi.color.set('#e8f2f4'); this.hemi.groundColor.set('#a89a86'); S.environmentIntensity = .25; S.fog.density = o.fog * .22; S.fog.color.set('#cdd6d4'); }
+    S.background = new THREE.Color(S.fog.color); }
   loadStep(i) {
     if (!this._keep) this.keepSet(); this.clearActors(); const st = STORY[i]; if (this.step !== i) this._bossRetry = false; this.step = i; this.stuckT = 0; this.stepTok = (this.stepTok || 0) + 1; this.stepData = {}; const P = this.player; this.dead = false; this.dying = null; this.cut = null;
     this.maxHp = 100 + (perk(this.save, 2) ? 20 : 0) + (perk(this.save, 9) ? 20 : 0) + (this.settings.qteEasy ? 50 : 0); this.hp = this.maxHp;
@@ -126,7 +133,7 @@ export class Game {
     if (!st.survival) LOOT.forEach(l => { const lc = chOf(l.minStep || 0); if (!this.save.loot.includes(l.id) && (l.minStep || 0) <= i + 1 && (lc === ch || (ch <= 2 && lc <= 2))) this.addPickup(l); });
     this.world.frontDoor.rotation.y = i >= 3 ? -1.6 : 0; this.setDoor(i >= 3);
     this.setTruck(i);
-    st.enter(this); this.objective(st.obj, st.hint); this.audio.setMood(st.mood || 'night'); this.audio.rain && this.audio.rain(st.rain !== false && st.mood !== 'day'); this.audio.beat(st.beat || 0);
+    this.slowMul = 1; this.setLight(st.light || null); st.enter(this); this.objective(st.obj, st.hint); this.audio.setMood(st.mood || 'night'); this.audio.rain && this.audio.rain(st.rain !== false && st.mood !== 'day'); this.audio.beat(st.beat || 0);
     partnerEnter(this); this.checkpoint(); this.grace = 1.5; if (!this._warm) { this._warm = 1; this.prewarm(); } else try { this.renderer.compile(this.scene, this.camera); } catch (e) { }
     this.last = performance.now(); }
   // v1.6.3 failsafes: unstick player/targets, respawn a missing boss, offer an objective skip after 3 min stuck
@@ -168,7 +175,8 @@ export class Game {
   // ---------- pickups ----------
   addPickup(l) { const g = new THREE.Group(); let m;
     const glow = new THREE.MeshBasicMaterial({ color: l.kind === 'page' ? '#e8e0a0' : l.kind === 'hp' ? '#ff5050' : l.drop ? '#ffd040' : '#7fd49a', transparent: true, opacity: .35, depthWrite: false });
-    if (['cash', 'ammo', 'hp', 'med', 'grenade'].includes(l.kind) && (m = buildPickup(l.kind, l.drop))) { /* v2.0 realistic pickup models */ }
+    if (l.mk) m = l.mk();
+    else if (['cash', 'ammo', 'hp', 'med', 'grenade'].includes(l.kind) && (m = buildPickup(l.kind, l.drop))) { /* v2.0 realistic pickup models */ }
     else if (l.kind === 'cash') m = new THREE.Mesh(new THREE.BoxGeometry(.25, .06, .14), new THREE.MeshStandardMaterial({ color: '#5a8a4a', emissive: '#203a10' }));
     else if (l.kind === 'ammo' && l.drop) m = (this._amM || (this._amM = new THREE.Mesh(new THREE.BoxGeometry(.3, .18, .2), new THREE.MeshStandardMaterial({ color: '#c9a227', emissive: '#3a2a00', metalness: .4 })))).clone();
     else if (l.kind === 'ammo') m = new THREE.Mesh(new THREE.BoxGeometry(.3, .18, .2), new THREE.MeshStandardMaterial({ color: '#4a5a2a', metalness: .4 }));
@@ -189,7 +197,7 @@ export class Game {
   takePickup(p) { const l = p.l, s = this.save; this.scene.remove(p.mesh); this.pickups.splice(this.pickups.indexOf(p), 1); if (l.id && !l.story) s.loot.push(l.id); this.audio.pickup();
     if (l.kind === 'cash') this.addCash(l.n); else if (l.kind === 'ammo') { s.ammo[l.item] = (s.ammo[l.item] || 0) + l.n; this.floatText(`+${l.n} ${l.item} ammo`, '#d8e8a0'); if (l.drop) this.toast(`+${l.n} ${l.item} ammo`, 1); }
     else if (l.kind === 'hp') { this.hp = Math.min(this.maxHp, this.hp + l.n); this.toast(`+${l.n} health`, 1); } else if (l.kind === 'med') { s.meds++; this.floatText('+1 Med kit', '#fff'); } else if (l.kind === 'grenade') { s.grenades += l.n || 1; this.floatText('+Pipe grenade', '#fff'); }
-    else if (l.kind === 'page') { s.pages.push(l.id); this.toast(`Comic page found (${s.pages.length}/20): "${l.text}"`, 3); this.addXP(25); }
+    else if (l.kind === 'page') { s.pages.push(l.id); this.toast(`Comic page found (${s.pages.length}/${TOTAL_PAGES}): "${l.text}"`, 3); this.addXP(25); }
     else if (l.kind === 'weapon') { this.give(l.item); if (l.ammo) s.ammo[WEAPONS[l.item].ammo] = (s.ammo[WEAPONS[l.item].ammo] || 0) + l.ammo; }
     else if (l.kind === 'backpack') { s.items.push('backpack'); this.pack.visible = true; this.toast('Backpack on. More room for loot.'); }
     else if (l.kind === 'item') { s.items.push(l.item); this.toast(l.label || l.item); }
@@ -213,7 +221,8 @@ export class Game {
     const sc = (o.scale || rnd(.9, 1.1)); const c = new Char(this.lib, zl, sc); c.id = Math.random() * 10; c.root.position.set(x, 0, z); c.root.rotation.y = rnd(0, 6); this.scene.add(c.root);
     const runner = o.runner ?? Math.random() < (this.stepData.runners || 0.15);
     Object.assign(c, { z: true, hp: o.hp || (runner ? 50 : 70), maxHp: o.hp || (runner ? 50 : 70), runner, speed: runner ? rnd(3.6, 4.4) : rnd(1.1, 1.6), st: o.eat ? 'eat' : (o.idle ? 'idle' : 'chase'), eat: o.eat, cd: rnd(0, 1), stun: 0, dead: false, boss: !!o.boss, aggro: o.aggro ?? 30, vel: V3() });
-    if (o.eat) c.play('Idle_Loop'); else c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.1 : 0.62 });
+    if (o.det) c.det = o.det; if (o.hear) c.hear = 1; // v1.9.17 sleepers: custom wake radius (crouching = 40%) + wake on gunfire
+    if (o.eat || o.still) c.play('Idle_Loop'); else c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.1 : 0.62 });
     if (c.act('Walk_Loop')) c.act('Walk_Loop').time = rnd(0, 1);
     if (o.raider) { c.raider = true; c.hp = c.maxHp = o.hp || 90; c.speed = 2.6; c.cd = rnd(1, 2.5); const h = new THREE.Group(); h.add(weaponMesh(o.gun || 'rifle')); h.rotation.set(Math.PI / 2, 0, 0); h.position.set(0, .08, .02); c.attach('DEF-hand.R', h); c.gunM = h; c.gunId = o.gun || 'rifle'; c.play('Pistol_Aim_Neutral'); if (c.mat && c.mat.userData.u && c.mat.userData.u.uShirt) if (o.shirt && c.mat.userData.u.uJacket) { c.mat.userData.u.uJacket.value.set(o.shirt); c.mat.userData.u.uShirt.value.set(o.shirt); } }
     this.zombies.push(c); return c; }
@@ -260,7 +269,7 @@ export class Game {
   say(lines, cb) { this.dlgQ = (this.dlgQ || []).concat(lines.map(l => ({ who: l[0], text: l[1] }))); if (cb) this.dlgQ.push({ cb }); if (!this.dlgCur) this.nextLine(); }
   nextLine() { const d = $('#dlg'); const it = this.dlgQ.shift(); if (!it) { this.dlgCur = null; this.grace = Math.max(this.grace || 0, 1.5); this.last = performance.now(); d.classList.remove('on'); this.audio.stopVoice && this.audio.stopVoice(); return; } if (it.cb) { it.cb(this); this.nextLine(); return; }
     if (it.raw == null) { it.raw = it.text; const L = langLine(it.raw, this.settings.lang || 'on'); it.text = L.sub; it.vtext = L.voice; it.bleeps = L.bleeps; }
-    this.dlgCur = it; const names = { vance: 'Dr. Vance', keem: 'Keem', marcus: 'Dad', nia: 'Nia', walt: 'Mr. Walt', ruth: 'Ruth', dube: 'Mr. Dube', radio: 'Radio', note: 'Dad\'s note', gus: 'Big Gus', sgt: 'Sgt. Okafor (radio)', brick: 'Coach Brickman', ronnie: 'Big Rig Ronnie', deacon: 'Deacon', captain: 'The Captain (radio)', reyes: 'Dr. Reyes', tuck: 'Tuck', santa: 'Mall Santa', king: 'The Toll King' };
+    this.dlgCur = it; const names = { ...SPEAKER_NAMES, vance: 'Dr. Vance', keem: 'Keem', marcus: 'Dad', nia: 'Nia', walt: 'Mr. Walt', ruth: 'Ruth', dube: 'Mr. Dube', radio: 'Radio', note: 'Dad\'s note', gus: 'Big Gus', sgt: 'Sgt. Okafor (radio)', brick: 'Coach Brickman', ronnie: 'Big Rig Ronnie', deacon: 'Deacon', captain: 'The Captain (radio)', reyes: 'Dr. Reyes', tuck: 'Tuck', santa: 'Mall Santa', king: 'The Toll King' };
     $('#who').textContent = names[it.who] || it.who; const cur = it; this.audio.voice && this.audio.voice(it.who, it.vtext, it.bleeps).then(dd => { if (dd && this.dlgCur === cur) cur.dur = Math.max(cur.dur || 0, dd + .5); });
     
     $('#line').textContent = it.text; d.classList.add('on'); it.t = 0; it.dur = (1.6 + it.text.length * 0.045) / (this.settings.text || 1); }
@@ -456,7 +465,7 @@ export class Game {
     if (I.pressed('swap')) this.swap(1); if (I.pressed('reload')) this.reload(); if (I.pressed('gren')) this.grenade(); if (I.pressed('heal')) this.heal(); if (I.pressed('jump')) this.jump(); if (I.pressed('roll')) this.roll(); if (I.pressed('use')) this.use();
     if (I.pressed('crouch')) s.crouch = !s.crouch; if (I.pressed('view')) { this.cam.fp = !this.cam.fp; this.settings.fp = this.cam.fp; }
     s.aim = I.aim && gun; { const tap = I.pressed('atk'); if (tap || (I.atk && (!gun || w.auto)) || (gun && I.atk && tap)) this.attack(); }
-    const mvr = stepMove({ P, s, I, set: this.settings, yaw: this.cam.yaw, fp: this.cam.fp, gun, runMul: perk(this.save, 7) ? 1.15 : 1, audio: this.audio, onMeleeHit: () => this.meleeHit(), collide: (p, dx, dz, r) => this.moveCollide(p, dx, dz, r) }, dt);
+    const mvr = stepMove({ P, s, I, set: this.settings, yaw: this.cam.yaw, fp: this.cam.fp, gun, slow: this.slowMul, runMul: perk(this.save, 7) ? 1.15 : 1, audio: this.audio, onMeleeHit: () => this.meleeHit(), collide: (p, dx, dz, r) => this.moveCollide(p, dx, dz, r) }, dt);
     }
   // v2.0 aim assist (opt-in: "Simple" control scheme or the Aim-assist slider; default off = unchanged gameplay).
   // Gently steers the camera toward the best target near the crosshair while firing/aiming; optional auto-fire when a visible enemy is under it.
@@ -498,7 +507,7 @@ export class Game {
       if (z.st === 'feast') { z.mixer.update(dt); if (Math.random() < dt * 8 && this.settings.gore) { const b = P.root.position.clone(); b.y = .3; this.blood(b, V3(rnd(-1, 1), .5, rnd(-1, 1)), 4, 2); } continue; }
       if (z.st === 'eat') { const det = this.state.crouch ? 4 : 7.5; if ((d < det && !this.cut) || z.hp < z.maxHp) { z.st = 'chase'; z.lk = 0; this.audio.at(zp).groan(.14); if (Math.random() < .5) this.audio.zAttack && this.audio.zAttack(); }
         z.mixer.update(dt); this.feedPose(z, dt, d, toP); continue; }
-      if (z.st === 'eat' || z.st === 'idle') { const det = this.state.crouch ? 4 : (z.st === 'eat' ? 7 : 12); if (d < det && !this.cut || z.hp < z.maxHp) { z.st = 'chase'; this.audio.at(zp).groan(.12); } z.mixer.update(dt); if (z.st === 'eat' && Math.random() < dt * .3) this.audio.at(zp).groan(.05); if (z.st === 'eat' && d < 16 && (z.eatT = (z.eatT ?? rnd(0, 2)) - dt) <= 0) { z.eatT = rnd(2.2, 3.4); this.audio.at(zp).eat(Math.max(.05, .55 * (1 - d / 16))); } continue; }
+      if (z.st === 'eat' || z.st === 'idle') { const det = z.det ? (this.state.crouch ? z.det * .4 : z.det) : this.state.crouch ? 4 : (z.st === 'eat' ? 7 : 12); if (d < det && !this.cut || z.hp < z.maxHp || (z.hear && this.mT > 0 && d < 26)) { z.st = 'chase'; this.audio.at(zp).groan(.12); } z.mixer.update(dt); if (z.st === 'eat' && Math.random() < dt * .3) this.audio.at(zp).groan(.05); if (z.st === 'eat' && d < 16 && (z.eatT = (z.eatT ?? rnd(0, 2)) - dt) <= 0) { z.eatT = rnd(2.2, 3.4); this.audio.at(zp).eat(Math.max(.05, .55 * (1 - d / 16))); } continue; }
       if (z.raider && !z.boss) { this.raiderAI(z, d, toP, dt, zp); z.mixer.update(dt); this.zBones(z); continue; }
       if (z.boss) { this.updateBoss(z, d, toP, dt); z.mixer.update(dt); this.zBones(z); continue; }
       if (z.stun > 0) { z.stun -= dt; this.moveCollide(zp, z.vel.x * dt, z.vel.z * dt, .3); z.vel.multiplyScalar(.85); z.mixer.update(dt); this.zBones(z); continue; }
@@ -645,7 +654,7 @@ export class Game {
     if (this.composer) this.composer.render(); else this.renderer.render(this.scene, cam);
     if (this.running && !this.paused) this.hud(); }
   hud() { const s = this.save, w = WEAPONS[s.cur];
-    $('#hpb i').style.width = (this.hp / this.maxHp * 100) + '%'; $('#hpTxt').textContent = `Health : ${Math.ceil(this.hp)}  ·  Lv ${s.level}  ·  $${s.cash}  ·  Med ${s.meds}${s.pages.length ? `  ·  Pages ${s.pages.length}/20` : ''}`;
+    $('#hpb i').style.width = (this.hp / this.maxHp * 100) + '%'; $('#hpTxt').textContent = `Health : ${Math.ceil(this.hp)}  ·  Lv ${s.level}  ·  $${s.cash}  ·  Med ${s.meds}${s.pages.length ? `  ·  Pages ${s.pages.length}/${TOTAL_PAGES}` : ''}`;
     { const st = this.state, rl = $('#rld'); if (rl) { const on = st && st.reload > 0 && !this.dying; rl.classList.toggle('on', !!on); if (on) rl.firstChild.style.width = Math.round((1 - st.reload / (this.ws.reload || 1)) * 100) + '%'; } }
     $('#ammoTxt').textContent = w.type === 'gun' ? `${w.name}  ·  Ammo : ${s.mags[s.cur] || 0} / ${s.ammo[w.ammo] || 0}${this.state.reload > 0 ? '  (reloading)' : ''}` : w.name;
     $('#grenN').textContent = s.grenades; { const gn = $('#grenN2'); if (gn) gn.textContent = s.grenades; } $('#tAtk').textContent = w.type === 'gun' ? 'FIRE' : 'HIT'; $('#pages').textContent = '';

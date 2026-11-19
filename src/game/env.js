@@ -165,7 +165,7 @@ vec2 wp = org + mod(aRnd.xy*tile*7.31 - org, tile);
 float dist = length(wp - uCam.xz);
 float fade = 1. - smoothstep(uR*.55, uR*.94, dist);
 vec2 mu = (wp - uRect.xy) / uRect.zw;
-float ok = (mu.x < 0. || mu.y < 0. || mu.x > 1. || mu.y > 1.) ? 1. : step(.5, texture2D(uMask, mu).r);
+float ok = (mu.y < 0.) ? 0. : ((mu.x < 0. || mu.x > 1. || mu.y > 1.) ? 1. : step(.5, texture2D(uMask, mu).r)); // z < mask start (v2.0 chapters 12+, indoor/new sets) = no grass
 float kind = floor(fract(aRnd.w*13.7)*100.);   // 0..99
 float tp = kind < 42. ? 0. : kind < 68. ? 1. : kind < 84. ? 2. : 3.;
 float hs = (tp < 1.5 ? mix(.28, .6, aRnd.z) : tp < 2.5 ? mix(.25, .43, aRnd.z) : mix(.28, .48, aRnd.z)); // v1.9.13: ~half height so Keem's legs stay visible
@@ -191,7 +191,7 @@ vTint = gc * mix(.55, 1.15, uv.y) * mix(.8, 1.1, fract(aRnd.x*37.));`)
         s.fragmentShader = s.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vTint; varying vec2 vAU;')
           .replace('#include <map_fragment>', 'vec4 sdc = texture2D(map, vAU); diffuseColor *= vec4(sdc.rgb * vTint, sdc.a);'); };
       const gmesh = new THREE.Mesh(ig, gm); gmesh.frustumCulled = false; gmesh.renderOrder = 1; scene.add(gmesh);
-      let vt = 0; const vegNear = (x, z) => { let n = 0; for (let a = -3; a <= 3; a++) for (let b = -3; b <= 3; b++) { const i = Math.floor(x + a * 6 - X0), j = Math.floor(z + b * 6 - Z0); n += (i < 0 || j < 0 || i >= MW || j >= MH) ? 1 : (mask[j * MW + i] ? 1 : 0); } return n / 49; };
+      let vt = 0; const vegNear = (x, z) => { let n = 0; for (let a = -3; a <= 3; a++) for (let b = -3; b <= 3; b++) { const i = Math.floor(x + a * 6 - X0), j = Math.floor(z + b * 6 - Z0); n += (j < 0) ? 0 : (i < 0 || i >= MW || j >= MH) ? 1 : (mask[j * MW + i] ? 1 : 0); } return n / 49; };
       updaters.push((dt, t, cam) => { U.uCam.value.copy(cam); U.uT.value = t; if (api.pl) U.uPl.value.set(api.pl.x, api.pl.z); vt -= dt; if (vt <= 0) { vt = .35; gmesh.visible = vegNear(cam.x, cam.z) > .04; } }); // no grass pass inside tunnels / on bare ground (perf)
       api.grassMesh = gmesh; }
 

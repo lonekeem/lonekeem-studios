@@ -50,6 +50,9 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.19
+- Chapters 12 (Sublevel B) and 13 (Biscuit Goes Rogue) go live: fully voiced (114 new lines), the Mom/Nia reunion hug, Doreen the lunch lady boss, the Biscuit chase through the children's ward and cafeteria, and a "To be continued" end card after chapter 13. Chapters 14-16 stay hidden. Multiplayer (Beta), first-person, gore and town NPCs unchanged.
+
 ### v1.9.18
 - Multiplayer (Beta) goes live: Title > Multiplayer (Beta) > creator > Quiet Falls free-roam town (houses without doors until you buy one, gas station, KL cars with fuel, loot, roaming zombies, shop + bag). Guests play online now via Realtime rooms (falls back to solo); Google sign-in shows "coming soon" until it is set up. The story game is unchanged.
 
