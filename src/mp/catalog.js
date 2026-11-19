@@ -42,7 +42,7 @@ export const HAIR = [
   ['shoulder', 'Shoulder length', 'u'], ['longstr', 'Long straight', 'f'], ['longwave', 'Long waves', 'f'], ['longcurl', 'Long curls', 'f'], ['curtain', 'Curtain bangs', 'f'], ['dreads', 'Locs', 'u'], ['twists', 'Twists', 'u'],
 ];
 export const BEARDS = [ // [id, name, kind]
-  ['none', 'None', -1], ['stubble', 'Stubble', -2], ['full', 'Full beard', 1], ['boxed', 'Short boxed', 2], ['lumber', 'Big beard', 11], ['goatee', 'Goatee', 3], ['circle', 'Circle beard', 8], ['soul', 'Soul patch', 4], ['strap', 'Chin strap', 5], ['curtain', 'Chin curtain', 6], ['mutton', 'Mutton chops', 7],
+  ['none', 'None', -1], ['stubble', 'Stubble', -2], ['full', 'Full beard', 1], ['boxed', 'Short boxed', 2], ['lumber', 'Big beard', 11], ['goatee', 'Goatee', 3], ['circle', 'Circle beard', 8], ['soul', 'Soul patch', 4], ['strap', 'Chin strap', 5], ['curtain', 'Chin curtain', 6],
 ];
 export const STACHES = [['none', 'None', -1], ['chevron', 'Chevron', 1], ['pencil', 'Pencil', 2], ['handlebar', 'Handlebar', 3], ['walrus', 'Walrus', 4], ['horseshoe', 'Horseshoe', 5]];
 // ---- clothes

@@ -1,0 +1,52 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#222}</style><script>window.__MP_BASE="/";</script><script type="module">
+import * as THREE from 'three';
+import { loadBase, Avatar } from '/src/mp/avatar.js';
+import { dress } from '/src/mp/dress.js';
+import { defaultLook, normalize } from '/src/mp/look.js';
+import * as C from '/src/mp/catalog.js';
+const q=new URLSearchParams(location.search); const key=q.get('k')||'mp_m1'; const cat=q.get('cat')||'hair'; const f=key.startsWith('mp_f');
+const gOK = g => !g || g==='u' || g===(f?'f':'m');
+const J = o => JSON.parse(JSON.stringify(o));
+const it = id => ({ id, m: 0, g: 0, c: '#c23b3b', c2: '#f2f2f0', p: 0 });
+const CATS = {
+  hair: { cam: 'head', items: C.HAIR.filter(h => gOK(h[2])).map(h => [h[1], L => { L.hair.id = h[0]; }]) },
+  beard: { cam: 'face', items: C.BEARDS.map(b => [b[1], L => { L.beard = { id: b[0], c: '#3d2a1a', len: .55, dens: .9 }; L.stache = { id: 'none' }; L.hair.id = f ? L.hair.id : 'messy'; }]) },
+  stache: { cam: 'face', items: C.STACHES.map(b => [b[1], L => { L.stache = { id: b[0], c: '#3d2a1a', len: .5, dens: .9 }; L.beard = { id: 'none' }; }]) },
+  eyes: { cam: 'face', items: C.EYES.map((e, i) => [e[0], L => { L.eyes.s = i; }]) },
+  brows: { cam: 'face', items: C.BROWS.map((e, i) => [e[0], L => { L.brows.s = i; }]) },
+  nose: { cam: 'faceq', items: C.NOSES.map((e, i) => [e[0], L => { L.nose.s = i; }]) },
+  mouth: { cam: 'face', items: C.MOUTHS.map((e, i) => [e[0], L => { L.mouth.s = i; }]) },
+  skin: { cam: 'face', items: C.SKIN_PRESETS.map(t => ['tone ' + t, L => { L.skin.t = t; }]) },
+  tops: { cam: 'upper', items: C.TOPS.filter(t => gOK(t[2])).map(t => [t[1], L => { L.worn.top = { id: t[0], c: '#3b6fc2', c2: '#f2f2f0', p: 0 }; L.worn.jacket = null; }]) },
+  jackets: { cam: 'upper', items: C.JACKETS.filter(t => gOK(t[2])).map(t => [t[1], L => { L.worn.jacket = { id: t[0], c: '#7a3b2a', c2: '#e6e6e4', p: 0 }; L.worn.top = { id: 'tee', c: '#e8e8e4', c2: '#fff', p: 0 }; }]) },
+  pants: { cam: 'legs', items: C.PANTS.filter(t => gOK(t[2])).map(t => [t[1], L => { L.worn.pants = { id: t[0], c: '#2f4f7a', c2: '#f2f2f0', p: 0 }; }]) },
+  shoes: { cam: 'feet', items: C.SHOES.filter(t => gOK(t[2])).map(t => [t[1], L => { L.worn.shoes = { id: t[0], c: '#b8402e', c2: '#fff', p: 0, sole: '#f2f2f0' }; L.worn.pants = { id: 'shorts', c: '#2f4f7a', c2: '#fff', p: 0 }; }]) },
+  masks: { cam: 'faceq', items: C.MASKS.map(m => [m[1], L => { L.mask = { id: m[0], c: '#3b6fc2', p: 0 }; }]) },
+  hats: { cam: 'head', items: C.HATS.map(h => [h[1], L => { L.acc.hat = it(h[0]); }]) },
+  glasses: { cam: 'faceq', items: C.GLASSES_LIST.map(h => [h[1], L => { L.acc.glasses = it(h[0]); }]) },
+  earrings: { cam: 'faceq', items: C.EARRINGS.map(h => [h[1], L => { L.acc.earL = it(h[0]); L.acc.earR = it(h[0]); L.acc.earL.m = 1; L.acc.earR.m = 1; }]) },
+  pierce: { cam: 'face', items: C.PIERCINGS.map(h => [h[1], L => { L.acc.pierce = [h[0]]; }]) },
+  necklaces: { cam: 'upper', items: C.NECKLACES.filter((_, i) => i % 3 === 0).map(h => [h[1], L => { L.acc.neck = it(h[0]); L.acc.neck.m = 1; }]) },
+};
+const spec = CATS[cat]; const items = spec.items; const cols = +(q.get('cols') || 8); const TW = +(q.get('tw') || 180), TH = +(q.get('th') || 200); const rows = Math.ceil(items.length / cols);
+const W = cols * TW, H = rows * TH;
+const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true}); r.setSize(W,H); r.setPixelRatio(1); document.body.appendChild(r.domElement); r.outputColorSpace=THREE.SRGBColorSpace; r.toneMapping=THREE.ACESFilmicToneMapping; r.autoClear=false;
+const sc=new THREE.Scene(); sc.background=new THREE.Color('#4a4e5a'); sc.add(new THREE.HemisphereLight('#dfe6ff','#5a5448',1.15)); const dl=new THREE.DirectionalLight('#fff4e6',2.3); dl.position.set(1.6,2.6,3); sc.add(dl); const rim=new THREE.DirectionalLight('#9bb4ff',.9); rim.position.set(-2,2,-2.5); sc.add(rim);
+const tpl=await loadBase(key); const av=new Avatar(tpl); sc.add(av.root);
+const base = normalize(defaultLook(key)); const cam=new THREE.PerspectiveCamera(30,TW/TH,.01,50); r.setScissorTest(true);
+const labels = [];
+for (let i = 0; i < items.length; i++) { const [nm, fn] = items[i]; const L = J(base); fn(L); dress(av, normalize(L)); av.root.updateMatrixWorld(true);
+  const Cc = av.head2.C; const c = i % cols, rr = Math.floor(i / cols); const x = c * TW, y = H - (rr + 1) * TH; r.setViewport(x, y, TW, TH); r.setScissor(x, y, TW, TH);
+  const m = spec.cam;
+  if (m === 'head') { cam.position.set(.42, Cc.y + .02, Cc.z + .95); cam.lookAt(0, Cc.y - .05, Cc.z); }
+  else if (m === 'face') { cam.position.set(0, Cc.y, Cc.z + .8); cam.lookAt(0, Cc.y - .02, Cc.z); }
+  else if (m === 'faceq') { cam.position.set(.5, Cc.y + .02, Cc.z + .65); cam.lookAt(0, Cc.y - .02, Cc.z); }
+  else if (m === 'upper') { cam.position.set(.6, 1.2, 2.0); cam.lookAt(0, 1.1, 0); }
+  else if (m === 'legs') { cam.position.set(.8, .6, 2.9); cam.lookAt(0, .6, 0); }
+  else if (m === 'feet') { cam.position.set(.6, .35, 1.1); cam.lookAt(0, .1, 0); }
+  r.render(sc, cam); labels.push([nm, x, H - y - TH]); }
+const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d'); g.drawImage(r.domElement, 0, 0); g.font = '13px sans-serif'; g.fillStyle = '#fff'; g.strokeStyle = 'rgba(0,0,0,.7)'; g.lineWidth = 3;
+for (const [nm, x, y] of labels) { g.strokeText(nm, x + 5, y + 16); g.fillText(nm, x + 5, y + 16); }
+document.body.innerHTML = ''; document.body.appendChild(cv); window.info = { n: items.length, W, H };
+document.title='done';
+</script>

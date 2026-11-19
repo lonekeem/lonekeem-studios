@@ -1,6 +1,7 @@
 // v2 head rig: swaps the generated head of the base body for the analytic Bitmoji-style head, painted face, ears, hair and facial hair.
 // Everything is skinned to the base body's own skeleton (Head / neck bones), so the story animation retarget drives it unchanged.
 import * as THREE from 'three';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { headParams, makeSDF, landmarks, buildHeadGeometry, buildEarGeometry, sdfNormal, rayR } from './head.js';
 import { paintFace } from './facepaint.js';
 
@@ -58,14 +59,14 @@ export function buildHead(av, look) {
     skinTo(av, geo, headWeights(av, C.y, s));
     const ears = [1, -1].map(sd => { const e = buildEarGeometry(sd, L, H); e.scale(s, s, s); e.translate(C.x, C.y, C.z); e.setAttribute('aF', new THREE.BufferAttribute(new Float32Array(e.attributes.position.count), 1)); if (!e.attributes.uv) e.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(e.attributes.position.count * 2), 2)); skinTo(av, e, () => [['Head', 1]]); return e; });
     { // neck tube: from inside the head down into the chest (top -> Head, middle -> neck, bottom -> Spine)
-      const P = av.tpl.P; const y0 = C.y - .06 * s, y1 = P.neck.y - .045, r0 = (g === 'f' ? .043 : .05) * s, r1 = r0 * 1.12; const ng = new THREE.CylinderGeometry(1, 1, 1, 28, 10, true); const np = ng.attributes.position;
+      const P = av.tpl.P; const y0 = C.y - .06 * s, y1 = P.neck.y - .045, r0 = (g === 'f' ? .043 : .05) * s, r1 = r0 * 1.12; let ng = new THREE.CylinderGeometry(1, 1, 1, 28, 10, true, Math.PI); const np = ng.attributes.position;
       const prof = neckProfile(av), cut = neckCut(av.tpl);
       for (let i = 0; i < np.count; i++) { const t = np.getY(i) + .5; const y = y1 + (y0 - y1) * t; const r = r1 + (r0 - r1) * t; const ux = np.getX(i), uz = np.getZ(i);
         let x = ux * r, z = C.z - .028 * s + uz * r * .92 + (1 - t) * .004; const b = prof(Math.min(y, cut + .004));
         if (b && b.x > .02) { const w = y < cut - .004 ? 1 : 1 - Math.min(1, (y - (cut - .004)) / .035); const cz = (b.zf + b.zb) / 2, rz = (uz > 0 ? b.zf - cz : cz - b.zb); const grow = y < cut - .006 ? -.004 : .003;
           const bx = ux * (b.x + grow), bz = cz + uz * (rz + grow); const ww = w * w * (3 - 2 * w); x = x + (bx - x) * ww; z = z + (bz - z) * ww; }
         np.setXYZ(i, x, y, z); }
-      ng.computeVertexNormals(); ng.setAttribute('aF', new THREE.BufferAttribute(new Float32Array(np.count), 1));
+      ng.deleteAttribute('uv'); ng.deleteAttribute('normal'); ng = mergeVertices(ng); ng.computeVertexNormals(); ng.setAttribute('aF', new THREE.BufferAttribute(new Float32Array(np.count), 1));
       skinTo(av, ng, (i, x, y) => { const t = (y - y1) / (y0 - y1); return t > .7 ? [['Head', Math.min(1, (t - .7) / .3)], ['neck', 1 - Math.min(1, (t - .7) / .3)]] : t > .25 ? [['neck', 1]] : [['neck', t / .25], ['Spine', 1 - t / .25]]; });
       ears.push(ng); }
     if (av._headMesh) { av._headMesh.geometry.dispose(); av._headMesh.geometry = geo; av._ears.forEach((m, k) => { m.geometry.dispose(); m.geometry = ears[k]; }); }

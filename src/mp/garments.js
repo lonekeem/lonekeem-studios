@@ -82,7 +82,7 @@ vec3 garment(vec3 p, vec3 n, vec4 R){
 vec3 bumpN(vec3 surf, vec3 nrm, float hgt, float k){ vec3 dx = dFdx(surf), dy = dFdy(surf); float hx = dFdx(hgt), hy = dFdy(hgt); vec3 r1 = cross(dy, nrm), r2 = cross(nrm, dx); float det = dot(dx, r1); vec3 g = sign(det) * (hx * r1 + hy * r2); return normalize(abs(det) * nrm - g * k); }
 `;
 export function garmentMaterial(kind) {
-  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: kind === 2 ? .55 : .86, metalness: 0 }); m.alphaToCoverage = true;
+  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: kind === 2 ? .55 : .86, metalness: 0, side: THREE.DoubleSide }); m.alphaToCoverage = true;
   const U = m.userData.U = { uKind: { value: kind }, uG1: { value: new THREE.Vector4(1, 0, 0, 9) }, uG2: { value: new THREE.Vector4(0, .05, .5, 0) }, uN: { value: new THREE.Vector4(.98, .08, .12, -.03) }, uPat: { value: new THREE.Vector4(0, 8, 1, 0) },
     uC1: { value: new THREE.Color('#888') }, uC2: { value: new THREE.Color('#fff') }, uC3: { value: new THREE.Color('#eee') }, uSole: { value: new THREE.Vector4(.02, 0, 0, 0) }, uShape: { value: new THREE.Vector4(0, 0, 0, 0) }, uLm: { value: new THREE.Vector4(1, 1.4, .9, .1) }, uArmO: { value: new THREE.Vector4() }, uArmD: { value: new THREE.Vector4(1, 0, 0, .5) }, uDet: { value: new THREE.Vector4() }, uNk: { value: new THREE.Vector4(0, 0, .06, .06) } };
   const off = m.userData.off = { value: .006 };

@@ -30,7 +30,7 @@ function shell(av, key, kind, geo) {
 }
 function addSkinned(av, mesh, order) { const s = av.skin; mesh.position.copy(s.position); mesh.quaternion.copy(s.quaternion); mesh.scale.copy(s.scale); s.parent.add(mesh); mesh.bind(s.skeleton, s.bindMatrix); mesh.frustumCulled = false; mesh.renderOrder = order || 0; mesh.castShadow = false; return mesh; }
 function setLm(av, mat) { const P = av.tpl.P, U = mat.userData.U; const A = P.LeftArm, Hd = P.LeftHand; const d = Hd.clone().sub(A), L = d.length(); d.normalize();
-  U.uLm.value.set(P.Hips.y, P.neck.y, P.LeftUpLeg.y, (P.LeftFoot.y + P.RightFoot.y) / 2); U.uArmO.value.set(A.x, A.y, A.z, 0); { const h2 = av.head2; if (h2) { const r0 = (h2.g === 'f' ? .043 : .05) * h2.s; U.uNk.value.set(0, h2.C.z - .028 * h2.s, r0 + .014, r0 * .92 + .016); } } U.uArmD.value.set(d.x, d.y, d.z, L); }
+  U.uLm.value.set(P.Hips.y, P.neck.y, P.LeftUpLeg.y, (P.LeftFoot.y + P.RightFoot.y) / 2); U.uArmO.value.set(A.x, A.y, A.z, 0); { const h2 = av.head2; if (h2) { const r0 = (h2.g === 'f' ? .043 : .05) * h2.s; U.uNk.value.set(0, h2.C.z - .028 * h2.s, r0 + .012, r0 * .92 + .01); } } U.uArmD.value.set(d.x, d.y, d.z, L); }
 function bodyLayer(av, name, kind) { const L = av.layers; if (!L[name]) { const mat = garmentMaterial(kind); setLm(av, mat); const m = new THREE.SkinnedMesh(av.skin.geometry, mat); addSkinned(av, m, 1); L[name] = m; } return L[name]; }
 function headLayer(av, name, kind) { const L = av.layers; if (!L[name]) { const mat = shellMaterial(kind); const m = new THREE.SkinnedMesh(headGeometry(av), mat); addSkinned(av, m, 2); L[name] = m; } return L[name]; }
 

@@ -186,6 +186,8 @@ export function buildExtras(head, st) {
     else if (k === 'dutch') { // two Dutch braids from the front hairline over the head, then hanging down behind the shoulders
       for (const sd of [-1, 1]) { const pts = []; for (const [az, el] of [[sd * 16, 40], [sd * 20, 54], [sd * 30, 66], [sd * 70, 70], [sd * 128, 52], [sd * 148, 28], [sd * 155, 6]]) pts.push(scalpPt(head, az, el, st.T + .0015)); const last = pts[pts.length - 1]; pts.push(last.clone().add(new THREE.Vector3(sd * .01, -.05, -.03)), last.clone().add(new THREE.Vector3(sd * .03, -.15, -.07)), last.clone().add(new THREE.Vector3(sd * .05, -a1 * .75, -.08)), last.clone().add(new THREE.Vector3(sd * .055, -a1, -.07)));
         out.push(...lumpChain(pts, .017, .011, { step: .0105 })); const tip = pts[pts.length - 1]; out.push(...tube([tip.clone().add(new THREE.Vector3(0, .01, 0)), tip.clone().add(new THREE.Vector3(sd * .003, -.03, .002)), tip.clone().add(new THREE.Vector3(sd * .006, -.06, .006))], .011, .003, { seg: 8, rad: 8, groove: .15 })); } }
+    else if (k === 'locs' && a1 < .1) { // short twists: small coils over the whole scalp
+      let i = 0; for (let el = 12; el <= 86; el += 8.5) { const n2 = Math.max(4, Math.round(34 * Math.cos(el * Math.PI / 180))); for (let j = 0; j < n2; j++) { const az = -180 + 360 * (j + .5 * (Math.round(el) % 2)) / n2; if (Math.abs(az) < 62 && el < 42) continue; i++; const p0 = scalpPt(head, az, el, st.T * .5); const n = p0.clone().normalize(); const tip = p0.clone().addScaledVector(n, .011 + .005 * hash(i)).add(new THREE.Vector3(0, -.003, 0)); out.push(...tube([p0.clone().addScaledVector(n, -.004), p0.clone().addScaledVector(n, .005), tip], .0095, .0085, { seg: 6, rad: 6, groove: .25, tipRound: 1 })); } } }
     else if (k === 'locs') { const N = st.locsN || 30; for (let i = 0; i < N; i++) { const az = -170 + 340 * (i + .5) / N; if (Math.abs(az) < 50 && a1 > .1) continue; const el = 20 + 25 * Math.cos(i * 2.3) * .3; const p0 = scalpPt(head, az, el, st.T); const n = p0.clone().normalize(); const L = a1 * (.8 + .4 * hash(i)); const pts = [p0, p0.clone().addScaledVector(n, .03).add(new THREE.Vector3(0, -.02, 0)), p0.clone().addScaledVector(n, .045).add(new THREE.Vector3(0, -L * .5, 0)), p0.clone().addScaledVector(n, .05).add(new THREE.Vector3(0, -L, 0))]; out.push(...tube(pts, .008, .006, { seg: 12, rad: 6, groove: .18, tipRound: 1 })); } }
   }
   return out;
@@ -230,12 +232,12 @@ export const BEARD_STYLES = { // mask(p, a, L) on head-local surface points; T t
 };
 export const STACHE_STYLES = {
   chevron: { T: .007, mask: (p, a, L) => p.z > .02 && Math.abs(p.x) < .033 && p.y > L.mouthY + .008 - Math.abs(p.x) * .15 && p.y < L.mouthY + .024 - Math.abs(p.x) * .2 },
-  pencil: { T: .003, mask: (p, a, L) => p.z > .02 && Math.abs(p.x) < .03 && p.y > L.mouthY + .009 && p.y < L.mouthY + .0145 },
+  pencil: { T: .0042, mask: (p, a, L) => p.z > .02 && Math.abs(p.x) < .032 && p.y > L.mouthY + .007 && p.y < L.mouthY + .0165 - Math.abs(p.x) * .12 },
   handlebar: { T: .006, mask: (p, a, L) => p.z > .02 && Math.abs(p.x) < .046 && p.y > L.mouthY + .008 + Math.max(0, Math.abs(p.x) - .03) * 1.2 - Math.abs(p.x) * .1 && p.y < L.mouthY + .02 + Math.max(0, Math.abs(p.x) - .03) * 1.8 - Math.abs(p.x) * .12 },
   walrus: { T: .011, mask: (p, a, L) => p.z > .02 && Math.abs(p.x) < .04 && p.y > L.mouthY + .0 && p.y < L.mouthY + .026 - Math.abs(p.x) * .15 },
   horseshoe: { T: .007, mask: (p, a, L) => p.z > .02 && ((Math.abs(p.x) < .034 && p.y > L.mouthY + .008 && p.y < L.mouthY + .022) || (Math.abs(p.x) > .027 && Math.abs(p.x) < .038 && p.y < L.mouthY + .022 && p.y > L.mouthY - .04)) },
 };
-export const BEARD_ALIAS = { anchor: 'goatee', vandyke: 'circle', jawline: 'strap' }; export const STACHE_ALIAS = { toothbrush: 'pencil', fumanchu: 'horseshoe', imperial: 'handlebar', painter: 'chevron' };
+export const BEARD_ALIAS = { mutton: 'strap', anchor: 'goatee', vandyke: 'circle', jawline: 'strap' }; export const STACHE_ALIAS = { toothbrush: 'pencil', fumanchu: 'horseshoe', imperial: 'handlebar', painter: 'chevron' };
 function topLine(a, L, k) { const aa = Math.abs(a); return interp([[0, L.mouthY + .024], [16, L.mouthY + .025], [28, -.052 + .01 * (k - 1)], [45, -.04 + .015 * (k - 1)], [62, -.026 + .02 * (k - 1)], [78, -.004 + .01 * (k - 1)], [86, .006]], aa); }
 const offNeck = p => Math.hypot(p.x, p.z + .025) > .056 || p.y > -.08;
 function jawBand(p, a, L) { return -.112 + Math.abs(p.x) * .9 * Math.min(1, Math.abs(a) / 90 + .2); }

@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#222}</style><script>window.__MP_BASE="/";</script><script type="module">
+// run / roll / walk frames of the dressed v2 avatar driven by the story animation retarget (src/mp/motion.js), same as the town
+import * as THREE from 'three';
+import { loadBase, Avatar } from '/src/mp/avatar.js';
+import { dress } from '/src/mp/dress.js';
+import { defaultLook, normalize } from '/src/mp/look.js';
+import { makeMotion } from '/src/mp/motion.js';
+const q=new URLSearchParams(location.search); const key=q.get('k')||'mp_m1'; const mode=q.get('m')||'run'; const N=+(q.get('n')||6); const TW=+(q.get('tw')||220), TH=+(q.get('th')||320);
+const view=q.get('v')||'side'; const W=N*TW, H=TH*2;
+const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true}); r.setSize(W,H); r.setPixelRatio(1); document.body.appendChild(r.domElement); r.outputColorSpace=THREE.SRGBColorSpace; r.toneMapping=THREE.ACESFilmicToneMapping; r.autoClear=false; r.setScissorTest(true);
+const sc=new THREE.Scene(); sc.background=new THREE.Color('#4a4e5a'); sc.add(new THREE.HemisphereLight('#dfe6ff','#5a5448',1.15)); const dl=new THREE.DirectionalLight('#fff4e6',2.3); dl.position.set(1.6,2.6,3); sc.add(dl); const rim=new THREE.DirectionalLight('#9bb4ff',.9); rim.position.set(-2,2,-2.5); sc.add(rim);
+const gnd=new THREE.Mesh(new THREE.PlaneGeometry(20,20), new THREE.MeshStandardMaterial({color:'#5d6270'})); gnd.rotation.x=-Math.PI/2; sc.add(gnd);
+const tpl=await loadBase(key); const av=new Avatar(tpl); sc.add(av.root); let look=normalize(defaultLook(key)); dress(av, look);
+const P = await makeMotion(av); const cam=new THREE.PerspectiveCamera(30,TW/TH,.05,50);
+const dt=1/60; let t=0; const info=[];
+const step = (secs, fn) => { const n = Math.round(secs / dt); for (let i = 0; i < n; i++) { fn && fn(); P.mixer.update(dt); t += dt; } };
+if (mode === 'run') { step(1.0, () => { if (!P.locomote(5.2, 1, dt)) P.play('Sprint_Loop'); }); }
+else if (mode === 'walk') { step(1.0, () => { if (!P.locomote(1.4, 1, dt)) P.play('Walk_Loop'); }); }
+else if (mode === 'roll') { P.play('Idle_Loop'); step(.5); P.play('Roll', { once: true, force: true, speed: 1.35, cb: () => { P.curName = ''; } }); }
+const span = mode === 'roll' ? 1.25 : .7;
+for (let i = 0; i < N; i++) {
+  if (mode === 'run') step(span / N, () => { if (!P.locomote(5.2, 1, dt)) P.play('Sprint_Loop'); }); else if (mode === 'walk') step(span / N, () => { if (!P.locomote(1.4, 1, dt)) P.play('Walk_Loop'); }); else step(span / N);
+  av.root.position.set(0, 0, 0); av.root.updateMatrixWorld(true); const hp = new THREE.Vector3(); av.bones.Hips.getWorldPosition(hp);
+  for (let row = 0; row < 2; row++) { const x = i * TW, y = H - (row + 1) * TH; r.setViewport(x, y, TW, TH); r.setScissor(x, y, TW, TH);
+    if (row === 0) { cam.position.set(4.2, hp.y + .1, hp.z); } else { cam.position.set(2.4, hp.y + .5, hp.z + 3.4); } cam.lookAt(0, Math.max(.55, hp.y * .85), hp.z); r.clear(); r.render(sc, cam); }
+  info.push([+t.toFixed(2), P.curName, +hp.y.toFixed(2)]); }
+window.info = { mode, info }; document.title='done';
+</script>

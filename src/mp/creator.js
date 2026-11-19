@@ -43,7 +43,7 @@ export async function openCreator({ onClose, onPlay } = {}) {
   const scene = new THREE.Scene(); scene.add(new THREE.HemisphereLight('#dfe6ff', '#5a5448', 1.15)); const key = new THREE.DirectionalLight('#fff4e6', 2.3); key.position.set(1.6, 2.6, 3); scene.add(key); const rim = new THREE.DirectionalLight('#9bb4ff', .9); rim.position.set(-2, 2, -2.5); scene.add(rim);
   const floor = new THREE.Mesh(new THREE.CircleGeometry(.9, 48), new THREE.MeshStandardMaterial({ color: '#2a303c', roughness: 1 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -.002; scene.add(floor);
   const cam = new THREE.PerspectiveCamera(30, 1, .05, 30); let av = null, spin = .35, zoom = 1, view = 'full', camY = .9, camD = 4.3, targetY = .9, targetD = 4.3, tx = 0; const hold = { down: false, x: 0 };
-  const VIEWS = { full: () => [.92, 4.0], head: () => [av.tpl.lm.chinY + av.tpl.lm.hh * .5, 1.45], upper: () => [1.25, 2.9], hands: () => [.85, 1.9], feet: () => [.25, 2.2] };
+  const VIEWS = { full: () => [.92, 4.0], head: () => [av.head2 ? av.head2.C.y - .015 : av.tpl.lm.chinY + av.tpl.lm.hh * .5, 1.3], upper: () => [1.25, 2.9], hands: () => [.85, 1.9], feet: () => [.25, 2.2] };
   function setView(v) { view = v; const [y, d] = VIEWS[v](); targetY = y * (av.root.scale.y); targetD = d * Math.max(.9, av.root.scale.y); }
   async function rebuild(base) { if (av) { scene.remove(av.root); av.dispose(); av = null; } const tpl = await loadBase(base); av = new Avatar(tpl); scene.add(av.root); apply(); setView(view); }
   let dirty = false; function apply() { if (!av) return; try { dress(av, look); } catch (e) { console.error('dress failed', e); } K.saveLook(look); }

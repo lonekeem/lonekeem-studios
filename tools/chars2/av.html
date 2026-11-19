@@ -14,7 +14,7 @@ const views=(q.get('views')||'front,q34,face,back').split(','); const vw=W/views
 views.forEach((m,i)=>{ const x=i*vw; r.setViewport(x,0,vw,H); r.setScissor(x,0,vw,H); cam.aspect=vw/H; cam.updateProjectionMatrix(); const top=1.0;
  if(m==='front'){cam.position.set(0,.95,4.6);cam.lookAt(0,.9,0);} else if(m==='q34'){cam.position.set(2.6,1.05,3.7);cam.lookAt(0,.9,0);} else if(m==='back'){cam.position.set(-1.2,1.05,-4.4);cam.lookAt(0,.9,0);}
  else if(m==='face'){cam.position.set(0,C.y,C.z+1.05);cam.lookAt(0,C.y-.01,C.z);} else if(m==='faceq'){cam.position.set(.62,C.y+.03,C.z+.85);cam.lookAt(0,C.y-.01,C.z);} else if(m==='faces'){cam.position.set(1.0,C.y,C.z+.1);cam.lookAt(0,C.y-.01,C.z);} else if(m==='faceb'){cam.position.set(.5,C.y-.5,C.z+.7);cam.lookAt(0,C.y-.04,C.z);} else if(m==='side'){cam.position.set(4.6,.95,0);cam.lookAt(0,.9,0);}
- else if(m==='upper'){cam.position.set(.8,1.3,2.0);cam.lookAt(0,1.25,0);} else if(m==='feet'){cam.position.set(.8,.4,1.4);cam.lookAt(0,.12,0);} else if(m==='hands'){cam.position.set(.9,.95,1.2);cam.lookAt(.35,.9,0);}
+ else if(m==='upper'){cam.position.set(.8,1.3,2.0);cam.lookAt(0,1.25,0);} else if(m==='feet'){cam.position.set(.8,.4,1.4);cam.lookAt(0,.12,0);} else if(m==='hands'){av.root.updateMatrixWorld(true); const hp=new THREE.Vector3(); av.bones.LeftHand.getWorldPosition(hp); hp.y-=.07; cam.position.set(hp.x+.1,hp.y+.02,hp.z+.6); cam.lookAt(hp.x,hp.y,hp.z);}
  r.render(sc,cam); });
 document.title='done';
 </script>
