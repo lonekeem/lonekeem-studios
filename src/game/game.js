@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { partnerEnter, partnerUpdate, ventUse } from './partner.js';
+import { convoLine, convoEnd, convoUpdate } from './convo.js';
+import * as ACT from './actions.js';
 import { prepCarDoors, setDoor, boardTruck, leaveTruck, updateCarSeq, outPoint } from './carseq.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
@@ -40,7 +42,7 @@ export function playerLook() { try { const l = JSON.parse(localStorage.getItem('
 // v1.9.2: touch wording for objective hints on phones
 const touchHint = (h) => h.replace(/\(WASD \/ left stick\)/g, '(left stick)').replace(/\bE \/ ✋/g, '✋ hand button').replace(/\bPress E\b/g, 'Tap ✋').replace(/GAS\/BRAKE \+ ◀ ▶ \([^)]*\)/g, 'GAS/BRAKE + ◀ ▶').replace(/\bWASD\b/g, 'left stick');
 export class Game {
-  constructor(opts) { Object.assign(this, opts); this.t = 0; this.paused = true; this.running = false; this.timeScale = 1; this.hitstop = 0; this.trauma = 0; }
+  constructor(opts) { Object.assign(this, opts); this.t = 0; this.paused = true; this.ACT = ACT; this.running = false; this.timeScale = 1; this.hitstop = 0; this.trauma = 0; }
   async load(progress) {
     const S = this.settings; const qn = S.qual === 'auto' || !S.qual ? autoQuality() : S.qual; const Q = this.Q = PRESETS[qn] || PRESETS.med;
     const canvas = $('#gl'); const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: Q.name !== 'low', powerPreference: 'high-performance' });
@@ -194,7 +196,7 @@ export class Game {
     l.onTake && l.onTake(this); writeSave(this.LS, s); }
 
   // ---------- NPCs & zombies ----------
-  npc(key, look, x, z, rot = 0, anim = 'Idle_Loop', scale = 0.98) { const c = new Char(this.lib, LOOKS[look] || (look && look.hair ? look : (LOOKS[key] || randomLook((Math.random() * 1e6) | 0))), scale); c.key = key; c.lookKey = typeof look === 'string' ? look : ''; c.root.position.set(x, 0, z); if (c.wantsPack) { const bp = backpack(); c.attach('DEF-spine.003', bp); bp.position.set(0, 0.12, -0.2); bp.rotation.x = .1; } if (look === 'marcus') { if (!c.skin) { c.attach('DEF-hand.R', wrap(false)).scale.setScalar(.9); if ((this.step | 0) >= 12) c.attach('DEF-forearm.L', wrap(true)); } /* avatar Dad already has the wrist bandage in his texture */ if ((this.step | 0) < 12) { const wk = c.attach('DEF-hips', walkie()); wk.position.set(.17, .02, .02); } }
+  npc(key, look, x, z, rot = 0, anim = 'Idle_Loop', scale = 0.98) { const c = new Char(this.lib, LOOKS[look] || (look && look.hair ? look : (LOOKS[key] || randomLook((Math.random() * 1e6) | 0))), scale); c.key = key; c.lookKey = typeof look === 'string' ? look : ''; c.root.position.set(x, 0, z); if (c.wantsPack) { const bp = backpack(); c.attach('DEF-spine.003', bp); bp.position.set(0, 0.12, -0.2); bp.rotation.x = .1; } if (look === 'marcus') { if (c.skin) ACT.restoreBite(this, c); if (!c.skin) { c.attach('DEF-hand.R', wrap(false)).scale.setScalar(.9); if ((this.step | 0) >= 12) c.attach('DEF-forearm.L', wrap(true)); } /* avatar Dad already has the wrist bandage in his texture */ if ((this.step | 0) < 12) { const wk = c.attach('DEF-hips', walkie()); wk.position.set(.17, .02, .02); } }
     if (look === 'nia') { const rb = makeRabbit(); if (c.skin) { c.attach('DEF-spine.003', rb); rb.position.set(0.1, 0.1, -0.02); } else { c.attach('DEF-spine.001', rb); rb.position.set(0, 0.06, 0.15); } c.biscuit = rb; const u0 = c.update; c.update = (dt) => { u0 && u0.call(c, dt); const t = (c.bt = (c.bt || 0) + dt); rb.head.rotation.y = Math.sin(t * .7) * .5; rb.head.rotation.x = Math.sin(t * 1.3) * .12; rb.position.y = 0.06 + Math.max(0, Math.sin(t * .9)) * .015; rb.ears.forEach((e, i) => e.rotation.x = -.2 + Math.sin(t * 9 + i) * Math.max(0, Math.sin(t * .5)) * .2); }; } c.root.rotation.y = rot; c.play(anim); this.scene.add(c.root); this.npcs[key] = c; c.key = key; return c; }
   victim(x, z, look, eaters = 3) { const v = this.npc('v' + Math.random(), look, x, z, rnd(0, 6), 'Death01'); v.play('Death01', { once: true }); v.mixer.update(5); v.mat.userData.u.uBlood.value = this.settings.gore ? 1 : 0.2; v.bleed = true;
     v.pool = this.decal(x, z, 0.9); this.decal(x + .6, z - .4, 0.8); v.struggle = 1; v.jolt = 0; v.screamT = rnd(.5, 2); v.isVictim = true;
@@ -249,9 +251,9 @@ export class Game {
   toast(t, s = 1.8) { const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(this._tt); this._tt = setTimeout(() => e.classList.remove('on'), s * 1000); }
   floatText(t, c = '#fff') { const e = document.createElement('div'); e.textContent = t; e.style.cssText = `position:absolute;left:50%;top:58%;transform:translateX(-50%);color:${c};font:800 15px system-ui;text-shadow:0 1px 3px #000;z-index:6;pointer-events:none;transition:all 1.2s ease-out`; $('#stage').appendChild(e); requestAnimationFrame(() => { e.style.top = '50%'; e.style.opacity = '0'; }); setTimeout(() => e.remove(), 1300); }
   say(lines, cb) { this.dlgQ = (this.dlgQ || []).concat(lines.map(l => ({ who: l[0], text: l[1] }))); if (cb) this.dlgQ.push({ cb }); if (!this.dlgCur) this.nextLine(); }
-  nextLine() { const d = $('#dlg'); const it = this.dlgQ.shift(); if (!it) { this.dlgCur = null; this.grace = Math.max(this.grace || 0, 1.5); this.last = performance.now(); d.classList.remove('on'); this.audio.stopVoice && this.audio.stopVoice(); return; } if (it.cb) { it.cb(this); this.nextLine(); return; }
+  nextLine() { const d = $('#dlg'); const it = this.dlgQ.shift(); if (!it) { this.dlgCur = null; convoEnd(this); ACT.cueEnd(this); this.grace = Math.max(this.grace || 0, 1.5); this.last = performance.now(); d.classList.remove('on'); this.audio.stopVoice && this.audio.stopVoice(); return; } if (it.cb) { it.cb(this); this.nextLine(); return; }
     if (it.raw == null) { it.raw = it.text; const L = langLine(it.raw, this.settings.lang || 'on'); it.text = L.sub; it.vtext = L.voice; it.bleeps = L.bleeps; }
-    this.dlgCur = it; const names = { vance: 'Dr. Vance', keem: 'Keem', marcus: 'Dad', nia: 'Nia', walt: 'Mr. Walt', ruth: 'Ruth', dube: 'Mr. Dube', radio: 'Radio', note: 'Dad\'s note', gus: 'Big Gus', sgt: 'Sgt. Okafor (radio)', brick: 'Coach Brickman', ronnie: 'Big Rig Ronnie', deacon: 'Deacon', captain: 'The Captain (radio)', reyes: 'Dr. Reyes', tuck: 'Tuck', santa: 'Mall Santa', king: 'The Toll King' };
+    this.dlgCur = it; convoLine(this, it); ACT.cueLine(this, it); const names = { vance: 'Dr. Vance', keem: 'Keem', marcus: 'Dad', nia: 'Nia', walt: 'Mr. Walt', ruth: 'Ruth', dube: 'Mr. Dube', radio: 'Radio', note: 'Dad\'s note', gus: 'Big Gus', sgt: 'Sgt. Okafor (radio)', brick: 'Coach Brickman', ronnie: 'Big Rig Ronnie', deacon: 'Deacon', captain: 'The Captain (radio)', reyes: 'Dr. Reyes', tuck: 'Tuck', santa: 'Mall Santa', king: 'The Toll King' };
     $('#who').textContent = names[it.who] || it.who; const cur = it; const muteKeem = it.who === 'keem' && this.step === 0 && ['wake', 'walk', 'peek', undefined].includes(this.stepData && this.stepData.phase); !muteKeem && this.audio.voice && this.audio.voice(it.who, it.vtext, it.bleeps).then(dd => { if (dd && this.dlgCur === cur) cur.dur = Math.max(cur.dur || 0, dd + .5); });
     
     $('#line').textContent = it.text; d.classList.add('on'); it.t = 0; it.dur = (1.6 + it.text.length * 0.045) / (this.settings.text || 1); }
@@ -427,10 +429,11 @@ export class Game {
     if (s.comboT > 0) { s.comboT -= dt; if (s.comboT <= 0) s.combo = 0; }
     if (this.hp < this.maxHp && this.t - (this.lastHurt || 0) > 5) this.hp = Math.min(this.maxHp, this.hp + dt * 4);
     if (this.carSeq) updateCarSeq(this, dt); else if (T.driving) this.updateTruck(dt); else if (!this.cut) this.updatePlayer(dt);
-    else { P.play(this.cut.anim || 'Idle_Loop'); }
-    P.mixer.update(dt);
+    else if (!(this.convo && this.convo.walking)) { P.play(this.cut.anim || 'Idle_Loop'); }
+    P.mixer.update(dt); ACT.actTick(P, dt);
     if (!this.truck.driving) this.stepTrack(this.player, this.player.root.position, 'p'); this.chatter(dt);
-    this.updateZ(dt); for (const k in this.npcs) { const n = this.npcs[k]; n.update && n.update(dt); n.mixer.update(dt); this.victimStruggle(n, dt); this.stepTrack(n, n.root.position, 'n'); if (n.bleed && Math.random() < dt * 3) { const p = n.root.position.clone(); p.y = .3; this.blood(p, V3(0, .6, 0), 3, 1.2); } }
+    this.updateZ(dt); for (const k in this.npcs) { const n = this.npcs[k]; n.update && n.update(dt); n.mixer.update(dt); ACT.actTick(n, dt); this.victimStruggle(n, dt); this.stepTrack(n, n.root.position, 'n'); if (n.bleed && Math.random() < dt * 3) { const p = n.root.position.clone(); p.y = .3; this.blood(p, V3(0, .6, 0), 3, 1.2); } }
+    convoUpdate(this, dt); ACT.actUpdate(this, dt);
     // pickups
     for (let i = this.pickups.length - 1; i >= 0; i--) { const p = this.pickups[i]; if (p.l.drop && (p.l.drop -= dt) <= 0) this.killPickup(p); }
     this.pickups.forEach(p => { p.m.rotation.y += dt * 1.6; p.m.position.y = Math.sin(this.t * 3) * .05; if (!p.l.story && !p.l.manual) { const d = Math.hypot(p.mesh.position.x - P.root.position.x, p.mesh.position.z - P.root.position.z); if (d < 1.0 && !T.driving) this.takePickup(p); } });
@@ -602,7 +605,8 @@ export class Game {
     I.lastLook = Math.hypot(I.look.x, I.look.y); C.yaw -= I.look.x; C.pitch = clamp(C.pitch - I.look.y, -1.1, 0.9); I.look.set(0, 0); this.aimAssist(rdt);
     const aim = this.state && this.state.aim; const ws = this.ws || {};
     let target, desired; const fov = aim ? 62 / (ws.zoom || 1.35) : 62; cam.fov = lerp(cam.fov, fov, Math.min(1, rdt * 12)); cam.updateProjectionMatrix();
-    if (this.cut && this.cut.cam) { cam.position.lerp(this.cut.cam, Math.min(1, rdt * 3)); const lk = this.cut.look; this._lk = this._lk ? this._lk.lerp(lk, Math.min(1, rdt * 3)) : lk.clone(); cam.lookAt(this._lk); }
+    if (this.camShot) { const cs = this.camShot; cam.position.lerp(cs.cam, Math.min(1, rdt * 4)); this._lk = this._lk ? this._lk.lerp(cs.look, Math.min(1, rdt * 5)) : cs.look.clone(); cam.lookAt(this._lk); }
+    else if (this.cut && this.cut.cam) { cam.position.lerp(this.cut.cam, Math.min(1, rdt * 3)); const lk = this.cut.look; this._lk = this._lk ? this._lk.lerp(lk, Math.min(1, rdt * 3)) : lk.clone(); cam.lookAt(this._lk); }
     else if (this.dying) { const p = P.root.position; const want = V3(p.x + Math.sin(this.t * .3) * 2.4, 1.1, p.z + Math.cos(this.t * .3) * 2.4); cam.position.lerp(want, rdt * 2); cam.lookAt(p.x, .4, p.z); }
     else if (T && T.driving) { const p = T.g.position; T.ch = T.ch == null ? T.head : angLerp(T.ch, T.head, Math.min(1, rdt * 3)); const dd = 7.5 + Math.abs(T.v) * .12; desired = V3(p.x - Math.sin(T.ch) * dd, 3.3, p.z - Math.cos(T.ch) * dd); cam.position.lerp(desired, Math.min(1, rdt * 4)); cam.lookAt(p.x + Math.sin(T.ch) * 4, 1.2, p.z + Math.cos(T.ch) * 4); C.yaw = T.ch + Math.PI; }
     else if (C.fp) { const hp = V3(); P.worldOf('DEF-head', hp); hp.y += .05; cam.position.copy(P.root.position).setY(P.root.position.y + (this.state.crouch ? 1.0 : 1.48)); const f = V3(-Math.sin(C.yaw), 0, -Math.cos(C.yaw)); cam.position.addScaledVector(f, .12);
