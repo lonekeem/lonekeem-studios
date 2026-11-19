@@ -187,16 +187,25 @@ Data model: `gun = receiver family × barrel × stock × grip × optic/mag slots
 
 ## 17. Phase 1 status (built vs planned)
 
-Screenshots: `docs/mp-proof/` (lineups of all 4 bases, skin-tone rows, creator at phone-landscape size, two-client lobby).
+Screenshots: `docs/mp-proof/` = first pass (before), `docs/mp-proof-v2/` = quality pass (after) with `before_after_*.png` and `keem_vs_multiplayer_default.png`.
+
+**Quality pass (v2):** faces now use the generated bases' own baked textures (crisp eyes, brows, nose shading) instead of a procedural face paint. A shader remaps the skin pixels to the chosen skin tone (with extra contrast and warmth on dark tones so eyes, lips and nose read), keeps eyes/brows/lashes, and recolours irises, brows and lips. Textures are 2048 px JPEGs (`public/models/chars/mp_*.jpg`, ~0.3 MB each, ~1.3 MB total). Hair uses clean smooth hairline alpha (alpha-to-coverage) and solid lofted panels for long hair. Toes are merged so shoes read as shoes. Random outfits use coordinated palettes, mostly solid fabric, and exclude exaggerated pieces (dresses, wide skirts, tube tops...).
 
 **Built and verified in a browser (swiftshader, 844×390 phone landscape):**
-* Main menu → "Multiplayer (Beta)" (`src/mp/entry.js`, one import + install call in `main.js`; no story code touched).
-* 4 original rigged bases (Meshy via Fal, ~$3.36 total): `mp_m1` lean man, `mp_m2` strong man, `mp_f1` slim woman, `mp_f2` curvy woman. No voices on player characters.
-* Creator: procedural skin (preset swatches + fine slider, light → very dark), face painting (eyes, brows, lips, nose cues, makeup, freckles, moles, scars, tattoos), head/body morphs on the real mesh (sliders), hair/beard/mustache shells and volumetric hair, garments as patterned shells (tops, jackets, pants, shoes, gloves), hats, glasses, masks, earrings, piercings, necklaces, wrists, rings, bags, belts. Search, chips, favourites, randomise, reset, undo, save/load looks (localStorage, versioned JSON).
-* Lobby (`src/mp/lobby.js`): street, joystick, walk/run, drivable KL-badge car, nametags; `BroadcastChannel` transport so two tabs/clients see each other move (verified with two Playwright pages: each sees the other; car position syncs).
+* Main menu → "Multiplayer (Beta)" (`src/mp/entry.js`; one import + install call in `main.js`; no story code touched).
+* 4 original rigged bases (Meshy via Fal, ~$3.36 total): `mp_m1`, `mp_m2`, `mp_f1`, `mp_f2`. No voices on player characters.
+* Creator: skin tone presets + fine slider (light → very dark), eye colour, brow colour, lip shape/colour, head/body morph sliders on the real mesh, makeup, freckles, moles, scars, tattoos, hair/beard/mustache, tops/jackets/pants/shoes/gloves/hats/glasses/masks, earrings/piercings/necklaces/wrists/rings/bags/belts, patterns, search/filters/favourites, randomise/reset/undo, saved looks (localStorage, versioned JSON).
+* Lobby (`src/mp/lobby.js`): street, joystick, walk/run, drivable KL-badge car, nametags; `BroadcastChannel` transport so two tabs see each other and the car (verified with two Playwright pages).
 
-**Catalog counts (computed by `COUNTS()` — named styles / style×colour items):** hairstyles 58 / 1392, beards 14 / 336, mustaches 10 / 240, tops 24 / 384, jackets 16 / 256, pants & skirts 20 / 320, shoes 16 / 64, gloves 7 / 112, hats 20 / 320, glasses 18 / 108, masks 5 / 80, earrings 17 / 204, piercings 12 / 72, necklaces 28 / 168, wrist & rings 9 / 108, bags & belts 7 / 112. **Total 281 named styles, 4,276 style×colour items** (before patterns and cut sliders; with patterns the clothing combos are in the tens of thousands). Honest note: "named styles" is the real authored content; the large number comes from colours.
+**Catalog counts:** see `COUNTS()` in the creator header / `src/mp/catalog.js` (named styles / style×colour items). Hairstyles: 46 shown (12 more are hidden until they look clean: bob, lob, curly bob, pixie, side bangs, curtain bangs, short dreads, twists, long fringe, dreadlocks, quiff, pompadour). Items are styles × colours; patterns multiply clothing further.
 
-**Known rough edges (not hidden):** hair is procedural volumes, so long/braided/dread styles still look rough up close; faces are clean but plain (noses are shader-suggested; the lean man's nose still has a faint dark smudge); hands are the source mitt meshes (no finger separation); portrait-orientation not verified (the game itself is landscape); no real Supabase transport yet.
+**Known rough edges (not hidden):**
+* Clothes are flat-shaded shells: no pockets, seams, stitching or fabric detail like Keem's baked jacket and cargo pants. This is the biggest remaining gap to Keem's model.
+* Eye shape/size/spacing/tilt and brow shape sliders were removed (eyes are baked into the texture); eye socket depth and the face/nose morphs still work. Eye colour works on all bases; brow colour recolours brows reliably only on m1/m2/f1.
+* Noses are soft (the source meshes have very small noses); faces are simple cartoon faces, not as detailed as Keem's.
+* Beards and mustaches are bold solid shapes; fades and a few hair shapes (afro bangs, mohawk) are still rough up close. Beanie sits low on the brow.
+* Shoes: one flat shoe silhouette for all styles (colour/sole change, shape does not); skirts and wide-leg pants are bulky.
+* Hands are the source mitt meshes (no separated fingers).
+* Portrait orientation not verified (the game itself is landscape). No Supabase transport yet.
 
 **Planned (nothing below is built):** Supabase Realtime transport and authoritative game server, accounts/saved looks in `atq_mp` (migration drafted, not applied; project is paused), full Kemy-style map and activities, houses/cabins and fortification, server-side zombies/NPC events, car break-in/hotwire/fuel, survival systems, weapons store, missions and Play Billing.

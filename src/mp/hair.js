@@ -41,12 +41,12 @@ float hairMask(vec3 p, vec2 fc){
   float az = atan(p.x, p.z - uHc.x); float aa = abs(az);
   float hl = mix(uH1.x, mix(uH1.y, uH1.z, smoothstep(1.3, 2.4, aa)), smoothstep(0.55, 1.4, aa));
   float side = step(0.8, abs(fc.x)) * step(fc.y, uH2.w + 0.2) ; // sideburn skip handled by hl
-  float v = step(0.5, smoothstep(hl - 0.1, hl + 0.1, fc.y) + (vn(vRest * 420.0) - 0.5) * 0.7);
+  float v = smoothstep(hl - 0.05, hl + 0.03, fc.y + 0.02 * sin(fc.x * 9.0 + az * 3.0));
   v *= 1.0 - uH3.w * smoothstep(0.75, 1.0, abs(fc.x)) * smoothstep(uH2.w, uH2.w - 0.5, fc.y) * 0.0;
   return v;
 }`;
 export function shellMaterial(kind) {
-  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: kind === 3 ? .9 : .55, metalness: 0 });
+  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: kind === 3 ? .9 : .55, metalness: 0 }); m.alphaToCoverage = true;
   const U = m.userData.U = { uKind: { value: kind }, uLm: { value: new THREE.Vector4() }, uHc: { value: new THREE.Vector4() }, uMo: { value: new THREE.Vector4(.815, .28, 1.83, 1.07) },
     uH1: { value: new THREE.Vector4(2.7, 2.2, 1.6, .0) }, // hairline fy: front, temple/side, back, (unused)
     uH2: { value: new THREE.Vector4(.012, .02, 0, 2.3) }, // thickness base, top volume, radial volume, fade line
@@ -70,9 +70,9 @@ export function shellMaterial(kind) {
         else { col *= 0.75 + 0.5 * strand; }
         float om = smoothstep(2.0, 3.2, fcf.y); col = mix(uC2, col, mix(1.0, om, uH3.z * 0.0 + 0.0)); col = mix(col, uC2, smoothstep(0.4, 1.0, strand) * 0.35 * om);
         // temple fade: sides and back thin out into skin
-        float fadeLine = uH2.w; float fadeAmt = uH3.w; if (fadeAmt > 0.0) { float az = abs(atan(vRest.x, vRest.z - uHc.x)); float fadeMask = smoothstep(0.7, 1.3, az); float h = h31(floor(vRest * 700.0)); float lim = fadeLine + 0.5 - fadeMask * 0.0; float k = smoothstep(lim - fadeAmt, lim, fcf.y); vis *= step(h, mix(0.15, 1.0, k)) * 1.0 + (1.0 - fadeMask) * (1.0 - step(h, 0.0)) * 0.0; vis = mix(vis, vis * step(h, mix(0.05, 1.0, k)), fadeMask); }
-      } else if (kind3(uKind) < 1.5) { float id = uH3.x; float m = bmask(fcf, id, uMo.x, uMo.y); float ht = h31(floor(vRest * 600.0)); vis = step(1.0 - uH3.z, ht * 0.8 + 0.2 * vn(vRest * 300.0)) * m; col *= 0.7 + 0.5 * vn(vec3(vRest.x * 200.0, vRest.y * 25.0, vRest.z * 200.0)); }
-      else if (kind3(uKind) < 2.5) { float m = smask(fcf, uH3.x, uMo.x); float ht = h31(floor(vRest * 600.0)); vis = step(1.0 - uH3.z, ht * 0.8 + 0.2 * vn(vRest * 300.0)) * m; col *= 0.7 + 0.5 * vn(vec3(vRest.x * 200.0, vRest.y * 25.0, vRest.z * 200.0)); }
+        float fadeLine = uH2.w; float fadeAmt = uH3.w; if (fadeAmt > 0.0) { float az = abs(atan(vRest.x, vRest.z - uHc.x)); float fadeMask = smoothstep(0.7, 1.3, az); float h = h31(floor(vRest * 700.0)); float lim = fadeLine + 0.5 - fadeMask * 0.0; float k = smoothstep(lim - fadeAmt, lim, fcf.y); vis = mix(vis, vis * smoothstep(0.0, 0.7, k), fadeMask); }
+      } else if (kind3(uKind) < 1.5) { float id = uH3.x; float m = bmask(fcf, id, uMo.x, uMo.y); float ht = h31(floor(vRest * 600.0)); vis = step(ht * 0.8 + 0.2 * vn(vRest * 300.0), mix(0.25, 1.01, smoothstep(0.35, 0.85, uH3.z))) * m; col *= 0.7 + 0.5 * vn(vec3(vRest.x * 200.0, vRest.y * 25.0, vRest.z * 200.0)); }
+      else if (kind3(uKind) < 2.5) { float m = smask(fcf, uH3.x, uMo.x); float ht = h31(floor(vRest * 600.0)); vis = step(ht * 0.8 + 0.2 * vn(vRest * 300.0), mix(0.25, 1.01, smoothstep(0.35, 0.85, uH3.z))) * m; col *= 0.7 + 0.5 * vn(vec3(vRest.x * 200.0, vRest.y * 25.0, vRest.z * 200.0)); }
       else { float id = uH3.x; float ax = abs(fcf.x); float m = 0.0;
         if (id < 0.5) m = step(0.5, fcf.y) * step(fcf.y, uMo.w + 0.28 + 0.0) * step(ax, 1.05) * step(0.0, vRest.z - uHc.x * 0.0 + 0.0);       // surgical / dust mask
         else if (id < 1.5) m = step(0.5, fcf.y) * step(fcf.y, uMo.w + 0.5) * step(ax, 1.08);                                                  // bandana mask
@@ -80,7 +80,7 @@ export function shellMaterial(kind) {
         else if (id < 3.5) m = step(0.2, fcf.y) * step(fcf.y, uMo.w + 0.55) * step(ax, 1.15);                                                   // neck gaiter up
         else m = (1.0 - step(abs(fcf.y - uMo.z), 0.3) * step(ax, 0.72)) * step(uMo.z - 0.7, fcf.y);                                              // ski mask short
         vis = m * step(0.0, 1.0); float f = vn(vRest * 500.0); col = mix(col, uC2, step(0.5, fract(fcf.y * 9.0)) * 0.12 * step(uH3.x, 0.5)); col *= 0.92 + 0.15 * f; }
-      if (vis < 0.5) discard; diffuseColor.rgb = col;`);
+      if (vis < 0.03) discard; diffuseColor.rgb = col; diffuseColor.a = vis;`);
     sh.fragmentShader = sh.fragmentShader.replace('uniform vec4 uLm,', 'float kind3(float k){ return k; }\nuniform vec4 uLm,'); };
   m.customProgramCacheKey = () => 'mpshell';
   return m;

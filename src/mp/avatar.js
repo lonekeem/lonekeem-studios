@@ -9,13 +9,28 @@ import { weldNormals } from './morph.js';
 
 const REG = { Head: 0, neck: 1, Spine: 2, Spine01: 2, Spine02: 2, Hips: 2, LeftShoulder: 3, LeftArm: 3, LeftForeArm: 3, RightShoulder: 3, RightArm: 3, RightForeArm: 3, LeftHand: 4, RightHand: 4,
   LeftUpLeg: 5, LeftLeg: 5, RightUpLeg: 5, RightLeg: 5, LeftFoot: 6, LeftToeBase: 6, RightFoot: 6, RightToeBase: 6 };
+const FLAT = typeof window !== 'undefined' && !!window.__MP_FLAT;
 const _loader = new GLTFLoader(); const _tpl = {};
 export const BASE_URL = (typeof window !== 'undefined' && window.__MP_BASE) || './';
 
 // ---------- template (per base model, computed once) ----------
 export function loadBase(key) {
   if (_tpl[key]) return _tpl[key];
-  return _tpl[key] = _loader.loadAsync(BASE_URL + 'models/chars/' + key + '.glb').then(g => analyse(key, g.scene));
+  return _tpl[key] = Promise.all([_loader.loadAsync(BASE_URL + 'models/chars/' + key + '.glb'), loadTex(BASE_URL + 'models/chars/' + key + '.jpg')]).then(([g, tx]) => { const t = analyse(key, g.scene); t.tex = tx.tex; t.texB = skinSample(tx.img, t); return t; });
+}
+// baked face texture (eyes, brows, nose and lip shading come from the generated texture; skin tone is remapped in the shader)
+function loadTex(url) { return new Promise((res, rej) => { const img = new Image(); img.onload = () => { const tex = new THREE.Texture(img); tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; tex.anisotropy = 8; tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.needsUpdate = true; res({ tex, img }); }; img.onerror = rej; img.src = url; }); }
+const toLin = v => { v /= 255; return v <= .04045 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
+function skinSample(img, t) {
+  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0); const D = g.getImageData(0, 0, c.width, c.height).data; const uv = t.geo.attributes.uv, hw = t.headW; const R = [], G = [], B = [];
+  for (let i = 0; i < uv.count; i += 3) { if (hw[i] < .8) continue; const x = Math.min(c.width - 1, Math.max(0, Math.floor(uv.getX(i) * c.width))), y = Math.min(c.height - 1, Math.max(0, Math.floor(uv.getY(i) * c.height))); const o = (y * c.width + x) * 4; const r = toLin(D[o]), gg = toLin(D[o + 1]), b = toLin(D[o + 2]); const L = .2126 * r + .7152 * gg + .0722 * b, mx = Math.max(r, gg, b), mn = Math.min(r, gg, b); if (L > .2 && (mx - mn) / mx > .3) { R.push(r); G.push(gg); B.push(b); } }
+  const med = a => { a.sort((x, y) => x - y); return a[a.length >> 1] || .5; }; const col = new THREE.Color(med(R), med(G), med(B)); const LB = .2126 * col.r + .7152 * col.g + .0722 * col.b; const lm = t.lm; let sy = 0, sn = 0; const TH = [.22, .16, .12, .09];
+  const P = t.geo.attributes.position;
+  for (const th of TH) { sy = 0; sn = 0;
+  for (let i = 0; i < uv.count; i++) { if (hw[i] < .8) continue; const x = P.getX(i), y = P.getY(i), z = P.getZ(i); const fy = (y - lm.chinY) / lm.hw; if (z < lm.zc || Math.abs(x) > .55 * lm.hw || fy < .5 || fy > 1.25) continue; const px = Math.min(c.width - 1, Math.max(0, Math.floor(uv.getX(i) * c.width))), py = Math.min(c.height - 1, Math.max(0, Math.floor(uv.getY(i) * c.height))); const o = (py * c.width + px) * 4; const r = toLin(D[o]), gg = toLin(D[o + 1]), b = toLin(D[o + 2]); const L = .2126 * r + .7152 * gg + .0722 * b; if (L < .15) continue; const d = Math.hypot(r / L - col.r / LB, gg / L - col.g / LB, b / L - col.b / LB); if (d > th) { sy += fy; sn++; } }
+    if (sn > 6) break; }
+  { const fy = []; for (let i = 0; i < uv.count; i += 1) { if (hw[i] < .8) continue; const z = P.getZ(i); if (z < lm.zc) continue; const px = Math.min(c.width - 1, Math.max(0, Math.floor(uv.getX(i) * c.width))), py = Math.min(c.height - 1, Math.max(0, Math.floor(uv.getY(i) * c.height))); const o = (py * c.width + px) * 4; const r = toLin(D[o]), gg = toLin(D[o + 1]), b = toLin(D[o + 2]); const L = .2126 * r + .7152 * gg + .0722 * b; const mx = Math.max(r, gg, b), mn = Math.min(r, gg, b); if (L > .5 && (mx - mn) / mx < .15) fy.push((P.getY(i) - lm.chinY) / lm.hw); } fy.sort((a, b) => a - b); t.eyeFy = fy.length > 6 ? fy[fy.length >> 1] : 1.83; }
+  t.mouthY = sn > 6 ? sy / sn : .815; return col;
 }
 function analyse(key, scene) {
   scene.updateMatrixWorld(true); let skin = null; scene.traverse(o => { if (o.isSkinnedMesh && !skin) skin = o; });
@@ -42,8 +57,8 @@ function analyse(key, scene) {
   for (let i = 0; i < n; i++) if (used[i] && headW[i] > .5) { const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), fy = (y - minY) / hw; if (Math.abs(x) > hw * .98 && fy > 1.0 && fy < 2.6) { const k = x > 0 ? 0 : 1; earC[k].add(new THREE.Vector3(x, y, z)); earN[k]++; if (!earLow[k] || y < earLow[k].y) earLow[k] = new THREE.Vector3(x, y, z); } }
   const ears = earC.map((c, k) => earN[k] ? c.divideScalar(earN[k]) : new THREE.Vector3((k ? -1 : 1) * hw * 1.05, minY + hw * 1.7, P.Head.z));
   const lm = { cx: 0, chinY: minY, hh: maxY - minY, hw, front, back, zc: (front + back) / 2, top: maxY, noseTipY: tipY, headBone: P.Head.clone(), ears, lobes: earLow.map((l, k) => l || ears[k]) };
-  flattenFace(geo, headW, lm);
-  const zoneW = new Float32Array(n); { const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }; for (let i = 0; i < n; i++) { if (headW[i] < .5) continue; const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i); const ax = Math.abs(x) / lm.hw, fy = (y - lm.chinY) / lm.hw; zoneW[i] = .9 * ss(lm.zc, lm.zc + .04, z) * ss(.16, .34, ax) * ss(1.05, .85, ax) * ss(.9, 1.25, fy) * ss(3.0, 2.6, fy); const cw = (1 - ss(.1, .3, ax)) * ss(lm.zc, lm.zc + .04, z) * ss(tipY - .024, tipY + .0, y) * ss(lm.chinY + (maxY - minY) * .62, lm.chinY + (maxY - minY) * .5, y); zoneW[i] = Math.max(zoneW[i], .8 * cw); } }
+  if (FLAT) flattenFace(geo, headW, lm);
+  const zoneW = new Float32Array(n); if (FLAT) { const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }; for (let i = 0; i < n; i++) { if (headW[i] < .5) continue; const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i); const ax = Math.abs(x) / lm.hw, fy = (y - lm.chinY) / lm.hw; zoneW[i] = .9 * ss(lm.zc, lm.zc + .04, z) * ss(.16, .34, ax) * ss(1.05, .85, ax) * ss(.9, 1.25, fy) * ss(3.0, 2.6, fy); const cw = (1 - ss(.1, .3, ax)) * ss(lm.zc, lm.zc + .04, z) * ss(tipY - .024, tipY + .0, y) * ss(lm.chinY + (maxY - minY) * .62, lm.chinY + (maxY - minY) * .5, y); zoneW[i] = Math.max(zoneW[i], .8 * cw); } }
   return { zoneW, key, scene, skin, geo, names, P, aR, aW, reg, headW, dom, used, lm, ankleY, hipsY, neckY };
 }
 
@@ -59,6 +74,9 @@ function smoothMesh(geo, names, sk) {
   { const keep = wt.slice(); const legs = new Set(['LeftUpLeg', 'LeftLeg', 'RightUpLeg', 'RightLeg'].map(k => names.indexOf(k))); const lw = new Float32Array(ng);
     for (let i = 0; i < n; i++) { let l = 0; for (let k = 0; k < 4; k++) if (legs.has(si.getComponent(i, k))) l += sw.getComponent(i, k); if (l > .5) lw[grp[i]] = 1; }
     for (let g = 0; g < ng; g++) wt[g] = (keep[g] === 1 || lw[g]) ? 1 : 0; for (let it = 0; it < 22; it++) { pass(.5); pass(-.53); } }
+  { const ft = new Set(['LeftFoot', 'LeftToeBase', 'RightFoot', 'RightToeBase'].map(k => names.indexOf(k))); const fw = new Float32Array(ng); // merge the separate toes into one clean shoe-ready mitten shape
+    for (let i = 0; i < n; i++) { let l = 0; for (let k = 0; k < 4; k++) if (ft.has(si.getComponent(i, k))) l += sw.getComponent(i, k); if (l > .5) fw[grp[i]] = 1; }
+    for (let g = 0; g < ng; g++) wt[g] = fw[g]; for (let it = 0; it < 45; it++) { pass(.5); pass(-.52); } }
   for (let i = 0; i < n; i++) pos.setXYZ(i, gp[grp[i] * 3], gp[grp[i] * 3 + 1], gp[grp[i] * 3 + 2]);
   geo.computeVertexNormals(); const nr = geo.attributes.normal, acc = new Float32Array(ng * 3); for (let i = 0; i < n; i++) { const g = grp[i]; acc[g * 3] += nr.getX(i); acc[g * 3 + 1] += nr.getY(i); acc[g * 3 + 2] += nr.getZ(i); }
   for (let i = 0; i < n; i++) { const g = grp[i]; const x = acc[g * 3], y = acc[g * 3 + 1], z = acc[g * 3 + 2], l = Math.hypot(x, y, z) || 1; nr.setXYZ(i, x / l, y / l, z / l); }
@@ -72,7 +90,7 @@ export class Avatar {
     let skin = null; this.bones = {}; this.obj.traverse(o => { if (o.isSkinnedMesh && !skin) skin = o; if (o.isBone) this.bones[o.name] = o; });
     this.skin = skin; const g = skin.geometry = tpl.geo.clone(); g.userData = { group: tpl.geo.userData.group, ng: tpl.geo.userData.ng }; g.setAttribute('aR', new THREE.BufferAttribute(tpl.aR, 4)); { const w1 = new Float32Array(tpl.aR.length), w2 = new Float32Array(tpl.aR.length), W = tpl.aW; for (let i = 0; i < tpl.aR.length / 4; i++) { for (let k = 0; k < 4; k++) { w1[i * 4 + k] = W[i * 8 + k]; w2[i * 4 + k] = W[i * 8 + 4 + k]; } } g.setAttribute('aW1', new THREE.BufferAttribute(w1, 4)); g.setAttribute('aW2', new THREE.BufferAttribute(w2, 4)); }
     this.rest = new Float32Array(g.attributes.position.array); g.setAttribute('aP0', new THREE.BufferAttribute(new Float32Array(this.rest), 3)); this.pos = g.attributes.position; this.nrm = g.attributes.normal;
-    this.U = Object.assign(FACE_UNIFORMS(), {});
+    this.U = Object.assign(FACE_UNIFORMS(), {}); this.U.uTex.value = tpl.tex; this.U.uTexB.value.copy(tpl.texB);
     this.skin.material = this._skinMat(); skin.frustumCulled = false; skin.castShadow = true; skin.receiveShadow = true;
     this.layers = {}; this.acc = {}; this.look = null;
     this.boneIdx = {}; skin.skeleton.bones.forEach((b, i) => { this.boneIdx[b.name] = i; });
@@ -84,7 +102,7 @@ export class Avatar {
   _skinMat() {
     const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .62, metalness: 0 }); const U = this.U;
     m.onBeforeCompile = sh => { Object.assign(sh.uniforms, U); hookVertex(sh);
-      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + 'varying vec3 vRest; varying vec3 vRestN; varying vec4 vR;\nfloat h11(float n){ return fract(sin(n*127.1)*43758.5453); }\nfloat h21(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }\nfloat h31(vec3 p){ return fract(sin(dot(p, vec3(127.1,311.7,74.7)))*43758.5453); }\nfloat vn(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(mix(h31(i),h31(i+vec3(1,0,0)),f.x),mix(h31(i+vec3(0,1,0)),h31(i+vec3(1,1,0)),f.x),f.y), mix(mix(h31(i+vec3(0,0,1)),h31(i+vec3(1,0,1)),f.x),mix(h31(i+vec3(0,1,1)),h31(i+vec3(1,1,1)),f.x),f.y),f.z); }\nfloat sdSeg(vec2 p, vec2 a, vec2 b){ vec2 pa=p-a, ba=b-a; float h=clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0); return length(pa-ba*h); }\n' + FACE_FRAG_DECL)
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + 'varying vec3 vRest; varying vec3 vRestN; varying vec4 vR; \nfloat h11(float n){ return fract(sin(n*127.1)*43758.5453); }\nfloat h21(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }\nfloat h31(vec3 p){ return fract(sin(dot(p, vec3(127.1,311.7,74.7)))*43758.5453); }\nfloat vn(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(mix(h31(i),h31(i+vec3(1,0,0)),f.x),mix(h31(i+vec3(0,1,0)),h31(i+vec3(1,1,0)),f.x),f.y), mix(mix(h31(i+vec3(0,0,1)),h31(i+vec3(1,0,1)),f.x),mix(h31(i+vec3(0,1,1)),h31(i+vec3(1,1,1)),f.x),f.y),f.z); }\nfloat sdSeg(vec2 p, vec2 a, vec2 b){ vec2 pa=p-a, ba=b-a; float h=clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0); return length(pa-ba*h); }\n' + FACE_FRAG_DECL)
         .replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = paintSkin(vRest, normalize(vRestN), vR);'); };
     m.customProgramCacheKey = () => 'mpskin'; return m;
   }

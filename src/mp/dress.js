@@ -46,11 +46,11 @@ function clearAcc(av, name) { const a = av.acc[name]; if (a) { for (const m of a
 const matCache = new Map();
 function accMaterial(key, o) { const k = key + JSON.stringify(o); if (matCache.has(k)) return matCache.get(k);
   let m; if (key === 'lens') m = new THREE.MeshStandardMaterial({ color: o.c, roughness: .15, metalness: 0, transparent: true, opacity: o.op, depthWrite: false });
-  else if (key === 'hair') { m = new THREE.MeshStandardMaterial({ color: o.c, roughness: .5, metalness: 0, vertexColors: true }); }
+  else if (key === 'hair') { m = new THREE.MeshStandardMaterial({ color: o.c, roughness: .78, metalness: 0, vertexColors: true, side: THREE.DoubleSide }); }
   else m = new THREE.MeshStandardMaterial({ color: o.c, roughness: o.r ?? .55, metalness: o.mt ?? 0, side: o.side ? THREE.DoubleSide : THREE.FrontSide });
   matCache.set(k, m); return m; }
 function stylize(geo, hair) { // per-vertex streak variation for hair, soft fabric shading elsewhere
-  if (!hair) return geo; const p = geo.attributes.position, n = p.count, c = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i); const f = .72 + .34 * (.5 + .5 * Math.sin(x * 260 + z * 210 + Math.sin(y * 40) * 3)) + .1 * (Math.sin(y * 90 + x * 40) * .5); c[i * 3] = c[i * 3 + 1] = c[i * 3 + 2] = Math.min(1.1, f); } geo.setAttribute('color', new THREE.BufferAttribute(c, 3)); return geo; }
+  if (!hair) return geo; const p = geo.attributes.position, n = p.count, c = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i); const f = .86 + .2 * (.5 + .5 * Math.sin(x * 260 + z * 210 + Math.sin(y * 40) * 3)); c[i * 3] = c[i * 3 + 1] = c[i * 3 + 2] = Math.min(1.1, f); } geo.setAttribute('color', new THREE.BufferAttribute(c, 3)); return geo; }
 function mount(av, name, B, mats, bone) {
   clearAcc(av, name); const out = []; for (const key of B.keys()) { const geo = B.geos(key); if (!geo) continue; const spec = mats[key] || mats.a; const isHair = spec.hair; stylize(geo, isHair); const mat = accMaterial(isHair ? 'hair' : key === 'lens' ? 'lens' : 'std', spec);
     const mesh = rigid(av, geo, bone, mat); addSkinned(av, mesh, 3); mesh.castShadow = false; out.push(mesh); } av.acc[name] = out; }
@@ -59,6 +59,7 @@ const metalOf = it => ({ c: C.SWATCH.metal[it.m ?? 0], mt: .35, r: .38 });
 function jewel(av, ctx, name, fn, item, bone = 'Head', extra = {}) { if (!item) { clearAcc(av, name); return; } const B = new Builder(); fn(B, ctx, item);
   mount(av, name, B, { a: { c: item.c || '#888' }, b: { c: item.c2 || '#ccc' }, m: metalOf(item), g: { c: C.SWATCH.gem[item.g ?? 0], r: .25 }, k: { c: '#16171a' }, ...extra }, bone); }
 
+const MOUTH_Y = {};
 export function dress(av, look) {
   const f = look.base.startsWith('mp_f'); const T = av.tpl, L = T.lm; av.look = look;
   // ---- body + head morphs
@@ -68,9 +69,9 @@ export function dress(av, look) {
   const U = av.U, sk = skinTone(look.skin.t, look.skin.u); U.uSkin.value.copy(sk); U.uUnder.value = look.skin.u; U.uLm.value.set(L.cx, L.chinY, L.hw, L.hw);
   const hc = col(look.hair.c); U.uHairCol.value.copy(hc);
   const es = C.EYES[look.eyes.s] || C.EYES[0]; const sz = 1 + .35 * look.eyes.size, sp = look.eyes.space * .06;
-  U.uE1.value.set(.41 + sp, 1.83, es[1] * sz, es[2] * sz); U.uE2.value.set(es[3] + look.eyes.tilt * .5, .78, Math.min(1, es[4] + look.eyes.lash * .5), es[5]); U.uEyeCol.value.set(look.eyes.col);
+  U.uE1.value.set(.41 + sp, av.tpl.eyeFy || 1.83, es[1] * sz, es[2] * sz); U.uE2.value.set(es[3] + look.eyes.tilt * .5, .78, Math.min(1, es[4] + look.eyes.lash * .5), es[5]); U.uEyeCol.value.set(look.eyes.col);
   const br = C.BROWS[look.brows.s] || C.BROWS[0]; U.uB1.value.set(.14, .36, br[5], Math.max(.02, br[4] * (1 + .5 * look.brows.thick))); U.uB2.value.set(Math.max(0, br[1] + .4 * look.brows.arch), br[2], br[3], br[6]); U.uBrowCol.value.copy(look.brows.col ? col(look.brows.col) : hc.clone().multiplyScalar(.85));
-  const mu = C.MOUTHS[look.mouth.s] || C.MOUTHS[0]; U.uM1.value.set(.815, mu[1] * (1 + .25 * look.mouth.width), Math.min(1, Math.max(0, mu[2] + .4 * look.mouth.full)), mu[3]);
+  const mu = C.MOUTHS[look.mouth.s] || C.MOUTHS[0]; U.uM1.value.set(MOUTH_Y[look.base] ?? av.tpl.mouthY, mu[1] * 1.15 * (1 + .25 * look.mouth.width), Math.min(1, Math.max(0, mu[2] + .4 * look.mouth.full)), mu[3]);
   const lipBase = sk.clone().multiply(col('#d89080')).lerp(col('#7a3a30'), .25); U.uLip.value.copy(look.mouth.col ? col(look.mouth.col) : lipBase);
   const mk = look.makeup; U.uMk1.value.set(mk.shadow / 3, mk.liner / 3, mk.blush / 3, mk.lip / 3); U.uShadowCol.value.set(mk.shadowCol); U.uLipstick.value.set(mk.lipCol); U.uBlushCol.value.copy(col('#d9707a').lerp(sk, .25));
   const sx = look.skinx; U.uMk2.value.set(sx.freckles / 3, sx.moles, sx.age, 0); U.uScar.value.set(sx.scar, sx.scarSide, 0, 0); U.uTat.value.set(sx.tattoo, sx.scarSide, 0, 0); U.uTatCol.value.set(sx.tattooCol);

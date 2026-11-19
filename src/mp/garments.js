@@ -30,14 +30,14 @@ vec3 garment(vec3 p, vec3 n, vec4 R){
   float reg = softReg(), s = R.y, t = R.z, side = R.w; float ax = abs(p.x); float kind = uKind; bool vis = false; float edge = 9.0;
   float front = smoothstep(-0.03, 0.05, p.z - uN.w);
   if (kind < 0.5 || (kind > 2.5 && kind < 3.5)) { // top / jacket
-    if (reg > 1.5 && reg < 2.5) { vis = t > uG1.y && ax < uG1.w; edge = t - uG1.y;
+    if (reg > 0.5 && reg < 2.5) { vis = t > uG1.y && ax < uG1.w; edge = t - uG1.y;
       float nk = uN.x - uN.y * max(0.0, 1.0 - ax / uN.z) * front; if (t > nk) { vis = false; }
       if (kind > 2.5) { if (ax < uG2.y && front > 0.5 && t > uG2.z) vis = false; } }
     if (reg > 2.5 && reg < 3.5) { vis = s < uG1.x; edge = min(edge, uG1.x - s); }
-    if (reg > 0.5 && reg < 1.5) { vis = uG2.w > 0.5 && (t < 1.02 + uG2.w * 0.12); edge = 0.5; }
-    if (reg > 4.5 && reg < 5.5) { vis = s < uG2.x; edge = uG2.x - s; }
+    if (reg > 0.5 && reg < 1.5 && uG2.w > 0.5) { vis = t < 1.02 + uG2.w * 0.12; edge = 0.5; }
+    if (reg > 4.5) { vis = s < uG2.x; edge = uG2.x - s; }
   } else if (kind < 1.5) { // pants
-    if (reg > 4.5 && reg < 5.5) { vis = s < uG1.x; edge = uG1.x - s; }
+    if (reg > 4.5) { vis = s < uG1.x; edge = uG1.x - s; }
     if (reg > 1.5 && reg < 2.5) { vis = t < uG1.y && t > -0.3; edge = uG1.y - t; }
   } else if (kind < 2.5) { // shoes / boots
     if (reg > 5.5) { vis = true; edge = 0.5; } if (reg > 4.5 && reg < 5.5) { vis = s > uG1.x; edge = s - uG1.x; }

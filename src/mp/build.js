@@ -14,6 +14,10 @@ export class Builder {
   // tapered tube (ponytails / braids / dreads): radius from r0 to r1 along the curve
   taper(pts, r0, r1, mat = 'a', seg = 18, rad = 7) { const c = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p))); const g = new THREE.TubeGeometry(c, seg, 1, rad, false); const pa = g.attributes.position, fr = c.computeFrenetFrames(seg, false); const n = (rad + 1);
     for (let i = 0; i <= seg; i++) { const pt = c.getPointAt(i / seg), k = r0 + (r1 - r0) * (i / seg); for (let j = 0; j < n; j++) { const idx = i * n + j; _v.fromBufferAttribute(pa, idx).sub(pt).multiplyScalar(k).add(pt); pa.setXYZ(idx, _v.x, _v.y, _v.z); } } g.computeVertexNormals(); return this.add(g, mat); }
+  // smooth sheet through several rows of points (rows[i][k]): solid hair panels, capes, ribbons
+  loft(rows, mat = 'a') { const R = rows.length, K = rows[0].length; const pos = new Float32Array(R * K * 3), idx = []; for (let i = 0; i < R; i++) for (let k = 0; k < K; k++) { const p = rows[i][k]; pos.set([p.x ?? p[0], p.y ?? p[1], p.z ?? p[2]], (i * K + k) * 3); }
+    for (let i = 0; i < R - 1; i++) for (let k = 0; k < K - 1; k++) { const a = i * K + k, b = (i + 1) * K + k, c = i * K + k + 1, d = (i + 1) * K + k + 1; idx.push(a, b, c, b, d, c); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return this.add(g, mat); }
   geos(mat) { return this.parts[mat] ? mergeGeometries(this.parts[mat]) : null; }
   keys() { return Object.keys(this.parts); }
 }

@@ -35,7 +35,8 @@ export const MAKEUP = {
 };
 // ---- hair: [id, name, gender (m/f/u), hairline front,temple,back, thickness, topVolume, radialVolume, texture, fade, fadeLine, extras]
 const X = (...a) => a;
-export const HAIR = [
+const HAIR_HIDDEN = new Set(['bob', 'lob', 'curlybob', 'pixie', 'sidebang', 'curtain', 'dreadsshort', 'twists', 'fringe', 'dreads', 'quiff', 'pomp']); // hidden until they look as clean as the rest
+const HAIR_ALL = [
   ['bald', 'Bald', 'u', 9, 9, 9, 0, 0, 0, 0, 0, 2.3, []],
   ['buzz', 'Buzz cut', 'u', 2.55, 2.15, 1.7, .003, 0, 0, 0, 0, 2.3, []],
   ['crew', 'Crew cut', 'm', 2.65, 2.2, 1.6, .006, .008, 0, 0, 0, 2.3, []],
@@ -95,6 +96,8 @@ export const HAIR = [
   ['twists', 'Twists', 'u', 2.5, 2.2, 1.9, .008, .004, 0, 4, .0, 2.3, [X('dreads', 52, .07)]],
   ['fringe', 'Long fringe', 'u', 2.0, 2.0, 1.7, .01, .01, 0, 0, 0, 2.3, [X('fringe', .08)]],
 ];
+export const HAIR = HAIR_ALL.filter(h => !HAIR_HIDDEN.has(h[0]));
+
 export const BEARDS = [ // [id, name, maskId]
   ['none', 'None', -1], ['stubble', 'Stubble', -2], ['full', 'Full beard', 1], ['boxed', 'Short boxed', 2], ['goatee', 'Goatee', 3], ['soul', 'Soul patch', 4], ['strap', 'Chin strap', 5], ['curtain', 'Chin curtain', 6],
   ['mutton', 'Mutton chops', 7], ['circle', 'Circle beard', 8], ['anchor', 'Anchor', 9], ['vandyke', 'Van Dyke', 10], ['lumber', 'Lumberjack', 11], ['jawline', 'Jawline', 12],

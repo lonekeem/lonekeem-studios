@@ -1,0 +1,6 @@
+<script type="module">
+window.__MP_BASE='/';
+const { loadBase } = await import('../../src/mp/avatar.js');
+const o={}; for(const k of ['mp_f1','mp_f2','mp_m1','mp_m2']){ const t=await loadBase(k); o[k]={mouthY:t.mouthY,B:t.texB.toArray(),nose:(t.lm.noseTipY-t.lm.chinY)/t.lm.hw}; }
+window.info=o; document.title='done';
+</script>
