@@ -35,7 +35,7 @@ const LAYER_REG = { under: [2, 5], top: [1, 2, 3, 5], jacket: [1, 2, 3, 5], pant
 function layerGeometry(av, name) { // perf: each garment shell only draws the body triangles it can ever cover (not the whole body)
   const regs = LAYER_REG[name], g = av.skin.geometry; if (!regs) return g; const W = av.tpl.aW, ix = g.index, out = [];
   const ok = i => { for (const r of regs) if (W[i * 8 + r] > .04) return true; return false; };
-  const P = g.attributes.position, ny = av.tpl.P.neck.y, hw = av.tpl.headW; const head = i => hw[i] > .4 || (P.getY(i) > ny - .012 && W[i * 8] + W[i * 8 + 1] > .5);
+  const P = g.attributes.position, ny = av.tpl.P.neck.y, hw = av.tpl.headW; const head = i => hw[i] > .4 || P.getY(i) > ny + .03; // neck triangles stay: the analytic neck hole cuts them cleanly (a triangle-stepped boundary looked ragged)
   for (let k = 0; k < ix.count; k += 3) { const a = ix.getX(k), b = ix.getX(k + 1), c = ix.getX(k + 2); if (head(a) && head(b) && head(c)) continue; if (ok(a) || ok(b) || ok(c)) out.push(a, b, c); }
   const h = new THREE.BufferGeometry(); for (const key in g.attributes) h.setAttribute(key, g.attributes[key]); h.setIndex(out); h.boundingSphere = g.boundingSphere || new THREE.Sphere(new THREE.Vector3(0, 1, 0), 3); h.userData = g.userData; return h;
 }

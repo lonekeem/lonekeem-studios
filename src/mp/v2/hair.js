@@ -233,7 +233,7 @@ export function hairMaterial(c1, c2, hl = .35, skin = null) { // skin: blend the
           if (max(fo, fi * 0.6) > 0.1 + 0.9 * (r1 * 0.65 + r2 * 0.35)) discard; float fs = smoothstep(0.5, 0.99, u) * (0.75 + 0.25 * r2); c = mix(c * (1.0 + 0.15 * fs), uSk * 0.86, uSkF * fs * 0.62 * sk); }
         else if (vH.w < 0.5) { // scalp hair: soft, strand-broken hairline
           float u = vH.y; float r1 = fract(sin(floor(vH.z * 150.0) * 12.9898) * 43758.5453), r2 = fract(sin(floor(vH.z * 600.0 + 7.0) * 78.233) * 43758.5453);
-          float fo = smoothstep(0.975, 1.012, u); if (fo > 0.3 + 0.7 * (r1 * 0.8 + r2 * 0.2)) discard; float fs = smoothstep(0.9, 1.01, u) * (0.7 + 0.3 * r2); c = mix(c, uSk * 0.85, uSkF * fs * 0.5); }
+          float fo = smoothstep(0.985, 1.012, u); if (fo > 0.68 + 0.32 * (r1 * 0.8 + r2 * 0.2)) discard; float fs = smoothstep(0.9, 1.01, u) * (0.7 + 0.3 * r2); c = mix(c, uSk * 0.85, uSkF * fs * 0.5); }
         diffuseColor.rgb = c;`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         { vec3 V = normalize(vViewPosition); vec3 N = normalize(vNormal); vec3 T = normalize(vT - N * dot(vT, N));

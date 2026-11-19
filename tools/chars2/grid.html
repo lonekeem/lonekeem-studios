@@ -38,9 +38,9 @@ const labels = [];
 for (let i = 0; i < items.length; i++) { const [nm, fn] = items[i]; const L = J(base); fn(L); let bad = ''; try { dress(av, normalize(L)); } catch (e) { bad = ' ERR ' + e.message; window.errs = (window.errs || []).concat([[nm, e.message]]); } av.root.updateMatrixWorld(true);
   const Cc = av.head2.C; const c = i % cols, rr = Math.floor(i / cols); const x = c * TW, y = H - (rr + 1) * TH; r.setViewport(x, y, TW, TH); r.setScissor(x, y, TW, TH);
   const m = spec.cam;
-  if (m === 'head') { cam.position.set(.42, Cc.y + .02, Cc.z + .95); cam.lookAt(0, Cc.y - .05, Cc.z); }
-  else if (m === 'face') { cam.position.set(0, Cc.y, Cc.z + .8); cam.lookAt(0, Cc.y - .02, Cc.z); }
-  else if (m === 'faceq') { cam.position.set(.5, Cc.y + .02, Cc.z + .65); cam.lookAt(0, Cc.y - .02, Cc.z); }
+  if (m === 'head') { cam.position.set(.5, Cc.y + .03, Cc.z + 1.15); cam.lookAt(0, Cc.y - .04, Cc.z); }
+  else if (m === 'face') { cam.position.set(0, Cc.y, Cc.z + .96); cam.lookAt(0, Cc.y - .02, Cc.z); }
+  else if (m === 'faceq') { cam.position.set(.6, Cc.y + .02, Cc.z + .78); cam.lookAt(0, Cc.y - .02, Cc.z); }
   else if (m === 'upper') { cam.position.set(.6, 1.2, 2.0); cam.lookAt(0, 1.1, 0); }
   else if (m === 'legs') { cam.position.set(.8, .6, 2.9); cam.lookAt(0, .6, 0); }
   else if (m === 'feet') { cam.position.set(.6, .35, 1.1); cam.lookAt(0, .1, 0); }
