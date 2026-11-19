@@ -50,6 +50,9 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.20
+- Multiplayer upgrade: new Bitmoji-style characters (full 360 creator spin), story controls/moves/driving (working reverse), story sounds (not Keem's voice), all story guns + grenades with story-style explosions, bat/pan in hand, hit flinch, iPhone audio unlock, Google sign-in in the multiplayer menu (admin unlocks Play as Keem), store moved off the road, minimap.
+
 ### v1.9.19
 - Chapters 12 (Sublevel B) and 13 (Biscuit Goes Rogue) go live: fully voiced (114 new lines), the Mom/Nia reunion hug, Doreen the lunch lady boss, the Biscuit chase through the children's ward and cafeteria, and a "To be continued" end card after chapter 13. Chapters 14-16 stay hidden. Multiplayer (Beta), first-person, gore and town NPCs unchanged.
 

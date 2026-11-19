@@ -168,3 +168,8 @@ Based on `feat/mp-town` a091c98. New files: `src/mp/town/camcol.js`, `src/mp/tow
 - Merged `feat/chapters-12-13` (includes `feat/chapters-base`) into main; only conflict was the title-screen footer in index.html (kept `id="foot"` + Multiplayer (Beta)). Multiplayer, first-person, gore, town NPC code untouched (src/mp has no diff).
 - Version 1.9.19 (versionCode 47). Release https://github.com/lonekeem/lonekeem-studios/releases/tag/v1.9.19-debug (debug APK + AAB built locally with gradle, like earlier releases; there is no release workflow, only the Pages deploy).
 - Live check (`tools/live_check_1919.mjs`, `tools/live_check.mjs` MODE=mp): New Game, ch11 end card -> Continue to Chapter 12 -> step 55, checkpoints 55-64 load with voice mp3s 200, ch13 end card "To be continued", Multiplayer (Beta) two guests see each other. Sheets in `docs/live-1919/`. Only console error: favicon 404 (known).
+
+## v1.9.20 release (multiplayer upgrade live)
+- Merged origin/main (v1.9.19; only conflicts PROGRESS.md and the `stepMove` block in game.js — kept story's new `slowMul` by passing `slow` into `pctl.stepMove`) + feat/mp-chars-v2 (d63218d) + feat/mp-controls-chars. Version 1.9.20 (versionCode 48): package.json, main.js + index.html footer, build.gradle, README.
+- `vite build` OK. Smoke on the built site (`tools/smoke_v1920.mjs`, proofs `docs/v1920-smoke/`): story ch1 loads, Google sign-in shows in MP menu, creator spins 4 angles, MP town with the new character, pistol fires (12 -> 11), car forward (+8.6 m) and reverse (-5.3 m), 0 page errors.
+- Mission-glow branch is NOT included (still being built).
