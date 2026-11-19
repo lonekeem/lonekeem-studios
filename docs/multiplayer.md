@@ -192,7 +192,7 @@ Data model: `gun = receiver family × barrel × stock × grip × optic/mag slots
 
 Do **not** build the huge map first. Phase 2 ships one small town, roughly the footprint of Kemy Pal Street, and everything else is expanded later on top of it:
 
-* **Map:** one town, a few streets with sidewalks/intersection, ~8-12 houses (a few with open doors and lootable rooms), a small store/gas station, a bit of forest edge. Built as chunk 0 of the chunked layout in §12 so later chunks (more streets, cabins, lake, rivers, bridges, the big world) plug in without rewriting.
+* **Map (updated Nov 2026):** one town, a few streets with sidewalks, **about 25 houses (5-8 enterable, rest closed instanced shells with LOD)**, a store, a gas station (KL Fuel), a bit of forest edge. The layout is generated from `CFG` in `src/mp/town/map.js` so it grows to **50 houses and 50 house customization items** later (those items are still owed: shop-bought upgrades such as a Door, boards, locks...). **Houses have NO doors by default (open doorways); a Door is a shop item (`DOOR_PRICE`) that installs a door on that house's doorway.** Built as chunk 0 of the chunked layout in §12.
 * **Cars:** a few drivable cars with the custom **KL** emblem (no real brand logos), basic fuel, enter/exit, shared state through the server.
 * **Zombies:** never-ending spawning from the director (§9), capped by the performance budget (§11), spawning away from players and out of sight; basic roam/chase/attack/damage.
 * **Loot:** a small data-driven loot table (food, water, ammo, a couple of melee/guns, fuel cans, car parts) placed in houses/cars/stores, with respawn timers.
