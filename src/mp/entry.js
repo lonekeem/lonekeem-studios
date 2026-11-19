@@ -9,4 +9,6 @@ export function install() {
     const c = await mod.openCreator({ onClose: show, onPlay: async look => { const tw = await import('./town/town.js'); tw.enterTown({ look, onExit: show }); } });
     window.__mpCreator = c;
   });
+  // back from the Google redirect: reopen the multiplayer menu so the sign-in shows up straight away
+  try { if (sessionStorage.getItem('atq.mp.resume')) { sessionStorage.removeItem('atq.mp.resume'); setTimeout(() => b.click(), 800); } } catch (e) { /* ignore */ }
 }

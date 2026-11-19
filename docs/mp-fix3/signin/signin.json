@@ -1,0 +1,51 @@
+[
+ {
+  "n": "guest: shows Guest + Sign in with Google, no Keem button",
+  "ok": true,
+  "d": {
+   "acct": "Guest | Sign in with Google",
+   "keem": false
+  }
+ },
+ {
+  "n": "signed in (player): name + Sign out, NO Keem",
+  "ok": true,
+  "d": {
+   "acct": "● Someone | Sign out",
+   "keem": false
+  }
+ },
+ {
+  "n": "signed in (admin lillykemoy1@gmail.com): admin tag + Play as Keem",
+  "ok": true,
+  "d": {
+   "acct": "● Keem · admin | Sign out",
+   "keem": true
+  }
+ },
+ {
+  "n": "sign out: back to guest, Keem hidden",
+  "ok": true,
+  "d": {
+   "acct": "Guest | Sign in with Google",
+   "keem": false
+  }
+ },
+ {
+  "n": "Play as Keem enters the town as story Keem, voice not blocked",
+  "ok": true,
+  "d": {
+   "isKeem": true,
+   "noKeem": false
+  }
+ },
+ {
+  "n": "click -> Supabase Google authorize with redirect_to = this page",
+  "ok": true,
+  "d": {
+   "host": "wwdwbnhswynjcxeerdgz.supabase.co",
+   "provider": "google",
+   "redirect_to": "http://127.0.0.1:5340/"
+  }
+ }
+]

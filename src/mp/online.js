@@ -37,10 +37,11 @@ export async function goOnline(room = 'town') {
 }
 
 // ---- accounts ----
-export async function getUser() { try { const c = await sb(); const { data } = await c.auth.getSession(); return data.session ? data.session.user : null; } catch (e) { return null; } }
-export async function signInGoogle() { const c = await sb(); const redirectTo = location.origin + location.pathname; const { error } = await c.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } }); if (error) throw error; }
-export async function signOut() { const c = await sb(); await c.auth.signOut(); }
+const FAKE = () => (typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) ? window.__MP_FAKE_AUTH : null; // dev/test hook (localhost only)
+export async function getUser() { const f = FAKE(); if (f) return f.email ? { email: f.email, user_metadata: { name: f.name } } : null; try { const c = await sb(); const { data } = await c.auth.getSession(); return data.session ? data.session.user : null; } catch (e) { return null; } }
+export async function signInGoogle() { const c = await sb(); const redirectTo = location.href.split('#')[0].split('?')[0]; try { sessionStorage.setItem('atq.mp.resume', '1'); } catch (e) { /* ignore */ } const { error } = await c.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } }); if (error) throw error; }
+export async function signOut() { const f = FAKE(); if (f) { window.__MP_FAKE_AUTH = {}; return; } const c = await sb(); await c.auth.signOut(); }
 /** 'admin' | 'player' | null (signed out / unreachable). Reads the caller's own row (RLS: own role read). */
-export async function getRole() { try { const c = await sb(); const u = await getUser(); if (!u) return null; const { data, error } = await c.schema('public').rpc('mp_my_role'); if (error) return null; return data; } catch (e) { return null; } }
+export async function getRole() { const f = FAKE(); if (f) return f.email ? (f.role || 'player') : null; try { const c = await sb(); const u = await getUser(); if (!u) return null; const { data, error } = await c.schema('public').rpc('mp_my_role'); if (error) return null; return data; } catch (e) { return null; } }
 /** Is the Google provider switched on in the Supabase dashboard? (button stays hidden until Keem finishes the OAuth setup) */
 export async function googleEnabled() { try { const r = await withTimeout(fetch(SB_URL + '/auth/v1/settings', { headers: { apikey: SB_KEY } }), 4000, 'settings'); const j = await r.json(); return !!(j.external && j.external.google); } catch (e) { return false; } }

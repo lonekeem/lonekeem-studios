@@ -6,7 +6,7 @@ import { animate } from './anim.js';
 import * as C from './catalog.js';
 import * as K from './look.js';
 import { MORPHS } from './morph.js';
-import { getRole } from './online.js';
+import { getRole, getUser, signInGoogle, signOut } from './online.js';
 
 const CSS = `
 #mpc{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:radial-gradient(120% 90% at 50% 30%,#3b4252 0%,#1c2029 70%);color:#eef0f4;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;touch-action:none;user-select:none}
@@ -14,7 +14,7 @@ const CSS = `
 #mpc .hd b{flex:1;font-size:15px;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#mpc button{font:inherit;color:inherit;background:#2a303c;border:1px solid #3a4352;border-radius:8px;padding:7px 10px;font-size:13px;cursor:pointer}
 #mpc button:active{background:#3b4558}#mpc button.on{background:#d98a2b;border-color:#f0a947;color:#1a1208}#mpc button.pri{background:#2f8f5b;border-color:#49b97c}
 #mpc .stage{min-width:0;position:relative;flex:1 1 44%;min-height:150px}#mpc canvas{width:100%;height:100%;display:block}
-#mpc .cam{position:absolute;left:8px;bottom:8px;display:flex;flex-direction:row;flex-wrap:wrap;gap:5px;max-width:92%}#mpc .cam button{padding:5px 8px;font-size:12px;background:#12151bcc}
+#mpc .acct{position:absolute;left:8px;top:46px;z-index:3;display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:92%;font-size:12px;background:#12151bcc;border-radius:8px;padding:4px 6px}#mpc .acct button{padding:5px 8px;font-size:12px}#mpc .acct .gsi{background:#fff;color:#222;border-color:#fff;font-weight:600}#mpc .cam{position:absolute;left:8px;bottom:8px;display:flex;flex-direction:row;flex-wrap:wrap;gap:5px;max-width:92%}#mpc .cam button{padding:5px 8px;font-size:12px;background:#12151bcc}
 #mpc .nm{position:absolute;left:8px;top:8px}#mpc .nm input{background:#12151bcc;border:1px solid #3a4352;color:#fff;border-radius:8px;padding:6px 8px;width:140px;font-size:13px}
 #mpc .pn{min-width:0;overflow:hidden;flex:1 1 56%;display:flex;flex-direction:column;background:#161a22;border-top:1px solid #2c3441;min-height:0}
 #mpc .tabs{display:flex;flex-wrap:nowrap;margin:0;gap:4px;overflow-x:auto;padding:6px;scrollbar-width:none;flex:none}#mpc .tabs::-webkit-scrollbar{display:none}#mpc .tabs button{white-space:nowrap;flex:none;padding:6px 10px}
@@ -52,7 +52,7 @@ export async function openCreator({ onClose, onPlay } = {}) {
   // ---- interaction
   // full 360° drag/swipe spin (no clamp, with a little inertia), two-finger pinch to zoom, double-tap = face close-up / back to full body
   const ptr = new Map(); let pinch0 = 0, spinV = 0, lastTap = 0, moved = 0;
-  stage.addEventListener('pointerdown', e => { ptr.set(e.pointerId, [e.clientX, e.clientY]); hold.down = ptr.size === 1; hold.x = e.clientX; spinV = 0; moved = 0; try { stage.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ } if (ptr.size === 2) { const [a, b] = [...ptr.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
+  stage.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('.acct,.cam')) return; ptr.set(e.pointerId, [e.clientX, e.clientY]); hold.down = ptr.size === 1; hold.x = e.clientX; spinV = 0; moved = 0; try { stage.setPointerCapture(e.pointerId); } catch (x) { /* ignore */ } if (ptr.size === 2) { const [a, b] = [...ptr.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
   stage.addEventListener('pointermove', e => { if (!ptr.has(e.pointerId)) return; ptr.set(e.pointerId, [e.clientX, e.clientY]);
     if (ptr.size === 2) { const [a, b] = [...ptr.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); if (pinch0 > 0) targetD = Math.min(7, Math.max(.8, targetD * (pinch0 / d))); pinch0 = d; return; }
     if (hold.down) { const dx = e.clientX - hold.x; spin += dx * .012; spinV = dx * .012 / Math.max(.008, 1 / 60); moved += Math.abs(dx); hold.x = e.clientX; } });
@@ -138,9 +138,14 @@ export async function openCreator({ onClose, onPlay } = {}) {
     el('button', { on: { click: () => { push(); look = K.randomLook(look.base.startsWith('mp_f') === (Math.random() < .5) ? look.base : undefined); rebuild(look.base).then(() => { renderBody(); nameIn.value = look.name; }); } } }, '🎲'), el('button', { on: { click: () => { const u = undo.pop(); if (u) { look = u; rebuild(look.base).then(() => renderBody()); } } } }, '↶'),
     el('button', { on: { click: () => { push(); look = K.defaultLook(look.base); rebuild(look.base).then(() => { renderBody(); nameIn.value = look.name; }); } } }, 'Reset'), el('button', { cls: 'pri', on: { click: () => { K.saveLook(look); close(true); } } }, 'Save & enter'));
   stage.append(el('div', { cls: 'cam' }, ['full', 'upper', 'head', 'hands', 'feet'].map(v => el('button', { on: { click: () => setView(v) } }, v[0].toUpperCase() + v.slice(1))), el('button', { on: { click: e => { animMode.v = animMode.v === 'walk' ? 'idle' : 'walk'; e.target.classList.toggle('on'); } } }, 'Walk')));
-  // admin only (Google sign-in, role from the server): play as the original story Keem (his voice, look and animations)
-  { const kb = el('button', { cls: 'pri', style: 'display:none;background:#b8741c;border-color:#e0a050', on: { click: () => { K.saveLook(look); look = Object.assign({}, clone(look), { exclusive: 'skin.keem_story', name: 'Keem' }); close(true); } } }, 'Play as Keem'); hd.append(kb);
-    const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname); getRole().then(r => { if (r === 'admin' || (local && window.__MP_FORCE_ADMIN)) kb.style.display = ''; }).catch(() => {}); window.__mpKeemBtn = kb; }
+  // account (Google sign-in; guests can still play) + admin-only 'Play as Keem' (his story voice, look and animations), shown only for the admin role
+  const kb = el('button', { cls: 'pri', style: 'display:none;background:#b8741c;border-color:#e0a050', on: { click: () => { K.saveLook(look); look = Object.assign({}, clone(look), { exclusive: 'skin.keem_story', name: 'Keem' }); close(true); } } }, 'Play as Keem'); hd.append(kb); window.__mpKeemBtn = kb;
+  const acct = el('div', { cls: 'acct' }); stage.append(acct); window.__mpAcct = acct;
+  const refreshAcct = async () => { const u = await getUser().catch(() => null); const r = u ? await getRole().catch(() => null) : null; const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+    kb.style.display = (r === 'admin' || (local && window.__MP_FORCE_ADMIN)) ? '' : 'none'; acct.innerHTML = '';
+    if (u) acct.append(el('span', {}, '● ' + ((u.user_metadata && u.user_metadata.name) || u.email || 'Signed in') + (r === 'admin' ? ' · admin' : '')), el('button', { on: { click: async () => { await signOut().catch(() => {}); refreshAcct(); } } }, 'Sign out'));
+    else acct.append(el('span', {}, 'Guest'), el('button', { cls: 'gsi', on: { click: async e => { e.target.disabled = true; e.target.textContent = 'Opening Google…'; try { await signInGoogle(); } catch (err) { e.target.disabled = false; e.target.textContent = 'Sign in with Google'; acct.append(el('span', { style: 'color:#f88' }, 'Sign-in unavailable: ' + (err.message || err))); } } } }, 'Sign in with Google')); };
+  window.__mpRefreshAcct = refreshAcct; refreshAcct();
   function close(play) { running = false; renderer.dispose(); av && av.dispose(); root.remove(); (play === true ? onPlay : onClose)?.(look); }
   renderTabs(); await rebuild(look.base); renderBody(); setView('full'); requestAnimationFrame(frame);
   return { get look() { return look; }, root, close, setLook: l => { look = K.normalize(l); return rebuild(look.base).then(() => renderBody()); }, setTab: i => { tab = i; renderTabs(); renderBody(); setView(viewFor(TABS[i][0])); }, tabs: TABS.map(t => t[0]), av: () => av, setView, spinTo: a => { spin = a; } };
