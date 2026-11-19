@@ -5,3 +5,4 @@ Docs/SQL carried over from the polish branch (docs + draft SQL only): Google sig
 Scope: one small town (~Kemy Pal Street size): 3 streets, ~10 enterable houses with hinged doors, store + gas station, KL cars (fuel gauge, break-in, loot), lootable gas/wood/supplies, endless zombies from the edges (no pop-in), persistent bodies. 844x390 landscape. No Supabase, no spend, no merge/deploy.
 ## Steps
 - [x] rebased onto 5fabe98, admin docs + SQL cherry-picked
+- [x] step 1: kit.js (grimy textures), loot.js (items/tables/bag), building.js (enterable houses/store/kiosk/shed with hinged doors, furniture, containers), map.js (colliders, nav, grid roads, 25 lots = 7 enterable + 18 instanced closed w/ LOD, gas canopy, forest). Proof: docs/mp-town-proof/step1_map_top.png
