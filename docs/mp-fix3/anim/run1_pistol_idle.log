@@ -1,0 +1,10 @@
+FAIL idle: own anim playing, arms down (not A-pose) {"anim":"Pistol_Idle_Loop","os":false,"lf":[0.156,0.095,0.068],"rf":[-0.118,0.092,-0.241],"armR":89,"armL":79,"names":["LeftFoot","RightFoot","RightArm","RightHand","LeftArm"]}
+FAIL idle: remote anim playing, arms down {"anim":"Pistol_Idle_Loop","os":false,"lf":[0.156,0.095,0.068],"rf":[-0.118,0.092,-0.241],"armR":89,"armL":81,"names":["LeftFoot","RightFoot","RightArm","RightHand","LeftArm"]}
+PASS touch stick (half): own plays locomotion, feet move {"anim":["Walk_Loop"],"spd":[1.35,1.35,1.35],"footZsd":0.181,"footYsd":0.059,"armR":12}
+FAIL touch stick (half): remote sees locomotion, feet move {"anim":["__loco"],"footZsd":0.182,"footYsd":0.057,"armR":11}
+PASS touch stick (full): own runs, speed > walk, feet move faster {"anim":["Jog_Fwd_Loop"],"spd":[3.1,3.1,3.1],"footZsd":0.337,"footYsd":0.101}
+PASS touch stick (full): remote sees run {"anim":["__loco"],"footZsd":0.287,"footYsd":0.072}
+PASS after release: own idle + remote idle {"A":"Pistol_Idle_Loop","B":"Pistol_Idle_Loop"}
+PASS zombie hit: own flinch anim (Hit_Chest) plays {"hp":78,"seen":["Pistol_Idle_Loop","Hit_Chest"]}
+PASS zombie hit: remote player sees the flinch {"seen":["Pistol_Idle_Loop","Hit_Chest"]}
+PASS after the hit: locomotion resumes (touch stick) {"anim":["Jog_Fwd_Loop"]}

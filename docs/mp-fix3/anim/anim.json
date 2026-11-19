@@ -1,0 +1,152 @@
+{
+ "log": [
+  {
+   "n": "idle: own anim playing, arms down (not A-pose)",
+   "ok": true,
+   "d": {
+    "anim": "Idle_Loop",
+    "os": false,
+    "lf": [
+     0.156,
+     0.095,
+     0.069
+    ],
+    "rf": [
+     -0.119,
+     0.092,
+     -0.241
+    ],
+    "armR": 15,
+    "armL": 17,
+    "names": [
+     "LeftFoot",
+     "RightFoot",
+     "RightArm",
+     "RightHand",
+     "LeftArm"
+    ]
+   }
+  },
+  {
+   "n": "idle: remote anim playing, arms down",
+   "ok": true,
+   "d": {
+    "anim": "Idle_Loop",
+    "os": false,
+    "lf": [
+     0.156,
+     0.095,
+     0.069
+    ],
+    "rf": [
+     -0.119,
+     0.092,
+     -0.241
+    ],
+    "armR": 15,
+    "armL": 17,
+    "names": [
+     "LeftFoot",
+     "RightFoot",
+     "RightArm",
+     "RightHand",
+     "LeftArm"
+    ]
+   }
+  },
+  {
+   "n": "touch stick (half): own plays locomotion, feet move",
+   "ok": true,
+   "d": {
+    "anim": [
+     "Walk_Loop"
+    ],
+    "spd": [
+     1.35,
+     1.35,
+     1.35
+    ],
+    "footZsd": 0.181,
+    "footYsd": 0.059,
+    "armR": 12
+   }
+  },
+  {
+   "n": "touch stick (half): remote sees locomotion, feet move",
+   "ok": true,
+   "d": {
+    "anim": [
+     "__loco"
+    ],
+    "footZsd": 0.182,
+    "footYsd": 0.057,
+    "armR": 11
+   }
+  },
+  {
+   "n": "touch stick (full): own runs, speed > walk, feet move faster",
+   "ok": true,
+   "d": {
+    "anim": [
+     "Jog_Fwd_Loop"
+    ],
+    "spd": [
+     3.1,
+     3.1,
+     3.1
+    ],
+    "footZsd": 0.337,
+    "footYsd": 0.101
+   }
+  },
+  {
+   "n": "touch stick (full): remote sees run",
+   "ok": true,
+   "d": {
+    "anim": [
+     "__loco"
+    ],
+    "footZsd": 0.287,
+    "footYsd": 0.072
+   }
+  },
+  {
+   "n": "after release: own idle + remote idle",
+   "ok": true,
+   "d": {
+    "A": "Idle_Loop",
+    "B": "Idle_Loop"
+   }
+  },
+  {
+   "n": "zombie hit: own flinch anim (Hit_Chest) plays",
+   "ok": true,
+   "d": {
+    "hp": 78,
+    "seen": [
+     "Idle_Loop",
+     "Hit_Chest"
+    ]
+   }
+  },
+  {
+   "n": "zombie hit: remote player sees the flinch",
+   "ok": true,
+   "d": {
+    "seen": [
+     "Idle_Loop",
+     "Hit_Chest"
+    ]
+   }
+  },
+  {
+   "n": "after the hit: locomotion resumes (touch stick)",
+   "ok": true,
+   "d": {
+    "anim": [
+     "Jog_Fwd_Loop"
+    ]
+   }
+  }
+ ]
+}
