@@ -60,7 +60,7 @@ export class Game {
     const sc = moon.shadow.camera; sc.left = sc.bottom = -26; sc.right = sc.top = 26; sc.near = 1; sc.far = 140; moon.shadow.bias = -0.0005; moon.shadow.normalBias = 0.03; scene.add(moon, moon.target);
     const CK = ['sedan', 'suv', 'truck', 'police', 'van', 'taxi', 'hatchback-sports', 'suv-luxury', 'ambulance', 'debris-tire', 'debris-door', 'debris-bumper']; const CM = {};
     await Promise.all(CK.map(k => new GLTFLoader().loadAsync(base + 'models/cars/' + k + '.glb').then(g => { CM[k] = g.scene; }).catch(() => { })));
-    this.world = buildWorld(scene, Q, tl, base, CM);
+    this.world = buildWorld(scene, Q, tl, base, CM); if (this.world.env && !/[?&]sky=0/.test(location.search)) { scene.background = null; scene.fog.color.copy(this.world.env.fogColor); } // v2.1 procedural sky dome + matching fog
     this.lib = new CharLib(gltf); this.lib.rigs = await loadRigs(base);
     await new Promise(res => { if (mgr.itemsLoaded >= mgr.itemsTotal) res(); else { mgr.onLoad = res; setTimeout(res, 15000); } });
     // drive buttons (touch / mouse)
@@ -69,7 +69,7 @@ export class Game {
     // player
     this.pack = backpack(); this.hand = new THREE.Group(); this.makePlayer();
     // flashlight
-    const fl = this.flash = new THREE.SpotLight('#fff4dc', 28, 26, 0.42, 0.5, 1.6); fl.castShadow = Q.shadows && Q.name === 'high'; fl.shadow.mapSize.set(512, 512); scene.add(fl, fl.target);
+    const fl = this.flash = new THREE.SpotLight('#fff4dc', 17, 26, 0.42, 0.5, 1.6); fl.castShadow = Q.shadows && Q.name === 'high'; fl.shadow.mapSize.set(512, 512); scene.add(fl, fl.target);
     // FP viewmodel
     this.vm = new THREE.Group(); cam.add(this.vm); this.vm.position.set(0.22, -0.2, -0.45);
     this.weaponMeshes = {}; WEAPON_ORDER.forEach(id => { const m = weaponMesh(id); this.weaponMeshes[id] = m; });
@@ -199,7 +199,7 @@ export class Game {
     v.pool = this.decal(x, z, 0.9); this.decal(x + .6, z - .4, 0.8); v.struggle = 1; v.jolt = 0; v.screamT = rnd(.5, 2); v.isVictim = true;
     for (let i = 0; i < eaters; i++) { const a = i / eaters * 6.28 + rnd(-.3, .3); const zz = this.spawnZ(x + Math.cos(a) * 0.95, z + Math.sin(a) * 0.95, { eat: v }); zz.eatOff = i; zz.root.rotation.y = Math.atan2(x - zz.root.position.x, z - zz.root.position.z); }
     return v; }
-  spawnZ(x, z, o = {}) { const zl = Object.assign((o.raider ? raiderLook : randomLook)((ZSEED++ * 7919 + (Math.random() * 1e5 | 0)) | 0, !o.raider), o.raider ? { grime: .6, blood: .1 } : { grime: 1, blood: this.settings.gore ? rnd(.5, 1) : 0.15 }); if (Math.random() < .3) zl.hair = 'balding'; if (o.boss) { zl.hair = 'bald'; zl.beard = 'full'; zl.build = 1.3; }
+  spawnZ(x, z, o = {}) { const zl = Object.assign((o.raider ? raiderLook : randomLook)((ZSEED++ * 7919 + (Math.random() * 1e5 | 0)) | 0, !o.raider), o.raider ? { grime: .6, blood: .1 } : { grime: 1, blood: this.settings.gore ? rnd(.5, 1) : 0.15 }); if (o.rig !== undefined) zl.rig = o.rig; if (Math.random() < .3) zl.hair = 'balding'; if (o.boss) { zl.hair = 'bald'; zl.beard = 'full'; zl.build = 1.3; }
     const sc = (o.scale || rnd(.9, 1.1)); const c = new Char(this.lib, zl, sc); c.id = Math.random() * 10; c.root.position.set(x, 0, z); c.root.rotation.y = rnd(0, 6); this.scene.add(c.root);
     const runner = o.runner ?? Math.random() < (this.stepData.runners || 0.15);
     Object.assign(c, { z: true, hp: o.hp || (runner ? 50 : 70), maxHp: o.hp || (runner ? 50 : 70), runner, speed: runner ? rnd(3.6, 4.4) : rnd(1.1, 1.6), st: o.eat ? 'eat' : (o.idle ? 'idle' : 'chase'), eat: o.eat, cd: rnd(0, 1), stun: 0, dead: false, boss: !!o.boss, aggro: o.aggro ?? 30, vel: V3() });

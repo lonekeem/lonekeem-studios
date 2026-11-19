@@ -56,7 +56,7 @@ export const EXTRA = {}; // non-character models (Biscuit the rabbit)
 // character lighting: characters sit in the scene's own lighting; only a faint lift/rim keeps silhouettes readable in the dark (?lift= / ?rim= for tuning)
 const _qp = (k, d) => { try { const v = new URLSearchParams(location.search).get(k); return v == null ? d : +v; } catch (e) { return d; } };
 const LIGHT = { lift: _qp('lift', 0.05), rim: _qp('rim', 0.1) };
-export async function loadRigs(base, keys = ['keem', 'nia', 'dad', 'raider', 'zombie2', 'walt', 'ruth', 'dube', 'gus', 'reyes', 'tuck', 'vance', 'genm', 'genf']) {
+export async function loadRigs(base, keys = ['keem', 'nia', 'dad', 'raider', 'zombie2', 'walt', 'ruth', 'dube', 'gus', 'reyes', 'tuck', 'vance', 'genm', 'genf', 'zombie_male', 'zombie_office', 'zombie_elder', 'zombie_big', 'zombie_cop', 'zombie_worker']) {
   const out = {}; const L = new GLTFLoader(); L.loadAsync(base + 'models/chars/biscuit.glb').then(g => { EXTRA.biscuit = g.scene; }).catch(() => { });
   await Promise.all(keys.map(k => L.loadAsync(base + 'models/chars/' + k + '.glb').then(g => { out[k] = g.scene; }).catch(() => { })));
   return out;
@@ -69,8 +69,8 @@ export function attachRig(ch, scene, opt = {}) {
   obj.traverse(o => { if (o.isSkinnedMesh && !skin) skin = o; if (o.isBone) B[o.name] = o; });
   if (!skin) return null;
   skin.frustumCulled = false; skin.castShadow = true; skin.receiveShadow = false;
-  const mat = skin.material; if (mat) { mat.side = THREE.FrontSide; mat.roughness = .62; mat.metalness = 0; if (mat.map) { mat.map.anisotropy = 8; mat.map.minFilter = THREE.LinearMipmapLinearFilter; mat.map.needsUpdate = true; } mat.needsUpdate = true; }
-  if (opt.tint && mat) { skin.material = mat.clone(); const t = opt.tint; { const a = opt.tintK || .5, b = 1 - a / 2; skin.material.color.setRGB(b + t[0] * a * .98, b + t[1] * a * .98, b + t[2] * a * .98); } } // per-body variety for crowds (shares geometry + texture)
+  const mat = skin.material; if (mat) { mat.side = THREE.FrontSide; mat.roughness = opt.rough || .62; mat.metalness = 0; if (mat.map) { mat.map.anisotropy = 8; mat.map.minFilter = THREE.LinearMipmapLinearFilter; mat.map.needsUpdate = true; } mat.needsUpdate = true; }
+  if (opt.tint && mat) { skin.material = mat.clone(); const t = opt.tint; { const a = opt.tintK || .5, b = 1 - a / 2; skin.material.color.setRGB(b + t[0] * a * .98, b + t[1] * a * .98, b + t[2] * a * .98); if (opt.tintMul) skin.material.color.multiplyScalar(opt.tintMul); } } // per-body variety for crowds (shares geometry + texture)
   { // brighter, crisper character read: gentle self-lit lift (keeps the texture) + soft cool rim so figures separate from the dark street
     const m2 = skin.material; const lift = LIGHT.lift * (opt.tint ? .5 : 1); if (m2.map) { m2.emissiveMap = m2.map; m2.emissive = new THREE.Color('#ffffff'); m2.emissiveIntensity = lift; }
     m2.onBeforeCompile = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n { float rimF = pow(1.0 - clamp(abs(dot(normalize(normal), normalize(vViewPosition))), 0.0, 1.0), 2.6); totalEmissiveRadiance += vec3(0.55, 0.68, 0.95) * rimF * ' + (LIGHT.rim * (opt.tint ? .7 : 1)).toFixed(3) + '; }'); };

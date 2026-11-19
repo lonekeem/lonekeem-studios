@@ -50,6 +50,10 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.12
+- Environment: GPU grass/weed/fern field (never on roads, water or tunnels), ground splat shader with CC0 Poly Haven textures, cracked road overlays, pine/deciduous/dead trees and bushes, new sky and fog, window/grime detail on houses, rust/dirt on cars, more varied debris props and per-car tint/scale/rotation. Low preset uses fewer, larger instance chunks and fewer prop types.
+- Zombies: six new rigged cartoon zombies (male, office, elder, big, cop, worker) mixed with the original cartoon zombie and the old v1.9.7 procedural look (~28%). Townspeople/victims keep ~35% of the old procedural look. Elder zombie darkened and flashlight softened so nearby zombies no longer glow.
+
 ### v1.9.11
 - Camera look: the hidden dialogue box was an invisible ~700px-wide touch blocker at the bottom centre/right, and the dialogue box and the Run/Crouch wrapper swallowed look drags. They no longer block; every empty screen point outside the left stick now turns the camera, and a stuck look finger (touchend lost when an element disappeared) can no longer leave the camera dead.
 - Melee: weapon reach is now the weapon's visible reach (about 1.2-1.6 m, was 1.6-2.7 m), narrower arc, soft-lock only on zombies in reach, and the hit lands when the swing reaches full extension (was late). Zombies now close in to ~1 m before attacking so fights happen at arm's length.
