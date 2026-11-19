@@ -7,14 +7,15 @@ import { animate } from '../anim.js';
 import { Net } from '../net.js';
 import { buildTown, BOUNDS, CAR_SPAWNS, BODIES, SPAWN, CFG, SPECIAL } from './map.js';
 import { ITEMS, rollTable, Bag, DOOR_PRICE } from './loot.js';
-import { Car, loadCarModels, CAP } from './cars.js';
+import { Car, loadCarModels, createCars, CAP } from './cars.js';
+import { addGas, pumpNear, refuelCar, fillCan, PRICE } from './gas.js';
+import { addLoot, updateLoot } from './loot.js';
+import { createZombies, loadZombieModels } from './zombies.js';
 import { mulberry, angDiff, clamp } from './kit.js';
 import { hash } from './building.js';
 import { CSS, el, drawGauge } from './ui.js';
 
 function nameTag(text) { const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#000a'; g.roundRect ? g.roundRect(8, 10, 240, 44, 14) : g.rect(8, 10, 240, 44); g.fill(); g.fillStyle = '#fff'; g.font = '600 28px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text.slice(0, 16), 128, 33); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true })); s.scale.set(.5, .125, 1); s.renderOrder = 20; return s; }
-const MODS = import.meta.glob(['./gas.js', './zombies.js']); // optional props modules (owned by the props helper)
-const tryImport = async (p) => { try { return MODS[p] ? await MODS[p]() : null; } catch (e) { console.warn('town module', p, e); return null; } };
 
 export async function enterTown({ look, onExit } = {}) {
   if (!document.getElementById('mpt-css')) document.head.append(el('style', { id: 'mpt-css' }, CSS));
@@ -35,17 +36,16 @@ export async function enterTown({ look, onExit } = {}) {
   scene.add(new THREE.HemisphereLight('#dfe8f0', '#59614a', 1.25)); const sun = new THREE.DirectionalLight('#ffeccc', 2.1); sun.position.set(36, 60, 28); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = sc.bottom = -34; sc.right = sc.top = 34; sc.near = 5; sc.far = 160; sun.shadow.bias = -.0006; sun.shadow.normalBias = .04; scene.add(sun, sun.target);
   const cam = new THREE.PerspectiveCamera(58, 1, .1, 320);
   // ---- world ----
-  const gasMod = await tryImport('./gas.js'); const hooks = []; if (gasMod && gasMod.addGas) hooks.push(gasMod.addGas);
-  const W = buildTown(scene, { hooks }); const col = W.col; const bag = new Bag(26); bag.add('cash', 60); bag.add('water', 1);
+  const W = buildTown(scene, { hooks: [addGas] }); addLoot(W); const col = W.col; const bag = new Bag(26); bag.add('cash', 60); bag.add('water', 1);
   const net = new Net('town'); net.me = { name: look.name || 'Survivor', look }; net.hello();
-  const models = await loadCarModels(); const cars = []; for (const s of CAR_SPAWNS) { const c = new Car(s, models); scene.add(c.g); cars.push(c); W.containers.push(c.cabin, c.trunk); }
+  const models = await loadCarModels(); const carMgr = createCars({ scene, W, models }); const cars = carMgr.cars; for (const c of cars) W.containers.push(c.cabin, c.trunk);
   const carBy = id => cars.find(c => c.id === id);
   const me = { av: null, x: SPAWN.x, z: SPAWN.z, ry: SPAWN.ry, sp: 0, drv: null, hp: 100, swing: 0, dead: 0, hitCd: 0 }; const remotes = new Map();
   const mkAvatar = async lk => { const tpl = await loadBase(lk.base); const av = new Avatar(tpl); dress(av, lk); return av; };
   me.av = await mkAvatar(look); scene.add(me.av.root); const myTag = nameTag(net.me.name); scene.add(myTag);
   // ---- bodies (persistent corpses, drawn by the zombies module if present) ----
-  const zm = await tryImport('./zombies.js'); let Z = null;
-  if (zm && zm.createZombies) Z = await zm.createZombies({ scene, W, camera: cam, models, bodies: BODIES, fogFar: FOG_FAR, getPlayers: () => [{ x: me.x, z: me.z, ry: me.ry, drv: !!me.drv, id: 'me' }, ...[...remotes.values()].map(r => ({ x: r.x, z: r.z, id: r.id, drv: false }))], onHitPlayer: (dmg, from) => hurt(dmg, from), onNoise: null });
+  let Z = null; { const zmodels = await loadZombieModels(); Z = createZombies({ scene, W, camera: cam, models: zmodels, getPlayers: () => [{ x: me.x, z: me.z, ry: me.ry, drv: !!me.drv, id: 'me' }, ...[...remotes.values()].filter(r => r.av).map(r => ({ x: r.x, z: r.z, id: r.id, drv: false }))], onHitPlayer: (dmg) => hurt(dmg) }); }
+  for (const b of BODIES) { const z = Z.spawnAt(b.x, b.z, {}); Z.killNear(b.x, b.z, .5, 9999); z.root.rotation.y = b.ry; z.mixer.update(5); z.deadT = 99; if (z.pool) z.pool.scale.setScalar(1.3); } // persistent corpses from the start
   // ---- toasts / hurt ----
   let toastT = 0; const toast = (m, s = 1.8) => { toastEl.textContent = m; toastEl.style.opacity = 1; toastT = s; };
   const hurt = (dmg) => { if (me.dead) return; me.hp = Math.max(0, me.hp - dmg); vig.style.opacity = 1; setTimeout(() => vig.style.opacity = 0, 180); if (me.hp <= 0) die(); };
@@ -60,7 +60,7 @@ export async function enterTown({ look, onExit } = {}) {
   const lootOf = c => { if (!c.items) { const r = mulberry(hash(c.id)); c.items = rollTable(c.table, r); } return c.items; };
   const setLooted = (c, left, fromNet) => { if (left) c.items = left; c.looted = true; if (c.lid) c.opening = 1; if (!fromNet) net.evt({ t: 'loot', id: c.id, left: c.items }); };
   // ---- noise / alerting zombies ----
-  const noise = (x, z, r) => { Z && Z.noise && Z.noise(x, z, r); };
+  const noise = (x, z, r) => { Z && Z.noise && Z.noise(x, z, r); }; // (zombies.js has no noise hook yet)
   // ---- cars ----
   const enterCar = car => { if (me.dead) return; car.driver = 'me'; me.drv = car; car.net = null; if (car.fuel > 0) { car.engine = true; car.stalled = false; toast('Engine started'); } else toast('Out of fuel!', 2.4); car.lastSend = 0; };
   const exitCar = (silent) => { const c = me.drv; if (!c) return; c.driver = null; c.engine = false; me.drv = null; const s = Math.sin(c.ry), cc = Math.cos(c.ry); const sides = [[cc, -s], [-cc, s]]; for (const [dx, dz] of sides) { const nx = c.x + dx * 2.3, nz = c.z + dz * 2.3; if (!col.hit(nx, nz, .4)) { me.x = nx; me.z = nz; break; } } net.car(Object.assign(c.netState(), { engine: 0, off: 1 })); };
@@ -82,9 +82,9 @@ export async function enterTown({ look, onExit } = {}) {
   const openLoot = c => { panelKind = 'loot'; panelCtx = c; lootOf(c); panel.style.display = 'flex'; renderPanel(); c.opening = 1; };
   bag.onChange = () => { if (panelKind) renderPanel(); };
   // ---- interactions ----
-  const hold = { act: null, t: 0 };
+  const hold = { act: null, t: 0 }; let payDebt = 0; const nearestCar = r => { let b = null, bd = r; for (const c of cars) { const d = Math.hypot(c.x - me.x, c.z - me.z); if (d < bd) { bd = d; b = c; } } return b; };
   function gather() { const L = []; const px = me.x, pz = me.z;
-    if (me.drv) { L.push({ label: 'Exit car', pri: 0, run: () => exitCar() }); return L; }
+    if (me.drv) { L.push({ label: 'Exit car', pri: 0, d: 0, run: () => exitCar() }); { const car = me.drv, pump = pumpNear(W, px, pz, 3.6); if (pump && car.fuel < CAP - .5 && Math.abs(car.v) < .8 && bag.count('cash')) L.push({ label: `Fuel up ($${PRICE.toFixed(2)}/L)`, d: 1, alt: 1, dur: 1.6, run: () => { const n = refuelCar(pump, car, 1.6, { pay: cost => { payDebt += cost; while (payDebt >= 1) { if (!bag.remove('cash', 1)) { payDebt = 0; toast('Out of cash'); return false; } payDebt -= 1; } return true; } }); toast(n > 0 ? `+${n.toFixed(0)} L fuel` : 'Cannot fuel'); } }); } return L; }
     for (const D of W.doors) { if (!D.installed) continue; const d = Math.hypot(D.x - px, D.z - pz); if (d > 1.9) continue; if (D.state === 'closed') L.push({ label: 'Open door', d, run: () => setDoor(D, 'open') }); else if (D.state === 'open') L.push({ label: 'Close door', d, run: () => { if (occupiedAt(D.x, D.z, .8)) toast('Something is in the way'); else setDoor(D, 'close'); } }); else if (D.state === 'locked') L.push({ label: bag.hasPry() ? 'Pry door open' : 'Kick door open', d, dur: bag.hasPry() ? 1.1 : 2.4, run: () => { setDoor(D, 'break'); noise(D.x, D.z, 30); toast('Door gives way'); } }); }
     for (const c of W.containers) { if (c.looted) continue; if (c.car) { const car = c.car; const dd = Math.hypot(c.x - px, c.z - pz); if (dd > c.reach) continue; if (car.driver) continue; if (!car.broken && !(c.need === 'trunk' && bag.hasPry())) continue; L.push({ label: 'Search ' + c.label.toLowerCase(), d: dd + (c.need === 'trunk' ? .3 : 0) + .4, dur: .9, run: () => openLoot(c) }); continue; }
       const d = Math.hypot(c.x - px, c.z - pz); if (d > c.reach) continue; L.push({ label: 'Search ' + c.label.toLowerCase(), d, dur: .8, run: () => openLoot(c) }); }
@@ -93,7 +93,9 @@ export async function enterTown({ look, onExit } = {}) {
       else L.push({ label: car.fuel > 0 ? 'Enter ' + car.kind + ' (KL)' : 'Enter car (no fuel)', d: d - .8, run: () => enterCar(car) });
       if (car.broken && bag.count('gascan') && car.fuel < CAP - 4.5) L.push({ label: 'Pour gas can in tank', d: d + .1, alt: 1, dur: 1.5, run: () => { bag.remove('gascan'); bag.add('emptycan'); car.fuel = Math.min(CAP, car.fuel + 5); toast('+5 L fuel'); } });
       if (bag.count('emptycan') && car.fuel >= 5) L.push({ label: 'Siphon gas (' + Math.floor(car.fuel) + ' L left)', d: d + .2, alt: 1, dur: 2, run: () => { bag.remove('emptycan'); bag.add('gascan'); car.fuel -= 5; toast('Siphoned 5 L'); } }); }
-    for (const p of (W.pumps || [])) { const d = Math.hypot(p.x - px, p.z - pz); if (d < 1.6 && p.fuel >= 5 && bag.count('emptycan')) L.push({ label: 'Siphon pump (' + p.fuel + ' L)', d, alt: 1, dur: 2, run: () => { bag.remove('emptycan'); bag.add('gascan'); p.fuel -= 5; toast('Filled a gas can'); } }); }
+    { const pump = pumpNear(W, px, pz, 3.4); if (pump) { const car = nearestCar(5.5); const cashOk = bag.count('cash') > 0; const pay = cost => { payDebt += cost; while (payDebt >= 1) { if (!bag.remove('cash', 1)) { payDebt = 0; toast('Out of cash'); return false; } payDebt -= 1; } return true; };
+        if (car && car.fuel < CAP - .5 && Math.abs(car.v) < .8 && cashOk) L.push({ label: `Fuel up ${car.kind} ($${PRICE.toFixed(2)}/L)`, d: 2.5, alt: 1, dur: 1.6, run: () => { const n = refuelCar(pump, car, 1.6, { pay }); toast(n > 0 ? `+${n.toFixed(0)} L fuel` : 'Cannot fuel'); } });
+        if (bag.count('emptycan') && cashOk) L.push({ label: 'Fill gas can (5 L)', d: 2.6, alt: 1, dur: 1.4, run: () => { toast(fillCan(pump, bag, { pay }) ? 'Gas can filled' : 'Cannot fill'); } }); } }
     L.sort((a, b) => (a.d ?? 9) - (b.d ?? 9)); return L; }
   let acts = [];
   // ---- combat ----
@@ -108,7 +110,7 @@ export async function enterTown({ look, onExit } = {}) {
   const mini = miniC.getContext('2d'); const MS = 184 / 150; // minimap: 150 m window around the player
   function drawMini() { const g = mini; g.clearRect(0, 0, 184, 184); g.save(); g.beginPath(); g.arc(92, 92, 90, 0, 7); g.clip(); g.fillStyle = '#2e3a2a'; g.fillRect(0, 0, 184, 184); const X = x => 92 + (x - me.x) * MS, Z2 = z => 92 + (z - me.z) * MS; g.fillStyle = '#4a4d52'; for (const z of [-24, 24]) g.fillRect(0, Z2(z) - 4 * MS, 184, 8 * MS); for (const x of [-24, 24]) g.fillRect(X(x) - 4 * MS, 0, 8 * MS, 184);
     g.fillStyle = '#b8b0a0'; for (const b of W.buildings) g.fillRect(X(b.rect.x0), Z2(b.rect.z0), (b.rect.x1 - b.rect.x0) * MS, (b.rect.z1 - b.rect.z0) * MS); g.fillStyle = '#7d7468'; for (const l of W.lots) if (!l.enterable) g.fillRect(X(l.cx) - 4 * MS, Z2(l.cz) - 4 * MS, 8 * MS, 8 * MS);
-    g.fillStyle = '#e8c04a'; for (const c of cars) g.fillRect(X(c.x) - 2, Z2(c.z) - 2, 4, 4); if (Z && Z.list) { g.fillStyle = '#e0443a'; for (const z of Z.list()) { if (z.dead) continue; g.fillRect(X(z.x) - 1.5, Z2(z.z) - 1.5, 3, 3); } } g.fillStyle = '#6ac7ff'; for (const r of remotes.values()) g.fillRect(X(r.x) - 2.5, Z2(r.z) - 2.5, 5, 5);
+    g.fillStyle = '#e8c04a'; for (const c of cars) g.fillRect(X(c.x) - 2, Z2(c.z) - 2, 4, 4); if (Z) { g.fillStyle = '#e0443a'; for (const z of Z.zombies) { if (z.dead) continue; const p = z.root.position; g.fillRect(X(p.x) - 1.5, Z2(p.z) - 1.5, 3, 3); } } g.fillStyle = '#6ac7ff'; for (const r of remotes.values()) g.fillRect(X(r.x) - 2.5, Z2(r.z) - 2.5, 5, 5);
     g.restore(); g.fillStyle = '#fff'; g.save(); g.translate(92, 92); g.rotate(-me.ry + Math.PI); g.beginPath(); g.moveTo(0, -7); g.lineTo(5, 5); g.lineTo(-5, 5); g.fill(); g.restore(); g.strokeStyle = '#fff6'; g.lineWidth = 2; g.beginPath(); g.arc(92, 92, 90, 0, 7); g.stroke(); }
   const insideB = (x, z) => { for (const b of W.buildings) { const r = b.rect; if (x > r.x0 - .1 && x < r.x1 + .1 && z > r.z0 - .1 && z < r.z1 + .1) return b; } return null; };
   function frame(now) {
@@ -145,14 +147,14 @@ export async function enterTown({ look, onExit } = {}) {
     for (const [id, p] of net.peers) { const r = remotes.get(id); if (!r || !r.av || !p.s) continue; const s = p.s; r.x += (s.x - r.x) * Math.min(1, dt * 10); r.z += (s.z - r.z) * Math.min(1, dt * 10); r.ry += angDiff(r.ry, s.ry) * Math.min(1, dt * 10); r.sp += ((s.sp || 0) - r.sp) * Math.min(1, dt * 8); r.av.root.visible = !s.drv; r.av.root.position.set(r.x, 0, r.z); r.av.root.rotation.y = r.ry; animate(r.av, t + id.length, r.sp); r.tag.position.set(r.x, 1.95, r.z); r.tag.visible = !s.drv; }
     stAcc += dt; if (stAcc > .08) { stAcc = 0; net.state({ x: me.x, z: me.z, ry: me.ry, sp: me.sp, drv: c ? 1 : 0 }); }
     // zombies / nav
-    navAcc += dt; if (navAcc > .45) { navAcc = 0; W.nav.field(me.x, me.z); } if (Z) Z.update(dt, t);
+    navAcc += dt; if (navAcc > .45) { navAcc = 0; W.nav.field(me.x, me.z); } if (Z) { Z.update(dt, t); for (const z of Z.zombies) { const zd = Math.hypot(z.root.position.x - me.x, z.root.position.z - me.z); if (z.dead) z.root.visible = zd < 45; const sh = zd < 22; if (z._sh !== sh) { z._sh = sh; z.root.traverse(o => { if (o.isMesh) o.castShadow = sh; }); } if (!z._fc) { z._fc = 1; z.root.traverse(o => { if (o.isSkinnedMesh) { o.frustumCulled = true; o.geometry.computeBoundingSphere(); o.geometry.boundingSphere.radius *= 1.6; } }); } } } updateLoot(W, dt);
     // roofs + camera
     const inb = insideB(me.x, me.z); for (const b of W.buildings) if (b.roof) b.roof.visible = b !== inb; W.closed.update(me.x, me.z);
     const tgt = new THREE.Vector3(me.x, c ? 1.5 : 1.45, me.z); const pitch = c ? .36 : inb ? Math.max(camPitch, .85) : camPitch; const dd = c ? 8.6 : inb ? 5.2 : camDist; const yawEff = c ? me.ry : camYaw; if (c) camYaw = me.ry;
     const want = new THREE.Vector3(tgt.x - Math.sin(yawEff) * Math.cos(pitch) * dd, tgt.y + Math.sin(pitch) * dd, tgt.z - Math.cos(yawEff) * Math.cos(pitch) * dd); if (!camInit) { camPos.copy(want); camInit = true; } camPos.lerp(want, Math.min(1, dt * (c ? 5 : 9))); cam.position.copy(camPos); cam.lookAt(tgt);
     sun.position.set(me.x + 36, 60, me.z + 28); sun.target.position.set(me.x, 0, me.z); sun.target.updateMatrixWorld();
     // HUD
-    hpBar.firstChild.style.width = me.hp + '%'; info.textContent = `Players ${net.peers.size + 1} · $${bag.count('cash')} · ${bag.weight.toFixed(0)}/${bag.cap}kg` + (Z && Z.stats ? ` · zombies ${Z.stats().alive}` : '');
+    hpBar.firstChild.style.width = me.hp + '%'; info.textContent = `Players ${net.peers.size + 1} · $${bag.count('cash')} · ${bag.weight.toFixed(0)}/${bag.cap}kg` + (Z ? ` · zombies ${Z.stats.alive}` : '');
     if (c) { gaugeC.style.display = 'block'; drawGauge(gaugeC, c.fuelFrac, Math.abs(c.v) * 3.6, c.fuelFrac < .15, t); } else gaugeC.style.display = 'none';
     minAcc += dt; if (minAcc > .12) { minAcc = 0; drawMini(); }
     tip.textContent = me.dead > 0 ? '' : c ? (c.fuel <= 0 ? 'Out of fuel: get out and find a gas can' : 'Stick: gas / steer · Brake button · Exit to leave') : '';
