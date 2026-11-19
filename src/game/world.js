@@ -116,9 +116,9 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
   function car(x, z, rot, col, opt = {}) { const kind = opt.kind || (opt.truck ? 'truck' : KINDS[kn++ % KINDS.length]); const src = CM[kind]; if (!src) return boxCar(x, z, rot, col, opt);
     const g = new THREE.Group(); const m = src.clone(true); if (!lenOf[kind]) { tmpB.setFromObject(src); lenOf[kind] = tmpB.max.z - tmpB.min.z; }
     const L = opt.truck ? 5.2 : kind === 'van' || kind === 'ambulance' ? 5 : kind === 'hatchback-sports' ? 4 : 4.5; m.scale.set(1.27, 1.27, L / lenOf[kind]); g.add(m);
-    const v = opt.burnt ? 'burnt' : opt.rust ? 'rust' : 'ok'; const tint = new THREE.Color(col).lerp(new THREE.Color('#ffffff'), .35);
+    const v = opt.burnt ? 'burnt' : opt.rust ? 'rust' : 'ok'; const hj = (a) => { const t = Math.sin(x * 12.9898 + z * 78.233 + a * 37.7) * 43758.5453; return t - Math.floor(t); }; const jq = Math.floor(hj(1) * 4); const tint = new THREE.Color(col).lerp(new THREE.Color('#ffffff'), .35); if (!opt.noVar) { tint.offsetHSL((jq - 1.5) * .018, (hj(2) - .5) * .12, (hj(3) - .5) * .1); const sj = .96 + hj(4) * .08; m.scale.multiplyScalar(sj); m.scale.y *= .98 + hj(5) * .06; } /* v2.1: no two cars look identical (tint/scale/yaw jitter) */
     m.traverse(o => { if (!o.isMesh) return; o.castShadow = true; o.receiveShadow = true;
-      o.material = carMat(o.material, v + (kind === 'police' || kind === 'taxi' || kind === 'ambulance' ? '' : col), mm => { mm.roughness = .5; mm.metalness = .25;
+      o.material = carMat(o.material, v + (kind === 'police' || kind === 'taxi' || kind === 'ambulance' ? '' : col + jq + Math.round(hj(2) * 3) + Math.round(hj(3) * 3)), mm => { mm.roughness = .5; mm.metalness = .25;
         if (kind !== 'police' && kind !== 'taxi' && kind !== 'ambulance') mm.color.copy(tint); if (v === 'burnt') { mm.color.set('#2c2824'); mm.roughness = 1; mm.metalness = 0; }
         if (v === 'rust') { mm.color.lerp(new THREE.Color('#7a4a2a'), .45); mm.roughness = .9; } if (opt.dirt) mm.color.multiplyScalar(.75); env.weather(mm, v === 'rust' ? 1 : v === 'burnt' ? 0 : .38, v === 'burnt' ? 1 : 0); }); });
     if (opt.wreck || opt.burnt) { const wn = ['wheel-front-left', 'wheel-back-right'][(x * 7 + z) & 1]; const w = m.getObjectByName(wn); if (w) w.visible = false; g.rotation.z = (wn.includes('left') ? 1 : -1) * .07; g.rotation.x = .03;
@@ -128,7 +128,7 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
     // head + tail lights (lit only on the truck / a running car)
     const hl = new THREE.MeshStandardMaterial({ color: '#555', emissive: opt.lights ? '#fff3d0' : '#000', emissiveIntensity: 2.2 }), tl = new THREE.MeshStandardMaterial({ color: '#3a0808', emissive: opt.lights ? '#ff2010' : '#200000', emissiveIntensity: 1.2 });
     [-.6, .6].forEach(hx => { const h = new THREE.Mesh(new THREE.BoxGeometry(.3, .13, .04), hl); h.position.set(hx, .78, L / 2 + .02); g.add(h); const t = new THREE.Mesh(new THREE.BoxGeometry(.28, .1, .04), tl); t.position.set(hx, .85, -L / 2 - .02); g.add(t); });
-    g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g);
+    g.position.set(x, 0, z); g.rotation.y = rot + (opt.noVar ? 0 : (hj(6) - .5) * .06); scene.add(g);
     if (!opt.nocol) { const along = Math.abs(Math.sin(rot)) > .7; const hw = along ? L / 2 : 1, hd = along ? 1 : L / 2; const cc = { x0: x - hw, x1: x + hw, z0: z - hd, z1: z + hd, car: g }; colliders.push(cc); g.userData.col = cc; }
     if (opt.burnt) fire(x, 1.3, z, 0.8);
     return g; }
@@ -346,6 +346,7 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
   while (treeSpots.length < Q.trees * 2 && tries++ < 20000) { const x = rnd(-90, 90), z = rnd(-760, 90); if (Math.abs(x) < 10 && z > -150) continue; if (z < -134 && Math.abs(x) < 44) continue; if (z < -106 && z > -134) continue;
     if (colliders.some(c => x > c.x0 - 2 && x < c.x1 + 2 && z > c.z0 - 2 && z < c.z1 + 2)) continue; if (Math.abs(z - 4) < 7 && Math.abs(x) < 46) continue; if (x > 4 && x < 34 && z > -66 && z < -36) continue; treeSpots.push([x, z, rnd(9, 18)]); }
   const colTrees = treeSpots.length; treeSpots.forEach(([x, z, h]) => { if (Math.abs(x) < 50 && z > -150) box(x - .3, x + .3, z - .3, z + .3); }); // same collision footprint as before
+  [[-210, 210, -132, -108], [-19, 19, -2253, -2211], [-8, 8, -2450, -2328]].forEach(([a, b, c, d]) => env.cut(a, b, c, d)); // water, pond and the harbor tunnel: no vegetation
   { const K = Q.trees / 300; const n = (k) => Math.round(k * K);
     env.finish({ colliders, bark, KH, extraTrees: treeSpots.map(t => [t[0], t[1], t[2]]).concat(extraTrees2), regions: [
       { x0: -46, x1: 46, z0: 56, z1: -140, n: n(70), inner: 24 }, { x0: -46, x1: 46, z0: -150, z1: -760, n: n(190), inner: 26 },

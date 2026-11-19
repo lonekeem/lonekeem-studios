@@ -82,7 +82,7 @@ export function randomLook(seed, zed) { const r = mulberry(seed * 9973 + 1); con
   const casual = ['classic', 'hoodie', 'flannel', 'denim', 'track', 'scrubs', 'work', 'cardigan', 'blouse', 'button', 'chef', 'street', 'bomber', 'parka', 'overalls', 'pinkhood', 'survivor', 'denim'];
   const hc = r() < .15 ? '#aaa69e' : pick(r, HAIR_COLORS.slice(0, 8));
   return { outfit: pick(r, casual), hair: pick(r, hairs), hairColor: hc, skin: pick(r, SKINS), face: pick(r, Object.keys(FACES)), eyes: pick(r, EYES), beard: fem ? 'none' : pick(r, ['none', 'none', 'stubble', 'mustache', 'goatee', 'full']),
-    glasses: r() < .15, build: .9 + r() * .3, height: .93 + r() * .12, seed: seed | 0, tint: [r(), r(), r()], zed, rig: zed ? (mulberry(seed * 31 + 3)() < .45 ? null : 'zombie2') : (fem ? 'genf' : 'genm') }; // v1.9.11: ~45% of zombies use the original v1.9.7 procedural look (variety) instead of the cartoon rig
+    glasses: r() < .15, build: .9 + r() * .3, height: .93 + r() * .12, seed: seed | 0, tint: [r(), r(), r()], zed, rig: zed ? (mulberry(seed * 31 + 3)() < .45 ? null : 'zombie2') : (mulberry(seed * 17 + 5)() < .35 ? null : (fem ? 'genf' : 'genm')) }; // v2.1: ~35% of townspeople/victims keep the original v1.9.7 procedural look for variety // v1.9.11: ~45% of zombies use the original v1.9.7 procedural look (variety) instead of the cartoon rig
 }
 // raiders: masked, leather-jacketed scavengers (same avatar style as everyone else)
 export function raiderLook(seed) { const r = mulberry(seed * 7331 + 5); const L = randomLook(seed, false); L.rig = 'raider'; L.outfit = r() < .6 ? 'raider1' : 'raider2'; L.tint = [r(), r(), r()]; L.hair = 'short'; L.hairColor = '#150f0a'; L.beard = 'none'; L.glasses = false; return L; }

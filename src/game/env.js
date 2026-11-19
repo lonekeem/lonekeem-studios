@@ -225,13 +225,15 @@ vTint = gc * mix(.55, 1.15, uv.y) * mix(.8, 1.1, fract(aRnd.x*37.));`)
     extraTrees.forEach(([x, z, h]) => spots.push({ x, z, h: h || rr(8, 12), kind: R() < .6 ? 'pine' : 'dec' }));
     regions.forEach(({ x0, x1, z0, z1, n, inner = 0 }) => { let c = 0, tries = 0; while (c < n && tries++ < n * 40) { const x = rr(x0, x1), z = rr(z0, z1); if (Math.abs(x) < inner) continue; if (!maskOK(x, z, 1.5)) continue; spots.push({ x, z, h: rr(9, 17), kind: kinds() }); c++; } });
     const by = (k) => spots.filter(s => s.kind === k);
-    const mk = (geo, mat, list, f, shadow) => { if (!list.length) return null; const im = new THREE.InstancedMesh(geo, mat, list.length), M = new THREE.Matrix4(), p = new V3(), q = new THREE.Quaternion(), sc = new V3(), col = new THREE.Color();
+    // v2.1: instances are split into 80 m chunks along z so frustum culling drops everything behind / far away (big saving for phones)
+    const mk = (geo, mat, list, f, shadow) => { if (!list.length) return null; const bins = new Map(); list.forEach(s => { const k = Math.floor(s.z / 80); (bins.get(k) || bins.set(k, []).get(k)).push(s); }); let last = null; bins.forEach(l => { last = mk1(geo, mat, l, f, shadow); }); return last; };
+    const mk1 = (geo, mat, list, f, shadow) => { if (!list.length) return null; const im = new THREE.InstancedMesh(geo, mat, list.length), M = new THREE.Matrix4(), p = new V3(), q = new THREE.Quaternion(), sc = new V3(), col = new THREE.Color();
       list.forEach((s, i) => { const o = f(s); M.compose(p.set(s.x, o.y || 0, s.z), q.setFromAxisAngle(new V3(0, 1, 0), o.rot || 0), sc.set(o.sx, o.sy, o.sz)); im.setMatrixAt(i, M); im.setColorAt(i, o.col); });
       im.castShadow = !!shadow; im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.frustumCulled = true; im.computeBoundingSphere(); scene.add(im); return im; };
     const trunkG = new THREE.CylinderGeometry(.16, .3, 1, 7, 1, true); trunkG.translate(0, .5, 0);
     const pines = by('pine'), decs = by('dec'), deads = by('dead');
     mk(trunkG, bark, pines, s => ({ rot: rr(0, 6), sx: 1 + s.h / 22, sy: s.h * .72, sz: 1 + s.h / 22, col: tmpC.setRGB(.7, .66, .62).clone() }), Q.shadows);
-    mk(pineCrown, boughMat, pines, s => ({ rot: rr(0, 6), sx: s.h * 1.0, sy: s.h, sz: s.h * 1.0, col: tmpC.setHSL(.33 + rr(-.02, .03), .35 + rr(0, .15), .26 + rr(0, .1)).clone() }), Q.shadows);
+    mk(pineCrown, boughMat, pines, s => ({ rot: rr(0, 6), sx: s.h * 1.0, sy: s.h, sz: s.h * 1.0, col: tmpC.setHSL(.33 + rr(-.02, .03), .35 + rr(0, .15), .26 + rr(0, .1)).clone() }), false); // crowns don't cast shadows (perf)
     mk(decWood.wood, bark, decs, s => ({ rot: rr(0, 6), sx: s.h * (.9 + R() * .3), sy: s.h, sz: s.h * (.9 + R() * .3), col: tmpC.setRGB(.72, .66, .6).clone() }), false);
     const decCols = ['#5d7a34', '#6b8a3a', '#7d8a34', '#9a8a30', '#a8742c', '#8a5a2a', '#55702f'];
     mk(decCrown, leafMat(), decs, s => ({ rot: rr(0, 6), sx: s.h * .95, sy: s.h, sz: s.h * .95, col: tmpC.set(decCols[(R() * decCols.length) | 0]).clone() }), false);
@@ -269,6 +271,17 @@ vTint = gc * mix(.55, 1.15, uv.y) * mix(.8, 1.1, fract(aRnd.x*37.));`)
     prop(tireG, tireM, Math.round(36 * f), 5, 30, { s0: .9, s1: 1.2 });
     prop(rubG, rubM, Math.round(160 * f), 5.5, 28, { s0: .6, s1: 1.8 });
     prop(paperG, paperM, Math.round(360 * f), 3, 12, { y: .04, flat: 1, onRoad: 1, s0: .8, s1: 1.4 });
+    // v2.1 more prop variety (all instanced, tinted / scaled / rotated per piece)
+    const coneG = new THREE.ConeGeometry(.15, .52, 8); coneG.translate(0, .26, 0); const coneM = new THREE.MeshStandardMaterial({ color: '#ff6a1a', roughness: .8 });
+    const crateG = new THREE.BoxGeometry(.7, .5, .7); crateG.translate(0, .25, 0); const crateM = new THREE.MeshStandardMaterial({ color: '#8a6a44', roughness: 1 });
+    const bucketG = new THREE.CylinderGeometry(.17, .13, .3, 10); bucketG.translate(0, .15, 0); const bucketM = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .55 });
+    const caseG = new THREE.BoxGeometry(.58, .4, .22); caseG.translate(0, .2, 0); caseG.rotateY(0); const caseM = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .6 });
+    const plankG = new THREE.BoxGeometry(1.4, .05, .16); plankG.translate(0, .03, 0); const plankM = new THREE.MeshStandardMaterial({ color: '#7a6244', roughness: 1 });
+    prop(coneG, coneM, Math.round(26 * f), 6, 26, { cols: ['#ffffff', '#f0d0b0', '#c8a888'], s0: .9, s1: 1.1 });
+    prop(crateG, crateM, Math.round(34 * f), 7, 30, { cols: ['#ffffff', '#d8c0a0', '#a89070', '#c0a080'], s0: .7, s1: 1.3 });
+    prop(bucketG, bucketM, Math.round(30 * f), 6, 28, { cols: ['#c04a2a', '#3a6a9a', '#c8c070', '#707070', '#2a7a4a'], s0: .8, s1: 1.2 });
+    prop(caseG, caseM, Math.round(24 * f), 6, 26, { cols: ['#3a2a28', '#2a3a5a', '#7a2a2a', '#4a4a4a', '#6a5a2a'], s0: .8, s1: 1.2 });
+    prop(plankG, plankM, Math.round(40 * f), 6, 28, { cols: ['#ffffff', '#d8c8a8', '#b09870'], s0: .8, s1: 1.5, flat: 1 });
 
     // ---- ferns/leaf litter scatter handled by ground shader; add wind updater for sky time
     updaters.push((dt, t, cam) => { skyU.uTime.value = t; sky.position.copy(cam); });
