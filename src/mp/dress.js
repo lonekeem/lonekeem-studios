@@ -31,7 +31,15 @@ function shell(av, key, kind, geo) {
 function addSkinned(av, mesh, order) { const s = av.skin; mesh.position.copy(s.position); mesh.quaternion.copy(s.quaternion); mesh.scale.copy(s.scale); s.parent.add(mesh); mesh.bind(s.skeleton, s.bindMatrix); mesh.frustumCulled = false; mesh.renderOrder = order || 0; mesh.castShadow = false; return mesh; }
 function setLm(av, mat) { const P = av.tpl.P, U = mat.userData.U; const A = P.LeftArm, Hd = P.LeftHand; const d = Hd.clone().sub(A), L = d.length(); d.normalize();
   U.uLm.value.set(P.Hips.y, P.neck.y, P.LeftUpLeg.y, (P.LeftFoot.y + P.RightFoot.y) / 2); U.uArmO.value.set(A.x, A.y, A.z, 0); { const h2 = av.head2; if (h2) { const r0 = (h2.g === 'f' ? .043 : .05) * h2.s; U.uNk.value.set(0, h2.C.z - .028 * h2.s, r0 + .012, r0 * .92 + .01); } } U.uArmD.value.set(d.x, d.y, d.z, L); }
-function bodyLayer(av, name, kind) { const L = av.layers; if (!L[name]) { const mat = garmentMaterial(kind); setLm(av, mat); const m = new THREE.SkinnedMesh(av.skin.geometry, mat); addSkinned(av, m, 1); L[name] = m; } return L[name]; }
+const LAYER_REG = { under: [2, 5], top: [1, 2, 3, 5], jacket: [1, 2, 3, 5], pants: [2, 5], shoes: [5, 6], gloves: [3, 4] };
+function layerGeometry(av, name) { // perf: each garment shell only draws the body triangles it can ever cover (not the whole body)
+  const regs = LAYER_REG[name], g = av.skin.geometry; if (!regs) return g; const W = av.tpl.aW, ix = g.index, out = [];
+  const ok = i => { for (const r of regs) if (W[i * 8 + r] > .04) return true; return false; };
+  const P = g.attributes.position, ny = av.tpl.P.neck.y, hw = av.tpl.headW; const head = i => hw[i] > .4 || (P.getY(i) > ny - .012 && W[i * 8] + W[i * 8 + 1] > .5);
+  for (let k = 0; k < ix.count; k += 3) { const a = ix.getX(k), b = ix.getX(k + 1), c = ix.getX(k + 2); if (head(a) && head(b) && head(c)) continue; if (ok(a) || ok(b) || ok(c)) out.push(a, b, c); }
+  const h = new THREE.BufferGeometry(); for (const key in g.attributes) h.setAttribute(key, g.attributes[key]); h.setIndex(out); h.boundingSphere = g.boundingSphere || new THREE.Sphere(new THREE.Vector3(0, 1, 0), 3); h.userData = g.userData; return h;
+}
+function bodyLayer(av, name, kind) { const L = av.layers; if (!L[name]) { const mat = garmentMaterial(kind); setLm(av, mat); const m = new THREE.SkinnedMesh(layerGeometry(av, name), mat); addSkinned(av, m, 1); L[name] = m; } return L[name]; }
 function headLayer(av, name, kind) { const L = av.layers; if (!L[name]) { const mat = shellMaterial(kind); const m = new THREE.SkinnedMesh(headGeometry(av), mat); addSkinned(av, m, 2); L[name] = m; } return L[name]; }
 
 const DET = { cropzip: [1, 1, 0, 0], zip: [1, 1, 0, 0], hoodiezip: [1, 1, 0, 0], track: [1, 1, 0, 0], bomber: [1, 1, 0, 0], puffer: [1, 0, 0, 0], hoodie: [0, 1, 0, 0], sweater: [0, 1, 0, 0], sweatshirt: [0, 1, 0, 0], cargojog: [0, 1, 1, 1], joggers: [0, 0, 1, 1], sweats: [0, 0, 1, 1], cargo: [0, 1, 0, 0], leggings: [0, 0, 0, 1] };
@@ -40,7 +48,7 @@ function setGarment(av, name, kind, piece, tbl, g) {
   const U = m.material.userData.U, off = m.material.userData.off; U.uC1.value.set(piece.c); U.uC2.value.set(piece.c2 || '#ffffff'); U.uPat.value.set(piece.p || 0, 11 + (piece.ps || 0) * 8, 1, 0); U.uSole.value.set(.02, 0, 0, 0);
   U.uShape.value.set(0, 0, 0, 0); { const d = DET[piece.id] || [0, 0, 0, 0]; U.uDet.value.set(...d); }
   if (kind === 0 || kind === 3) { const [id, nm, gd, sl, hem, nT, nD, nW, dl, tu, loose, flare, con] = s; if (kind === 3) { const [id2, n2, g2, sl2, hem2, nt2, oh, ot, dl2, tu2, lo2, fl2] = s; U.uG1.value.set(sl2, hem2, 0, 9); U.uG2.value.set(dl2, oh, ot, tu2); U.uN.value.set(nt2, .06, .13, -.03); U.uShape.value.set(0, lo2 * 2, 0, fl2); off.value = .0145 + lo2; U.uSole.value.set(.02, 0, 1, 0); }
-    else { U.uG1.value.set(sl, hem, 0, 9); U.uG2.value.set(dl, .05, .5, tu); U.uN.value.set(nT, nD, nW, -.03); U.uShape.value.set(0, loose * 2, 0, flare); off.value = .0095 + loose; U.uSole.value.set(.02, 0, 0, con); } }
+    else { U.uG1.value.set(sl, hem, 0, 9); U.uG2.value.set(dl, .05, .5, tu); U.uN.value.set(nT, nD, nW, -.03); U.uShape.value.set(0, loose * 2, 0, flare); off.value = .0095 + loose + (dl > 0 ? .009 : 0); U.uSole.value.set(.02, 0, 0, con); } }
   else if (kind === 1) { const [id, nm, gd, le, wa, loose, fl, kb] = s; U.uG1.value.set(le, wa, 0, 9); U.uShape.value.set(kb, fl, 0, 0); off.value = .0062 + loose; }
   else if (kind === 2) { const [id, nm, gd, sh, soleY, offs, cap] = s; U.uG1.value.set(sh, 0, id === 'socks' ? 1 : 0, 9); U.uSole.value.set(soleY, cap, 0, 0); off.value = offs; U.uC3.value.set(piece.sole || '#f2f2f0'); U.uPat.value.z = (piece.p || 0) ? 1 : 0; }
   else if (kind === 4) { const [id, nm, sh, offs] = s; U.uG1.value.set(sh, 0, 0, 9); off.value = offs; }

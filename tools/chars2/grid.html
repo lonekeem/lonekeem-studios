@@ -35,7 +35,7 @@ const sc=new THREE.Scene(); sc.background=new THREE.Color('#4a4e5a'); sc.add(new
 const tpl=await loadBase(key); const av=new Avatar(tpl); sc.add(av.root);
 const base = normalize(defaultLook(key)); const cam=new THREE.PerspectiveCamera(30,TW/TH,.01,50); r.setScissorTest(true);
 const labels = [];
-for (let i = 0; i < items.length; i++) { const [nm, fn] = items[i]; const L = J(base); fn(L); dress(av, normalize(L)); av.root.updateMatrixWorld(true);
+for (let i = 0; i < items.length; i++) { const [nm, fn] = items[i]; const L = J(base); fn(L); let bad = ''; try { dress(av, normalize(L)); } catch (e) { bad = ' ERR ' + e.message; window.errs = (window.errs || []).concat([[nm, e.message]]); } av.root.updateMatrixWorld(true);
   const Cc = av.head2.C; const c = i % cols, rr = Math.floor(i / cols); const x = c * TW, y = H - (rr + 1) * TH; r.setViewport(x, y, TW, TH); r.setScissor(x, y, TW, TH);
   const m = spec.cam;
   if (m === 'head') { cam.position.set(.42, Cc.y + .02, Cc.z + .95); cam.lookAt(0, Cc.y - .05, Cc.z); }
@@ -44,9 +44,9 @@ for (let i = 0; i < items.length; i++) { const [nm, fn] = items[i]; const L = J(
   else if (m === 'upper') { cam.position.set(.6, 1.2, 2.0); cam.lookAt(0, 1.1, 0); }
   else if (m === 'legs') { cam.position.set(.8, .6, 2.9); cam.lookAt(0, .6, 0); }
   else if (m === 'feet') { cam.position.set(.6, .35, 1.1); cam.lookAt(0, .1, 0); }
-  r.render(sc, cam); labels.push([nm, x, H - y - TH]); }
+  r.render(sc, cam); labels.push([nm + bad, x, H - y - TH]); }
 const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d'); g.drawImage(r.domElement, 0, 0); g.font = '13px sans-serif'; g.fillStyle = '#fff'; g.strokeStyle = 'rgba(0,0,0,.7)'; g.lineWidth = 3;
 for (const [nm, x, y] of labels) { g.strokeText(nm, x + 5, y + 16); g.fillText(nm, x + 5, y + 16); }
-document.body.innerHTML = ''; document.body.appendChild(cv); window.info = { n: items.length, W, H };
+document.body.innerHTML = ''; document.body.appendChild(cv); window.info = { n: items.length, W, H, errs: window.errs };
 document.title='done';
 </script>

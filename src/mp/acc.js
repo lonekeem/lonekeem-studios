@@ -69,7 +69,7 @@ export const EAR = { // each is built for one side (s = +1 / -1); lobe position 
 export const PIERCE = {
   nose(B, c, o) { const s = o.side || 1; const x = s * c.hw * .115, y = c.noseY + .004; B.sphere(.004, [x, y, c.faceZ(x, y) + .001], null, o.gem ? 'g' : 'm'); },
   noseRing(B, c, o) { const s = o.side || 1; const x = s * c.hw * .115, y = c.noseY + .0; B.torus(.007, .0017, [x * 1.1, y - .004, c.faceZ(x, y) - .002], 'm', [0, PI / 2, 0]); },
-  septum(B, c) { B.torus(.008, .0018, [0, c.noseY - .012, c.faceZ(0, c.noseY - .012) + .004], 'm', [PI / 2, 0, 0], PI * 1.5, null); },
+  septum(B, c) { B.torus(.008, .0018, [0, c.noseY - .012, c.faceZ(0, c.noseY - .012) + .004], 'm', [PI / 2, 0, 0], PI * 1.5); },
   brow(B, c, o) { const s = o.side || 1; const x = s * c.hw * .55, y = c.eyeY + .045; B.sphere(.0035, [x, y, c.faceZ(x, y) + .001], null, 'm'); B.sphere(.0035, [x + s * .006, y + .01, c.faceZ(x, y + .01) + .001], null, 'm'); },
   lip(B, c, o) { const s = o.side || 1; const x = s * c.hw * .14, y = c.mouthY - .019; B.torus(.006, .0016, [x, y, c.faceZ(x, y) + .001], 'm', [0, 0, 0], PI * 1.6); },
   eyebrowBar(B, c, o) { const x = c.hw * .55, y = c.eyeY + .05; B.cyl(.0022, .0022, .016, [x, y, c.faceZ(x, y) + .001], 'm', [0, 0, .5]); },

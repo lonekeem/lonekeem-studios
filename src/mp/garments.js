@@ -44,7 +44,8 @@ vec3 garment(vec3 p, vec3 n, vec4 R){
       seam = max(seam, band(as * uArmD.w, 0.035, 0.0018) * step(0.1, uG1.x)); // shoulder seam
       if (uG1.x > 0.8 || kind > 2.5) rib = smoothstep(0.035, 0.0, edge); }
     else { float e1 = (t - uG1.y) * H; edge = e1; vis = e1 > 0.0;
-      if (legW > 0.5 && uG2.x > 0.0) { vis = ls < uG2.x; edge = (uG2.x - ls) * LL; }
+      if (uG1.x < 0.05) { float eh = (uArmO.x - 0.04 - ax) + max(0.0, (uArmO.y - 0.09) - p.y) * 1.2; edge = min(edge, eh); vis = vis && eh > 0.0; } // sleeveless: round armhole
+      if (uG2.x > 0.0 && (legW > 0.5 || e1 < 0.0)) { vis = ls < uG2.x; edge = (uG2.x - ls) * LL; }
       { float dep = uN.y * H * 0.7 * smoothstep(0.0, 0.1, uN.z); vec2 q = vec2(p.x / uNk.z, (p.z - uNk.y) / (p.z > uNk.y ? uNk.w + dep : uNk.w * 0.9)); float dn = length(q);
         float en = (dn - 1.0) * uNk.z; if (p.y < uLm.y - 0.11 - dep * 0.6) en = 1.0; if (uG2.w > 0.5) en = (uLm.y - 0.012 - p.y);
         edge = min(edge, en); vis = vis && en > 0.0; rib = max(rib, smoothstep(0.014, 0.0, en) * 0.8); h += 0.0012 * smoothstep(0.012, 0.004, en) * smoothstep(0.0, 0.003, en); }
@@ -53,7 +54,7 @@ vec3 garment(vec3 p, vec3 n, vec4 R){
       seam = max(seam, band(ang, 0.0, 0.05) * step(0.0, -p.z + 0.02) * 0.0); seam = max(seam, band(abs(ang), 0.0, 0.035));
       h += 0.0009 * sin(p.y * 95.0 + ax * 60.0) * smoothstep(0.06, 0.13, ax) * band(t, 0.55, 0.3); // side drape
       h += 0.0007 * sin(p.y * 210.0 + sin(ax * 40.0) * 2.0) * smoothstep(0.12, 0.0, e1); // hem gather
-      if (kind > 2.5 || uDet.y > 0.5) rib = max(rib, smoothstep(0.03, 0.0, e1)); }
+      if (kind > 2.5 || uDet.y > 0.5) rib = max(rib, smoothstep(0.03, 0.0, e1)); if (legW > 0.5) { h *= 0.2; rib = 0.0; } }
   } else if (kind < 1.5) { // pants
     if (!isArm) { float ew = (uG1.y - t) * H, el = (uG1.x - ls) * LL; edge = min(ew, legW > 0.3 ? el : 1.0); vis = edge > 0.0 && footW < 0.5;
       h += 0.0012 * sin(ls * 80.0 + 2.5 * sin(ang * 2.0 + ls * 9.0)) * (0.4 + 0.6 * sin(ang * 2.0 + 1.0)) * band(ls, 0.5, 0.09); // knee folds

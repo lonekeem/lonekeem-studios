@@ -8,7 +8,7 @@ const r=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true}); r.
 const sc=new THREE.Scene(); sc.background=new THREE.Color(q.get('bg')||'#4a4e5a'); sc.add(new THREE.HemisphereLight('#dfe6ff','#5a5448',1.15)); const dl=new THREE.DirectionalLight('#fff4e6',2.3); dl.position.set(1.6,2.6,3); sc.add(dl); const rim=new THREE.DirectionalLight('#9bb4ff',.9); rim.position.set(-2,2,-2.5); sc.add(rim);
 const tpl=await loadBase(key); const av=new Avatar(tpl); sc.add(av.root);
 let look=defaultLook(key); if(q.get('look')) look=normalize(Object.assign(look, JSON.parse(q.get('look'))));
-dress(av, look); window.av=av; if(q.get('hide')) { av.skin.visible=false; Object.values(av.layers).forEach(m=>m.visible=false); }
+dress(av, look); window.av=av; if(q.get('tris')) { let n=0, mats=new Set(), meshes=0; av.root.traverse(o=>{ if(o.isMesh && o.visible){ meshes++; mats.add(o.material); const g=o.geometry; const tn = g.index? g.index.count/3 : g.attributes.position.count/3; n+=tn; (window.per=window.per||[]).push([o.name||o.material.type, Math.round(tn)]); } }); window.info={tris:Math.round(n), meshes, mats:mats.size, per: window.per}; } if(q.get('hide')) { av.skin.visible=false; Object.values(av.layers).forEach(m=>m.visible=false); }
 const h=av.head2; const C=h.C.clone().multiplyScalar(av.root.scale.x); const cam=new THREE.PerspectiveCamera(30,1,.01,50); r.setScissorTest(true);
 const views=(q.get('views')||'front,q34,face,back').split(','); const vw=W/views.length;
 views.forEach((m,i)=>{ const x=i*vw; r.setViewport(x,0,vw,H); r.setScissor(x,0,vw,H); cam.aspect=vw/H; cam.updateProjectionMatrix(); const top=1.0;

@@ -87,7 +87,7 @@ const azEl = d => [Math.atan2(d.x, d.z) / D2R, Math.asin(clamp(d.y, -1, 1)) / D2
 
 // ---------- the cap (+ optional hanging drop)
 export function buildCap(head, st, opt = {}) {
-  const line = LINES[st.line] || LINES.std; const fr = frame(st.tilt); const NPH = 160, NU = 40;
+  const line = LINES[st.line] || LINES.std; const fr = frame(st.tilt); const NPH = 128, NU = 36;
   const lineAt = (a, e) => { const aa = Math.abs(a); let l = interp(line, aa); if (st.bangs && aa < 40) l = Math.min(l, l - 16 * st.bangs * Math.cos(aa / 40 * Math.PI / 2)); if (st.mohawk && aa < 150) l = Math.max(l, 90 - 12 * (1 - aa / 150) - (aa > 0 ? 0 : 0)) ; return l; };
   const inside = d => { const [a, e] = azEl(d); if (st.mohawk) { if (Math.abs(d.x) > .036) return false; return e > -30; } return e > lineAt(a, e); };
   // boundary angle per column
@@ -159,7 +159,7 @@ function lumpChain(pts, r0, r1, opt = {}) { // braid-like lumps along a polyline
   const curve = new THREE.CatmullRomCurve3(pts); const Ls = curve.getLength(); const N = Math.max(4, Math.round(Ls / (opt.step || .016))); const geos = []; const up = new THREE.Vector3();
   for (let i = 0; i <= N; i++) { const t = i / N; const p = curve.getPointAt(t), tg = curve.getTangentAt(t); const r = r0 + (r1 - r0) * t; const side = i % 2 ? 1 : -1;
     up.set(0, 0, 1); if (Math.abs(up.dot(tg)) > .9) up.set(1, 0, 0); const bx = new THREE.Vector3().crossVectors(tg, up).normalize(); const by = new THREE.Vector3().crossVectors(bx, tg).normalize();
-    const g = new THREE.SphereGeometry(1, 12, 8); const m = new THREE.Matrix4(); const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(bx, tg, by)); const tilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), side * .55);
+    const g = new THREE.SphereGeometry(1, 9, 6); const m = new THREE.Matrix4(); const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(bx, tg, by)); const tilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), side * .55);
     m.compose(p.clone().addScaledVector(bx, side * r * .32), q.multiply(tilt), new THREE.Vector3(r * .72, r * 1.45, r * .62)); g.applyMatrix4(m);
     const n = g.attributes.position.count; const T = new Float32Array(n * 3), A = new Float32Array(n * 4); const tw = tg.clone().applyAxisAngle(by, side * .55);
     for (let k = 0; k < n; k++) { T[k * 3] = tw.x; T[k * 3 + 1] = tw.y; T[k * 3 + 2] = tw.z; A[k * 4] = .5; A[k * 4 + 1] = .5; A[k * 4 + 3] = 2; }
