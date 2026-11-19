@@ -48,3 +48,8 @@ Notes: zombies are simulated per client (no net sync yet); `getPlayers()[0]` mus
 - Proofs (844x390): `docs/mp-town-proof/` zombie_*.png (notice, chase, melee kill, bodies stay), place_*.png (store, gas forecourt/kiosk, pump refuel, streets), sync_*.png + log (two clients: door install/open, loot, car), house_*.png (retaken), cars_colors.png.
 - Measured: wiped all zombies -> 3 spawned back at road ends in 45 s (headless runs ~0.5x game speed); 9 edge spawns checked, 0 on-screen/inside fog (no pop-in).
 - Still owed: 50 houses (grow `CFG`) + 50 house customization items; zombies are simulated per client (not synced); no sound for car engine/pumps.
+
+## Round 3 (controls + perf hand-off)
+- Controls/HUD: MP town now uses the story v1.9.7 DOM HUD (`#hud`, `#touch`, `#drive`) and the story `Input` class (reuses `game.input` if the story game is loaded, else a standalone Input on a shim). Extra round buttons Bag / Shop / Exit in `#hudr2` under the story top-right buttons. Mapping: stick, FIRE=hit, RUN, CRCH, JUMP, ROLL, hand=use, ⟳=alt action, swap=cycle melee, eye=first person, AIM=zoom, pause=MP pause panel. Test: `tools/mp/town_ctl.mjs`, `town_hud.mjs`.
+- Perf hand-off (to feat/mp-town-perf): already in tree and NOT re-measured: `src/mp/town/lod.js` (decimated zombie/corpse LOD), chunked cheaper trees w/o shadows (map.js), container-lid and car distance gating, fewer bodies near spawn. Last measured before these: ~404 calls / 554k tris (probe), 391 / 755k (smoke). Probes: tools/mp/perf_probe*.mjs, tri_probe*.mjs.
+- Camera collision is implemented in town.js (untested) – feat/mp-town-fix owns testing.
