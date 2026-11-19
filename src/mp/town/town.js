@@ -1,7 +1,7 @@
 // Town assembly: renderer, lighting, player, camera, input, interactions (doors, loot, cars, shop), HUD and net events.
 // Houses/streets live in map.js + building.js; cars.js / loot.js / zombies.js / gas.js are the props modules.
 import { armSolve } from './camcol.js';
-import { goOnline, getUser, getRole, signInGoogle, signOut } from '../online.js';
+import { goOnline, googleEnabled, getUser, getRole, signInGoogle, signOut } from '../online.js';
 import * as THREE from 'three';
 import { loadBase, Avatar } from '../avatar.js';
 import { dress } from '../dress.js';
@@ -136,7 +136,7 @@ export async function enterTown({ look, onExit } = {}) {
   // driving buttons (same four as the story's truck HUD)
   const drvBind = [['#dGas', 'gas'], ['#dBrake', 'brake'], ['#dL', 'l'], ['#dR', 'r']].map(([id, k]) => { const e = $q(id); if (!e) return null; const on = v => ev => { ev.preventDefault(); drv[k] = v ? 1 : 0; e.classList.toggle('on', v); }; const dn = on(true), up = on(false); e.addEventListener('pointerdown', dn); ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => e.addEventListener(t, up)); return [e, dn, up]; });
   // pause (story's II button / Esc): Resume, Change look, Exit
-  const acct = el('div', { style: 'font-size:12px;text-align:center;opacity:.9;display:flex;flex-direction:column;gap:6px' }); const refreshAcct = async () => { acct.innerHTML = ''; acct.append(el('div', {}, online ? '● Online' : '○ Solo (offline)')); const u = await getUser(); if (u) { const r = await getRole(); acct.append(el('div', {}, (u.user_metadata && u.user_metadata.name || u.email || 'Signed in') + (r === 'admin' ? ' · admin' : '')), el('button', { on: { click: async () => { await signOut(); refreshAcct(); } } }, 'Sign out')); } else if (onl) acct.append(el('button', { on: { click: () => signInGoogle().catch(e => toast('Sign-in unavailable: ' + e.message)) } }, 'Sign in with Google')); };
+  const acct = el('div', { style: 'font-size:12px;text-align:center;opacity:.9;display:flex;flex-direction:column;gap:6px' }); const refreshAcct = async () => { acct.innerHTML = ''; acct.append(el('div', {}, online ? '● Online' : '○ Solo (offline)')); const u = await getUser(); if (u) { const r = await getRole(); acct.append(el('div', {}, (u.user_metadata && u.user_metadata.name || u.email || 'Signed in') + (r === 'admin' ? ' · admin' : '')), el('button', { on: { click: async () => { await signOut(); refreshAcct(); } } }, 'Sign out')); } else if (onl) { if (await googleEnabled()) acct.append(el('button', { on: { click: () => signInGoogle().catch(e => toast('Sign-in unavailable: ' + e.message)) } }, 'Sign in with Google')); else acct.append(el('div', {}, 'Guest · Google sign-in coming soon')); } };
   const togglePause = () => { const on = pausePanel.style.display !== 'flex'; pausePanel.style.display = on ? 'flex' : 'none'; if (on) { pausePanel.innerHTML = ''; pausePanel.append(el('h3', {}, 'Paused'), el('button', { on: { click: () => { pausePanel.style.display = 'none'; } } }, 'Resume'), el('button', { on: { click: () => { net.me.look.__edit = 1; exit(true); } } }, 'Change look'), el('button', { on: { click: () => exit() } }, 'Exit to menu'), acct); refreshAcct(); } };
   shim.onPause = togglePause; const pauseB = $q('#btnPause'); const pauseH = e => { e.preventDefault(); e.stopPropagation(); togglePause(); }; pauseB.addEventListener('touchstart', pauseH, { passive: false }); pauseB.addEventListener('click', pauseH);
   // swap weapon: cycle through melee items in the bag; grenade: none in the town yet

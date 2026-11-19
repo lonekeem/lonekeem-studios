@@ -68,3 +68,8 @@ Based on `feat/mp-town` a091c98. New files: `src/mp/town/camcol.js`, `src/mp/tow
 - [x] **Bodies**: pre-placed `k:'h'` bodies already used the genm/genf human rigs; made it explicit and deterministic (fixed seed per body, never zombie rig or skin, `victim` flag, less blood). `body_human_closeup.png`, `bodies_*_sheet.png`.
 - [x] **Run-over**: car through 3 idle zombies on the main street: all 3 killed, thrown over the hood, bodies stay, car slowed a little and lost ~2 hp. `runover_after_*.png`. (An earlier run hit the parked SUV c2 in the lane, not a bug.)
 - Known: with a wall right behind you, the camera comes in very close to the player (min 0.7 m).
+
+## Round 5: solo + online
+- Solo works from the live menu (title -> "Multiplayer (Beta)" -> creator -> town); verified against the production build served statically (`docs/mp-town-final/prod_build_start.png`).
+- Online: Supabase restored (free plan), migrations applied, Realtime broadcast transport with solo fallback, 2 clients in separate browser contexts see each other (`docs/mp-town-final/online_A.png`, `tools/mp/town_online.mjs` with TWO=1). Setup/TODO for Keem: docs/mp-online-setup.md.
+- Perf at the final merge: spawn ~100 calls/139k tris, gas station ~175 (KL MART added).
