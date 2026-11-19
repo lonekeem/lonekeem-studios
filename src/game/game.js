@@ -568,7 +568,7 @@ export class Game {
         hp.position.z = z.hipZ0 - (z.hipDrop + (this.kneelAdj || 0)) * z.kneelK; } }
     if (z.noHead && hd) hd.scale.setScalar(.001); }
   // victims: struggle + scream + reach while alive, weaken (dying), then lie limp with the odd death-twitch; every bite jolts the body
-  victimStruggle(n, dt) { if (!n.isVictim) return; const eaters = this.zombies.filter(z => !z.dead && z.st === 'eat' && z.eat === n).length;
+  victimStruggle(n, dt) { if (!n.isVictim) return; if (n.poolFix > 0) { n.poolFix -= dt; if (n.poolFix <= 0 && n.pool) { const h = V3(); n.root.updateMatrixWorld(true); n.worldOf('DEF-hips', h); if (Math.hypot(h.x - n.root.position.x, h.z - n.root.position.z) < 2.5) n.pool.position.set(h.x, n.pool.position.y, h.z); } } const eaters = this.zombies.filter(z => !z.dead && z.st === 'eat' && z.eat === n).length;
     if (n.life === undefined) n.life = 1; if (eaters) n.life = Math.max(0, n.life - dt * eaters / 26); const L = n.life; n.jolt = Math.max(0, (n.jolt || 0) - dt * 2.5);
     n.struggle = L > .5 ? Math.max(.4, n.struggle - dt * .02) : L > .12 ? .28 : 0; const t = this.t + (n.id || 0), B = (k) => n.bone(k), ps = n.pose || 0;
     if (L <= .12) { n.tw = (n.tw ?? rnd(1, 3)) - dt; if (n.tw <= 0) { n.tw = rnd(1.8, 4.5); n.jolt = Math.max(n.jolt, .7); } }

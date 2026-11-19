@@ -50,6 +50,11 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.16
+- Gore and wounds: bite, bullet, claw and torn-flesh marks stay on anyone who gets hurt (player, Dad, NPCs, raiders, zombies); zombie mouths, chins and hands get bloodier with every bite and stay that way; spreading glossy blood pools; feeders really kneel with their knees on the ground, victims struggle, reach, then go limp with the odd twitch (supine, on their side or face down); blood droplets are small streaks and splats; bodies stay.
+- Living town: townspeople panic and run from zombies, some make it into a house through a real hinged door and shut it, some get caught, pulled down and eaten (with the new gore), some get away. They spawn off-screen so nobody pops in, and bodies stay.
+- Controls (v1.9.7) and voices (v1.9.15) unchanged.
+
 ### v1.9.15
 - Voices: Dad's 86 lines re-voiced with ElevenLabs "Carlton C-Well" (older Black man); 4 Dad lines (037, 040, 045, 070) still blocked by the provider's filter and keep their old audio. Other speakers now have their own library voices: Reyes (Ashley), Tuck (Julius), Vance (Cecily), the Captain (Reginald), the King, Deacon (Drag Jackson), Sgt. Okafor (Michael Anthony), Mr. Dube (Joseph), broadcasts (Yusuf Hakeem Kiser), male townspeople (Dan), female townspeople (Kelli LaShae). All clips loudness-matched to about -18 LUFS, no pitch-shifting.
 - Keem is now 100% Young Jamal: every Keem line and bark (190 audio files, audited) uses that voice. Lines the filter blocked were reworded to their clean variant (subtitle matches audio) and re-voiced; unused old-voice Keem files were removed.
