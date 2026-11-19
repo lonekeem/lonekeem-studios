@@ -88,6 +88,7 @@ export class CharLib {
 }
 
 export class Char {
+  static frame = 0;
   // natural ground speed (m/s), stride length (m per full cycle) and left-foot phase offset of each locomotion clip (measured from the CC0 clips)
   static LOCO = [{ name: 'Walk_Loop', v: 1.0, stride: 1.333, off: 0 }, { name: 'Jog_Fwd_Loop', v: 4.6, stride: 4.2, off: -0.024 }, { name: 'Sprint_Loop', v: 6.2, stride: 4.13, off: -0.138 }];
   constructor(lib, look, scale = 1) {
@@ -121,6 +122,15 @@ export class Char {
     acts.forEach((a, i) => { a.time = (((this.locoPh + N[i].off) % 1 + 1) % 1) * a.getClip().duration; a.setEffectiveWeight(w[i] * this.locoW); });
     return true;
   }
+  // v2.1 measured-speed locomotion: animation follows the ground speed the character ACTUALLY covered last frame (so collisions, pushes and
+  // acceleration never leave the feet sliding), blended Walk<->Jog<->Sprint. Call once per frame, after the character was moved.
+  autoLoco(dt, idle = 'Idle_Loop', max = 6.4) {
+    const p = this.root.position, lp = this._lp || (this._lp = { x: p.x, z: p.z, f: Char.frame - 1 }); let sp = this._as || 0;
+    if (dt > 0 && lp.f === Char.frame - 1) { const inst = Math.hypot(p.x - lp.x, p.z - lp.z) / dt; if (inst < 14) sp += (inst - sp) * Math.min(1, dt * (inst > sp ? 9 : 6)); } else if (lp.f < Char.frame - 1) sp = 0;
+    lp.x = p.x; lp.z = p.z; lp.f = Char.frame; this._as = sp; this.locoSp = sp;
+    const on = this.locoOn ? sp > 0.12 : sp > 0.22;
+    if (on) { if (!this.locomote(sp, 1, dt, max)) this.play(sp > 2.5 ? 'Jog_Fwd_Loop' : 'Walk_Loop'); return true; }
+    this.play(idle); return false; }
   endLoco(fade = 0.18) { if (!this.locoOn) return; this.locoOn = false; Char.LOCO.forEach(n => { const a = this.actions[n.name]; if (a) a.fadeOut(fade); }); this.cur = null; this.curName = ''; }
   bone(n) { return this.bones[n] || this.bones[n.replace(/[.]/g, '')]; }
   attach(boneName, mesh) { if (this.attachSkin && this.attachSkin(boneName, mesh)) return mesh; const b = this.bone(boneName); if (b) b.add(mesh); return mesh; }
