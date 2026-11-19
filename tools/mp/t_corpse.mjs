@@ -1,0 +1,10 @@
+import { boot, freecam } from '../mpfix/lib.mjs';
+const OUT = process.env.OUT || '/workspace/atq1919/docs/mp-fix2'; const tag = process.env.TAG || 'before'; const { b, p } = await boot();
+await p.waitForTimeout(5000);
+await p.evaluate(() => { const T = window.__mpTown; T.setPos(-3, 21.5); const zs = T.Z.zombies.filter(q => q.dead); const z = zs.find(q => !q.victim && q.deadT > 50) || zs[0]; z.root.position.y = 0; window.__cz = z; z.settled = 0; z.root.position.set(0, 0, 22.2); z.root.visible = true; z.root.updateMatrixWorld(true); });
+await p.waitForTimeout(3000);
+const info = await p.evaluate(() => { const T = window.__mpTown; const z = window.__cz; z.root.updateMatrixWorld(true); let minY = 9, maxY = -9; const v = new (z.root.position.constructor)(); z.root.traverse(o => { if (o.isSkinnedMesh) { o.skeleton.update(); const p = o.geometry.attributes.position; for (let i = 0; i < p.count; i += 9) { v.fromBufferAttribute(p, i); if (o.applyBoneTransform) o.applyBoneTransform(i, v); v.applyMatrix4(o.matrixWorld); minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y); } } }); return { settled: z.settled, deadT: z.deadT, vis: z.root.visible, n: T.Z.zombies.length, y: z.root.position.y, rx: z.root.rotation.x, minY: +minY.toFixed(3), maxY: +maxY.toFixed(3), hasPool: !!z.pool }; });
+console.log(JSON.stringify(info));
+await freecam(p, [1.8, 1.0, 24.4], [0, 0.1, 22.2]); await p.waitForTimeout(2500); await p.screenshot({ path: OUT + '/corpse_' + tag + '.png' });
+await freecam(p, [0, 3.6, 25.2], [0, 0, 22.2]); await p.waitForTimeout(2500); await p.screenshot({ path: OUT + '/corpse_' + tag + '_top.png' });
+await b.close();

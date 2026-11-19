@@ -28,6 +28,12 @@ function roadGraph() {
 }
 
 let blood = null; const BLOOD_MAX = 70;
+// lying bodies must rest ON the road: measure the lowest skinned vertex once the fall animation is over and lift the root by what sank in (+3.5 cm)
+const _sv = new THREE.Vector3();
+function settleCorpse(z) { try { z.root.updateMatrixWorld(true); const ys = []; let done = 0; z.root.traverse(o => { if (!o.isSkinnedMesh || done) return; done = 1; o.skeleton.update(); const p = o.geometry.attributes.position; const st = Math.max(1, Math.floor(p.count / 1500)); for (let i = 0; i < p.count; i += st) { _sv.fromBufferAttribute(p, i); if (o.applyBoneTransform) o.applyBoneTransform(i, _sv); _sv.applyMatrix4(o.matrixWorld); ys.push(_sv.y); } });
+  ys.sort((a, b) => a - b); const minY = ys.length ? ys[Math.floor(ys.length * .015)] : 1e9; // 4th percentile: ignore a stray toe / finger
+  if (minY < 1e8) { z.root.position.y = Math.max(-.05, Math.min(.35, z.root.position.y + (.02 - minY))); z.root.updateMatrixWorld(true); } } catch (e) { /* ignore */ } }
+const nd0 = z => { const g = window.__mpTown; return g && g.me ? Math.hypot(z.root.position.x - g.me.x, z.root.position.z - g.me.z) : 0; };
 export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer, onNoise, models, bodies = [], fogFar = 105, target = 14, seed = 7, deadVisible = 120, onEvent }) {
   if (!models || !models.lib) models = await loadZombieModels();
   const lib = models.lib, col = W.col, nav = W.nav, rnd = mulberry(seed * 7919 + 1), graph = roadGraph();
@@ -77,7 +83,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     if ((navT -= dt) <= 0) { navT = .5; nav && nav.field(p0.x, p0.z); }
     let alive = 0, dead = 0;
     for (let i = 0; i < zs.length; i++) { const z = zs[i], pp = z.root.position;
-      if (z.dead) { dead++; z.deadT += dt; if (z.deadT < 3.2) { z.mixer.update(dt); if (z.vel.lengthSq() > .01) { const [nx, nz] = col.push(pp.x + z.vel.x * dt, pp.z + z.vel.z * dt, .3); pp.x = nx; pp.z = nz; z.vel.multiplyScalar(.9); } if (z.pool && z.poolGrow && z.pool.scale.x < 1.5) z.pool.scale.setScalar(z.pool.scale.x + dt * .5); } continue; }
+      if (z.dead) { dead++; z.deadT += dt; if (z.deadT >= 3.2 && !z.settled && z.root.visible && nd0(z) < 60) { z.settled = 1; settleCorpse(z); } if (z.deadT < 3.2) { z.mixer.update(dt); if (z.vel.lengthSq() > .01) { const [nx, nz] = col.push(pp.x + z.vel.x * dt, pp.z + z.vel.z * dt, .3); pp.x = nx; pp.z = nz; z.vel.multiplyScalar(.9); } if (z.pool && z.poolGrow && z.pool.scale.x < 1.5) z.pool.scale.setScalar(z.pool.scale.x + dt * .5); } continue; }
       alive++; let near = null, nd = 1e9, ni = 0; P.forEach((p, k) => { const d = Math.hypot(p.x - pp.x, p.z - pp.z); if (d < nd) { nd = d; near = p; ni = k; } });
       z.root.visible = nd < fogFar - (z.root.visible ? 4 : 12); // hysteresis, and only vanish once ~90% fogged (no pop in view)
       const far = nd > fogFar * .7; // far from everyone: cheap drift only (no animation tick)
