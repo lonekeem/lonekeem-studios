@@ -185,7 +185,8 @@ vTint = gc * mix(.55, 1.15, uv.y) * mix(.8, 1.1, fract(aRnd.x*37.));`)
         s.fragmentShader = s.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vTint; varying vec2 vAU;')
           .replace('#include <map_fragment>', 'vec4 sdc = texture2D(map, vAU); diffuseColor *= vec4(sdc.rgb * vTint, sdc.a);'); };
       const gmesh = new THREE.Mesh(ig, gm); gmesh.frustumCulled = false; gmesh.renderOrder = 1; scene.add(gmesh);
-      updaters.push((dt, t, cam) => { U.uCam.value.copy(cam); U.uT.value = t; });
+      let vt = 0; const vegNear = (x, z) => { let n = 0; for (let a = -3; a <= 3; a++) for (let b = -3; b <= 3; b++) { const i = Math.floor(x + a * 6 - X0), j = Math.floor(z + b * 6 - Z0); n += (i < 0 || j < 0 || i >= MW || j >= MH) ? 1 : (mask[j * MW + i] ? 1 : 0); } return n / 49; };
+      updaters.push((dt, t, cam) => { U.uCam.value.copy(cam); U.uT.value = t; vt -= dt; if (vt <= 0) { vt = .35; gmesh.visible = vegNear(cam.x, cam.z) > .04; } }); // no grass pass inside tunnels / on bare ground (perf)
       api.grassMesh = gmesh; }
 
     // ---- geometry factories for trees / bushes
@@ -226,7 +227,8 @@ vTint = gc * mix(.55, 1.15, uv.y) * mix(.8, 1.1, fract(aRnd.x*37.));`)
     regions.forEach(({ x0, x1, z0, z1, n, inner = 0 }) => { let c = 0, tries = 0; while (c < n && tries++ < n * 40) { const x = rr(x0, x1), z = rr(z0, z1); if (Math.abs(x) < inner) continue; if (!maskOK(x, z, 1.5)) continue; spots.push({ x, z, h: rr(9, 17), kind: kinds() }); c++; } });
     const by = (k) => spots.filter(s => s.kind === k);
     // v2.1: instances are split into 80 m chunks along z so frustum culling drops everything behind / far away (big saving for phones)
-    const mk = (geo, mat, list, f, shadow) => { if (!list.length) return null; const bins = new Map(); list.forEach(s => { const k = Math.floor(s.z / 80); (bins.get(k) || bins.set(k, []).get(k)).push(s); }); let last = null; bins.forEach(l => { last = mk1(geo, mat, l, f, shadow); }); return last; };
+    const BIN = low ? 260 : 100; // low: fewer, larger chunks = fewer draw calls
+    const mk = (geo, mat, list, f, shadow) => { if (!list.length) return null; const bins = new Map(); list.forEach(s => { const k = Math.floor(s.z / BIN); (bins.get(k) || bins.set(k, []).get(k)).push(s); }); let last = null; bins.forEach(l => { last = mk1(geo, mat, l, f, shadow); }); return last; };
     const mk1 = (geo, mat, list, f, shadow) => { if (!list.length) return null; const im = new THREE.InstancedMesh(geo, mat, list.length), M = new THREE.Matrix4(), p = new V3(), q = new THREE.Quaternion(), sc = new V3(), col = new THREE.Color();
       list.forEach((s, i) => { const o = f(s); M.compose(p.set(s.x, o.y || 0, s.z), q.setFromAxisAngle(new V3(0, 1, 0), o.rot || 0), sc.set(o.sx, o.sy, o.sz)); im.setMatrixAt(i, M); im.setColorAt(i, o.col); });
       im.castShadow = !!shadow; im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.frustumCulled = true; im.computeBoundingSphere(); scene.add(im); return im; };
@@ -277,11 +279,11 @@ vTint = gc * mix(.55, 1.15, uv.y) * mix(.8, 1.1, fract(aRnd.x*37.));`)
     const bucketG = new THREE.CylinderGeometry(.17, .13, .3, 10); bucketG.translate(0, .15, 0); const bucketM = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .55 });
     const caseG = new THREE.BoxGeometry(.58, .4, .22); caseG.translate(0, .2, 0); caseG.rotateY(0); const caseM = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .6 });
     const plankG = new THREE.BoxGeometry(1.4, .05, .16); plankG.translate(0, .03, 0); const plankM = new THREE.MeshStandardMaterial({ color: '#7a6244', roughness: 1 });
-    prop(coneG, coneM, Math.round(26 * f), 6, 26, { cols: ['#ffffff', '#f0d0b0', '#c8a888'], s0: .9, s1: 1.1 });
+    if (!low) prop(coneG, coneM, Math.round(26 * f), 6, 26, { cols: ['#ffffff', '#f0d0b0', '#c8a888'], s0: .9, s1: 1.1 });
     prop(crateG, crateM, Math.round(34 * f), 7, 30, { cols: ['#ffffff', '#d8c0a0', '#a89070', '#c0a080'], s0: .7, s1: 1.3 });
-    prop(bucketG, bucketM, Math.round(30 * f), 6, 28, { cols: ['#c04a2a', '#3a6a9a', '#c8c070', '#707070', '#2a7a4a'], s0: .8, s1: 1.2 });
-    prop(caseG, caseM, Math.round(24 * f), 6, 26, { cols: ['#3a2a28', '#2a3a5a', '#7a2a2a', '#4a4a4a', '#6a5a2a'], s0: .8, s1: 1.2 });
-    prop(plankG, plankM, Math.round(40 * f), 6, 28, { cols: ['#ffffff', '#d8c8a8', '#b09870'], s0: .8, s1: 1.5, flat: 1 });
+    if (!low) prop(bucketG, bucketM, Math.round(30 * f), 6, 28, { cols: ['#c04a2a', '#3a6a9a', '#c8c070', '#707070', '#2a7a4a'], s0: .8, s1: 1.2 });
+    if (!low) prop(caseG, caseM, Math.round(24 * f), 6, 26, { cols: ['#3a2a28', '#2a3a5a', '#7a2a2a', '#4a4a4a', '#6a5a2a'], s0: .8, s1: 1.2 });
+    if (!low) prop(plankG, plankM, Math.round(40 * f), 6, 28, { cols: ['#ffffff', '#d8c8a8', '#b09870'], s0: .8, s1: 1.5, flat: 1 });
 
     // ---- ferns/leaf litter scatter handled by ground shader; add wind updater for sky time
     updaters.push((dt, t, cam) => { skyU.uTime.value = t; sky.position.copy(cam); });

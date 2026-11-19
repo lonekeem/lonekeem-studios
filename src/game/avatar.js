@@ -69,7 +69,7 @@ export function attachRig(ch, scene, opt = {}) {
   obj.traverse(o => { if (o.isSkinnedMesh && !skin) skin = o; if (o.isBone) B[o.name] = o; });
   if (!skin) return null;
   skin.frustumCulled = false; skin.castShadow = true; skin.receiveShadow = false;
-  const mat = skin.material; if (mat) { mat.side = THREE.FrontSide; mat.roughness = .62; mat.metalness = 0; if (mat.map) { mat.map.anisotropy = 8; mat.map.minFilter = THREE.LinearMipmapLinearFilter; mat.map.needsUpdate = true; } mat.needsUpdate = true; }
+  const mat = skin.material; if (mat) { mat.side = THREE.FrontSide; mat.roughness = opt.rough || .62; mat.metalness = 0; if (mat.map) { mat.map.anisotropy = 8; mat.map.minFilter = THREE.LinearMipmapLinearFilter; mat.map.needsUpdate = true; } mat.needsUpdate = true; }
   if (opt.tint && mat) { skin.material = mat.clone(); const t = opt.tint; { const a = opt.tintK || .5, b = 1 - a / 2; skin.material.color.setRGB(b + t[0] * a * .98, b + t[1] * a * .98, b + t[2] * a * .98); if (opt.tintMul) skin.material.color.multiplyScalar(opt.tintMul); } } // per-body variety for crowds (shares geometry + texture)
   { // brighter, crisper character read: gentle self-lit lift (keeps the texture) + soft cool rim so figures separate from the dark street
     const m2 = skin.material; const lift = LIGHT.lift * (opt.tint ? .5 : 1); if (m2.map) { m2.emissiveMap = m2.map; m2.emissive = new THREE.Color('#ffffff'); m2.emissiveIntensity = lift; }

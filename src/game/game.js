@@ -69,7 +69,7 @@ export class Game {
     // player
     this.pack = backpack(); this.hand = new THREE.Group(); this.makePlayer();
     // flashlight
-    const fl = this.flash = new THREE.SpotLight('#fff4dc', 28, 26, 0.42, 0.5, 1.6); fl.castShadow = Q.shadows && Q.name === 'high'; fl.shadow.mapSize.set(512, 512); scene.add(fl, fl.target);
+    const fl = this.flash = new THREE.SpotLight('#fff4dc', 17, 26, 0.42, 0.5, 1.6); fl.castShadow = Q.shadows && Q.name === 'high'; fl.shadow.mapSize.set(512, 512); scene.add(fl, fl.target);
     // FP viewmodel
     this.vm = new THREE.Group(); cam.add(this.vm); this.vm.position.set(0.22, -0.2, -0.45);
     this.weaponMeshes = {}; WEAPON_ORDER.forEach(id => { const m = weaponMesh(id); this.weaponMeshes[id] = m; });
