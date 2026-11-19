@@ -40,7 +40,7 @@ export class Bag {
   can(id, n = 1) { return this.weight + ITEMS[id].w * n <= this.cap + 1e-6; }
   add(id, n = 1) { let got = 0; for (let i = 0; i < n; i++) { if (!this.can(id)) break; this.items[id] = (this.items[id] || 0) + 1; got++; } if (got) this.onChange && this.onChange(); return got; }
   remove(id, n = 1) { if (this.count(id) < n) return false; this.items[id] -= n; if (!this.items[id]) delete this.items[id]; this.onChange && this.onChange(); return true; }
-  best() { let b = { name: 'fists', dmg: 1, reach: 1.2 }; for (const k in this.items) { const m = ITEMS[k].melee; if (m && m.dmg > b.dmg) b = m; } return b; }
+  best() { let b = { name: 'fists', dmg: 1, reach: 1.2 }; if (this.pref === 'fists') return b; if (this.pref && this.items[this.pref] && ITEMS[this.pref].melee) return ITEMS[this.pref].melee; for (const k in this.items) { const m = ITEMS[k].melee; if (m && m.dmg > b.dmg) b = m; } return b; }
   hasPry() { return this.count('crowbar') > 0; }
 }
 
