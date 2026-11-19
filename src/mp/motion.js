@@ -22,7 +22,7 @@ export async function makeMotion(av) {
 // story-style remote animation from a few synced numbers: spd (m/s on the ground), flags
 export function driveRemote(P, dt, s) {
   if (!P) return; const f = s.f | 0; // bit0 crouch, bit1 rolling, bit2 airborne, bit3 attacking
-  if (!P.oneShot) { if (f & 4) P.play('Jump_Loop'); else if (f & 2) P.play('Roll', { once: true, force: true, speed: 1.35, cb: () => { P.curName = ''; } });
+  if (!P.oneShot) { if (f & 32 && !(f & 6)) P.play('Hit_Chest', { once: true, force: true, speed: 1.6, cb: () => { P.curName = ''; } }); else if (f & 4) P.play('Jump_Loop'); else if (f & 2) P.play('Roll', { once: true, force: true, speed: 1.35, cb: () => { P.curName = ''; } });
     else if (f & 8) P.play(f & 16 ? 'Sword_Attack' : 'Punch_Jab', { once: true, force: true, speed: f & 16 ? .9 : 1.1, cb: () => { P.curName = ''; } });
     else if (f & 1) { if ((s.spd || 0) > .3) P.play('Crouch_Fwd_Loop', { speed: Math.max(.4, Math.min(2.2, s.spd / .64)) }); else P.play('Crouch_Idle_Loop'); }
     else if ((s.spd || 0) > .35) { if (!P.locomote(s.spd, 1, dt)) P.play('Jog_Fwd_Loop'); } else P.play(s.g && s.g !== 'bat' && s.g !== 'pan' ? 'Pistol_Idle_Loop' : 'Idle_Loop'); }
