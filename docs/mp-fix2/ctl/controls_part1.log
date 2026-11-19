@@ -1,0 +1,18 @@
+PASS Move (W) {"from":[-6,21.5],"to":[-8.79,21.5],"anim":"Jog_Fwd_Loop","spd":3.1}
+PASS Sprint (Shift) {"spd":6.2,"anim":"Sprint_Loop"}
+PASS Look (swipe right half) {"before":-1.57,"after":-2.61}
+PASS First person (V) {"camDist":0.12,"avatarVisible":false}
+PASS Third person (V again) {"camDist":4.38}
+PASS Crouch (C) {"crouch":true,"anim":"Crouch_Idle_Loop"}
+PASS Roll (Ctrl) {"roll":0.32,"anim":"Roll"}
+PASS Jump (Space) {"y":0.53,"anim":"Jump_Start"}
+PASS Attack / HIT with fists (J / wantHit) {"atk":0.37,"anim":"Punch_Cross"}
+PASS Fists damage a zombie {"hpBefore":70,"after":{"hp":48,"dead":false}}
+PASS Attack with bat (Sword anim + zombie dies in 1-2 hits) {"anim":"Sword_Attack","zombie":{"hp":21.599999999999994,"dead":false}}
+PASS Swap weapon (Q) {"pref":"pistol"}
+PASS Pistol equipped: gun idle pose {"anim":"Pistol_Idle_Loop"}
+PASS FIRE pistol: mag drops, shot hits zombie {"zombieHpBefore":70,"after":{"last":{"g":"pistol","hits":0,"mag":10},"hp":36,"dead":false,"ammoBag":24}}
+PASS Reload (R): spare ammo moves into the magazine {"before":24,"after":22}
+PASS AIM (button): aim state, slower, gun-aim pose {"aim":true,"spd":2.2,"anim":"Walk_Loop"}
+PASS Heal (H) with bandage {"hp":68}
+PASS Grenade (G): thrown, explodes after fuse, kills zombie {"grenades":{"left":0,"before":1},"boomed":true,"zombie":{"dead":true,"hp":-109.36516771812796,"hpMe":68}}

@@ -50,7 +50,7 @@ for (let i = 0; i < 4; i++) { const ac = await T(() => window.__mpTown.acts()); 
 const ca2 = await T(() => window.__mpTown.acts()); await p.keyboard.press('KeyE'); await fr(6); a = await st();
 await rec('Enter car (E)', a.drv, { car: car.id, actsBefore: ca, actsAfterSmash: ca2 }, 'car_enter');
 const cs = () => T(() => { const c = window.__mpTown.me.drv; return c ? { v: +c.v.toFixed(2), ry: +c.ry.toFixed(2), x: +c.x.toFixed(1), z: +c.z.toFixed(1), steer: +(c.steer || 0).toFixed(2) } : null; });
-const c0 = await cs(); await p.keyboard.down('KeyS'); await fr(8); const c0b = await cs(); await p.keyboard.up('KeyS'); await rec('REV: hold BRAKE (S) from a stop reverses', c0.v === 0 && c0b.v < -.5, { vStart: c0.v, vAfter: c0b.v, x0: c0.x, x1: c0b.x }, 'car_reverse'); await fr(14);
+const r0 = await cs(); await p.keyboard.down('KeyS'); await fr(8); const c0b = await cs(); await p.keyboard.up('KeyS'); await rec('REV: hold BRAKE (S) from a stop reverses', r0.v === 0 && c0b.v < -.5, { vStart: r0.v, vAfter: c0b.v, x0: r0.x, x1: c0b.x }, 'car_reverse'); await fr(14);
 const c1 = await cs(); await p.keyboard.down('KeyW'); await fr(10); const c2 = await cs(); await rec('Drive: GAS (W) accelerates forward', c2.v > 1, { before: c1, after: c2 }, 'car_drive');
 await p.keyboard.down('KeyD'); await fr(8); const c3 = await cs(); await p.keyboard.up('KeyD'); const cdiff = (c3.ry - c2.ry);
 await rec('Steer RIGHT (D) while driving forward turns right (heading decreases)', cdiff < -.02, { ryBefore: c2.ry, ryAfter: c3.ry }, 'car_right');

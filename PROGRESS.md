@@ -142,3 +142,10 @@ Based on `feat/mp-town` a091c98. New files: `src/mp/town/camcol.js`, `src/mp/tow
 - Keem character: 'Play as Keem' in the creator only when role is admin; uses story Keem Char (voice, anims, look). Admin email lillykemoy1@gmail.com added to `atq_mp.admin_emails` (migration `20261119_mp_admin_keem.sql`, applied). Google OAuth still not configured.
 - Faces: added nose + eyelashes (`src/mp/facepart.js`). Still rough: hairline jagged, head shape not yet Bitmoji-like.
 - FPS can't be measured here (software GL runs ~0.7 fps headless), so no FPS claim.
+
+## mp controls checklist + guns + second-player view (feat/mp-controls-chars, not released)
+- Control checklist run against the MP town (`tools/mp/t_ctl.mjs` keys/touch, `t_ctl2.mjs` touch buttons/interact/car; logs `docs/mp-fix2/ctl/controls_part*.log`, screenshots beside them). PASS: move, sprint, look (swipe), first/third person (V and 👁), crouch (key + CRCH), roll, jump, RUN toggle, HIT with fists and bat, swap (Q and ⇄), pistol equip/aim/fire/reload (key + buttons), heal (H), grenade (G and 💣), USE at door, USE on loot container, pause/bag/shop buttons, enter car (smash window first), gas, steer left/right, brake, reverse from a stop, exit car.
+- Not in MP: flashlight (story's torch is always-on at night, no button; MP town is daytime), other story guns (only pistol + shotgun are lootable; no SMG/rifle/etc.), skip-dialogue (no dialogue), armory shop for guns (MP shop is house upgrades only).
+- New: story guns (9mm pistol start kit 12+24, shotgun, ammo loot), hitscan vs zombies, grenades (story throw/fuse/fireball numbers), H heal, bat/pan shown in hand, remote players show held weapon + gun idle pose + sword swing, shot/explosion events heard by other players.
+- Fixed: late joiner never saw the earlier player (hello arrived before the town loaded and was never replayed) -> `net.js` p.ann replay.
+- Survivors: corpse/zombie vanish distance raised to 100-104 m (fog ~93-99% there) -> 10/11 visibility changes at fog>=0.92 (`t_popin.mjs`); fresh pistol kills settle on the road (`t_corpse2.mjs`); story survivors body persists, `tools/proof_survivors_shots.mjs`.

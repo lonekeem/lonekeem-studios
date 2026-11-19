@@ -1,0 +1,70 @@
+{
+ "peersA": 1,
+ "peersB": 1,
+ "idleGun": {
+  "x": -6,
+  "z": 22,
+  "vis": true,
+  "anim": "Pistol_Idle_Loop",
+  "gunMounted": true,
+  "g": "pistol",
+  "name": true,
+  "n": 1
+ },
+ "sprint": {
+  "x": 5.4,
+  "z": 22.2,
+  "vis": true,
+  "anim": "LOCO",
+  "gunMounted": true,
+  "g": "pistol",
+  "name": true,
+  "n": 1
+ },
+ "crouch": {
+  "x": 10.2,
+  "z": 23.2,
+  "vis": true,
+  "anim": "Crouch_Idle_Loop",
+  "gunMounted": true,
+  "g": "pistol",
+  "name": true,
+  "n": 1
+ },
+ "shotEvents": [
+  "shot:pistol"
+ ],
+ "bat": {
+  "x": 10.2,
+  "z": 23.2,
+  "vis": true,
+  "anim": "Idle_Loop",
+  "gunMounted": true,
+  "g": "bat",
+  "name": true,
+  "n": 1
+ },
+ "swing": {
+  "x": 10.2,
+  "z": 23.2,
+  "vis": true,
+  "anim": "Sword_Attack",
+  "gunMounted": true,
+  "g": "bat",
+  "name": true,
+  "n": 1
+ },
+ "roll": {
+  "x": 12.2,
+  "z": 23.2,
+  "vis": true,
+  "anim": "Roll",
+  "gunMounted": false,
+  "g": 0,
+  "name": true,
+  "n": 1
+ },
+ "boomHeard": [
+  "explode:undefined"
+ ]
+}

@@ -66,7 +66,7 @@
   "name": "Jump (Space)",
   "pass": true,
   "info": {
-   "y": 0.49,
+   "y": 0.53,
    "anim": "Jump_Start"
   }
  },
@@ -74,7 +74,7 @@
   "name": "Attack / HIT with fists (J / wantHit)",
   "pass": true,
   "info": {
-   "atk": 0.25,
+   "atk": 0.37,
    "anim": "Punch_Cross"
   }
  },
@@ -157,7 +157,7 @@
  },
  {
   "name": "Grenade (G): thrown, explodes after fuse, kills zombie",
-  "pass": false,
+  "pass": true,
   "info": {
    "grenades": {
     "left": 0,
@@ -165,8 +165,8 @@
    },
    "boomed": true,
    "zombie": {
-    "dead": false,
-    "hp": 70,
+    "dead": true,
+    "hp": -109.36516771812796,
     "hpMe": 68
    }
   }

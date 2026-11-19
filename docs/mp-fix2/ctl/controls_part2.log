@@ -1,0 +1,24 @@
+PASS JUMP button (touch) {"y":0.27,"anim":"Jump_Start"}
+PASS ROLL button (touch) {"roll":0.3,"anim":"Roll"}
+PASS CRCH button (touch) {"crouch":true,"anim":"Crouch_Idle_Loop"}
+PASS CRCH button toggles back {"crouch":false}
+PASS HIT button (touch, fists) {"atk":0.18,"anim":"Punch_Cross"}
+PASS SWAP button (⇄) cycles fists → weapons in the bag {"afterFirst":"pistol","afterSecond":"bat"}
+PASS FIRE button (touch, pistol): fires {"mag":11}
+PASS Reload button ⟳ (touch) {"spareBefore":24,"after":23}
+PASS AIM button toggles aim on {"aim":true}
+PASS 👁 view button: first person {"camDist":0.12}
+PASS 💣 grenade button throws one {"before":2,"after":{"n":1,"label":"1"}}
+PASS RUN button (touch toggles run) {"on":true}
+PASS USE button at a door (✋) {"actsBefore":["Open door"],"doorBefore":"closed","doorAfter":"open","actsAfter":["Close door"]}
+PASS USE (E) on a container opens the loot panel {"container":"L4:cabinet:0","acts":["Search cabinet"]}
+PASS Pause (II) button {"paused":false,"panel":true}
+PASS Bag button opens bag {"open":true}
+PASS Shop button opens shop {"open":true}
+PASS Enter car (E) {"car":"c2","actsBefore":["Smash window"],"actsAfterSmash":["Enter suv (KL)","Search trunk"]}
+PASS REV: hold BRAKE (S) from a stop reverses {"vStart":0,"vAfter":-6,"x0":8,"x1":11.8}
+PASS Drive: GAS (W) accelerates forward {"before":{"v":-0.89,"ry":-1.51,"x":18.4,"z":21.2,"steer":0},"after":{"v":13.96,"ry":-1.51,"x":6.5,"z":21.9,"steer":0}}
+PASS Steer RIGHT (D) while driving forward turns right (heading decreases) {"ryBefore":-1.51,"ryAfter":-2}
+PASS Steer LEFT (A) turns left (heading increases) {"ryBefore":-2,"ryAfter":-1.08}
+PASS BRAKE (S) slows {"before":2.83,"after":-6}
+PASS Exit car (E) {"drv":false}

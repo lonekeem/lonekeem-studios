@@ -20,7 +20,7 @@ export class Net {
   evt(e) { this.t.send({ k: 'ev', id: this.id, e }); } // generic world events (doors, loot, ...)
   recv(m) {
     if (!m || m.id === this.id) return; if (m.to && m.to !== this.id) return; let p = this.peers.get(m.id);
-    if (m.k === 'hello') { const fresh = !p; if (!p) { p = { id: m.id, seen: 0 }; this.peers.set(m.id, p); } p.name = m.name; p.seen = performance.now(); const changed = JSON.stringify(p.look) !== JSON.stringify(m.look); p.look = m.look; if (fresh) this.hello(m.id); if (fresh || changed) this.onHello && this.onHello(p); }
+    if (m.k === 'hello') { const fresh = !p; if (!p) { p = { id: m.id, seen: 0 }; this.peers.set(m.id, p); } p.name = m.name; p.seen = performance.now(); const changed = JSON.stringify(p.look) !== JSON.stringify(m.look); p.look = m.look; if (fresh) this.hello(m.id); if ((fresh || changed || !p.ann) && this.onHello) { p.ann = true; this.onHello(p); } } // p.ann: a hello that arrived before the town finished loading (onHello not set yet) is replayed by the next periodic hello
     else if (m.k === 'st') { if (!p) { this.hello(m.id); return; } p.seen = performance.now(); p.s = m.s; p.sAt = performance.now(); }
     else if (m.k === 'car') { this.onCar && this.onCar(m.c, m.id); }
     else if (m.k === 'ev') { this.onEvt && this.onEvt(m.e, m.id); }
