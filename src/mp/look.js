@@ -9,7 +9,7 @@ export function defaultLook(base = 'mp_m1') {
   const f = base.startsWith('mp_f');
   return { v: LOOK_VERSION, name: 'Survivor', base, skin: { t: .38, u: 0 }, height: 0, morph: {}, 
     eyes: { s: 0, col: '#4a2c17', size: 0, space: 0, tilt: 0, lash: f ? .6 : 0 }, brows: { s: 0, thick: 0, arch: 0, col: null },
-    nose: { s: 0 }, mouth: { s: 0, full: 0, width: 0, col: null }, makeup: { shadow: 0, shadowCol: '#7a4a8a', liner: 0, blush: 0, lip: 0, lipCol: '#b2264a' },
+    nose: { s: 0 }, mouth: { s: 0, full: 0, width: 0, col: null, smile: 2 }, makeup: { shadow: 0, shadowCol: '#7a4a8a', liner: f ? 1 : 0, blush: 0, lip: 0, lipCol: '#b2264a' },
     skinx: { freckles: 0, moles: 0, scar: 0, scarSide: 1, tattoo: 0, tattooCol: '#1c2a3a', age: 0 },
     hair: { id: f ? 'longwave' : 'crew', c: '#2b1a10', c2: '#5a3b22', hl: .35 }, beard: { id: 'none', c: null, len: .35, dens: .8 }, stache: { id: 'none', c: null, len: .3, dens: .8 },
     mask: null,
