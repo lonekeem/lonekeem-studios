@@ -200,7 +200,7 @@ export class Game {
     for (let i = 0; i < eaters; i++) { const a = i / eaters * 6.28 + rnd(-.3, .3); const zz = this.spawnZ(x + Math.cos(a) * 0.95, z + Math.sin(a) * 0.95, { eat: v }); zz.eatOff = i; zz.root.rotation.y = Math.atan2(x - zz.root.position.x, z - zz.root.position.z); }
     return v; }
   spawnZ(x, z, o = {}) { const zl = Object.assign((o.raider ? raiderLook : randomLook)((ZSEED++ * 7919 + (Math.random() * 1e5 | 0)) | 0, !o.raider), o.raider ? { grime: .6, blood: .1 } : { grime: 1, blood: this.settings.gore ? rnd(.5, 1) : 0.15 }); if (Math.random() < .3) zl.hair = 'balding'; if (o.boss) { zl.hair = 'bald'; zl.beard = 'full'; zl.build = 1.3; }
-    const sc = (o.scale || rnd(.94, 1.06)); const c = new Char(this.lib, zl, sc); c.id = Math.random() * 10; c.root.position.set(x, 0, z); c.root.rotation.y = rnd(0, 6); this.scene.add(c.root);
+    const sc = (o.scale || rnd(.9, 1.1)); const c = new Char(this.lib, zl, sc); c.id = Math.random() * 10; c.root.position.set(x, 0, z); c.root.rotation.y = rnd(0, 6); this.scene.add(c.root);
     const runner = o.runner ?? Math.random() < (this.stepData.runners || 0.15);
     Object.assign(c, { z: true, hp: o.hp || (runner ? 50 : 70), maxHp: o.hp || (runner ? 50 : 70), runner, speed: runner ? rnd(3.6, 4.4) : rnd(1.1, 1.6), st: o.eat ? 'eat' : (o.idle ? 'idle' : 'chase'), eat: o.eat, cd: rnd(0, 1), stun: 0, dead: false, boss: !!o.boss, aggro: o.aggro ?? 30, vel: V3() });
     if (o.eat) c.play('Fixing_Kneeling', { speed: 1.4 }); else c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.1 : 0.62 });
@@ -334,8 +334,10 @@ export class Game {
         const LG = this._limbG || (this._limbG = [new THREE.CapsuleGeometry(.05, .35, 3, 6), new THREE.CapsuleGeometry(.07, .45, 3, 6)]); const limb = new THREE.Mesh(LG[leg ? 1 : 0], z.mat); const ap = V3(); z.worldOf(bn, ap); this.gib(ap, 4, '#5a1010', limb); this.blood(ap, dir.clone().add(V3(rnd(-.5, .5), .5, rnd(-.5, .5))), 28, 4.5, 1.2); this.decal(ap.x, ap.z, 1); } }
     if (o.finisher || (this.state.combo >= 3 && Math.random() < .6) || z.boss || z === this.boss) { const bz = z.boss || z === this.boss; this.slowmo(bz ? 1.3 : 0.6); this.shake(.5); this.toast(bz ? ($('#bossn').textContent.split(' —')[0] + ' IS DOWN') : (o.head ? 'HEADSHOT' : 'FINISHER'), 1); if (perk(this.save, 10)) this.hp = Math.min(this.maxHp, this.hp + 10); }
     this.audio.at(pos).thud(); if (gore) this.audio.at(pos).squelch(.9); }
-  meleeHit() { const P = this.player, ws = this.ws, fwd = V3(Math.sin(P.root.rotation.y), 0, Math.cos(P.root.rotation.y)); let hit = 0;
-    this.alive().forEach(z => { const d = z.root.position.clone().sub(P.root.position); const dist = d.length(); d.y = 0; if (dist > ws.range + (z.boss ? .8 : 0)) return; d.normalize(); if (d.dot(fwd) < .35) return;
+  // v1.9.11: melee reach = how far the weapon visibly gets from Keem's body (root-to-root), not the old generous `range` (1.6-2.7m). Measured: hand extends ~0.6m, weapon adds ~0.5m, zombie body radius ~0.3m.
+  meleeReach(id) { const r = WEAPONS[id || this.save.cur].range; return Math.max(1.2, r * .74); }
+  meleeHit() { const P = this.player, ws = this.ws, fwd = V3(Math.sin(P.root.rotation.y), 0, Math.cos(P.root.rotation.y)); let hit = 0; const reach = this.meleeReach();
+    this.alive().forEach(z => { const d = z.root.position.clone().sub(P.root.position); const dy = Math.abs(d.y); d.y = 0; const dist = d.length(); if (dist > reach + (z.boss ? .5 : 0) + Math.max(0, (z.scale || 1) - 1) * .5 || dy > 1.3) return; if (dist > .01) d.normalize(); if (dist > .45 && d.dot(fwd) < .5) return;
       const heavy = WEAPONS[this.save.cur].type === 'melee' && this.save.cur !== 'fists'; const fin = this.state.combo >= 2 && heavy && z.hp <= ws.dmg * 1.6;
       this.damageZ(z, ws.dmg * (fin ? 1.6 : 1) * (1 + this.state.combo * .1), d, { sever: WEAPONS[this.save.cur].sever, blade: WEAPONS[this.save.cur].blade, finisher: fin, head: fin && WEAPONS[this.save.cur].sever }); hit++; });
     if (hit) { this.audio.hit(); if (Math.random() < .3) this.audio.shout('keem_melee'); if (WEAPONS[this.save.cur].bonk) { this.audio.bonk(); this.floatText('BONK!', '#ffd35a'); } this.hitstop = 0.07; this.shake(.18); this.state.combo++; this.state.comboT = 2; } else this.audio.swing();
@@ -379,8 +381,9 @@ export class Game {
   finishReload() { const id = this.save.cur, w = WEAPONS[id]; const need = this.ws.mag - (this.save.mags[id] || 0); const n = Math.min(need, this.save.ammo[w.ammo] || 0); this.save.mags[id] += n; this.save.ammo[w.ammo] -= n; this.audio.click(); }
   attack() { const w = WEAPONS[this.save.cur]; if (this.truck.driving || this.cut || this.dying) return; if (w.type === 'gun') return this.fire(); const s = this.state; if (s.atk > 0 || s.roll > 0) return;
     const P = this.player; // soft lock
-    let best = null, bd = 3.5; this.alive().forEach(z => { const d = z.root.position.distanceTo(P.root.position); if (d < bd) { bd = d; best = z; } }); if (best) P.root.rotation.y = Math.atan2(best.root.position.x - P.root.position.x, best.root.position.z - P.root.position.z);
-    const rate = this.ws.rate; s.atk = rate; s.atkHit = rate * .45; const anim = this.save.cur === 'fists' ? (s.combo % 2 ? 'Punch_Cross' : 'Punch_Jab') : 'Sword_Attack';
+    let best = null, bd = this.meleeReach() + .9; this.alive().forEach(z => { const d = z.root.position.distanceTo(P.root.position); if (d < bd) { bd = d; best = z; } }); if (best) P.root.rotation.y = Math.atan2(best.root.position.x - P.root.position.x, best.root.position.z - P.root.position.z);
+    const rate = this.ws.rate; s.atk = rate; const anim = this.save.cur === 'fists' ? (s.combo % 2 ? 'Punch_Cross' : 'Punch_Jab') : 'Sword_Attack';
+    s.atkHit = rate * (this.save.cur === 'fists' ? .34 : .38); // v1.9.11: contact lands when the arm/weapon is at full extension (clip peaks ~30% in; was .45)
     P.play(anim, { once: true, force: true, speed: (this.lib.clips[anim].duration / rate) * .8, cb: () => { P.curName = ''; } }); this.audio.swing(); }
   roll() { const s = this.state; if (s.roll > 0 || this.truck.driving || this.cut) return; s.roll = 0.62; this.audio.rollS && this.audio.rollS(); this.player.play('Roll', { once: true, force: true, speed: 1.35, cb: () => { this.player.curName = ''; } });
     const mv = this.input.move; if (mv.lengthSq() > .04) this.player.root.rotation.y = Math.atan2(mv.x, mv.y) + this.cam.yaw; }
@@ -511,11 +514,11 @@ export class Game {
       const tg = z.tgt && !z.tgt.dead && z.tgt.root.visible !== false ? z.tgt : null; if (tg) { toP.set(tg.root.position.x - zp.x, 0, tg.root.position.z - zp.z); d = toP.length(); }
       if (d > z.aggro && !this.stepData.hordeAll && !tg) { z.mixer.update(dt); this.zBones(z); continue; }
       if (z.cd > 0) z.cd -= dt;
-      if (d < 1.25 && (tg || !this.truck.driving)) { if (z.cd <= 0) { z.cd = rnd(1.2, 1.8); z.play('Punch_Jab', { once: true, force: true, speed: .9, cb: () => { z.curName = ''; } }); z.hitAt = .35; } }
+      if (d < 1.05 && (tg || !this.truck.driving)) { if (z.cd <= 0) { z.cd = rnd(1.2, 1.8); z.play('Punch_Jab', { once: true, force: true, speed: .9, cb: () => { z.curName = ''; } }); z.hitAt = .35; } }
       else if (!z.oneShot) { toP.normalize(); let sx = toP.x * z.speed * dt, sz = toP.z * z.speed * dt;
         for (let j = 0; j < Z.length; j++) { if (j === i || Z[j].dead) continue; const o = Z[j].root.position; const ex = zp.x - o.x, ez = zp.z - o.z, e2 = ex * ex + ez * ez; if (e2 < .5 && e2 > 1e-4) { sx += ex / e2 * dt * .25; sz += ez / e2 * dt * .25; } }
         this.moveCollide(zp, sx, sz, .3); z.root.rotation.y = angLerp(z.root.rotation.y, Math.atan2(toP.x, toP.z), Math.min(1, dt * 6)); z.play(z.runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: z.runner ? 1.1 : .62 }); }
-      if (z.hitAt > 0) { z.hitAt -= dt; if (z.hitAt <= 0 && d < 1.7) { if (tg && tg.raider) this.damageZ(tg, 14, toP.clone().normalize(), { ai: true }); else if (tg) { tg.root.position.addScaledVector(toP.clone().normalize(), .25); if (/nia/.test(tg.key || '') && Math.random() < .3 && this.audio.shout) this.audio.shout('nia_spot', false, tg.root.position); } else if (!this.truck.driving) this.hurt(this.settings.qteEasy ? 6 : 11, zp); } }
+      if (z.hitAt > 0) { z.hitAt -= dt; if (z.hitAt <= 0 && d < 1.45) { if (tg && tg.raider) this.damageZ(tg, 14, toP.clone().normalize(), { ai: true }); else if (tg) { tg.root.position.addScaledVector(toP.clone().normalize(), .25); if (/nia/.test(tg.key || '') && Math.random() < .3 && this.audio.shout) this.audio.shout('nia_spot', false, tg.root.position); } else if (!this.truck.driving) this.hurt(this.settings.qteEasy ? 6 : 11, zp); } }
       if (Math.random() < dt * .08) this.audio.at(zp).groan(.06);
       z.mixer.update(dt); this.zBones(z); this.stepTrack(z, zp, 'z'); } }
   // v1.4 feeding: kneel (Fixing_Kneeling) + procedural head-dip / tear / shake, bite-synced spurts, growing pool, look-up toward Keem

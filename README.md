@@ -50,6 +50,11 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.11
+- Camera look: the hidden dialogue box was an invisible ~700px-wide touch blocker at the bottom centre/right, and the dialogue box and the Run/Crouch wrapper swallowed look drags. They no longer block; every empty screen point outside the left stick now turns the camera, and a stuck look finger (touchend lost when an element disappeared) can no longer leave the camera dead.
+- Melee: weapon reach is now the weapon's visible reach (about 1.2-1.6 m, was 1.6-2.7 m), narrower arc, soft-lock only on zombies in reach, and the hit lands when the swing reaches full extension (was late). Zombies now close in to ~1 m before attacking so fights happen at arm's length.
+- Zombie variety: about 45% of zombies use the original v1.9.7 procedural look mixed in with the new cartoon zombie; wider size variation.
+
 ### v1.9.10
 - Controls are back to exactly how v1.9.7 played: same button layout and sizes, stick behaviour, aim button and movement feel. The v1.9.8 thumb-arc layout (with Swap/Grenade buttons) and smooth movement are now opt-in under Settings -> Controls. Control settings saved by v1.9.8/v1.9.9 are reset to the classic default once (look sensitivity is kept).
 - Lighting: removed the emissive lift, strong rim light and always-on face light that made characters look washed out and glowing white. Characters now sit in the scene's own lighting; hand and skin colours match their textures.
