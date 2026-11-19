@@ -72,7 +72,7 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
     <button id="btnControls">Controls</button>
     <button id="btnCredits">Credits</button>
   </div>
-  <div class="foot">v1.9.18 · Story Mode · Chapters 1–11 · Swan Song · Multiplayer (Beta)</div>
+  <div class="foot" id="foot">v1.9.19 · Story Mode · Chapters 1–13 · Multiplayer (Beta)</div>
 </div>
 <div id="settings" class="screen hidden">
   <div class="panel">
@@ -168,7 +168,7 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
   <div class="cside"><div class="tabs" id="cTabs"></div><div id="cList" class="clist"></div></div></div>
   <div class="crow"><button id="cReset">Reset to default</button><button id="cSave" class="primary">Save &amp; back</button><button class="back">Cancel</button></div></div></div>
 <div id="inv" class="screen hidden"><div class="panel wide"><h2>Inventory</h2><div id="invStats" class="cashline"></div><div id="invList" class="glist"></div><button class="back primary">Back</button></div></div>
-<div id="chapters" class="screen hidden"><div class="panel"><h2>Chapter Select</h2><button id="btnCh1">Chapter 1 · The Day Before</button><button id="btnCh2">Chapter 2 · High Water</button><button id="btnCh3">Chapter 3</button><button id="btnCh4">Chapter 4</button><button id="btnCh5">Chapter 5</button><button id="btnCh6">Chapter 6</button><button id="btnCh7">Chapter 7</button><button id="btnCh8">Chapter 8</button><button id="btnCh9">Chapter 9</button><button id="btnCh10">Chapter 10</button><button id="btnCh11">Chapter 11</button><p class="small">Your level, cash, weapons and comic pages carry over between chapters.</p><button class="back">Back</button></div></div>
+<div id="chapters" class="screen hidden"><div class="panel"><h2>Chapter Select</h2><div id="chList"></div><p class="small">Your level, cash, weapons and comic pages carry over between chapters.</p><button class="back">Back</button></div></div>
 <div id="ending" class="screen hidden"><div class="panel"><h2 id="endH">End of Chapter 1</h2><p id="endQ">“He said he'd be right behind us.”</p><div id="endStats" class="small"></div><p id="endNext" class="small"></p><button id="btnEndNext" class="primary">Continue</button><button id="btnEndTitle">Back to title</button></div></div>
 <script type="module" src="./src/main.js"></script>
 </body>

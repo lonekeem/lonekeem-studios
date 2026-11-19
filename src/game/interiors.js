@@ -6,7 +6,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { canvasTex, bloodTex } from './util.js';
 
 const M4 = THREE.Matrix4, V3 = THREE.Vector3, Q4 = THREE.Quaternion, E3 = THREE.Euler;
-class Decor {
+export class Decor {
   constructor(seed = 5) { this.geos = []; this.stack = [new M4()]; this.s = seed; }
   r() { this.s = (this.s * 1664525 + 1013904223) >>> 0; return this.s / 4294967296; }
   push(x = 0, y = 0, z = 0, ry = 0, rx = 0, rz = 0) { const m = new M4().compose(new V3(x, y, z), new Q4().setFromEuler(new E3(rx, ry, rz, 'YXZ')), new V3(1, 1, 1)); this.stack.push(this.stack[this.stack.length - 1].clone().multiply(m)); return this; }
