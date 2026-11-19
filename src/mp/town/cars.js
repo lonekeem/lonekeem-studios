@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { BASE, klTex, mulberry } from './kit.js';
+import { CAR_SPAWNS } from './map.js';
 
 const KEYS = ['sedan', 'suv', 'truck', 'van', 'hatchback-sports', 'suv-luxury', 'debris-tire', 'debris-door', 'debris-bumper'];
 export async function loadCarModels() { const M = {}; await Promise.all(KEYS.map(k => new GLTFLoader().loadAsync(BASE + 'models/cars/' + k + '.glb').then(g => { M[k] = g.scene; }).catch(e => console.warn('car model', k, e)))); return M; }
@@ -52,4 +53,26 @@ export class Car {
     this.tailM.emissive.setHex(this.engine ? (this.v < -.3 ? 0xffffff : 0x661008) : 0x100000); this.headM.emissive.setHex(this.engine ? 0xfff3d0 : 0); this.headM.emissiveIntensity = this.engine ? 2 : 1;
     this.sync(); }
   netState() { return { id: this.id, x: this.x, z: this.z, ry: this.ry, v: this.v, steer: this.steer, fuel: this.fuel, engine: this.engine ? 1 : 0, broken: this.broken ? 1 : 0 }; }
+}
+
+// ---------------- manager: spawn all cars, enter / exit / break in / drive, collisions with the player ----------------
+export function createCars({ scene, W, models, specs = CAR_SPAWNS, onCrash }) {
+  const cars = specs.map(s => { const c = new Car(s, models); scene.add(c.g); c.onCrash = (sp) => onCrash && onCrash(c, sp); return c; }); const byId = Object.fromEntries(cars.map(c => [c.id, c]));
+  W.cars = cars; W.carPush = (x, z, r) => pushOut(x, z, r);
+  function pushOut(x, z, r, ignore) { let hit = false; for (const c of cars) { if (c === ignore) continue; if (Math.abs(c.x - x) > 4 || Math.abs(c.z - z) > 4) continue; for (const [cx, cz] of c.circles()) { const dx = x - cx, dz = z - cz, rr = c.rad + r, d2 = dx * dx + dz * dz; if (d2 < rr * rr) { const d = Math.sqrt(d2) || .01; x = cx + dx / d * rr; z = cz + dz / d * rr; hit = true; } } } return [x, z, hit]; }
+  const api = {
+    cars, byId, pushOut,
+    nearest(x, z, r = 3.2) { let b = null, bd = r; for (const c of cars) { const d = Math.min(Math.hypot(c.x - x, c.z - z), ...c.circles().map(([cx, cz]) => Math.hypot(cx - x, cz - z) + .6)); if (d < bd) { bd = d; b = c; } } return b; },
+    canEnter(car) { return car.driver ? 'occupied' : car.hp <= 0 ? 'wrecked' : (car.lock === 1 && !car.broken) ? 'locked' : 'ok'; },
+    /** crowbar (bag.hasPry()) smashes the window of a locked car. Returns true if it is now open. */
+    breakIn(car, bag) { if (car.broken || car.lock !== 1) return true; if (!bag || !bag.hasPry()) return false; car.smash(); return true; },
+    /** sit down: engine starts at once (no hotwire). Returns 'ok' | 'locked' | 'occupied' | 'wrecked'. */
+    enter(car, who = 'me') { const r = api.canEnter(car); if (r !== 'ok') return r; car.driver = who; car.engine = car.fuel > 0; car.stalled = !car.engine; return 'ok'; },
+    /** step out on the free side; returns {x,z} for the player. */
+    exit(car) { car.driver = null; car.engine = false; const s = Math.sin(car.ry), c = Math.cos(car.ry); for (const side of [1, -1]) for (const k of [1.9, 2.4]) { const x = car.x + c * k * side, z = car.z - s * k * side; if (!W.col.hit(x, z, .4) && !pushOut(x, z, .4, car)[2]) return { x, z }; } return { x: car.x + c * 2, z: car.z - s * 2 }; },
+    seat(car) { return { x: car.x, z: car.z, ry: car.ry }; },
+    /** per frame: ctl = {gas, steer, brake} for the car the local player drives */
+    update(dt, ctl) { for (const c of cars) { c.update(dt, c.driver === 'me' ? ctl : {}, W.col, cars); if (c.hp <= 0 && c.engine) { c.engine = false; c.stalled = true; } } },
+  };
+  return api;
 }
