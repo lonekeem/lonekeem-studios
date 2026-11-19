@@ -153,7 +153,7 @@ function buildDrop(head, st, fr, cols, thB, NPH, NR) {
   const NC = (NPH + 1) * (NS + 1);
   for (let j = 0; j < NPH; j++) { if (useCols[j] < .01 && useCols[j + 1] < .01) continue; for (let k = 0; k < NS; k++) { const a = j * (NS + 1) + k, b = (j + 1) * (NS + 1) + k; idx.push(a, b, a + 1, b, b + 1, a + 1); idx.push(NC + a, NC + a + 1, NC + b, NC + b, NC + a + 1, NC + b + 1); }
     const a = j * (NS + 1) + NS, b = (j + 1) * (NS + 1) + NS; idx.push(a, b, NC + a, b, NC + b, NC + a); }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aT', new THREE.Float32BufferAttribute(tan, 3)); g.setAttribute('aH', new THREE.Float32BufferAttribute(aux, 4)); g.setAttribute('aE', new THREE.Float32BufferAttribute(aE, 1)); g.setIndex(idx); g.computeVertexNormals(); return g;
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aT', new THREE.Float32BufferAttribute(tan, 3)); g.setAttribute('aH', new THREE.Float32BufferAttribute(aux, 4)); g.setIndex(idx); g.computeVertexNormals(); return g;
 }
 
 // tousled clumps: tapered, grooved locks lying on the hair surface, swept forward / sideways from the crown, tips lifting off the surface
