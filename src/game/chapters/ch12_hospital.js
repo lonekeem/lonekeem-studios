@@ -25,7 +25,7 @@ function kit(H) {
   const wallGeo = (w, h, d) => { const g = new THREE.BoxGeometry(w, h, d), uv = g.attributes.uv; for (let f = 0; f < 6; f++) for (let i = 0; i < 4; i++) { const k = f * 4 + i, u = uv.getX(k), v = uv.getY(k); if (f < 2) uv.setXY(k, u * d / 4, v * h / WH); else if (f < 4) uv.setXY(k, u * w / 4, v * d / WH); else uv.setXY(k, u * w / 4, v * h / WH); } return g; };
   const K = {
     col, M, T, std, rep,
-    floor(x0, x1, z0, z1, mat) { const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), mat); m.rotation.x = -PI / 2; m.position.set((x0 + x1) / 2, .03, (z0 + z1) / 2); m.receiveShadow = true; scene.add(m); return m; },
+    floor(x0, x1, z0, z1, mat) { const m = new THREE.Mesh(new THREE.PlaneGeometry(Math.abs(x1 - x0), Math.abs(z1 - z0)), mat); m.rotation.x = -PI / 2; m.position.set((x0 + x1) / 2, .03, (z0 + z1) / 2); m.receiveShadow = true; scene.add(m); return m; },
     ceil() { return null; }, // no ceilings: the over-the-shoulder camera would clip through them
     // straight wall from (ax,az) to (bx,bz) (axis aligned) with door gaps [[centre, width], ...]; gaps get a lintel. returns meshes
     wall(ax, az, bx, bz, gaps = [], o = {}) { const h = o.h || WH, th = o.th || .4, mat = o.mat, along = Math.abs(bx - ax) > Math.abs(bz - az) ? 'x' : 'z'; const a = along === 'x' ? Math.min(ax, bx) : Math.min(az, bz), b = along === 'x' ? Math.max(ax, bx) : Math.max(az, bz), c0 = along === 'x' ? az : ax;
@@ -68,10 +68,10 @@ function shelf(D, x, z, ry, w = 2.4, rows = 4, seed = 1) { D.push(x, 0, z, ry); 
 export const B12 = { x0: -16, x1: 16, zL: -2900, zM: -2916, zB: -2966, zH: -3016, zC: -3070, zE: -3084 };
 export function buildSubB(H0) {
   const H = Object.assign({ on: false, level: 0, lamps: [], emerg: [], budget: 99 }, H0); H.budget = Math.min(H0.Q.lamps + 1, 5); H.lampBudget = (d = 0) => (H.budget += d);
-  const K = kit(H), { scene, M, T } = K; const R = { cells: [], vents: {} };
+  const K = kit(H), { M, T } = K, scene = H0.scene; const R = { cells: [], vents: {} };
   const floorM = K.std({ map: K.rep(T.tile('#8f9a96', '#818c88'), 8, 8), roughness: .5, metalness: .05 }); floorM.map.repeat.set(1, 1);
   const wallM = K.std({ map: T.wall('#4f6b68', '#aebfb8', '#2a3a38') }), wallB = K.std({ map: T.wall('#4a4a46', '#8a8a82', '#222') });
-  const floor = (x0, x1, z0, z1) => { const m = K.floor(x0, x1, z0, z1, floorM.clone()); m.material.map = floorM.map.clone(); m.material.map.needsUpdate = true; m.material.map.repeat.set((x1 - x0) / 2.4, (z1 - z0) / 2.4); return m; };
+  const floor = (x0, x1, z0, z1) => { const m = K.floor(x0, x1, z0, z1, floorM.clone()); m.material.map = floorM.map.clone(); m.material.map.needsUpdate = true; m.material.map.repeat.set(Math.abs(x1 - x0) / 2.4, Math.abs(z1 - z0) / 2.4); return m; };
   const W = (a, b, c, d, gaps, o = {}) => K.wall(a, b, c, d, gaps, Object.assign({ mat: wallM }, o));
   // ---- floors + ceilings
   [[-5, 5, -2900, -2916], [-16, 16, -2916, -2966], [-16, 16, -2966, -3016], [-12, 12, -3016, -3070], [-16.8, -12, -3016, -3070], [12, 16.8, -3016, -3070], [-6, 6, -3070, -3084]].forEach(([a, b, c, d]) => { floor(a, b, c, d); K.ceil(a, b, c, d); });
@@ -91,7 +91,7 @@ export function buildSubB(H0) {
   H.setPower = (on) => { H.on = on; H.level = on ? 1 : 0; H.lamps.forEach(L => { L.m.emissiveIntensity = on ? L.on : 0; if (L.light) L.light.intensity = on ? L.I : 0; }); H.emerg.forEach(m => m.material.emissiveIntensity = on ? .5 : 2.4); ePl.forEach((l, i) => l.intensity = on ? 0 : (3.2)); };
   // ---- landing: stair rail + door + sign
   { const D = new Decor(7); D.box(-4.5, .5, -2903.5, .1, 1.0, 5, '#6a6e70'); D.box(-3, .08, -2902, 4, .16, .6, '#555'); D.box(-3, .24, -2902.3, 4, .16, .6, '#5a5a5a'); D.box(-3, .4, -2902.6, 4, .16, .6, '#606060'); scene.add(D.build()); }
-  H.sign(['SUBLEVEL B', 'AUTHORIZED PERSONNEL'], 0, 2.9, -2915.7, 0, 3.4, .9, '#12302e'); H.sign(['MORGUE'], -3.2, 2.3, -2916.3, PI, 1.6, .4, '#222a2a');
+  H.sign(['SUBLEVEL B', 'AUTHORIZED PERSONNEL'], 0, 2.9, -2915.7, 0, 4.8, .9, '#12302e'); H.sign(['MORGUE'], -3.2, 2.3, -2916.3, PI, 1.6, .4, '#222a2a');
   // ---- morgue
   { const D = new Decor(21); const G = [[-10, -2928, 0, 1], [3, -2926, .1, 1], [-4, -2938, PI / 2, 1], [9, -2938, -.2, 0], [-12.5, -2946, .15, 1], [-6, -2952, PI, 1], [4, -2948, .1, 0], [11, -2954, 0, 1], [-1, -2959, PI / 2, 1]];
     G.forEach(([x, z, ry, body], i) => { gurney(D, x, z, ry, { body, blood: i % 2 === 0, arm: i === 3 || i === 6, flat: !body }); const c = Math.abs(Math.cos(ry)) > .7; K.col(x - (c ? .45 : 1.1), x + (c ? .45 : 1.1), z - (c ? 1.1 : .45), z + (c ? 1.1 : .45)); });
@@ -159,10 +159,10 @@ export function buildSubB(H0) {
 export const B13 = { zP: -3300, zG: -3332, zW: -3374, zC: -3446, zE: -3508 };
 export function buildUpper(H0) {
   const H = Object.assign({ on: true, level: 1, lamps: [], emerg: [], budget: Math.min(H0.Q.lamps, 6) }, H0); H.lampBudget = (d = 0) => (H.budget += d);
-  const K = kit(H), { scene, M, T } = K; const R = { cells: [] };
+  const K = kit(H), { M, T } = K, scene = H0.scene; const R = { cells: [] };
   const mk = (a, b, c) => K.std({ map: T.wall(a, b, c) });
   const wP = mk('#5a8a94', '#d4e2dc', '#e8d070'), wG = mk('#a05a7a', '#f0dcc8', '#40a0b0'), wW = mk('#e8b840', '#f6ecd0', '#e86a4a'), wC = mk('#7a9a6a', '#ece6d0', '#c04a3a');
-  const flr = (mat, x0, x1, z0, z1) => { const m = K.floor(x0, x1, z0, z1, Object.assign(mat.clone(), {})); m.material.map = mat.map.clone(); m.material.map.needsUpdate = true; m.material.map.repeat.set((x1 - x0) / 2.4, (z1 - z0) / 2.4); return m; };
+  const flr = (mat, x0, x1, z0, z1) => { const m = K.floor(x0, x1, z0, z1, Object.assign(mat.clone(), {})); m.material.map = mat.map.clone(); m.material.map.needsUpdate = true; m.material.map.repeat.set(Math.abs(x1 - x0) / 2.4, Math.abs(z1 - z0) / 2.4); return m; };
   const fl1 = K.std({ map: T.tile('#c8c8bc', '#b6b8ac', '#8a8c80'), roughness: .45 }), fl2 = K.std({ map: T.tile('#e8d8a8', '#dcc890', '#a89a70'), roughness: .5 }), fl3 = K.std({ map: T.tile('#d0d4c8', '#7a8a6a', '#8a9080'), roughness: .5 });
   const rooms = [[-14, 14, -3300, -3332, wP, fl1, 3.6], [-14, 14, -3332, -3374, wG, fl2, 3.6], [-8, 8, -3374, -3446, wW, fl2, 3.4], [-16, 16, -3446, -3508, wC, fl3, 4.2]];
   rooms.forEach(([a, b, c, d, w, f, h]) => { flr(f, a, b, c, d); K.ceil(a, b, c, d, h, K.std({ color: '#d8d8d0', roughness: 1 })); });

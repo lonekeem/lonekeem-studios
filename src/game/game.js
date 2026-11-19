@@ -118,7 +118,7 @@ export class Game {
   setLight(mode) { const S = this.scene, f = this.world.flags, sky = this.world.env && this.world.env.sky; if (!this._L0) this._L0 = { moon: this.moon.intensity, hemi: this.hemi.intensity, hc: this.hemi.color.clone(), hg: this.hemi.groundColor.clone(), env: S.environmentIntensity, fog: S.fog.density, fc: S.fog.color.clone() };
     const o = this._L0, ind = !!mode; if (f) f.indoor = ind; if (sky) sky.visible = !ind; this.moon.visible = !ind; this.moon.intensity = ind ? 0 : o.moon;
     if (!ind) { this.hemi.intensity = o.hemi; this.hemi.color.copy(o.hc); this.hemi.groundColor.copy(o.hg); S.environmentIntensity = o.env; S.fog.density = o.fog; S.fog.color.copy(o.fc); S.background = this.world.env && sky ? null : S.background; return; }
-    if (mode === 'dark') { this.hemi.intensity = .5; this.hemi.color.set('#4a6a68'); this.hemi.groundColor.set('#1a2422'); S.environmentIntensity = .06; S.fog.density = o.fog * .55; S.fog.color.set('#0a1214'); }
+    if (mode === 'dark') { this.hemi.intensity = 1.0; this.hemi.color.set('#5a7a78'); this.hemi.groundColor.set('#2a3634'); S.environmentIntensity = .1; S.fog.density = o.fog * .55; S.fog.color.set('#0a1214'); }
     else { this.hemi.intensity = 1.5; this.hemi.color.set('#e8f2f4'); this.hemi.groundColor.set('#a89a86'); S.environmentIntensity = .25; S.fog.density = o.fog * .22; S.fog.color.set('#cdd6d4'); }
     S.background = new THREE.Color(S.fog.color); }
   loadStep(i) {
