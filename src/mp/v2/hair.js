@@ -227,13 +227,17 @@ export function hairMaterial(c1, c2, hl = .35, skin = null) { // skin: blend the
         float g = vH.x; float fine = sin(vH.z * 900.0 + sin(vObjP.y * 300.0) * 2.0) * 0.5 + 0.5;
         vec3 c = diffuseColor.rgb * (0.72 + 0.38 * g) * (0.94 + 0.08 * fine);
         c = mix(c, uC2, uHl * 0.25 * smoothstep(0.4, 1.0, g));
-        if (vH.w > 4.5) { float sk = vH.w > 5.5 ? 0.3 : 1.0; // facial hair (6 = mustache: keeps its colour): wispy, uneven outer edge (strands of random length) instead of a hard cut line
+        if (vH.w > 5.5) { // mustache: wispy short-strand edge
           float u = vH.y; float r1 = fract(sin(floor(vH.z * 300.0) * 12.9898) * 43758.5453), r2 = fract(sin(floor(vH.z * 1100.0 + 3.0) * 78.233) * 43758.5453);
           float r3 = fract(sin(dot(floor(vObjP * 1500.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453); float fo = vE, fi = smoothstep(0.08, 0.0, u);
-          if (max(fo, fi * 0.6) > 0.1 + 0.9 * (r1 * 0.35 + r2 * 0.25 + r3 * 0.4)) discard; float fs = smoothstep(0.0, 0.85, vE) * (0.75 + 0.25 * r2); c = mix(c * (1.0 + 0.15 * fs), uSk * 0.86, uSkF * fs * 0.62 * sk); }
-        else if (vH.w < 0.5) { // scalp hair: soft, strand-broken hairline
-          float u = vH.y; float r1 = fract(sin(floor(vH.z * 150.0) * 12.9898) * 43758.5453), r2 = fract(sin(floor(vH.z * 600.0 + 7.0) * 78.233) * 43758.5453);
-          float r3 = fract(sin(dot(floor(vObjP * 1300.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453); float fo = max(smoothstep(0.985, 1.012, u), smoothstep(0.35, 1.0, vE)); if (fo > 0.3 + 0.7 * (r1 * 0.3 + r2 * 0.2 + r3 * 0.5)) discard; float fs = max(smoothstep(0.9, 1.01, u), smoothstep(0.1, 0.9, vE)) * (0.7 + 0.3 * r2); c = mix(c, uSk * 0.85, uSkF * fs * 0.5); }
+          if (max(fo, fi * 0.6) > 0.1 + 0.9 * (r1 * 0.35 + r2 * 0.25 + r3 * 0.4)) discard; float fs = smoothstep(0.0, 0.85, vE) * (0.75 + 0.25 * r2); c = mix(c * (1.0 + 0.15 * fs), uSk * 0.86, uSkF * fs * 0.62 * 0.3); }
+        else if (vH.w > 4.5) { // close-trimmed beard: thin fuzzy shell over the skin-shader stubble; fine stipple that thins out toward the cheek line / neck
+          float u = vH.y; float r2 = fract(sin(floor(vH.z * 1100.0 + 3.0) * 78.233) * 43758.5453);
+          float r3 = fract(sin(dot(floor(vObjP * 2400.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453); float fi = smoothstep(0.1, 0.0, u);
+          float keep = (0.78 * smoothstep(0.0, 0.8, 1.0 - vE)) * (1.0 - fi * 0.8); if ((r3 * 0.85 + r2 * 0.15) > keep) discard;
+          c = mix(c, uSk * 0.7, uSkF * 0.35 * smoothstep(0.1, 0.8, vE)); }
+        else if (vH.w < 0.5) { // scalp hair: smooth colour gradient into the skin tone toward the hairline (no dither)
+          float g2 = smoothstep(0.15, 1.0, max(smoothstep(0.88, 1.0, vH.y), vE)); if (max(smoothstep(0.995, 1.0, vE), smoothstep(0.995, 1.012, vH.y)) > 0.5) discard; c = mix(c, uSk * 0.9, uSkF * g2 * 0.97); }
         diffuseColor.rgb = c;`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         { vec3 V = normalize(vViewPosition); vec3 N = normalize(vNormal); vec3 T = normalize(vT - N * dot(vT, N));
@@ -241,13 +245,13 @@ export function hairMaterial(c1, c2, hl = .35, skin = null) { // skin: blend the
           float spec = pow(sinTH, 60.0) * 0.35 + pow(sinTH, 12.0) * 0.08; float rimF = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 2.5);
           totalEmissiveRadiance += mix(diffuseColor.rgb, vec3(1.0), 0.35) * spec * (0.5 + 0.5 * vH.x) + diffuseColor.rgb * (0.05 + rimF * 0.2); }`);
   };
-  m.customProgramCacheKey = () => 'v2hair5'; _mats.set(key, m); return m;
+  m.customProgramCacheKey = () => 'v2hair6'; _mats.set(key, m); return m;
 }
 
 // ---------- facial hair: polar band around the mouth. Inner edge = first entry into the mask, outer edge = exit; both edges tuck under
 // the skin, so beards have clean smooth outlines and a clean opening around the lips.
 export const BEARD_STYLES = { // mask(p, a, L) on head-local surface points; T thickness, curl
-  full: { T: .0046, curl: .0013, mask: (p, a, L) => Math.abs(a) < 91 && offNeck(p) && p.y < topLine(a, L, 1) - cheekDrop(a) && p.y > fullFloor(p) && !mouthHole(p, L, .009) },
+  full: { T: .0016, curl: .0006, fade: .016, mask: (p, a, L) => Math.abs(a) < 91 && offNeck(p) && p.y < cheekY(Math.abs(p.x)) && p.y > fullFloor(p) && !mouthHole(p, L, .016) },
   boxed: { T: .004, curl: .0008, mask: (p, a, L) => Math.abs(a) < 90 && offNeck(p) && p.y < topLine(a, L, .8) && !mouthHole(p, L, .008) },
   lumber: { T: .013, curl: .003, mask: (p, a, L) => Math.abs(a) < 92 && offNeck(p) && p.y < topLine(a, L, 1.15) && !mouthHole(p, L, .01) },
   goatee: { T: .006, curl: .0015, mask: (p, a, L) => Math.abs(p.x) < .034 && p.y < L.mouthY - .006 && p.z > .02 },
@@ -267,9 +271,11 @@ export const STACHE_STYLES = {
 export const BEARD_ALIAS = { mutton: 'strap', anchor: 'goatee', vandyke: 'circle', jawline: 'strap' }; export const STACHE_ALIAS = { toothbrush: 'pencil', fumanchu: 'horseshoe', imperial: 'handlebar', painter: 'chevron' };
 export const LIP_CUT = (p, L) => Math.abs(p.x) < .034 && p.y > L.mouthY + .004 && p.z > .03; // upper lip left to the mustache
 function topLine(a, L, k) { const aa = Math.abs(a); return interp([[0, L.mouthY + .024], [16, L.mouthY + .025], [28, -.052 + .01 * (k - 1)], [45, -.04 + .015 * (k - 1)], [62, -.026 + .02 * (k - 1)], [78, -.004 + .01 * (k - 1)], [86, .006], [94, .012]], aa); }
-// trimmed 'full' beard: cheeks left clear above a lowered line, bottom edge held close to the jaw (chin underside + neck stay skin)
-const cheekDrop = a => { const aa = Math.abs(a); return .013 * ss(14, 34, aa) * ss(92, 70, aa); };
-const fullFloor = p => -.15 + Math.abs(p.x) * .27;
+// trimmed 'full' beard: curved natural cheek line (sideburn up by the ear, sweeping down to the mouth corners, no vertical wall),
+// bottom edge close to the jaw. Mirrored in GLSL by beardMask() in headrig.js (skin underlay) — keep both in sync.
+const cheekY = ax => -.08 + .018 * ss(.036, .065, ax) + .030 * ss(.065, .09, ax) + .020 * ss(.09, .12, ax);
+const cheekDrop = a => 0;
+const fullFloor = p => -.148 + Math.abs(p.x) * .25;
 const offNeck = p => Math.hypot(p.x, p.z + .025) > .056 || p.y > -.08;
 function jawBand(p, a, L) { return -.112 + Math.abs(p.x) * .9 * Math.min(1, Math.abs(a) / 90 + .2); }
 function mouthHole(p, L, m) { const a = p.x / (.032 + m), b = (p.y - L.mouthY + .002) / (.012 + m * .55); return a * a + b * b < 1 && p.z > .03; }
