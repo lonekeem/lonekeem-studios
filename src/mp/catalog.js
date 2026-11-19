@@ -66,7 +66,7 @@ export const JACKETS = [
 ];
 // pants / skirts: [id, name, g, legEnd, waist, loose, flare]  (flare is per-leg radial offset, k = x + y * s)
 export const PANTS = [
-  ['jeans', 'Jeans', 'u', 1, .02, .006, 0, .003], ['skinny', 'Skinny jeans', 'u', 1, .02, .003, 0, 0], ['chino', 'Chinos', 'm', 1, .02, .005, 0, 0], ['cargo', 'Cargo pants', 'u', 1, .0, .014, 0, .004], ['joggers', 'Joggers', 'u', 1, .02, .009, 0, -.002], ['cargojog', 'Cargo joggers', 'u', 1, .02, .013, 0, -.004],
+  ['jeans', 'Jeans', 'u', 1, .02, .006, 0, .003], ['skinny', 'Skinny jeans', 'u', 1, .02, .003, 0, 0], ['chino', 'Chinos', 'm', 1, .02, .005, 0, 0], ['cargo', 'Cargo pants', 'u', 1, .0, .014, 0, .004], ['joggers', 'Joggers', 'u', 1, .02, .009, 0, -.002], ['cargojog', 'Cargo joggers', 'u', 1, .02, .022, 0, -.002],
   ['wide', 'Wide-leg', 'u', 1, .06, .007, .02, .028], ['bootcut', 'Bootcut', 'u', 1, .0, .005, .01, .014], ['shorts', 'Shorts', 'u', .42, .02, .007, 0, .004], ['bermuda', 'Bermuda shorts', 'm', .62, .02, .009, 0, .004], ['capri', 'Capri', 'f', .72, .02, .005, 0, 0],
   ['minishorts', 'Mini shorts', 'f', .22, .0, .004, 0, 0], ['leggings', 'Leggings', 'f', 1, .08, .002, 0, 0], ['highjeans', 'High-waist jeans', 'f', 1, .17, .005, 0, .004], ['miniskirt', 'Mini skirt', 'f', .2, .04, .006, .03, .09], ['midiskirt', 'Midi skirt', 'f', .5, .05, .006, .02, .13],
   ['longskirt', 'Long skirt', 'f', .9, .05, .006, .02, .15], ['trackpants', 'Track pants', 'u', 1, .03, .008, 0, .002], ['dresspants', 'Dress pants', 'u', 1, .05, .004, 0, .008], ['overalls', 'Overalls (shorts)', 'u', .42, .38, .01, 0, .004], ['kneeshorts', 'Cycling shorts', 'u', .4, .05, .002, 0, 0],

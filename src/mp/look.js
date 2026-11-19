@@ -17,7 +17,7 @@ export function defaultLook(base = 'mp_m1') { // v2 defaults = the two reference
     eyes: { s: 0, col: '#3a7a52', size: .1, space: 0, tilt: 0, lash: 0 }, brows: { s: 3, thick: .3, arch: 0, col: '#3a2616' },
     nose: { s: 0 }, mouth: { s: 8, full: 0, width: 0, col: null }, makeup: { shadow: 0, shadowCol: '#7a4a8a', liner: 0, blush: 0, lip: 0, lipCol: '#b2264a' },
     skinx: { freckles: 0, moles: 0, scar: 0, scarSide: 1, tattoo: 0, tattooCol: '#1c2a3a', age: 0 },
-    hair: { id: 'messy', c: '#5a3b22', c2: '#8a6238', hl: .45 }, beard: { id: 'full', c: '#3d2a1a', len: .55, dens: .9 }, stache: { id: 'chevron', c: '#3d2a1a', len: .5, dens: .9 }, mask: null,
+    hair: { id: 'messy', c: '#5a3b22', c2: '#8a6238', hl: .45 }, beard: { id: 'full', c: '#6a4628', len: .55, dens: .9 }, stache: { id: 'chevron', c: '#6a4628', len: .5, dens: .9 }, mask: null,
     worn: { top: piece('tee', '#17181b'), jacket: null, pants: piece('cargojog', '#a9adb2'), shoes: piece('clog', '#1b1c1f', 0, '#2a2b2f', { sole: '#1b1c1f' }), gloves: null },
     acc: { hat: null, glasses: null, earL: null, earR: null, pierce: [], neck: null, wristL: null, wristR: null, ringL: null, ringR: null, bag: null, belt: null } };
 }

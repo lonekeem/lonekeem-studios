@@ -5,10 +5,13 @@ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { headParams, makeSDF, landmarks, buildHeadGeometry, buildEarGeometry, sdfNormal, rayR } from './head.js';
 import { paintFace } from './facepaint.js';
 
+export const HEAD_BIG = { m: 1.2, f: 1.18 };
 const HEAD_OFF = { m: [0, .112, .03], f: [0, .108, .028] };
 export function headFrame(av, g) { // head centre (bind space) + scale
-  const P = av.tpl.P, o = HEAD_OFF[g]; const s = (g === 'f' ? 1.07 : 1.1) * (av.hs || 1);
-  return { C: new THREE.Vector3(P.Head.x * 0 + o[0], P.Head.y + o[1] * s, P.Head.z + o[2] * s), s };
+  // HEAD_BIG: Bitmoji proportions (bigger head on the same neck / shoulders). The head grows about its jaw line, so the chin stays
+  // just above the neck instead of sinking into the chest; the neck tube keeps the base (s0) radius.
+  const P = av.tpl.P, o = HEAD_OFF[g]; const s0 = (g === 'f' ? 1.07 : 1.1) * (av.hs || 1); const s = s0 * HEAD_BIG[g];
+  return { C: new THREE.Vector3(P.Head.x * 0 + o[0], P.Head.y + o[1] * s0 + .128 * (s - s0), P.Head.z + o[2] * s0 + .012 * (s - s0)), s, s0 };
 }
 // cut the generated head out of the body mesh (the neck stays and tucks into the new head)
 export const neckCut = T => T.P.neck.y - .012;
@@ -50,7 +53,7 @@ export function skinMaterial(U, faceTex) {
 export function buildHead(av, look) {
   const g = look.base.startsWith('mp_f') ? 'f' : 'm'; stripHead(av);
   const mo = { ...(look.morph || {}) }; const H = headParams(g, mo); const sdf = makeSDF(H); const L = landmarks(H, sdf);
-  const { C, s } = headFrame(av, g); av.head2 = { H, sdf, L, C, s, g };
+  const { C, s, s0 } = headFrame(av, g); av.head2 = { H, sdf, L, C, s, s0, g };
   const key = JSON.stringify([g, mo, s]);
   if (!av._headMesh || av._headKey !== key) {
     const geo = buildHeadGeometry(H, sdf); const p = geo.attributes.position, nr = geo.attributes.normal, n = p.count; const aF = new Float32Array(n);
@@ -59,7 +62,7 @@ export function buildHead(av, look) {
     skinTo(av, geo, headWeights(av, C.y, s));
     const ears = [1, -1].map(sd => { const e = buildEarGeometry(sd, L, H); e.scale(s, s, s); e.translate(C.x, C.y, C.z); e.setAttribute('aF', new THREE.BufferAttribute(new Float32Array(e.attributes.position.count), 1)); if (!e.attributes.uv) e.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(e.attributes.position.count * 2), 2)); skinTo(av, e, () => [['Head', 1]]); return e; });
     { // neck tube: from inside the head down into the chest (top -> Head, middle -> neck, bottom -> Spine)
-      const P = av.tpl.P; const y0 = C.y - .06 * s, y1 = P.neck.y - .045, r0 = (g === 'f' ? .043 : .05) * s, r1 = r0 * 1.12; let ng = new THREE.CylinderGeometry(1, 1, 1, 28, 10, true, Math.PI); const np = ng.attributes.position;
+      const P = av.tpl.P; const y0 = C.y - .06 * s, y1 = P.neck.y - .045, r0 = (g === 'f' ? .043 : .05) * s0, r1 = r0 * 1.12; let ng = new THREE.CylinderGeometry(1, 1, 1, 28, 10, true, Math.PI); const np = ng.attributes.position;
       const prof = neckProfile(av), cut = neckCut(av.tpl);
       for (let i = 0; i < np.count; i++) { const t = np.getY(i) + .5; const y = y1 + (y0 - y1) * t; const r = r1 + (r0 - r1) * t; const ux = np.getX(i), uz = np.getZ(i);
         let x = ux * r, z = C.z - .028 * s + uz * r * .92 + (1 - t) * .004; const b = prof(Math.min(y, cut + .004));
@@ -73,7 +76,7 @@ export function buildHead(av, look) {
     else { av._faceTex = paintFace(faceOpts(look, g, L, H)); const mat = skinMaterial(av.U, av._faceTex); av._headMesh = bindMesh(av, new THREE.SkinnedMesh(geo, mat), 1); const em = skinMaterial(av.U, null); av._ears = ears.map(e => bindMesh(av, new THREE.SkinnedMesh(e, em), 1)); }
     av._headKey = key;
   }
-  const fk = JSON.stringify([look.eyes, look.brows, look.mouth, look.makeup, look.skinx, look.beard && look.beard.id, look.hair && look.hair.c, look.skin, look.nose]);
+  const fk = JSON.stringify([look.eyes, look.brows, look.mouth, look.makeup, look.skinx, look.beard && look.beard.id, look.beard && look.beard.c, look.hair && look.hair.c, look.skin, look.nose]);
   if (av._faceKey !== fk) { paintFace(faceOpts(look, g, L, H), av._faceTex); av._faceKey = fk; }
   return av.head2;
 }
@@ -94,7 +97,8 @@ export function faceOpts(look, g, L, H) {
     bArch: bs[0] + (look.brows.arch || 0) * .4, bTilt: bs[1], bTaper: bs[2], bThick: bs[3] * (1 + .5 * (look.brows.thick || 0)), bLen: bs[4], bSparse: bn === 'Sparse', unibrow: bn === 'Unibrow', browCol,
     mW: ms[0] * (1 + .2 * (look.mouth.width || 0)), mFull: Math.min(1, ms[1] + .3 * (look.mouth.full || 0)), mSmile: ms[2], mOpen: !!ms[3], mSmirk: mn === 'Smirk', lipCol,
     freckles: look.skinx.freckles || 0, freckleCol: '#' + sk.clone().multiplyScalar(.6).lerp(new THREE.Color('#6a3a20'), .4).getHexString(), moles: look.skinx.moles || 0, blush: mk.blush || 0,
-    stubble: look.beard && look.beard.id === 'stubble', stubbleCol: hairC, skinDark };
+    stubble: look.beard && look.beard.id === 'stubble', stubbleCol: (look.beard && look.beard.c) || hairC, skinDark,
+    beardShade: look.beard && ['full', 'boxed', 'lumber', 'strap', 'curtain', 'mutton', 'circle'].includes(look.beard.id) ? 1 : 0 };
 }
 
 // ---------- hair
@@ -103,7 +107,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 export function buildHairMesh(av, look, opt = {}) {
   const h = av.head2; const id = look.hair && look.hair.id || 'bald'; const st0 = styleOf(id); const key = JSON.stringify([id, av._headKey, opt.hatCut || 0]);
   const ears = av._ears; if (ears) { const show = !st0 || st0.ears !== false; ears[0].visible = ears[1].visible = show; }
-  if (av._hairKey === key) { if (av._hair) av._hair.material = hairMaterial(look.hair.c, look.hair.c2 || look.hair.c, look.hair.hl ?? .35); return av._hair; }
+  if (av._hairKey === key) { if (av._hair) av._hair.material = hairMaterial(look.hair.c, look.hair.c2 || look.hair.c, look.hair.hl ?? .35, skinHex(av)); return av._hair; }
   if (av._hair) { av._hair.parent && av._hair.parent.remove(av._hair); av._hair.geometry.dispose(); av._hair = null; }
   av._hairKey = key; if (!st0) return null;
   let st = st0; if (opt.hatCut) st = Object.assign({}, st0, { top: Math.min(st0.top, .003), front: 0, spikes: 0, round: 0, locks: 0, lockAmp: 0, tips: 0, frontLift: 0, waves: 0, T: Math.min(st0.T, .008), curl: Math.min(st0.curl, .002), ex: (st0.ex || []).filter(e => e[0] === 'dutch' || (e[0] === 'locs' && e[1] > .1) || (e[0] === 'bun' && e[1] === 'low') || (e[0] === 'pony' && e[1] === 'low') || e[0] === 'braidpony' || e[0] === 'pigtails') });
@@ -112,22 +116,24 @@ export function buildHairMesh(av, look, opt = {}) {
   geo.scale(h.s, h.s, h.s); geo.translate(h.C.x, h.C.y, h.C.z);
   const C = h.C, s = h.s; const P = av.tpl.P;
   skinTo(av, geo, (i, x, y) => { const ly = (y - C.y) / s; if (ly > -.16) return [['Head', 1]]; const t = Math.min(1, (-.16 - ly) / .2); return t < .5 ? [['Head', 1 - t], ['neck', t]] : [['Head', 1 - t], ['neck', .5], ['Spine02', t - .5]]; });
-  av._hair = bindMesh(av, new THREE.SkinnedMesh(geo, hairMaterial(look.hair.c, look.hair.c2 || look.hair.c, look.hair.hl ?? .35)), 2);
+  av._hair = bindMesh(av, new THREE.SkinnedMesh(geo, hairMaterial(look.hair.c, look.hair.c2 || look.hair.c, look.hair.hl ?? .35, skinHex(av))), 2);
   return av._hair;
 }
 
 // ---------- facial hair
-import { BEARD_STYLES, STACHE_STYLES, BEARD_ALIAS, STACHE_ALIAS, buildBand } from './hair.js';
+const skinHex = av => '#' + av.U.uSkin.value.getHexString();
+import { BEARD_STYLES, STACHE_STYLES, BEARD_ALIAS, STACHE_ALIAS, buildBand, LIP_CUT } from './hair.js';
 export function buildFacialHair(av, look) {
   const h = av.head2; const bid = look.beard && look.beard.id || 'none', sid = look.stache && look.stache.id || 'none';
   const bs = BEARD_STYLES[bid] || BEARD_STYLES[BEARD_ALIAS[bid]], ss_ = STACHE_STYLES[sid] || STACHE_STYLES[STACHE_ALIAS[sid]];
   const len = look.beard && look.beard.len != null ? look.beard.len : .4; const key = JSON.stringify([bid, sid, len.toFixed(2), av._headKey]);
   const col = (look.beard && look.beard.c) || look.hair.c; const c2 = ('#' + new THREE.Color(col).multiplyScalar(1.25).getHexString());
-  if (av._fhKey === key) { if (av._fh) av._fh.material = hairMaterial(col, c2, .2); return; }
+  if (av._fhKey === key) { if (av._fh) av._fh.material = hairMaterial(col, c2, .4, skinHex(av)); return; }
   if (av._fh) { av._fh.parent && av._fh.parent.remove(av._fh); av._fh.geometry.dispose(); av._fh = null; } av._fhKey = key;
-  const parts = []; if (bs) parts.push(buildBand(h, Object.assign({}, bs, { T: bs.T * (.5 + .9 * len) }))); if (ss_) parts.push(buildBand(h, Object.assign({}, ss_, { T: ss_.T * (.7 + .6 * ((look.stache && look.stache.len) ?? .4)) })));
+  const parts = []; const lipCut = !!(bs && ss_); // with a mustache, the beard leaves the upper lip so the mustache reads as its own shape
+  if (bs) parts.push(buildBand(h, Object.assign({}, bs, { T: bs.T * (.5 + .9 * len) }, lipCut ? { mask: (p, a, L) => bs.mask(p, a, L) && !LIP_CUT(p, L) } : {}))); if (ss_) { const sg = buildBand(h, Object.assign({}, ss_, { T: ss_.T * (.7 + .6 * ((look.stache && look.stache.len) ?? .4)) * (bs ? 1.35 : 1) })); const a = sg.attributes.aH; for (let k = 0; k < a.count; k++) a.setW(k, 6); parts.push(sg); }
   if (!parts.length) return; const geo = parts.length > 1 ? mergeGeometries(parts, false) : parts[0]; geo.scale(h.s, h.s, h.s); geo.translate(h.C.x, h.C.y, h.C.z);
-  skinTo(av, geo, () => [['Head', 1]]); av._fh = bindMesh(av, new THREE.SkinnedMesh(geo, hairMaterial(col, c2, .2)), 2);
+  skinTo(av, geo, () => [['Head', 1]]); av._fh = bindMesh(av, new THREE.SkinnedMesh(geo, hairMaterial(col, c2, .4, skinHex(av))), 2);
 }
 // accessory context (bind-space landmarks) from the analytic head, merged over the body context
 export function headCtx(av, base) {

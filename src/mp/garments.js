@@ -43,7 +43,7 @@ vec3 garment(vec3 p, vec3 n, vec4 R){
       h += 0.0008 * sin(as * 130.0 + ang * 2.0 + sin(ang * 3.0) * 1.5) * smoothstep(uG1.x - 0.16, uG1.x - 0.05, as) * step(0.8, uG1.x); // cuff stacking
       seam = max(seam, band(as * uArmD.w, 0.035, 0.0018) * step(0.1, uG1.x)); // shoulder seam
       if (uG1.x > 0.8 || kind > 2.5) rib = smoothstep(0.035, 0.0, edge); }
-    else { float e1 = (t - uG1.y) * H; edge = e1; vis = e1 > 0.0;
+    else { float e1 = (t - uG1.y) * H; edge = uG2.x > 0.0 ? 1.0 : e1; vis = e1 > 0.0;
       if (uG1.x < 0.05) { float eh = (uArmO.x - 0.04 - ax) + max(0.0, (uArmO.y - 0.09) - p.y) * 1.2; edge = min(edge, eh); vis = vis && eh > 0.0; } // sleeveless: round armhole
       if (uG2.x > 0.0 && (legW > 0.5 || e1 < 0.0)) { vis = ls < uG2.x; edge = (uG2.x - ls) * LL; }
       { float dep = uN.y * H * 0.7 * smoothstep(0.0, 0.1, uN.z); vec2 q = vec2(p.x / uNk.z, (p.z - uNk.y) / (p.z > uNk.y ? uNk.w + dep : uNk.w * 0.9)); float dn = length(q);
@@ -53,7 +53,7 @@ vec3 garment(vec3 p, vec3 n, vec4 R){
       if (kind > 2.5 && uDet.x > 0.5 && front > 0.5) { seam = max(seam, band(ax, 0.0, 0.004)); h += 0.0008 * band(ax, 0.0, 0.006); } // zipper
       seam = max(seam, band(ang, 0.0, 0.05) * step(0.0, -p.z + 0.02) * 0.0); seam = max(seam, band(abs(ang), 0.0, 0.035));
       h += 0.0009 * sin(p.y * 95.0 + ax * 60.0) * smoothstep(0.06, 0.13, ax) * band(t, 0.55, 0.3); // side drape
-      h += 0.0007 * sin(p.y * 210.0 + sin(ax * 40.0) * 2.0) * smoothstep(0.12, 0.0, e1); // hem gather
+      h += 0.0007 * sin(p.y * 210.0 + sin(ax * 40.0) * 2.0) * smoothstep(0.12, 0.0, e1) * step(uG2.x, 0.0); // hem gather (not on dresses: no hem there)
       if (kind > 2.5 || uDet.y > 0.5) rib = max(rib, smoothstep(0.03, 0.0, e1)); if (legW > 0.5) { h *= 0.2; rib = 0.0; } }
   } else if (kind < 1.5) { // pants
     if (!isArm) { float ew = (uG1.y - t) * H, el = (uG1.x - ls) * LL; edge = min(ew, legW > 0.3 ? el : 1.0); vis = edge > 0.0 && footW < 0.5;
@@ -85,17 +85,22 @@ vec3 bumpN(vec3 surf, vec3 nrm, float hgt, float k){ vec3 dx = dFdx(surf), dy = 
 export function garmentMaterial(kind) {
   const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: kind === 2 ? .55 : .86, metalness: 0, side: THREE.DoubleSide }); m.alphaToCoverage = true;
   const U = m.userData.U = { uKind: { value: kind }, uG1: { value: new THREE.Vector4(1, 0, 0, 9) }, uG2: { value: new THREE.Vector4(0, .05, .5, 0) }, uN: { value: new THREE.Vector4(.98, .08, .12, -.03) }, uPat: { value: new THREE.Vector4(0, 8, 1, 0) },
-    uC1: { value: new THREE.Color('#888') }, uC2: { value: new THREE.Color('#fff') }, uC3: { value: new THREE.Color('#eee') }, uSole: { value: new THREE.Vector4(.02, 0, 0, 0) }, uShape: { value: new THREE.Vector4(0, 0, 0, 0) }, uLm: { value: new THREE.Vector4(1, 1.4, .9, .1) }, uArmO: { value: new THREE.Vector4() }, uArmD: { value: new THREE.Vector4(1, 0, 0, .5) }, uDet: { value: new THREE.Vector4() }, uNk: { value: new THREE.Vector4(0, 0, .06, .06) } };
+    uC1: { value: new THREE.Color('#888') }, uC2: { value: new THREE.Color('#fff') }, uC3: { value: new THREE.Color('#eee') }, uSole: { value: new THREE.Vector4(.02, 0, 0, 0) }, uShape: { value: new THREE.Vector4(0, 0, 0, 0) }, uLm: { value: new THREE.Vector4(1, 1.4, .9, .1) }, uArmO: { value: new THREE.Vector4() }, uArmD: { value: new THREE.Vector4(1, 0, 0, .5) }, uDet: { value: new THREE.Vector4() }, uNk: { value: new THREE.Vector4(0, 0, .06, .06) }, uOver: { value: new THREE.Vector4() } };
   const off = m.userData.off = { value: .006 };
   m.onBeforeCompile = sh => { Object.assign(sh.uniforms, U); sh.uniforms.uOff = off;
     hookVertex(sh, `
       { float rs = vR.y; float gr = vR.x; float k = 0.0;
-        if (uKind > 0.5 && uKind < 1.5 && gr > 4.5 && gr < 5.5) { k = uShape.x + uShape.y * rs; if (uDet.z > 0.5) k -= 0.006 * smoothstep(uG1.x - 0.1, uG1.x - 0.02, rs); }
-        if (uKind < 0.5 && gr > 4.5 && gr < 5.5) k = uShape.w * smoothstep(0.0, 0.55, rs);
+        vec3 nn = normalize(normal); float sdx = position.x >= 0.0 ? 1.0 : -1.0;
+        if (uKind > 0.5 && uKind < 1.5 && gr > 4.5 && gr < 5.5) { k = uShape.x + uShape.y * rs;
+          if (uDet.z > 0.5) { k += 0.006 * smoothstep(0.35, 0.7, rs) * (1.0 - smoothstep(uG1.x - 0.12, uG1.x - 0.06, rs)); k -= (uOff - 0.004) * smoothstep(uG1.x - 0.12, uG1.x - 0.035, rs); } // jogger: blouses above a tight cuff
+          if (uDet.y > 0.5) { float ang = atan(nn.z, nn.x * sdx); float pu = smoothstep(0.66, 0.5, abs(ang - 0.15)); float pk = pu * smoothstep(0.09, 0.065, abs(rs - 0.4)); k += 0.0075 * pk + 0.003 * pu * smoothstep(0.02, 0.008, abs(rs - 0.318)); } } // cargo side pocket + flap (real volume)
+        if (uKind < 0.5 && gr > 4.5 && gr < 5.5) { k = uShape.w * smoothstep(0.0, 0.55, rs);
+          if (uG2.x > 0.0) { float inner = smoothstep(0.1, -0.5, nn.x * sdx) * (1.0 - smoothstep(uG2.x * 0.9, uG2.x * 1.05, rs)); transformed.x = mix(transformed.x, sdx * 0.003, inner * 0.9); } } // skirt closes between the legs
+        if ((uKind < 0.5 || (uKind > 2.5 && uKind < 3.5)) && ((gr > 1.5 && gr < 2.5) || (gr > 4.5 && gr < 5.5))) k += uOver.x * (gr > 4.5 ? 1.0 : smoothstep(uOver.y + 0.16, uOver.y + 0.03, vR.z)); // hem sits over the pants waist
         if ((uKind < 0.5 || (uKind > 2.5 && uKind < 3.5)) && gr > 2.5 && gr < 3.5) { k = uShape.x + uShape.y * min(rs, 0.6) * 1.2; if (uDet.y > 0.5 || uKind > 2.5) k *= 1.0 - 0.85 * smoothstep(uG1.x - 0.14, uG1.x - 0.02, rs); }
         if (uKind > 1.5 && uKind < 2.5 && gr > 5.5) k = uShape.x + (position.y < 0.05 ? uShape.z : 0.0);
-        transformed.xz += normalize(normal.xz + vec2(1e-5)) * k; }`, 'uniform float uKind; uniform vec4 uShape; uniform vec4 uG1; uniform vec4 uDet;\n');
+        transformed.xz += normalize(normal.xz + vec2(1e-5)) * k; }`, 'uniform float uKind; uniform vec4 uShape; uniform vec4 uG1; uniform vec4 uG2; uniform vec4 uDet; uniform vec4 uOver;\n');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + GLSL_COMMON + FRAG).replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = garment(vRest, normalize(vRestN), vR); diffuseColor.a = gA; if (gA < 0.02) discard;').replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n normal = bumpN(-vViewPosition, normal, gH, 1.0);'); };
-  m.customProgramCacheKey = () => 'mpgarm2';
+  m.customProgramCacheKey = () => 'mpgarm3';
   return m;
 }

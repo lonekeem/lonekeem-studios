@@ -19,6 +19,7 @@ const vnoise1 = x => { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * 
 export const LINES = {
   std: [[0, 42], [22, 40], [42, 33], [60, 25], [72, 6], [80, 2], [88, 12], [100, 14], [118, -2], [140, -22], [180, -30]], // short men's: sideburns, above the ears, nape
   low: [[0, 37], [25, 35], [45, 29], [62, 21], [72, 4], [80, 0], [88, 10], [100, 12], [118, -4], [140, -24], [180, -32]],
+  nat: [[0, 41], [12, 41.5], [24, 40], [34, 36.5], [44, 32.5], [53, 30], [61, 25], [66, 17], [71, -6], [77, -12], [83, -3], [89, 12], [100, 14], [118, -2], [140, -20], [180, -27]], // soft temple corners + sideburns
   high: [[0, 44], [25, 41], [45, 34], [62, 27], [72, 14], [85, 16], [100, 18], [120, 4], [150, -10], [180, -16]], // fades / receding
   recede: [[0, 47], [20, 46], [38, 32], [55, 24], [72, 6], [80, 2], [88, 12], [100, 14], [118, -2], [140, -22], [180, -30]],
   fem: [[0, 40], [22, 38], [42, 30], [60, 16], [72, -2], [82, -10], [95, -20], [120, -28], [150, -34], [180, -36]], // covers the ears (long styles)
@@ -46,7 +47,7 @@ export const STYLES = {
   quiff: S({ T: .008, top: .014, side: .45, front: .03, frontLift: 1, locks: 22, lockAmp: .0025, tips: .3, fade: .4 }),
   pomp: S({ T: .009, top: .018, side: .45, front: .045, frontLift: 1.3, locks: 30, lockAmp: .002, fade: .3, tilt: 30 }),
   undercut: S({ T: .009, top: .022, side: .1, front: .022, frontLift: 1, locks: 22, lockAmp: .003, tips: .3, line: 'high', fade: 1 }),
-  messy: S({ T: .009, top: .024, side: .22, front: .016, frontLift: .6, locks: 11, lockAmp: .005, tips: 1.3, sweep: .6, fade: .35 }), // tousled (guy reference)
+  messy: S({ T: .009, top: .027, side: .2, front: .014, frontLift: .6, locks: 13, lockAmp: .006, tips: 1.5, sweep: .6, fade: .3, line: 'nat', tufts: 26, minT: .0038 }), // tousled (guy reference): volume from separate swept clumps
   spiky: S({ T: .008, top: .012, side: .5, locks: 14, lockAmp: .006, tips: 1, spikes: .03 }),
   mohawk: S({ T: .006, top: .03, side: .0, locks: 12, lockAmp: .004, tips: .6, mohawk: 1, line: 'high', fade: 1 }),
   receding: S({ T: .006, top: .008, side: .6, locks: 28, lockAmp: .0014, line: 'recede' }),
@@ -108,7 +109,7 @@ export function buildCap(head, st, opt = {}) {
     if (st.cornrow) { const k = st.cornrow * 2; const v = Math.abs(Math.sin(Math.atan2(d.x, .35) * k * 1.2)); t += .0028 * (Math.pow(v, .5) - .5); }
     if (st.waves) { const v = Math.sin(Math.hypot(d.x * 3, d.z + .3, d.y - .9) * 70); t += .0012 * v; }
     if (st.part) { const px = st.part === 1 ? .045 : st.part === 3 ? 0 : 0; const pd = Math.abs(d.x - (st.part === 2 ? 0 : px)); if (d.y > .4 && d.z > -.3) t -= .004 * ss(.012, .0, pd) * ss(.4, .7, d.y); }
-    return Math.max(.0012, t); };
+    return Math.max(st.minT || .0012, t); };
   // rows: u in [0, 1] crown -> hairline, then a tuck ring just under the skin
   const cols = [];
   for (let j = 0; j <= NPH; j++) { const jj = j % NPH, ph = jj / NPH * Math.PI * 2; const col = [];
@@ -124,6 +125,7 @@ export function buildCap(head, st, opt = {}) {
   let geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('aT', new THREE.Float32BufferAttribute(tan, 3)); geo.setAttribute('aH', new THREE.Float32BufferAttribute(aux, 4)); geo.setIndex(idx); geo.computeVertexNormals();
   const parts = [geo];
   if (drop) parts.push(buildDrop(head, st, fr, cols, thB, NPH, NR));
+  if (st.tufts) parts.push(...buildTufts(head, st, d => thick(d, .5, 0), d => inside(d)));
   return parts;
 }
 
@@ -152,6 +154,24 @@ function buildDrop(head, st, fr, cols, thB, NPH, NR) {
   for (let j = 0; j < NPH; j++) { if (useCols[j] < .01 && useCols[j + 1] < .01) continue; for (let k = 0; k < NS; k++) { const a = j * (NS + 1) + k, b = (j + 1) * (NS + 1) + k; idx.push(a, b, a + 1, b, b + 1, a + 1); idx.push(NC + a, NC + a + 1, NC + b, NC + b, NC + a + 1, NC + b + 1); }
     const a = j * (NS + 1) + NS, b = (j + 1) * (NS + 1) + NS; idx.push(a, b, NC + a, b, NC + b, NC + a); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('aT', new THREE.Float32BufferAttribute(tan, 3)); g.setAttribute('aH', new THREE.Float32BufferAttribute(aux, 4)); g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+
+// tousled clumps: tapered, grooved locks lying on the hair surface, swept forward / sideways from the crown, tips lifting off the surface
+function buildTufts(head, st, thickAt, inside) {
+  const out = []; const dirAE = (az, el) => new THREE.Vector3(Math.sin(az * D2R) * Math.cos(el * D2R), Math.sin(el * D2R), Math.cos(az * D2R) * Math.cos(el * D2R));
+  const P = (az, el, lift) => { const d = dirAE(az, el); const p = surf(head, d); const n = normalAt(head, p); return p.addScaledVector(n, (inside(d) ? thickAt(d) : .002) + lift); };
+  const N = st.tufts; for (let i = 0; i < N; i++) { const h1 = hash(i * 3.1 + 1), h2 = hash(i * 7.7 + 2), h3 = hash(i * 1.3 + 5);
+    let az0, el0, az1, el1, tipLift; // start (crown side) -> tip
+    if (i < N * .5) { const k = i / (N * .5); az0 = -55 + 110 * k + (h1 - .5) * 12; el0 = 70 + h2 * 8; az1 = az0 * .95 + 16 * st.sweep + (h3 - .5) * 18; el1 = 44 + h2 * 7 - Math.abs(az1) * .06; tipLift = .016 + .01 * h3; } // fringe: tips overhang the forehead
+    else if (i < N * .82) { const k = (i - N * .5) / (N * .32); const sd = k < .5 ? -1 : 1; az0 = sd * (45 + 55 * ((k * 2) % 1)) + (h1 - .5) * 10; el0 = 62 + h2 * 8; az1 = az0 + sd * (10 + 10 * h3); el1 = 36 + h2 * 8; tipLift = .004 + .004 * h3; } // sides
+    else { const k = (i - N * .82) / (N * .18); az0 = -140 + 280 * k + (h1 - .5) * 20; el0 = 74 + h2 * 6; az1 = az0 * 1.05 + (h3 - .5) * 16; el1 = 48 + h3 * 10; tipLift = .004; } // crown / back
+    const r = .011 + .005 * h2;
+    const pts = [P(az0, el0, -r * .4), P(az0 + (az1 - az0) * .4, el0 + (el1 - el0) * .4, r * .15), P(az0 + (az1 - az0) * .78, el0 + (el1 - el0) * .78, tipLift * .5 + r * .1), P(az1, el1, tipLift)];
+    const [g] = tube(pts, r, .0016, { seg: 9, rad: 6, groove: .22, pow: .65 });
+    { const pa = g.attributes.position, rad = 6, v = new THREE.Vector3(), c = new THREE.Vector3(); for (let ii = 0; ii <= 9; ii++) { c.set(0, 0, 0); for (let j = 0; j <= rad; j++) c.add(v.fromBufferAttribute(pa, ii * (rad + 1) + j)); c.multiplyScalar(1 / (rad + 1)); const n = c.clone().normalize();
+      for (let j = 0; j <= rad; j++) { const id = ii * (rad + 1) + j; v.fromBufferAttribute(pa, id).sub(c); v.addScaledVector(n, -v.dot(n) * .5); v.add(c); pa.setXYZ(id, v.x, v.y, v.z); } } g.computeVertexNormals(); }
+    out.push(g); }
+  return out;
 }
 
 // ---------- extras
@@ -195,18 +215,25 @@ export function buildExtras(head, st) {
 
 // hair material: flow-aligned anisotropic highlight, lock grooves, root-to-tip tone, soft rim. One material per colour (shared).
 const _mats = new Map();
-export function hairMaterial(c1, c2, hl = .35) {
-  const key = c1 + c2 + hl.toFixed(2); if (_mats.has(key)) return _mats.get(key);
+export function hairMaterial(c1, c2, hl = .35, skin = null) { // skin: blend the sparse edges toward the skin tone (soft hairline / beard line)
+  const key = c1 + c2 + hl.toFixed(2) + (skin || ''); if (_mats.has(key)) return _mats.get(key);
   const m = new THREE.MeshStandardMaterial({ color: c1, roughness: .55, metalness: 0, side: THREE.FrontSide });
-  const U = { uC2: { value: new THREE.Color(c2) }, uHl: { value: hl } };
+  const U = { uC2: { value: new THREE.Color(c2) }, uHl: { value: hl }, uSk: { value: new THREE.Color(skin || '#000') }, uSkF: { value: skin ? 1 : 0 } };
   m.onBeforeCompile = sh => { Object.assign(sh.uniforms, U);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 aT; attribute vec4 aH; varying vec3 vT; varying vec4 vH; varying vec3 vObjP;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvH = aH; vObjP = position; vT = normalize(normalMatrix * aT);');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uC2; uniform float uHl; varying vec3 vT; varying vec4 vH; varying vec3 vObjP;')
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uC2; uniform float uHl; uniform vec3 uSk; uniform float uSkF; varying vec3 vT; varying vec4 vH; varying vec3 vObjP;')
       .replace('#include <color_fragment>', `#include <color_fragment>
         float g = vH.x; float fine = sin(vH.z * 900.0 + sin(vObjP.y * 300.0) * 2.0) * 0.5 + 0.5;
         vec3 c = diffuseColor.rgb * (0.72 + 0.38 * g) * (0.94 + 0.08 * fine);
         c = mix(c, uC2, uHl * 0.25 * smoothstep(0.4, 1.0, g));
+        if (vH.w > 4.5) { float sk = vH.w > 5.5 ? 0.3 : 1.0; // facial hair (6 = mustache: keeps its colour): wispy, uneven outer edge (strands of random length) instead of a hard cut line
+          float u = vH.y; float r1 = fract(sin(floor(vH.z * 300.0) * 12.9898) * 43758.5453), r2 = fract(sin(floor(vH.z * 1100.0 + 3.0) * 78.233) * 43758.5453);
+          float fo = smoothstep(0.8, 0.995, u), fi = smoothstep(0.08, 0.0, u);
+          if (max(fo, fi * 0.6) > 0.1 + 0.9 * (r1 * 0.65 + r2 * 0.35)) discard; float fs = smoothstep(0.5, 0.99, u) * (0.75 + 0.25 * r2); c = mix(c * (1.0 + 0.15 * fs), uSk * 0.86, uSkF * fs * 0.62 * sk); }
+        else if (vH.w < 0.5) { // scalp hair: soft, strand-broken hairline
+          float u = vH.y; float r1 = fract(sin(floor(vH.z * 150.0) * 12.9898) * 43758.5453), r2 = fract(sin(floor(vH.z * 600.0 + 7.0) * 78.233) * 43758.5453);
+          float fo = smoothstep(0.975, 1.012, u); if (fo > 0.3 + 0.7 * (r1 * 0.8 + r2 * 0.2)) discard; float fs = smoothstep(0.9, 1.01, u) * (0.7 + 0.3 * r2); c = mix(c, uSk * 0.85, uSkF * fs * 0.5); }
         diffuseColor.rgb = c;`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         { vec3 V = normalize(vViewPosition); vec3 N = normalize(vNormal); vec3 T = normalize(vT - N * dot(vT, N));
@@ -214,15 +241,15 @@ export function hairMaterial(c1, c2, hl = .35) {
           float spec = pow(sinTH, 60.0) * 0.35 + pow(sinTH, 12.0) * 0.08; float rimF = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 2.5);
           totalEmissiveRadiance += mix(diffuseColor.rgb, vec3(1.0), 0.35) * spec * (0.5 + 0.5 * vH.x) + diffuseColor.rgb * (0.05 + rimF * 0.2); }`);
   };
-  m.customProgramCacheKey = () => 'v2hair'; _mats.set(key, m); return m;
+  m.customProgramCacheKey = () => 'v2hair2'; _mats.set(key, m); return m;
 }
 
 // ---------- facial hair: polar band around the mouth. Inner edge = first entry into the mask, outer edge = exit; both edges tuck under
 // the skin, so beards have clean smooth outlines and a clean opening around the lips.
 export const BEARD_STYLES = { // mask(p, a, L) on head-local surface points; T thickness, curl
-  full: { T: .0075, curl: .0018, mask: (p, a, L) => Math.abs(a) < 84 && offNeck(p) && p.y < topLine(a, L, 1) && !mouthHole(p, L, .009) },
-  boxed: { T: .004, curl: .0008, mask: (p, a, L) => Math.abs(a) < 84 && offNeck(p) && p.y < topLine(a, L, .8) && !mouthHole(p, L, .008) },
-  lumber: { T: .013, curl: .003, mask: (p, a, L) => Math.abs(a) < 86 && offNeck(p) && p.y < topLine(a, L, 1.15) && !mouthHole(p, L, .01) },
+  full: { T: .0075, curl: .0018, mask: (p, a, L) => Math.abs(a) < 91 && offNeck(p) && p.y < topLine(a, L, 1) && !mouthHole(p, L, .009) },
+  boxed: { T: .004, curl: .0008, mask: (p, a, L) => Math.abs(a) < 90 && offNeck(p) && p.y < topLine(a, L, .8) && !mouthHole(p, L, .008) },
+  lumber: { T: .013, curl: .003, mask: (p, a, L) => Math.abs(a) < 92 && offNeck(p) && p.y < topLine(a, L, 1.15) && !mouthHole(p, L, .01) },
   goatee: { T: .006, curl: .0015, mask: (p, a, L) => Math.abs(p.x) < .034 && p.y < L.mouthY - .006 && p.z > .02 },
   circle: { T: .006, curl: .0015, mask: (p, a, L) => Math.abs(p.x) < .036 + .006 * Math.max(0, (L.mouthY - p.y) * 20) && p.y < L.mouthY + .022 && p.z > .02 && !mouthHole(p, L, .007) },
   strap: { T: .0045, curl: .001, mask: (p, a, L) => Math.abs(a) < 84 && offNeck(p) && p.y < topLine(a, L, 1) && p.y < jawBand(p, a, L) && !mouthHole(p, L, .02) && !(Math.abs(p.x) < .06 && p.y > L.mouthY - .024) },
@@ -238,7 +265,8 @@ export const STACHE_STYLES = {
   horseshoe: { T: .007, mask: (p, a, L) => p.z > .02 && ((Math.abs(p.x) < .034 && p.y > L.mouthY + .008 && p.y < L.mouthY + .022) || (Math.abs(p.x) > .027 && Math.abs(p.x) < .038 && p.y < L.mouthY + .022 && p.y > L.mouthY - .04)) },
 };
 export const BEARD_ALIAS = { mutton: 'strap', anchor: 'goatee', vandyke: 'circle', jawline: 'strap' }; export const STACHE_ALIAS = { toothbrush: 'pencil', fumanchu: 'horseshoe', imperial: 'handlebar', painter: 'chevron' };
-function topLine(a, L, k) { const aa = Math.abs(a); return interp([[0, L.mouthY + .024], [16, L.mouthY + .025], [28, -.052 + .01 * (k - 1)], [45, -.04 + .015 * (k - 1)], [62, -.026 + .02 * (k - 1)], [78, -.004 + .01 * (k - 1)], [86, .006]], aa); }
+export const LIP_CUT = (p, L) => Math.abs(p.x) < .034 && p.y > L.mouthY + .004 && p.z > .03; // upper lip left to the mustache
+function topLine(a, L, k) { const aa = Math.abs(a); return interp([[0, L.mouthY + .024], [16, L.mouthY + .025], [28, -.052 + .01 * (k - 1)], [45, -.04 + .015 * (k - 1)], [62, -.026 + .02 * (k - 1)], [78, -.004 + .01 * (k - 1)], [86, .006], [94, .012]], aa); }
 const offNeck = p => Math.hypot(p.x, p.z + .025) > .056 || p.y > -.08;
 function jawBand(p, a, L) { return -.112 + Math.abs(p.x) * .9 * Math.min(1, Math.abs(a) / 90 + .2); }
 function mouthHole(p, L, m) { const a = p.x / (.032 + m), b = (p.y - L.mouthY + .002) / (.012 + m * .55); return a * a + b * b < 1 && p.z > .03; }
@@ -247,8 +275,8 @@ export function buildBand(head, st, opt = {}) {
   const fr = { A: ax, F, X }; const NPH = 140, NU = 18; const inM = d => { const p = surf(head, d); const a = Math.atan2(p.x, p.z) / D2R; return st.mask(p, a, L); };
   const tin = new Float32Array(NPH), tout = new Float32Array(NPH);
   for (let j = 0; j < NPH; j++) { const ph = j / NPH * Math.PI * 2; let th = 0, st0 = -1, en = -1; let prev = inM(dirOf(fr, 0, ph));
-    if (prev) st0 = 0; for (th = 1.2 * D2R; th < 100 * D2R; th += 1.2 * D2R) { const c = inM(dirOf(fr, th, ph)); if (c && !prev && st0 < 0) st0 = th; if (!c && prev && st0 >= 0) { en = th; break; } prev = c; }
-    if (st0 < 0) { tin[j] = tout[j] = -1; continue; } if (en < 0) en = 100 * D2R;
+    if (prev) st0 = 0; for (th = 1.2 * D2R; th < 125 * D2R; th += 1.2 * D2R) { const c = inM(dirOf(fr, th, ph)); if (c && !prev && st0 < 0) st0 = th; if (!c && prev && st0 >= 0) { en = th; break; } prev = c; }
+    if (st0 < 0) { tin[j] = tout[j] = -1; continue; } if (en < 0) en = 125 * D2R;
     const bis = (a, b, wantIn) => { for (let k = 0; k < 12; k++) { const m = (a + b) / 2; if (inM(dirOf(fr, m, ph)) === wantIn) b = m; else a = m; } return (a + b) / 2; };
     tin[j] = st0 > 0 ? bis(st0 - 1.2 * D2R, st0, true) : 0; tout[j] = bis(en - 1.2 * D2R, en, false); }
   // fill empty columns with a zero-width band at the neighbour's position (keeps one closed grid), then smooth

@@ -6,6 +6,7 @@ import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { hookVertex, skinTone } from './shaders.js';
 import { FACE_UNIFORMS, FACE_FRAG_DECL } from './face.js';
 import { weldNormals } from './morph.js';
+import { spreadFingers } from './fingers.js';
 
 const REG = { Head: 0, neck: 1, Spine: 2, Spine01: 2, Spine02: 2, Hips: 2, LeftShoulder: 3, LeftArm: 3, LeftForeArm: 3, RightShoulder: 3, RightArm: 3, RightForeArm: 3, LeftHand: 4, RightHand: 4,
   LeftUpLeg: 5, LeftLeg: 5, RightUpLeg: 5, RightLeg: 5, LeftFoot: 6, LeftToeBase: 6, RightFoot: 6, RightToeBase: 6 };
@@ -29,6 +30,7 @@ function analyse(key, scene) {
   for (let i = 0; i < n; i++) { let bi = 0, bw = -1; for (let k = 0; k < 4; k++) { const w = sw.getComponent(i, k); const b = si.getComponent(i, k); if (b === headIdx) headW[i] += w; if (w > bw) { bw = w; bi = b; } } dom[i] = bi; reg[i] = REG[names[bi]] ?? 2; }
   cleanRegions(geo, reg, 5);
   const aW = new Float32Array(n * 8); for (let i = 0; i < n; i++) for (let k = 0; k < 4; k++) { const w = sw.getComponent(i, k); if (w > 0) aW[i * 8 + (REG[names[si.getComponent(i, k)]] ?? 2)] += w; }
+  spreadFingers(geo, names, P, aW); // separate the pressed-together fingers (bind pose)
   // normalised limb / torso coordinates (attribute aR = region, along-limb s, torso height t, side)
   const aR = new Float32Array(n * 4); const hipsY = P.Hips.y, neckY = P.neck.y;
   const armDir = {}, legTop = {}; ['Left', 'Right'].forEach(sd => { const a = P[sd + 'Arm'], h = P[sd + 'Hand']; const d = h.clone().sub(a); armDir[sd] = { o: a, d: d.clone().normalize(), L: d.length() }; legTop[sd] = P[sd + 'UpLeg']; });
