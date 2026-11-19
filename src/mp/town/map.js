@@ -41,8 +41,11 @@ export function genLots() { // houses along every east-west road, both sides, in
     for (let k = 0; k < n; k++) { const cx = a + off + (k + .5) * pitch; const d = 9; const cz = z0 + side * (10 + d / 2); lots.push({ cx, cz, w: 9, d, face: side > 0 ? 'N' : 'S', road: z0, side }); } }
   lots.sort((p, q) => Math.hypot(p.cx, p.cz) - Math.hypot(q.cx, q.cz)); lots.forEach((l, i) => { l.id = 'L' + i; }); return lots;
 }
-export const SPECIAL = [{ id: 'store', kind: 'store', cx: 0, cz: -18, w: 18, d: 12, face: 'S', ci: 3, locked: 0 }, { id: 'kiosk', kind: 'kiosk', cx: 46, cz: -5.5, w: 9, d: 7, face: 'S', ci: 5, locked: 1 },
-  { id: 'shed1', kind: 'shed', cx: -40, cz: 1, w: 4, d: 3.4, face: 'S', ci: 1, locked: 1 }, { id: 'shed2', kind: 'shed', cx: 40, cz: 6, w: 4, d: 3.4, face: 'W', ci: 4, locked: 0 }, { id: 'shed3', kind: 'shed', cx: -14, cz: 0, w: 4, d: 3.4, face: 'N', ci: 8, locked: 1 }];
+export const SPECIAL = [{ id: 'store', kind: 'store', cx: 0, cz: -18, w: 18, d: 12, face: 'S', ci: 3, locked: 0 },   { id: 'shed1', kind: 'shed', cx: -40, cz: 1, w: 4, d: 3.4, face: 'S', ci: 1, locked: 1 }, { id: 'shed2', kind: 'shed', cx: 40, cz: 6, w: 4, d: 3.4, face: 'W', ci: 4, locked: 0 }, { id: 'shed3', kind: 'shed', cx: -14, cz: 0, w: 4, d: 3.4, face: 'N', ci: 8, locked: 1 }];
+// Reserved free lot for the gas station (faces the road z=-24, i.e. pumps near z=-13.5, kiosk behind): x 31..62, z -20..-1. Houses never use it.
+export const GAS_LOT = { x0: 31, x1: 62, z0: -20, z1: -1, roadZ: -24, pumpZ: -13.5, kioskCX: 46, kioskCZ: -5.5 };
+// Player start (a few steps from c1/c13 on the main cross street) and respawn.
+export const SPAWN = { x: -6, z: 21.5, ry: Math.PI / 2 };
 export const CAR_SPAWNS = [
   { id: 'c1', m: 'sedan', x: -12, z: 26.1, ry: Math.PI / 2, fuel: .55, lock: 0, tint: '#8a3b34' }, { id: 'c2', m: 'suv', x: 8, z: 21.8, ry: -Math.PI / 2 + .06, fuel: .22, lock: 1, tint: '#3d5a73' },
   { id: 'c3', m: 'hatchback-sports', x: 33, z: 25.5, ry: Math.PI / 2 + .35, fuel: .8, lock: 1, tint: '#c2a23a' }, { id: 'c4', m: 'van', x: -26, z: 10, ry: .05, fuel: .08, lock: 1, tint: '#d8d4c6' },
@@ -81,7 +84,7 @@ class Closed { // all closed houses = 4 instanced variants; LOD swaps hi/lo body
     this.shown = this.var.reduce((a, V) => a + V.hiM.count + V.loM.count, 0); this.shownHi = this.var.reduce((a, V) => a + V.hiM.count, 0); }
 }
 
-export function buildTown(scene) {
+export function buildTown(scene, opts = {}) {
   const M = makeMats(); const B = new Builder(); const col = new Colliders(); const nav = new Nav(col); const rnd = mulberry(4242);
   const root = new THREE.Group(); scene.add(root);
   const W = { M, B, col, nav, root, doors: [], containers: [], buildings: [], lots: [], decals: { blood: [], crack: [] }, closed: null, bounds: BOUNDS, enterable: [], rnd, hash };
@@ -110,11 +113,8 @@ export function buildTown(scene) {
     else { const v = Math.floor(rr() * 4); const dims = [[9, 8], [8.6, 8], [11, 7], [9, 8]][v]; l.v = v; const tint = new THREE.Color(COLORS[l.ci]).multiplyScalar(.55 + rr() * .3); W.closed.add(l, v, tint, new THREE.Color(['#d0c0b0', '#a8a8a2', '#c8a08c', '#9aa296'][Math.floor(rr() * 4)]).multiplyScalar(1)); const fw = (Math.abs(Math.sin(l.face === 'E' || l.face === 'W' ? 1 : 0)) ? dims[1] : dims[0]); const swap = l.face === 'E' || l.face === 'W'; const hx = (swap ? dims[1] : dims[0]) / 2, hz = (swap ? dims[0] : dims[1]) / 2; col.add(l.cx - hx, l.cx + hx, l.cz - hz, l.cz + hz, 'wall', true); } });
   W.closed.init(scene);
   for (const s of SPECIAL) { const bd = makeBuilding(W, s); W.enterable.push(bd); }
-  // gas pumps + canopy
-  { const cx = 46, cz = -13.5; const box = (m, x0, x1, y0, y1, z0, z1, c) => B.bounds(m, x0, x1, y0, y1, z0, z1, c); box('metal', cx - 12, cx + 12, 4.6, 4.9, cz - 3.6, cz + 3.6, '#9aa0a4'); box('trim', cx - 12, cx + 12, 4.9, 5.1, cz - 3.7, cz - 3.5, '#8a8f93');
-    for (const x of [-11, -2, 7, 11]) { box('concrete', cx + x - .3, cx + x + .3, 0, 4.6, cz - .3, cz + .3, '#b7b6ae'); col.add(cx + x - .3, cx + x + .3, cz - .3, cz + .3, 'prop'); } box('concrete', cx - 11, cx + 11, 0, .2, cz - 1.1, cz + 1.1, '#bfbdb3'); box('concrete', cx - 11, cx + 11, 0, .2, cz - 4, cz - 3, '#bfbdb3');
-    for (const x of [-6, 3]) { box('metal', cx + x - .35, cx + x + .35, 0.2, 1.6, cz - .35, cz + .35, '#c7433a'); box('dark', cx + x - .3, cx + x + .3, 1.0, 1.4, cz - .36, cz + .36, '#15181c'); col.add(cx + x - .4, cx + x + .4, cz - .4, cz + .4, 'prop'); W.pumps = (W.pumps || []); W.pumps.push({ id: 'pump' + x, x: cx + x, z: cz, fuel: 8 + Math.floor(rnd() * 12), z0: cz }); }
-    const sg = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.9), new THREE.MeshStandardMaterial({ map: signTex(['GAS · FOOD'], '#1d3b26', '#f1e9c8', 512, 160), roughness: .8 })); sg.position.set(cx, 6.2, cz + 3.6); root.add(sg); const pole = new THREE.Mesh(new THREE.BoxGeometry(.3, 6.2, .3), plain(M, 'metal', '#666b6f')); pole.position.set(cx - 12.6, 3.1, cz + 3.6); root.add(pole); }
+  // gas station: owned by the props helper (gas.js). The lot is reserved (GAS_LOT) and addGas(W) is called from the town via opts.hooks (before the statics are merged).
+  for (const h of (opts.hooks || [])) h(W);
   // street furniture, fences, junk, lamp poles
   const lampMat = plain(M, 'dark', '#2a2d33'); for (const z of zs) for (let x = -MX + 40; x < MX - 30; x += 24) { if (xsr.some(xr => Math.abs(x - xr) < 8)) continue; for (const s of [-1, 1]) { const g = new THREE.CylinderGeometry(.08, .11, 6, 6); g.translate(x, 3, z + s * (R + 1.1)); B.addGeo('dark', g, null, '#2a2d33'); } }
   for (const l of free) { if (rnd() < .5) { const a = rnd() * 6.28; const bx = l.cx + (l.face === 'N' ? 1 : -1) * 0, by = l.cz; /* yard junk */ const jx = l.cx + (rnd() - .5) * 6, jz = l.cz + (l.side || 1) * (6 + rnd() * 2); B.bounds(rnd() < .5 ? 'plank' : 'rust', jx - .4, jx + .4, 0, .5 + rnd() * .5, jz - .4, jz + .4, '#a09070', 1); } if (rnd() < .45) { const z0 = l.road + l.side * 7.4; for (let k = -4; k <= 4; k++) { if (rnd() < .25) continue; const fx = l.cx + k * 1.1; B.bounds('plank', fx - .06, fx + .06, 0, 1.0 - rnd() * .3, z0 - .02, z0 + .02, '#cbc3b0', 1); } } }
