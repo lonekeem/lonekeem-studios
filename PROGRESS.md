@@ -176,3 +176,5 @@ Based on `feat/mp-town` a091c98. New files: `src/mp/town/camcol.js`, `src/mp/tow
 
 ## v1.9.21 release (mission glow live)
 - feat/mission-glow rebased on main v1.9.20, fast-forwarded. Central `src/game/glow.js`; proofs `docs/mission-glow/`, live proofs `/workspace/live1921/`.
+
+- Released: https://github.com/lonekeem/lonekeem-studios/releases/tag/v1.9.21-debug (APK+AAB built locally, JAVA_HOME=/home/box/jdk21). Live proofs /workspace/live1921/.
