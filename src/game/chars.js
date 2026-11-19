@@ -97,7 +97,7 @@ export class Char {
     { // stylized avatar proportions: big head, chunky sneakers/boots (scale tracks for these bones are stripped from the clips)
       const hd = this.bone('DEF-head'); if (hd) hd.scale.setScalar(look.headK || 1.32);
       ['DEF-foot.L', 'DEF-foot.R', 'DEF-toe.L', 'DEF-toe.R'].forEach(n => { const b = this.bone(n); if (b) b.scale.set(1.14, 1.14, 1.2); }); }
-    if (look.rig && lib.rigs && lib.rigs[look.rig] && !/[?&]rig=0/.test(location.search)) { try { attachRig(this, lib.rigs[look.rig], { tint: /zombie|raider|gen[mf]/.test(look.rig) ? look.tint : null, tintK: /gen[mf]/.test(look.rig) ? .22 : undefined, handColor: look.rig === 'raider' ? '#1c1c1f' : /zombie/.test(look.rig) ? '#8e9677' : null }); } catch (e) { console.warn('rig', e); } }
+    if (look.rig && lib.rigs && lib.rigs[look.rig] && !/[?&]rig=0/.test(location.search)) { try { attachRig(this, lib.rigs[look.rig], { tint: /zombie|raider|gen[mf]/.test(look.rig) ? look.tint : null, tintK: /gen[mf]/.test(look.rig) ? .22 : /zombie_/.test(look.rig) ? .3 : undefined, tintMul: look.rig === 'zombie_elder' ? .66 : look.rig === 'zombie_big' ? .86 : look.rig === 'zombie_male' ? .95 : undefined, handColor: look.rig === 'raider' ? '#1c1c1f' : /zombie/.test(look.rig) ? '#8e9677' : null }); } catch (e) { console.warn('rig', e); } }
     this.mixer = new THREE.AnimationMixer(obj); this.actions = {}; this.cur = null; this.curName = ''; this.oneShot = null;
     this.mixer.addEventListener('finished', (e) => { if (this.oneShot && e.action === this.oneShot.a) { const cb = this.oneShot.cb; this.oneShot = null; cb && cb(); } });
   }
