@@ -1,4 +1,6 @@
 // Applies a look to an Avatar: morphs, skin/face uniforms, garment shells, hair/beard shells and rigid accessories.
+import { detailFor } from './detail.js';
+import { SPEC as SHOE_SPEC, buildShoe } from './shoes.js';
 import * as THREE from 'three';
 import { skinTone } from './shaders.js';
 import { applyMorph } from './morph.js';
@@ -30,14 +32,18 @@ function headLayer(av, name, kind) { const L = av.layers; if (!L[name]) { const 
 function setGarment(av, name, kind, piece, tbl, g) {
   const m = bodyLayer(av, name, kind); m.visible = !!piece; if (!piece) return; const s = tbl.find(t => t[0] === piece.id); if (!s) { m.visible = false; return; }
   const U = m.material.userData.U, off = m.material.userData.off; U.uC1.value.set(piece.c); U.uC2.value.set(piece.c2 || '#ffffff'); U.uPat.value.set(piece.p || 0, 11 + (piece.ps || 0) * 8, 1, 0); U.uSole.value.set(.02, 0, 0, 0);
-  U.uShape.value.set(0, 0, 0, 0);
-  if (kind === 0 || kind === 3) { const [id, nm, gd, sl, hem, nT, nD, nW, dl, tu, loose, flare, con] = s; if (kind === 3) { const [id2, n2, g2, sl2, hem2, nt2, oh, ot, dl2, tu2, lo2, fl2] = s; U.uG1.value.set(sl2, hem2, 0, 9); U.uG2.value.set(dl2, oh, ot, tu2); U.uN.value.set(nt2, .06, .13, -.03); U.uShape.value.set(0, lo2 * 2, 0, fl2); off.value = .0145 + lo2; U.uSole.value.set(.02, 0, 1, 0); }
+  U.uShape.value.set(0, 0, 0, 0); if (kind === 0 || kind === 1 || kind === 3) setDetail(av, kind, piece.id, U); if (kind === 2 && SHOE_SPEC[piece.id]) m.visible = false;
+  if (kind === 0 || kind === 3) { const [id, nm, gd, sl, hem, nT, nD, nW, dl, tu, loose, flare, con] = s; if (kind === 3) { const [id2, n2, g2, sl2, hem2, nt2, oh, ot, dl2, tu2, lo2, fl2] = s; U.uG1.value.set(sl2, hem2, 0, 9); U.uG2.value.set(dl2, oh, ot, tu2); U.uN.value.set(nt2, .06, .13, -.03); U.uShape.value.set(0, lo2 * 2, 0, fl2); off.value = .0145 + lo2; U.uSole.value.set(.02, 0, 1, detailFor(3, piece.id)[6] ? 1 : 0); }
     else { U.uG1.value.set(sl, hem, 0, 9); U.uG2.value.set(dl, .05, .5, tu); U.uN.value.set(nT, nD, nW, -.03); U.uShape.value.set(0, loose * 2, 0, flare); off.value = .0095 + loose; U.uSole.value.set(.02, 0, 0, con); } }
   else if (kind === 1) { const [id, nm, gd, le, wa, loose, fl, kb] = s; U.uG1.value.set(le, wa, 0, 9); U.uShape.value.set(kb, fl, 0, 0); off.value = .0062 + loose; }
   else if (kind === 2) { const [id, nm, gd, sh, soleY, offs, cap] = s; U.uG1.value.set(sh, 0, 0, 9); U.uSole.value.set(soleY, cap, 0, 0); off.value = offs; U.uC3.value.set(piece.sole || '#f2f2f0'); U.uPat.value.z = (piece.p || 0) ? 1 : 0; }
   else if (kind === 4) { const [id, nm, sh, offs] = s; U.uG1.value.set(sh, 0, 0, 9); off.value = offs; }
 }
-function setUnder(av, f, skinCol) { const m = bodyLayer(av, 'under', 5); const U = m.material.userData.U; m.material.userData.off.value = .0035; U.uC1.value.set(f ? '#2a2a30' : '#26272c'); U.uG1.value.set(0, 0, f ? 1 : 0, 9); m.visible = true; }
+function setDetail(av, kind, id, U) { const D = av.tpl.dim; if (!D) return; U.uB1.value.set(Math.max(D.chestW, D.waistW), D.zc, D.neckY - D.hipsY, D.hipsY); U.uB2.value.set(D.armL, D.hipJ - D.ankleY, D.legX, D.legZ); U.uB3.value.set(D.kneeX, D.kneeZ, D.ankX, D.ankZ); U.uLedge.value.set(D.ledge.y, D.ledge.d, .09, 0);
+  const d = detailFor(kind, id); U.uD1.value.set(d[0], d[1], d[2], d[3]); U.uD2.value.set(d[4], d[5], d[6], d[7]); }
+function mountShoe(av, piece) { av._shoeTop = -1; for (const [nm, sd, bone] of [['shoeL', 1, 'LeftFoot'], ['shoeR', -1, 'RightFoot']]) { const sp = piece && SHOE_SPEC[piece.id]; if (!sp || !av.tpl.dim.foot) { clearAcc(av, nm); continue; }
+  const B = buildShoe(av.tpl.dim, piece.id, sd); av._shoeTop = B.topY; mount(av, nm, B, { a: { c: piece.c, r: sp.gloss ? .28 : .72 }, b: { c: piece.c2 || '#f2f2f0', r: .7 }, k: { c: piece.sole || '#f2f2f0', r: .85 } }, bone); for (const m of av.acc[nm] || []) { m.material = m.material.clone(); m.material.side = THREE.DoubleSide; m.castShadow = false; } } }
+function setUnder(av, f, skinCol, hide) { const m = bodyLayer(av, 'under', 5); const U = m.material.userData.U; m.material.userData.off.value = .0035; U.uC1.value.set(f ? '#2a2a30' : '#26272c'); U.uG1.value.set(0, hide ? 1 : 0, f ? 1 : 0, 9); m.visible = true; }
 
 const ACCB = { // layer -> bone
   hat: 'Head', glasses: 'Head', earL: 'Head', earR: 'Head', pierce: 'Head', hairx: 'Head', neck: 'Spine02', wristL: 'LeftForeArm', wristR: 'RightForeArm', ringL: 'LeftHand', ringR: 'RightHand', bag: 'Spine02', belt: 'Hips',
@@ -77,7 +83,7 @@ export function dress(av, look) {
   const sx = look.skinx; U.uMk2.value.set(sx.freckles / 3, sx.moles, sx.age, 0); U.uScar.value.set(sx.scar, sx.scarSide, 0, 0); U.uTat.value.set(sx.tattoo, sx.scarSide, 0, 0); U.uTatCol.value.set(sx.tattooCol);
   const bd = look.beard; U.uStub.value.set(bd.id === 'stubble' ? .55 + .3 * bd.len : 0, 1, 0, 0);
   // ---- clothes
-  const w = look.worn; setUnder(av, f); setGarment(av, 'top', 0, w.top, C.TOPS); setGarment(av, 'jacket', 3, w.jacket, C.JACKETS); setGarment(av, 'pants', 1, w.pants, C.PANTS); setGarment(av, 'shoes', 2, w.shoes, C.SHOES); setGarment(av, 'gloves', 4, w.gloves, C.GLOVES);
+  const w = look.worn; setUnder(av, f, null, !!(w.pants && !/skirt/.test(w.pants.id))); setGarment(av, 'top', 0, w.top, C.TOPS); setGarment(av, 'jacket', 3, w.jacket, C.JACKETS); setGarment(av, 'pants', 1, w.pants, C.PANTS); setGarment(av, 'shoes', 2, w.shoes, C.SHOES); mountShoe(av, w.shoes); { const pm = av.layers.pants; if (pm && pm.visible) pm.material.userData.U.uShape.value.z = av._shoeTop > 0 ? av._shoeTop - .006 : -1; if (w.pants && pm && pm.visible) { const hems = [w.top && C.TOPS.find(t => t[0] === w.top.id), w.jacket && C.JACKETS.find(t => t[0] === w.jacket.id)].filter(Boolean).map(t => t[4]).filter(h => h < .25 && h > -.3); if (hems.length && !/skirt/.test(w.pants.id)) { const U = pm.material.userData.U; U.uG1.value.y = Math.max(U.uG1.value.y, Math.min(...hems) + .035); } } } setGarment(av, 'gloves', 4, w.gloves, C.GLOVES);
   const ctx = makeCtx(av); av._ctx = ctx; const A = look.acc;
   // ---- hair / beard / mustache / mask shells (+ volumetric extras)
   const hat = A.hat && C.HATS.find(h => h[0] === A.hat.id); const hatFam = hat ? hat[2] : null; const covers = hat && !['headband', 'visor', 'crown'].includes(hatFam);

@@ -59,7 +59,15 @@ function analyse(key, scene) {
   const lm = { cx: 0, chinY: minY, hh: maxY - minY, hw, front, back, zc: (front + back) / 2, top: maxY, noseTipY: tipY, headBone: P.Head.clone(), ears, lobes: earLow.map((l, k) => l || ears[k]) };
   if (FLAT) flattenFace(geo, headW, lm);
   const zoneW = new Float32Array(n); if (FLAT) { const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }; for (let i = 0; i < n; i++) { if (headW[i] < .5) continue; const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i); const ax = Math.abs(x) / lm.hw, fy = (y - lm.chinY) / lm.hw; zoneW[i] = .9 * ss(lm.zc, lm.zc + .04, z) * ss(.16, .34, ax) * ss(1.05, .85, ax) * ss(.9, 1.25, fy) * ss(3.0, 2.6, fy); const cw = (1 - ss(.1, .3, ax)) * ss(lm.zc, lm.zc + .04, z) * ss(tipY - .024, tipY + .0, y) * ss(lm.chinY + (maxY - minY) * .62, lm.chinY + (maxY - minY) * .5, y); zoneW[i] = Math.max(zoneW[i], .8 * cw); } }
-  return { zoneW, key, scene, skin, geo, names, P, aR, aW, reg, headW, dom, used, lm, ankleY, hipsY, neckY };
+  const dim = (() => { let cw = 0, ww = 0, zmin = 9, zmax = -9; for (let i = 0; i < n; i++) { if (reg[i] !== 2 || !used[i]) continue; const t = aR[i * 4 + 2], x = Math.abs(pos.getX(i)), z = pos.getZ(i); if (t > .55 && t < .75) cw = Math.max(cw, x); if (t > .2 && t < .35) ww = Math.max(ww, x); if (t > .3 && t < .6) { zmin = Math.min(zmin, z); zmax = Math.max(zmax, z); } } return { chestW: cw, waistW: ww, zc: (zmin + zmax) / 2, depth: (zmax - zmin) / 2, legX: Math.abs(P.LeftUpLeg.x), legZ: P.LeftUpLeg.z, kneeX: Math.abs(P.LeftLeg.x), kneeZ: P.LeftLeg.z, ankX: Math.abs(P.LeftFoot.x), ankZ: P.LeftFoot.z, hipsY, neckY, hipJ: P.LeftUpLeg.y, ankleY, armL: armDir.Left.L }; })();
+  const foot = (() => { const f = { x0: 9, x1: -9, y0: 9, y1: -9, z0: 9, z1: -9 }; const lp = []; for (let i = 0; i < n; i++) { if (!used[i] || pos.getX(i) <= 0) continue; const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      if (reg[i] === 6) { f.x0 = Math.min(f.x0, x); f.x1 = Math.max(f.x1, x); f.y0 = Math.min(f.y0, y); f.y1 = Math.max(f.y1, y); f.z0 = Math.min(f.z0, z); f.z1 = Math.max(f.z1, z); }
+      if (reg[i] === 5 && y > ankleY - 0.01 && y < 0.8) { const b = Math.round(y / 0.03); const q = lp[b] || (lp[b] = { y: b * 0.03, x0: 9, x1: -9, z0: 9, z1: -9 }); q.x0 = Math.min(q.x0, x); q.x1 = Math.max(q.x1, x); q.z0 = Math.min(q.z0, z); q.z1 = Math.max(q.z1, z); } }
+    f.leg = lp.filter(Boolean); f.ank = { x: P.LeftFoot.x, y: P.LeftFoot.y, z: P.LeftFoot.z }; return f; })();
+  dim.foot = foot;
+  // the generated bases wear baked-in trunks: hem step on each thigh (y, radial step), measured per base from the leg width profile; garments bridge it in the vertex shader
+  dim.ledge = ({ mp_m1: { y: .535, d: .011 }, mp_m2: { y: .50, d: .012 }, mp_f1: { y: .59, d: .010 }, mp_f2: { y: .735, d: .012 } })[key] || { y: 0, d: 0 };
+  return { dim, zoneW, key, scene, skin, geo, names, P, aR, aW, reg, headW, dom, used, lm, ankleY, hipsY, neckY };
 }
 
 // Meshy meshes carry noisy folds that the baked texture used to hide; weld seams, Taubin-smooth (volume preserving) and rebuild welded normals

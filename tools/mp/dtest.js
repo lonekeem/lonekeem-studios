@@ -10,7 +10,7 @@ const cam=new THREE.PerspectiveCamera(30,W/H,.01,50);
 let x0=-(keys.length-1)*.5*(+q.get('gap')||.9); window.errs=[];
 for(let i=0;i<keys.length;i++){ const k=keys[i]; const tpl=await loadBase(k); const av=new Avatar(tpl); let L=q.get('seed')?randomLook(k,+q.get('seed')+i*77):defaultLook(k); if(q.get('skin')) L.skin.t=+q.get('skin'); if(q.get('j')) Object.assign(L,JSON.parse(q.get('j'))); if(q.get('js')){ const a=JSON.parse(q.get('js'))[i]; if(a){ for(const k in a){ if(a[k]&&typeof a[k]==='object'&&!Array.isArray(a[k])&&L[k]&&typeof L[k]==='object') Object.assign(L[k],a[k]); else L[k]=a[k]; } } }
  try{ dress(av,normalize(L)); }catch(e){ console.error(e.stack); window.errs.push(e.message); }
- av.root.position.x=x0+i*(+q.get('gap')||.9); sc.add(av.root); looks.push(av); }
+ av.root.position.x=x0+i*(+q.get('gap')||.9); av.root.rotation.y=(+q.get('ry')||0)*Math.PI/180; sc.add(av.root); looks.push(av); }
 window.avs=looks; if(q.get('nm')) looks.forEach(a=>{a.skin.material=new THREE.MeshMatcapMaterial({color:'#ddd'});});
 const h0=looks[0].tpl.lm; const cy=(h0.chinY+h0.hh*.5);
 if(view==='head'){ const t=looks[0]; cam.position.set(+q.get('x')||0,cy,(+q.get('d')||.7)); cam.lookAt(0,cy,0); }

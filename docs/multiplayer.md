@@ -182,11 +182,23 @@ Data model: `gun = receiver family × barrel × stock × grip × optic/mag slots
 | Phase | Scope | Status |
 |---|---|---|
 | **1 (this PR)** | Architecture, 4 new original rigged base bodies, character creator (body/face/hair/beard/skin details/clothes/jewellery), catalog + counts, look JSON + local save, lobby with 2-client presence, KL test car | built (see §17) |
-| 2 | Supabase accounts + saves + realtime presence (needs project restored + approval), name/look sync, chat | planned |
-| 3 | Authoritative game server, zombie director, chunked map v1 (one town + forest + lake), driving + fuel + hotwire | planned |
+| **2 (next, after the character quality pass)** | **Start small (Keem): ONE small town about the size of Kemy Pal Street**: a few streets, a handful of enterable/lootable houses, drivable KL cars, never-ending zombies, some loot. Plus the plumbing it needs: Supabase accounts (Google sign-in, admin role), saved looks, realtime presence (needs project restored + approval) | planned |
+| 3 | Authoritative game server hardening, zombie director tuning, fuel + hotwire, chunk streaming groundwork so the map can grow | planned |
 | 4 | Houses/cabins, fortification, 1000-item decor catalog, bodies persistence | planned |
 | 5 | Weapons store, missions + currencies, crafting, survival needs, weather/day-night | planned |
 | 6 | Google Play Billing, crews, pets, infection, radio/safe zones, horde events, big map expansion | planned |
+
+### Phase 2 scope: the first multiplayer map is small (decision from Keem)
+
+Do **not** build the huge map first. Phase 2 ships one small town, roughly the footprint of Kemy Pal Street, and everything else is expanded later on top of it:
+
+* **Map:** one town, a few streets with sidewalks/intersection, ~8-12 houses (a few with open doors and lootable rooms), a small store/gas station, a bit of forest edge. Built as chunk 0 of the chunked layout in §12 so later chunks (more streets, cabins, lake, rivers, bridges, the big world) plug in without rewriting.
+* **Cars:** a few drivable cars with the custom **KL** emblem (no real brand logos), basic fuel, enter/exit, shared state through the server.
+* **Zombies:** never-ending spawning from the director (§9), capped by the performance budget (§11), spawning away from players and out of sight; basic roam/chase/attack/damage.
+* **Loot:** a small data-driven loot table (food, water, ammo, a couple of melee/guns, fuel cans, car parts) placed in houses/cars/stores, with respawn timers.
+* **Players:** the Phase 1 creator characters, 2-8 players per lobby, name tags, simple text/quick-chat.
+* **Deliberately deferred (expansion list):** big map, 1000-item house decor and purchasing, fortification, NPC raiders/break-ins, car looting depth, weapons store, missions/currencies, Google Play Billing, weather, persistent bodies.
+* Order of work: (1) finish the character quality pass (Keem's reference look) and get approval, (2) get approval to turn on Supabase (Google sign-in, saves, realtime), (3) the small town + cars + zombies + loot on the existing lobby code.
 
 ## 17. Phase 1 status (built vs planned)
 
@@ -203,15 +215,23 @@ Screenshots: `docs/mp-proof/` = first pass (before), `docs/mp-proof-v2/` = quali
 **Catalog counts:** see `COUNTS()` in the creator header / `src/mp/catalog.js` (named styles / style×colour items). Hairstyles: 46 shown (12 more are hidden until they look clean: bob, lob, curly bob, pixie, side bangs, curtain bangs, short dreads, twists, long fringe, dreadlocks, quiff, pompadour). Items are styles × colours; patterns multiply clothing further.
 
 **Known rough edges (not hidden):**
-* Clothes are flat-shaded shells: no pockets, seams, stitching or fabric detail like Keem's baked jacket and cargo pants. This is the biggest remaining gap to Keem's model.
+* Clothes: see the clothing pass below. Detail is procedural (shader), not hand-made garment meshes, so it is good up close on seams/stitching/pockets/cuffs but has no real cloth folds, hoods, collars with flaps, belts or lapel geometry, and no letters/patches like Keem's varsity "B".
 * Eye shape/size/spacing/tilt and brow shape sliders were removed (eyes are baked into the texture); eye socket depth and the face/nose morphs still work. Eye colour works on all bases; brow colour recolours brows reliably only on m1/m2/f1.
 * Noses are soft (the source meshes have very small noses); faces are simple cartoon faces, not as detailed as Keem's.
 * Beards and mustaches are bold solid shapes; fades and a few hair shapes (afro bangs, mohawk) are still rough up close. Beanie sits low on the brow.
-* Shoes: one flat shoe silhouette for all styles (colour/sole change, shape does not); skirts and wide-leg pants are bulky.
+* Shoes now have real geometry per style (see below) but are chunky/bulbous (the source feet are large mitt shapes, toes can poke through low shoes); skirts and wide-leg pants are bulky.
 * Hands are the source mitt meshes (no separated fingers).
 * Portrait orientation not verified (the game itself is landscape). No Supabase transport yet.
 
 **Planned (nothing below is built):** Supabase Realtime transport and authoritative game server, accounts/saved looks in `atq_mp` (migration drafted, not applied; project is paused), full Kemy-style map and activities, houses/cabins and fortification, server-side zombies/NPC events, car break-in/hotwire/fuel, survival systems, weapons store, missions and Play Billing.
+
+### Clothing pass (v3, `docs/mp-proof-v3/`)
+
+* **Garment detail layer** (`src/mp/detail.js`, original, no logos): per-item spec table (fabric, collar, cuff, pocket, zip/placket, thread colour) for every top/jacket/pants id. Seams (side, centre back, sleeve cap, underarm, outseam/inseam), dashed topstitching (tone-on-tone or gold for denim), hem folds, ribbed hems/cuffs/collars, pockets (chest, kangaroo, welt, 5-pocket jean, cargo thigh pocket with flap + button, chino welt), waistbands + belt loops + fly + buttons, zippers (tape + teeth), snaps/buttons/buttonholes, lapel edge, and fabric texture with a real normal-from-height bump (jersey knit, fleece, denim twill, twill, woven, leather, quilted puffer channels, nylon, wool, rib). Detail fades by pixel footprint so it does not shimmer at game distance. Varsity jackets get contrast sleeves + striped rib trims.
+* **Edges fixed:** neckline/collar are analytic cuts (no more region-boundary jaggies), crew/V/rib collar bands follow the neckline, hems cut by height not region, tank armholes are clean, sleeve ends cut at the wrist, pants waist/leg boundaries fixed, underlayer no longer pokes through, hip gap between top and pants closed.
+* **Base mesh bug found:** the generated bases have baked-in trunks with a hem ledge on each thigh; garments now bridge it in the vertex shader (per-base ledge height/step in `dim.ledge`).
+* **Shoes** (`src/mp/shoes.js`): real lofted geometry per style (sole with heel lift, toe box, instep, laces + tongue, toe bumper, padded collar, boot shafts following the measured leg, loafer strap, flat bow, lug soles). 15 styles. Pants are clipped at the shoe top so legs do not poke through.
+* **Not done:** Fal was not used for clothes ($0 additional spend this pass); the new body/head/face/hands-with-fingers match to Keem's four reference images (heads, proportions, separated fingers, expressive eyes with lashes, teeth smiles) is a separate regeneration job and is NOT built; the reference images could not be opened by the executor (private attachments), so that work needs them copied to a readable location or described.
 
 ### Accounts / admin skin status
 
