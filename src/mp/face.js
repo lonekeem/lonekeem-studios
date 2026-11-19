@@ -57,6 +57,7 @@ vec3 paintSkin(vec3 p, vec3 n, vec4 R){
       float bE = smoothstep(1.0, 0.85, length(vec2((ax - (uB1.x + uB1.z * 0.5)) / (uB1.z * 0.62 + 0.3), (fc.y - ey - uB1.y - 0.1) / (uB1.w * 2.0 + 0.3)))) * step(0.04, ax);
       float mE = smoothstep(1.0, 0.8, length(vec2(fc.x / (uM1.y * 1.55 + 0.1), (fc.y - uM1.x) / 0.26)));
       c = mix(c, skE, max(eE, max(bE, mE))); }
+    c = mix(c, mix(c, skE, 0.75), smoothstep(ey + 0.12, ey + 0.35, fc.y) * smoothstep(0.0, 0.2, 1.1 - ax)); // baked forehead frown shading off
     if (uMk2.z > 0.01) { float fl = abs(fract((fc.y - ey - 0.8) * 3.2) - 0.5); c *= 1.0 - uMk2.z * 0.28 * smoothstep(0.1, 0.03, fl) * step(ey + 0.7, fc.y) * step(ax, 0.9) * step(0.5, vn(vec3(fc.x * 3.0, fc.y * 3.0, 1.0)));
       float nl = sdSeg(vec2(ax, fc.y), vec2(0.35, uNose.x - 0.05), vec2(0.7, uM1.x + 0.1)); c *= 1.0 - uMk2.z * 0.3 * smoothstep(0.04, 0.01, nl); }
     if (uMk1.z > 0.0) c = mix(c, uBlushCol, uMk1.z * 0.55 * smoothstep(0.38, 0.05, length(vec2(ax - 0.6, fc.y - ey + 0.5))));
@@ -92,16 +93,16 @@ vec3 paintSkin(vec3 p, vec3 n, vec4 R){
         ec = mix(ec, ic, iris); ec = mix(ec, vec3(0.012), smoothstep(0.43, 0.38, r) * iris);
         ec = mix(ec, vec3(1.0), smoothstep(0.17, 0.12, length((qi - vec2(ir * 0.30, ir * 0.38)) / ir * vec2(1.0, 1.1)))); ec = mix(ec, vec3(1.0), 0.8 * smoothstep(0.09, 0.05, length((qi - vec2(-ir * 0.34, -ir * 0.42)) / ir)));
         ec *= mix(1.0, 0.55, smoothstep(0.3 * up, up, q.y) * 0.9); c = mix(c, ec, inEye); }
-      float lw = (0.016 + 0.022 * uMk1.y) * (0.55 + 0.45 * smoothstep(-1.0, -0.2, tt)) * (1.0 + 0.5 * smoothstep(0.2, 1.0, tt)); float lidd = q.y - up - lw * 0.3; float lid = smoothstep(lw, lw * 0.3, abs(lidd)) * step(abs(tt - 0.02), 1.0 + 0.03);
-      float wingL = 0.0; { float wl = (0.1 + 0.34 * uMk1.y) * w * 2.0 * step(0.001, uMk1.y + 0.02) ; vec2 oc = vec2(w * 1.0, tilt * 0.0 + h * pow(max(1.0 - 1.0, 0.0), rnd) + lw * 0.3); vec2 tip = oc + vec2(wl * 0.8, wl * (0.45 + 0.4 * max(tilt, 0.0) + 0.2)); float dw = sdSeg(vec2(q.x, q.y), oc, tip); float wt = lw * (1.0 - 0.0) * (1.0 - clamp(length(vec2(q.x, q.y) - oc) / max(wl, 1e-3), 0.0, 1.0) * 0.85); wingL = smoothstep(wt, wt * 0.3, dw) * step(0.0, q.x - w * 0.9); }
+      float lw = (0.024 + 0.07 * uMk1.y) * (0.55 + 0.45 * smoothstep(-1.0, -0.2, tt)) * (1.0 + 0.5 * smoothstep(0.2, 1.0, tt)); float lidd = q.y - up - lw * 0.3; float lid = smoothstep(lw, lw * 0.3, abs(lidd)) * step(abs(tt - 0.02), 1.0 + 0.03);
+      float wingL = 0.0; { float wl = (0.12 + 0.75 * uMk1.y) * w * 1.6; vec2 oc = vec2(w * 1.0, tilt * 0.0 + h * pow(max(1.0 - 1.0, 0.0), rnd) + lw * 0.3); vec2 tip = oc + vec2(wl * 0.8, wl * (0.45 + 0.4 * max(tilt, 0.0) + 0.2)); float dw = sdSeg(vec2(q.x, q.y), oc, tip); float wt = lw * (1.0 - 0.0) * (1.0 - clamp(length(vec2(q.x, q.y) - oc) / max(wl, 1e-3), 0.0, 1.0) * 0.85); wingL = smoothstep(wt, wt * 0.3, dw) * step(0.0, q.x - w * 0.9); }
       c = mix(c, vec3(0.045, 0.028, 0.03), max(lid, wingL) * 0.97);
       float lowl = smoothstep(0.009, 0.0, abs(q.y + lo) - 0.002) * step(abs(tt), 0.95); c = mix(c, c * vec3(0.55, 0.42, 0.42), lowl * (0.35 + 0.45 * uMk1.y) * (0.5 + 0.5 * smoothstep(-0.3, 0.9, tt)));
-      { float L = uV1.x * (0.055 + 0.05 * uMk1.y) + 0.0; float nL = 11.0; float u = (tt + 0.45) / 1.55 * nL; float id = floor(u); float f = fract(u) - 0.5; float vv = q.y - up; float lenL = L * (0.45 + 0.75 * smoothstep(-0.2, 1.0, (id / nL) * 1.55 - 0.45)) ; float xs = f - vv / max(L, 1e-3) * (0.55 + 0.35 * smoothstep(0.0, 1.0, tt)) * 0.7;
-        float lash = smoothstep(0.2 * (1.0 - vv / max(lenL, 1e-3)) + 0.05, 0.04, abs(xs)) * step(0.0, vv + 0.004) * step(vv, lenL) * step(-0.45, tt) * step(tt, 1.1) * step(0.01, uV1.x); c = mix(c, vec3(0.04, 0.025, 0.027), lash * 0.95); }
+      { float L = uV1.x * (0.07 + 0.07 * uMk1.y); float nL = 9.0; float u = (tt + 0.45) / 1.55 * nL; float id = floor(u); float f = fract(u) - 0.5; float vv = q.y - up; float lenL = L * (0.45 + 0.75 * smoothstep(-0.2, 1.0, (id / nL) * 1.55 - 0.45)) ; float xs = f - vv / max(L, 1e-3) * (0.55 + 0.35 * smoothstep(0.0, 1.0, tt)) * 0.7;
+        float lash = smoothstep(0.34 * (1.0 - vv / max(lenL, 1e-3)) + 0.09, 0.05, abs(xs)) * step(0.0, vv + 0.004) * step(vv, lenL) * step(-0.45, tt) * step(tt, 1.1) * step(0.01, uV1.x); c = mix(c, vec3(0.04, 0.025, 0.027), lash * 0.95); }
     }
     // ---- brows (tapered, arched, with hair strokes)
     { float bt = (ax - uB1.x) / uB1.z; if (bt > -0.02 && bt < 1.02) { float btc = clamp(bt, 0.0, 1.0); float cyy = ey + uB1.y + uB2.x * 0.16 * sin(btc * 3.14159) * (1.0 - 0.25 * btc) + uB2.y * 0.3 * btc - 0.05 * btc * btc + 0.012;
-      float th = uB1.w * 0.62 * (1.0 - uB2.z * 0.7 * btc * btc) * (0.78 + 0.22 * sin(min(btc * 3.0 + 0.5, 3.14159))) * (smoothstep(-0.02, 0.1, bt)); float d = fc.y - cyy; float ad = abs(d + th * 0.1);
+      float th = uB1.w * 1.3 * (1.0 - uB2.z * 0.7 * btc * btc) * (0.78 + 0.22 * sin(min(btc * 3.0 + 0.5, 3.14159))) * (smoothstep(-0.02, 0.1, bt)); float d = fc.y - cyy; float ad = abs(d + th * 0.1);
       float st = 0.78 + 0.22 * vn(vec3(fc.x * 90.0 + fc.y * 40.0, fc.y * 18.0, 3.0)); float ba = smoothstep(th, th * 0.35, ad) * st * (1.0 - smoothstep(0.88, 1.02, bt)) * uB2.w;
       c = mix(c, uBrowCol * (0.8 + 0.4 * st), clamp(ba, 0.0, 1.0)); } }
     // freckles + moles

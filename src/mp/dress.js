@@ -75,7 +75,7 @@ export function dress(av, look) {
   const U = av.U, sk = skinTone(look.skin.t, look.skin.u); U.uSkin.value.copy(sk); U.uUnder.value = look.skin.u; U.uLm.value.set(L.cx, L.chinY, L.hw, L.hw);
   const hc = col(look.hair.c); U.uHairCol.value.copy(hc);
   const es = C.EYES[look.eyes.s] || C.EYES[0]; const sz = 1 + .35 * look.eyes.size, sp = look.eyes.space * .06;
-  U.uE1.value.set((EYE_X[look.base] ?? .5) + sp, (av.tpl.eyeFy || 1.83) + (EYE_DY[look.base] || 0), es[1] * 1.3 * sz, es[2] * 1.5 * sz); U.uE2.value.set(es[3] + look.eyes.tilt * .5, .78, es[4], es[5]); U.uV1.value.set(.35 + .65 * Math.min(1, Math.max(0, look.eyes.lash ?? .6)), 0, look.mouth.smile ?? 2, 0); U.uEyeCol.value.set(look.eyes.col);
+  U.uE1.value.set((EYE_X[look.base] ?? .5) + sp, (av.tpl.eyeFy || 1.83) + (EYE_DY[look.base] || 0), es[1] * 1.45 * sz, es[2] * 1.75 * sz); U.uE2.value.set(es[3] + look.eyes.tilt * .5, .78, es[4], es[5]); U.uV1.value.set(.35 + .65 * Math.min(1, Math.max(0, look.eyes.lash ?? .6)), 0, look.mouth.smile ?? 2, 0); U.uEyeCol.value.set(look.eyes.col);
   const br = C.BROWS[look.brows.s] || C.BROWS[0]; U.uB1.value.set(.14, .36, br[5], Math.max(.02, br[4] * (1 + .5 * look.brows.thick))); U.uB2.value.set(Math.max(0, br[1] + .4 * look.brows.arch), br[2], br[3], br[6]); U.uBrowCol.value.copy(look.brows.col ? col(look.brows.col) : hc.clone().multiplyScalar(.85));
   const mu = C.MOUTHS[look.mouth.s] || C.MOUTHS[0]; U.uM1.value.set(MOUTH_Y[look.base] ?? av.tpl.mouthY, mu[1] * 1.15 * (1 + .25 * look.mouth.width), Math.min(1, Math.max(0, mu[2] + .4 * look.mouth.full)), mu[3]);
   const lipBase = sk.clone().multiply(col('#d89080')).lerp(col('#7a3a30'), .25); U.uLip.value.copy(look.mouth.col ? col(look.mouth.col) : lipBase);
