@@ -75,7 +75,7 @@ export function glowUpdate(g) {
     (D.uses || []).forEach(u => { if (u.done || u.glow === false) return; const y = u.y != null ? u.y : (Math.hypot(u.x - P.x, u.z - P.z) < 40 ? py : (g.wpTarget && Math.hypot(g.wpTarget[0] - u.x, g.wpTarget[2] - u.z) < 4 ? Math.max(0, g.wpTarget[1] - 1.2) : py));
       list.push({ id: u, x: u.x, y: y + (u.model ? 1.0 : 0), z: u.z, hard: true, icon: useIcon(u), model: u.model, top: u.model ? .6 : 1.5, ground: y }); });
     // 3. go-here waypoint (skip when an interact spot already marks it)
-    const w = g.wpTarget; if (w && !list.some(e => e.hard && Math.hypot(e.x - w[0], e.z - w[2]) < 3.5)) list.push({ id: 'wp', x: w[0], y: Math.max(0, (w[1] || 1.2) - 1.2), z: w[2], hard: true, icon: 'dest', top: 1.7, wp: true });
+    const w = g.wpTarget; if (w && !list.some(e => e.hard && Math.hypot(e.x - w[0], e.z - w[2]) < 3.5)) list.push({ id: 'wp', x: w[0], y: Math.max(0, (w[1] || 1.2) - 1.2), z: w[2], hard: true, icon: 'dest', top: 2.7, wp: true });
     // 4. the truck, when this step wants you to drive it
     if (D.canDrive && !T.driving && T.g) list.push({ id: 'truck', x: T.g.position.x, y: 0, z: T.g.position.z, hard: true, icon: 'drive', top: 2.6 });
   }
