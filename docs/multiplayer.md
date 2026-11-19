@@ -60,6 +60,8 @@ Owner's saved roadmap is summarised in §1; what is built vs planned is in §14.
 * Use a dedicated schema `atq_mp` so nothing touches other apps in that project. Migrations are plain SQL files under `supabase/migrations/`.
 * Free-tier limits to design around: 200 concurrent Realtime connections, 100 msg/s per project (free) → batch position updates, shard to ≤ 20 players, and move to the game server before launch.
 * Anti-cheat basics: purchases and rewards only through `SECURITY DEFINER` RPCs (`buy_item`, `claim_mission`, `buy_house`) that validate price and balance; clients never write wallet rows.
+* **Accounts and the admin role (decided by Keem):** players sign in with **Google** (Supabase Auth, Google provider) so their character, wallet, houses and vehicles are saved to their account. Keem's account has the **admin** role. Roles are stored in a separate `atq_mp.user_roles` table that the API can never write (a flag on `profiles` would be self-editable); the owner grants admin once with a service-role SQL statement after Keem's first Google sign-in (see the bottom of the migration draft).
+* **Exclusive "Keem (story character)" skin:** the story Keem model is skin id `skin.keem_story`, stored in the look as `"exclusive": "skin.keem_story"`. Only an admin account may select it in multiplayer; it is **hidden** in the creator for everyone else (the client reads its own role and the `exclusive_skins` list, which RLS only returns to admins) and **locked server-side**: `characters` insert/update policies call `atq_mp.look_allowed(look)` in `WITH CHECK`, plus a `BEFORE` trigger as defence in depth. A modified client therefore cannot save that skin to the database. Other players still *render* the admin's Keem look (characters stay publicly readable), only *choosing* it is locked. Offline / BroadcastChannel test mode has no accounts, so the creator treats the local player as a non-admin unless `?admin=1` is set in dev builds (dev convenience only; the server is the real gate).
 
 ## 4. Character look (the save format)
 
@@ -77,6 +79,7 @@ A look is a small JSON document (≈1–3 KB), versioned, so catalog growth neve
             "shoes": {…}, "hat": {…}, "glasses": {…}, "earL": {…}, "chain": {…} } }
 ```
 
+* `"exclusive"` (optional string): whole-character exclusive skin id, e.g. `skin.keem_story` (admin only, enforced by RLS, see §3). Absent for normal looks.
 * Items are referenced by **string id + parameters**, never by index, so ids are stable forever. Unknown ids are ignored (forward compatible).
 * A look renders identically on every client because everything is deterministic (analytic shaders + parameters). Remote players only need the JSON.
 
@@ -209,3 +212,7 @@ Screenshots: `docs/mp-proof/` = first pass (before), `docs/mp-proof-v2/` = quali
 * Portrait orientation not verified (the game itself is landscape). No Supabase transport yet.
 
 **Planned (nothing below is built):** Supabase Realtime transport and authoritative game server, accounts/saved looks in `atq_mp` (migration drafted, not applied; project is paused), full Kemy-style map and activities, houses/cabins and fortification, server-side zombies/NPC events, car break-in/hotwire/fuel, survival systems, weapons store, missions and Play Billing.
+
+### Accounts / admin skin status
+
+* Planned, **not built**: Google sign-in UI, role fetch, hiding/locking the Keem skin in the creator, and the Keem skin asset wiring (story model `public/models/chars/keem.glb` reused for the admin only). The server rules are drafted in `supabase/migrations/20261118_mp_phase1.sql` (**not applied**; Supabase stays paused until the owner approves).
