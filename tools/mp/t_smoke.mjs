@@ -1,0 +1,11 @@
+import { boot } from '../mpfix/lib.mjs';
+import fs from 'fs'; const OUT = '/workspace/atq1919/docs/mp-fix2'; fs.mkdirSync(OUT, { recursive: true });
+const { b, p } = await boot();
+const info = async () => p.evaluate(() => { const T = window.__mpTown, P = T.me.av.motion; return { motion: !!P, cur: P && (P.locoOn ? 'LOCO' : P.curName), spd: +(T.S.spd || 0).toFixed(2), roll: +T.S.roll.toFixed(2), y: +T.S.y.toFixed(2), x: +T.me.x.toFixed(1), z: +T.me.z.toFixed(1), hpw: document.querySelector('#hpb i').style.width, hpTxt: document.querySelector('#hpTxt').textContent.slice(0, 20), noKeem: T.aud.noKeem, ctx: T.aud.ctx && T.aud.ctx.state }; });
+console.log('idle', JSON.stringify(await info())); await p.screenshot({ path: OUT + '/idle.png' });
+await p.keyboard.down('KeyW'); await p.waitForTimeout(1500); console.log('walk', JSON.stringify(await info()));
+await p.keyboard.down('ShiftLeft'); await p.waitForTimeout(1800); console.log('run', JSON.stringify(await info())); await p.screenshot({ path: OUT + '/run.png' });
+await p.keyboard.press('ControlLeft'); await p.waitForTimeout(250); console.log('roll', JSON.stringify(await info())); await p.screenshot({ path: OUT + '/roll.png' });
+await p.waitForTimeout(900); await p.keyboard.press('Space'); await p.waitForTimeout(300); console.log('jump', JSON.stringify(await info())); await p.screenshot({ path: OUT + '/jump.png' });
+await p.keyboard.up('KeyW'); await p.keyboard.up('ShiftLeft'); await p.waitForTimeout(1200); console.log('stop', JSON.stringify(await info()));
+await p.screenshot({ path: OUT + '/minimap_hud.png' }); await b.close();
