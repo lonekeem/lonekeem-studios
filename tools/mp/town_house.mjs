@@ -1,5 +1,5 @@
 import { launch, client, ctxOpts } from './townlib.mjs';
-const out = '/workspace/atqtown/docs/mp-town-proof/house';
+const out = (process.env.OUT || '/workspace/atqtown/docs/mp-town-proof/') + 'house';
 const b = await launch(); const ctx = await b.newContext(ctxOpts); const p = await client(ctx, 'A');
 const info = await p.evaluate(() => { const T = window.__mpTown; const bd = T.W.enterable.find(b => b.kind === 'house'); const D = bd.doors.find(d => d.name === 'front'); const th = bd.cfg; const ang = { S: 0, E: Math.PI / 2, N: Math.PI, W: -Math.PI / 2 }[bd.cfg.face]; const ox = Math.sin(ang), oz = Math.cos(ang); window.__h = { bd, D, ox, oz }; return { id: bd.id, face: bd.cfg.face, door: [D.x, D.z], out: [ox, oz], nd: bd.doors.map(d => d.name + ':' + d.installed), nc: bd.containers.length }; });
 console.log(JSON.stringify(info));

@@ -1,5 +1,5 @@
 import { launch, client, ctxOpts } from './townlib.mjs';
-const out = '/workspace/atqtown/docs/mp-town-proof/';
+const out = (process.env.OUT || '/workspace/atqtown/docs/mp-town-proof/') + '';
 const b = await launch(); const ctx = await b.newContext(ctxOpts); const p = await client(ctx, 'A'); await p.evaluate(() => { window.__MP_DTCAP = .15; });
 const go = async (name, x, z, yaw, pitch = .3, dist = 4.6, wait = 2200) => { await p.evaluate(([x, z, yaw, pitch, dist]) => { const T = window.__mpTown; T.setPos(x, z); T.me.ry = yaw; T.setCam(yaw, pitch, dist); }, [x, z, yaw, pitch, dist]); await p.waitForTimeout(wait); await p.screenshot({ path: out + name + '.png' }); };
 // view dir = (sin yaw, cos yaw)

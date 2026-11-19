@@ -53,3 +53,10 @@ Notes: zombies are simulated per client (no net sync yet); `getPlayers()[0]` mus
 - Controls/HUD: MP town now uses the story v1.9.7 DOM HUD (`#hud`, `#touch`, `#drive`) and the story `Input` class (reuses `game.input` if the story game is loaded, else a standalone Input on a shim). Extra round buttons Bag / Shop / Exit in `#hudr2` under the story top-right buttons. Mapping: stick, FIRE=hit, RUN, CRCH, JUMP, ROLL, hand=use, ⟳=alt action, swap=cycle melee, eye=first person, AIM=zoom, pause=MP pause panel. Test: `tools/mp/town_ctl.mjs`, `town_hud.mjs`.
 - Perf hand-off (to feat/mp-town-perf): already in tree and NOT re-measured: `src/mp/town/lod.js` (decimated zombie/corpse LOD), chunked cheaper trees w/o shadows (map.js), container-lid and car distance gating, fewer bodies near spawn. Last measured before these: ~404 calls / 554k tris (probe), 391 / 755k (smoke). Probes: tools/mp/perf_probe*.mjs, tri_probe*.mjs.
 - Camera collision is implemented in town.js (untested) – feat/mp-town-fix owns testing.
+
+## Round 4: perf done on feat/mp-town (renderer.info incl. shadow pass, 844x390, headless)
+Before (start street): 404 calls / 554k tris (probe), 391 / 755k (smoke).
+After: start street 124 calls / 144k tris (`docs/mp-town-final/start_street.png`, `tools/mp/town_final2.mjs`); `tools/mp/perf_spots.mjs`: spawn 106, crossing 115, gas station 167 (worst), east end 68, west 113, north street 123 calls; 116k–160k tris everywhere.
+What did it: decimated zombie/corpse LOD (lod.js), tree chunks w/o shadows, container-lid + prop-group distance gating (small props 30 m, buildings' detail 36 m), cars: blob shadow instead of 10 shadow-casting meshes, wheels/lights/emblems hidden beyond 30 m, cars culled beyond 62 m, zombies/bodies culled beyond 64/48 m, zombie target 14->12, fewer bodies near spawn.
+Known: gas station ~167 calls (pumps/special buildings), avatar is 63k tris (not decimated), car shadows are blobs, merged-statics instancing of building detail not done.
+Merged feat/mp-town-fix c43b28d (camera spring arm, double-sided pole sign). Store front sign/windows and human victim bodies still pending from that helper.
