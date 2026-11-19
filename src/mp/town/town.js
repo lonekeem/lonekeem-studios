@@ -11,6 +11,7 @@ import { Car, loadCarModels, createCars, CAP } from './cars.js';
 import { addGas, pumpNear, fillCan, gasActions } from './gas.js';
 import { addLoot, updateLoot } from './loot.js';
 import { createZombies } from './zombies.js';
+import { prime, setLevel } from './lod.js';
 import { mulberry, angDiff, clamp } from './kit.js';
 import { hash } from './building.js';
 import { CSS, el, drawGauge } from './ui.js';
@@ -47,6 +48,12 @@ export async function enterTown({ look, onExit } = {}) {
   // ---- bodies (persistent corpses, drawn by the zombies module if present) ----
   // sounds: the story game's AudioSys (samples + synth fallback); fails silent if audio is blocked
   const aud = new AudioSys({ vol: .9, music: 0, sfxVol: 1, voiceVol: 1, voices: false }); try { aud.init(); } catch (e) { /* no audio */ }
+  // ---- cheap draw-call LOD: container/furniture lids only near the player, cars hidden far away, no shadows from small bits ----
+  let perfAcc = 0; for (const c of W.containers) if (c.lid && c.lid.parent) c.lid.parent.traverse(o => { if (o.isMesh) o.castShadow = false; }); for (const c of cars) c.g.traverse(o => { if (o.isMesh && /wheel/.test(o.name)) o.castShadow = false; });
+  const perfLOD = dt => { perfAcc += dt; if (perfAcc < .25) return; perfAcc = 0; for (const c of W.containers) { if (!c.lid || !c.lid.parent) continue; c.lid.parent.visible = Math.hypot(c.x - me.x, c.z - me.z) < 30; } for (const c of cars) c.g.visible = Math.hypot(c.x - me.x, c.z - me.z) < 95; };
+  // ---- zombie / corpse LOD (lod.js): decimated meshes by distance, only 2 full-detail zombies, corpses hidden far away ----
+  const zOrder = []; const zombieLOD = () => { zOrder.length = 0; for (const z of Z.zombies) { const p = z.root.position; z._d = Math.hypot(p.x - me.x, p.z - me.z); if (!z._fc) { z._fc = 1; prime(z.root); z.root.traverse(o => { if (o.isSkinnedMesh) o.frustumCulled = true; }); } zOrder.push(z); }
+    zOrder.sort((a, b) => a._d - b._d); let full = 0; for (const z of zOrder) { const d = z._d, prev = z._lv ?? 2; const lv = d < (prev === 0 ? 8.5 : 7) && full < 2 ? 0 : d < (prev <= 1 ? 17 : 15) ? 1 : 2; if (lv === 0) full++; if (z.dead) z.root.visible = d < 45; setLevel(z, lv); } };
   let lastGroan = 0; const zEvent = (ev, z) => { try { if (!aud.ctx) return; const p = z.root.position; if (ev === 'notice') { const n = performance.now(); if (n - lastGroan > 700) { lastGroan = n; aud.at(p).groan(.12); } } else if (ev === 'kill') aud.at(p).squelch(.5); } catch (e) { /* ignore */ } };
   const Z = await createZombies({ scene, W, camera: cam, bodies: BODIES, fogFar: FOG_FAR, getPlayers: () => [{ x: me.x, z: me.z, ry: me.ry, drv: !!me.drv, id: 'me', crouch: false }, ...[...remotes.values()].filter(r => r.av).map(r => ({ x: r.x, z: r.z, id: r.id, drv: false }))], onHitPlayer: (dmg, from) => hurt(dmg, from), onEvent: (ev, z) => zEvent(ev, z) });
   // ---- toasts / hurt ----
@@ -149,7 +156,7 @@ export async function enterTown({ look, onExit } = {}) {
     for (const [id, p] of net.peers) { const r = remotes.get(id); if (!r || !r.av || !p.s) continue; const s = p.s; r.x += (s.x - r.x) * Math.min(1, dt * 10); r.z += (s.z - r.z) * Math.min(1, dt * 10); r.ry += angDiff(r.ry, s.ry) * Math.min(1, dt * 10); r.sp += ((s.sp || 0) - r.sp) * Math.min(1, dt * 8); r.av.root.visible = !s.drv; r.av.root.position.set(r.x, 0, r.z); r.av.root.rotation.y = r.ry; animate(r.av, t + id.length, r.sp); r.tag.position.set(r.x, 1.95, r.z); r.tag.visible = !s.drv; }
     stAcc += dt; if (stAcc > .08) { stAcc = 0; net.state({ x: me.x, z: me.z, ry: me.ry, sp: me.sp, drv: c ? 1 : 0 }); }
     // zombies / nav
-    navAcc += dt; if (navAcc > .45) { navAcc = 0; W.nav.field(me.x, me.z); } try { if (aud.ctx && aud.listen) aud.listen(cam, false); } catch (e) { /* ignore */ } if (Z) { Z.update(dt, t); for (const z of Z.zombies) { const zd = Math.hypot(z.root.position.x - me.x, z.root.position.z - me.z); if (z.dead) z.root.visible = zd < 45; const sh = zd < 22; if (z._sh !== sh) { z._sh = sh; z.root.traverse(o => { if (o.isMesh) o.castShadow = sh; }); } if (!z._fc) { z._fc = 1; z.root.traverse(o => { if (o.isSkinnedMesh) { o.frustumCulled = true; o.geometry.computeBoundingSphere(); o.geometry.boundingSphere.radius *= 1.6; } }); } } } updateLoot(W, dt);
+    navAcc += dt; if (navAcc > .45) { navAcc = 0; W.nav.field(me.x, me.z); } try { if (aud.ctx && aud.listen) aud.listen(cam, false); } catch (e) { /* ignore */ } perfLOD(dt); if (Z) { Z.update(dt, t); zombieLOD(); } updateLoot(W, dt);
     // roofs + camera
     const inb = insideB(me.x, me.z); for (const b of W.buildings) if (b.roof) b.roof.visible = b !== inb; W.closed.update(me.x, me.z);
     const tgt = new THREE.Vector3(me.x, c ? 1.5 : 1.45, me.z); const pitch = c ? .36 : inb ? Math.max(camPitch, .85) : camPitch; const dd = c ? 8.6 : inb ? 5.2 : camDist; const yawEff = c ? me.ry : camYaw; if (c) camYaw = me.ry;
