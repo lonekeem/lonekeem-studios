@@ -50,6 +50,9 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.18
+- Multiplayer (Beta) goes live: Title > Multiplayer (Beta) > creator > Quiet Falls free-roam town (houses without doors until you buy one, gas station, KL cars with fuel, loot, roaming zombies, shop + bag). Guests play online now via Realtime rooms (falls back to solo); Google sign-in shows "coming soon" until it is set up. The story game is unchanged.
+
 ### v1.9.17
 - First-person fix: your own body, head, hair and held weapon no longer block the view; camera sits at eye height with a 0.06 near plane; the gun pulls back near walls and the flashlight comes from the eye. Controls and voices unchanged.
 
