@@ -35,3 +35,5 @@ const Z = createZombies({ scene, W, camera, getPlayers: () => [{ x, z, ry, drv, 
 // E near a car: cars.enter / breakIn / exit; E near a pump: refuelCar / fillCan; players[0] pos = car pos while driving.
 ```
 Notes: zombies are simulated per client (no net sync yet); `getPlayers()[0]` must be the local player (nav flow field targets it). Audio hooks: `createZombies({onEvent})` fires `'notice'` and `'kill'`.
+- [x] step 2: town.js assembly (renderer, HUD, input, camera, interactions: doors/loot/cars/shop, net evt), ui.js, cars.js draft; entry.js now enters the town. Smoke proof docs/mp-town-proof/smoke_start.png (844x390)
+- [x] step 3: tested in 844x390 headless: house doorway + shop door purchase + door open, interior (roof lifts), loot panel, car enter/drive/fuel gauge/out of fuel/refuel. Proofs docs/mp-town-proof/{house,loot,car}_*.png (headless software GL runs ~2 fps, so holds/timers are scaled in tests)

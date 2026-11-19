@@ -6,7 +6,7 @@ export function install() {
   const show = () => title.classList.remove('hidden');
   b.addEventListener('click', async () => {
     title.classList.add('hidden'); const mod = await import('./creator.js');
-    const c = await mod.openCreator({ onClose: show, onPlay: async look => { const lb = await import('./lobby.js'); lb.enterLobby({ look, onExit: show }); } });
+    const c = await mod.openCreator({ onClose: show, onPlay: async look => { const tw = await import('./town/town.js'); tw.enterTown({ look, onExit: show }); } });
     window.__mpCreator = c;
   });
 }
