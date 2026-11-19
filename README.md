@@ -50,6 +50,9 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.17
+- First-person fix: your own body, head, hair and held weapon no longer block the view; camera sits at eye height with a 0.06 near plane; the gun pulls back near walls and the flashlight comes from the eye. Controls and voices unchanged.
+
 ### v1.9.16
 - Gore and wounds: bite, bullet, claw and torn-flesh marks stay on anyone who gets hurt (player, Dad, NPCs, raiders, zombies); zombie mouths, chins and hands get bloodier with every bite and stay that way; spreading glossy blood pools; feeders really kneel with their knees on the ground, victims struggle, reach, then go limp with the odd twitch (supine, on their side or face down); blood droplets are small streaks and splats; bodies stay.
 - Living town: townspeople panic and run from zombies, some make it into a house through a real hinged door and shut it, some get caught, pulled down and eaten (with the new gore), some get away. They spawn off-screen so nobody pops in, and bodies stay.
