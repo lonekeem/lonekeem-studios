@@ -15,7 +15,7 @@ export class Car {
   constructor(spec, models) {
     this.spec = spec; this.id = spec.id; this.kind = spec.m; this.g = new THREE.Group(); const src = models[spec.m]; this.L = LEN[spec.m] || 4.5; this.rad = .95;
     if (src) { const m = src.clone(true); if (!lenOf[spec.m]) { tmpB.setFromObject(src); lenOf[spec.m] = tmpB.max.z - tmpB.min.z; } m.scale.set(1.27, 1.27, this.L / lenOf[spec.m]); this.m = m; this.g.add(m);
-      const tint = new THREE.Color(spec.tint || '#888').lerp(new THREE.Color('#ffffff'), .25).multiplyScalar(.82);
+      const tint = new THREE.Color(spec.tint || '#888').lerp(new THREE.Color('#ffffff'), .12).multiplyScalar(1.05);
       m.traverse(o => { if (!o.isMesh) return; o.castShadow = true; o.receiveShadow = true; const key = o.material.uuid + spec.tint; o.material = mcache[key] || (mcache[key] = (() => { const mm = o.material.clone(); mm.roughness = .62; mm.metalness = .2; mm.color.copy(tint); return mm; })()); }); }
     // KL emblem front grille + rear
     const kl = new THREE.Mesh(new THREE.CircleGeometry(.15, 20), klMat()); kl.position.set(0, .66, this.L / 2 + .035); this.g.add(kl); const kl2 = kl.clone(); kl2.position.set(0, .8, -this.L / 2 - .035); kl2.rotation.y = Math.PI; this.g.add(kl2);
