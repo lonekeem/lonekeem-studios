@@ -33,8 +33,8 @@ export function skinTo(av, geo, weights) { // weights(i, x, y, z) -> [[boneName,
 export function bindMesh(av, mesh, order = 0) { const s = av.skin; mesh.position.copy(s.position); mesh.quaternion.copy(s.quaternion); mesh.scale.copy(s.scale); s.parent.add(mesh); mesh.bind(s.skeleton, s.bindMatrix); mesh.frustumCulled = false; mesh.renderOrder = order; mesh.castShadow = true; mesh.receiveShadow = true; return mesh; }
 const headWeights = (av, Cy, s) => (i, x, y) => { const k = Math.min(1, Math.max(0, ((Cy - .13 * s) - y) / (.05 * s))); return k > 0 ? [['Head', 1 - k], ['neck', k]] : [['Head', 1]]; };
 
-export function skinMaterial(U, faceTex) {
-  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .58, metalness: 0 });
+export function skinMaterial(U, faceTex, plain = false) { // plain: the neck tube — lit exactly like the body skin (no extra self-light) so there is no tone step where it meets the chest
+  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: plain ? .62 : .58, metalness: 0 });
   m.userData.face = { value: faceTex || null };
   m.onBeforeCompile = sh => {
     sh.uniforms.uSkin = U.uSkin; sh.uniforms.uFace = m.userData.face; sh.uniforms.uHasFace = { value: faceTex ? 1 : 0 };
@@ -43,11 +43,11 @@ export function skinMaterial(U, faceTex) {
       .replace('#include <color_fragment>', `#include <color_fragment>
         vec3 c = uSkin; if (uHasFace > .5 && vF > .001) { vec4 t = texture2D(uFace, vUv2); c = mix(c, t.rgb, t.a * vF); }
         diffuseColor.rgb = c;`)
-      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+      .replace('#include <emissivemap_fragment>', plain ? '#include <emissivemap_fragment>' : `#include <emissivemap_fragment>
         { float rimF = pow(1.0 - clamp(dot(normalize(vNormal), normalize(vViewPosition)), 0.0, 1.0), 2.4);
           totalEmissiveRadiance += diffuseColor.rgb * (0.06 + rimF * 0.16) + vec3(.03,.012,.01) * rimF; }`);
   };
-  m.customProgramCacheKey = () => 'v2skin' + (faceTex ? 'f' : ''); return m;
+  m.customProgramCacheKey = () => 'v2skin' + (faceTex ? 'f' : '') + (plain ? 'p' : ''); return m;
 }
 
 export function buildHead(av, look) {
@@ -73,7 +73,7 @@ export function buildHead(av, look) {
       skinTo(av, ng, (i, x, y) => { const t = (y - y1) / (y0 - y1); return t > .7 ? [['Head', Math.min(1, (t - .7) / .3)], ['neck', 1 - Math.min(1, (t - .7) / .3)]] : t > .25 ? [['neck', 1]] : [['neck', t / .25], ['Spine', 1 - t / .25]]; });
       ears.push(ng); }
     if (av._headMesh) { av._headMesh.geometry.dispose(); av._headMesh.geometry = geo; av._ears.forEach((m, k) => { m.geometry.dispose(); m.geometry = ears[k]; }); }
-    else { av._faceTex = paintFace(faceOpts(look, g, L, H)); const mat = skinMaterial(av.U, av._faceTex); av._headMesh = bindMesh(av, new THREE.SkinnedMesh(geo, mat), 1); const em = skinMaterial(av.U, null); av._ears = ears.map(e => bindMesh(av, new THREE.SkinnedMesh(e, em), 1)); }
+    else { av._faceTex = paintFace(faceOpts(look, g, L, H)); const mat = skinMaterial(av.U, av._faceTex); av._headMesh = bindMesh(av, new THREE.SkinnedMesh(geo, mat), 1); const em = skinMaterial(av.U, null), nm = skinMaterial(av.U, null, true); av._ears = ears.map((e, k) => bindMesh(av, new THREE.SkinnedMesh(e, k === 2 ? nm : em), 1)); }
     av._headKey = key;
   }
   const fk = JSON.stringify([look.eyes, look.brows, look.mouth, look.makeup, look.skinx, look.beard && look.beard.id, look.beard && look.beard.c, look.hair && look.hair.c, look.skin, look.nose]);
