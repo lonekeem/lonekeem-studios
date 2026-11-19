@@ -22,7 +22,7 @@ const CATS = {
   pants: { cam: 'legs', items: C.PANTS.filter(t => gOK(t[2])).map(t => [t[1], L => { L.worn.pants = { id: t[0], c: '#2f4f7a', c2: '#f2f2f0', p: 0 }; }]) },
   shoes: { cam: 'feet', items: C.SHOES.filter(t => gOK(t[2])).map(t => [t[1], L => { L.worn.shoes = { id: t[0], c: '#b8402e', c2: '#fff', p: 0, sole: '#f2f2f0' }; L.worn.pants = { id: 'shorts', c: '#2f4f7a', c2: '#fff', p: 0 }; }]) },
   masks: { cam: 'faceq', items: C.MASKS.map(m => [m[1], L => { L.mask = { id: m[0], c: '#3b6fc2', p: 0 }; }]) },
-  hats: { cam: 'head', items: C.HATS.map(h => [h[1], L => { L.acc.hat = it(h[0]); }]) },
+  hats: { cam: 'head', items: C.HATS.map(h => [h[1], L => { L.acc.hat = it(h[0]); const d = C.HAT_DEFAULTS[h[0]]; if (d) { L.acc.hat.c = d[0]; L.acc.hat.c2 = d[1]; } }]) },
   glasses: { cam: 'faceq', items: C.GLASSES_LIST.map(h => [h[1], L => { L.acc.glasses = it(h[0]); }]) },
   earrings: { cam: 'faceq', items: C.EARRINGS.map(h => [h[1], L => { L.acc.earL = it(h[0]); L.acc.earR = it(h[0]); L.acc.earL.m = 1; L.acc.earR.m = 1; }]) },
   pierce: { cam: 'face', items: C.PIERCINGS.map(h => [h[1], L => { L.acc.pierce = [h[0]]; }]) },

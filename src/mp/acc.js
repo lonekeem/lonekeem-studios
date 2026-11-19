@@ -27,21 +27,57 @@ export function makeCtx(av) {
 const hemi = (B, mat, cx, cy, cz, rx, ry, rz, frac = 1, rot) => B.add(new THREE.SphereGeometry(1, 22, 12, 0, PI * 2, 0, PI / 2 * frac), mat, [cx, cy, cz], rot, [rx, ry, rz]);
 const ring = (B, mat, cx, cy, cz, rx, rz, r, arc = PI * 2, a0 = 0) => { const pts = []; for (let i = 0; i <= 24; i++) { const a = a0 + arc * i / 24; pts.push([cx + Math.sin(a) * rx, cy, cz + Math.cos(a) * rz]); } B.tube(pts, r, mat, false, 30, 5); };
 
-// solid brim: a closed frustum (inner top radius -> lower outer radius = gentle droop) with real thickness; the underside normals are
-// bent up a little so the underside is lit like the top instead of reading black / see-through
-const brim = (B, mat, cx, cy, cz, rIn, rOut, h, sz = 1, arc) => { const g = arc ? new THREE.CylinderGeometry(rIn, rOut, h, 30, 1, false, arc[0], arc[1]) : new THREE.CylinderGeometry(rIn, rOut, h, 30, 1, false); const nr = g.attributes.normal; for (let i = 0; i < nr.count; i++) if (nr.getY(i) < -.5) nr.setXYZ(i, 0, .3, 0); return B.add(g, mat, [cx, cy, cz], [0, 0, 0], [1, 1, sz]); };
+
+// ---- hat shape helpers (all in bind-pose metres; unit-circle profiles scaled to the head ellipse by sz = rz/rx) ----
+const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+// lathe: pts = [[r, y], ...] bottom -> top; rib = [amp, count] radial ribs (knit / folds); fn(x, y, z, rel) optional vertex shaper
+function lathe(B, mat, pts, cx, cy, cz, sz, rib, fn, seg = 40) { const g = new THREE.LatheGeometry(pts.map(p => new THREE.Vector2(p[0], p[1])), seg); const p = g.attributes.position; const y0 = pts[0][1], y1 = pts[pts.length - 1][1];
+  for (let i = 0; i < p.count; i++) { let x = p.getX(i), y = p.getY(i), z = p.getZ(i); const rel = (y - y0) / Math.max(1e-6, y1 - y0); if (rib) { const th = Math.atan2(x, z); const k = 1 + rib[0] * Math.sin(th * rib[1]); x *= k; z *= k; } if (fn) { const o = fn(x, y, z, rel); if (o) { x = o[0]; y = o[1]; z = o[2]; } } p.setXYZ(i, x, y, z); }
+  g.computeVertexNormals(); return B.add(g, mat, [cx, cy, cz], [0, 0, 0], [1, 1, sz]); }
+const dome = (R, H, n = 9, sq = 1) => { const a = []; for (let k = 0; k <= n; k++) { const t = k / n * Math.PI / 2; a.push([R * Math.pow(Math.cos(t), sq), H * Math.sin(t)]); } return a; };
+// closed solid fan / brim: theta in [t0, t1], radius rIn(theta) -> rOut(theta), height yFn(theta, t) with thickness th (top, underside and edge walls, flat-shaded edge)
+function solidFan(B, mat, cx, cy, cz, sz, o) { const nT = o.nT || 36, nR = o.nR || 6; const full = Math.abs((o.t1 - o.t0) - Math.PI * 2) < 1e-3; const T = [], Bm = [];
+  for (let i = 0; i <= nT; i++) { const th = o.t0 + (o.t1 - o.t0) * i / nT, rI = o.rIn(th), rO = o.rOut(th); const rowT = [], rowB = []; for (let j = 0; j <= nR; j++) { const t = j / nR, r = rI + (rO - rI) * t; const y = o.y(th, t); rowT.push([Math.sin(th) * r, y, Math.cos(th) * r]); rowB.push([Math.sin(th) * r, y - o.th * (1 - .4 * t), Math.cos(th) * r]); } T.push(rowT); Bm.push(rowB); }
+  const grid = (A, flip, up) => { const pos = [], idx = []; for (let i = 0; i <= nT; i++) for (let j = 0; j <= nR; j++) pos.push(...A[i][j]); for (let i = 0; i < nT; i++) for (let j = 0; j < nR; j++) { const a = i * (nR + 1) + j, b = a + nR + 1; if (flip) idx.push(a, a + 1, b, b, a + 1, b + 1); else idx.push(a, b, a + 1, b, b + 1, a + 1); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); if (up) { const n = g.attributes.normal; for (let i = 0; i < n.count; i++) n.setXYZ(i, n.getX(i) * .3, -(Math.abs(n.getY(i)) * .9 + .25), n.getZ(i) * .3); } return g; };
+  B.add(grid(T, false), mat, [cx, cy, cz], [0, 0, 0], [1, 1, sz]); B.add(grid(Bm, true, true), mat, [cx, cy, cz], [0, 0, 0], [1, 1, sz]);
+  const wall = pts => { const pos = [], idx = []; pts.forEach(([a, b]) => { pos.push(...a, ...b); }); for (let k = 0; k < pts.length - 1; k++) { const a = k * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); } const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return B.add(g, mat, [cx, cy, cz], [0, 0, 0], [1, 1, sz]); };
+  wall(T.map((row, i) => [row[nR], Bm[i][nR]])); wall(T.map((row, i) => [row[0], Bm[i][0]]));
+  if (!full) { wall(T[0].map((p, j) => [p, Bm[0][j]])); wall(T[nT].map((p, j) => [p, Bm[nT][j]])); } }
 // ---------- hats ----------
 export const HAT = {
-  cap(B, c, o) { const r = 1.02; hemi(B, 'a', 0, c.crownY - .01, c.zc, c.rx * r, c.ry * 1.02, c.rz * r); B.add(new THREE.CylinderGeometry(c.rx * 1.02, c.rx * 1.02, .01, 22, 1, false), 'a', [0, c.crownY - .005, c.zc], [0, 0, 0], [1, 1, c.rz / c.rx]);
-    const L = o.brim ?? .09; const g = new THREE.CylinderGeometry(c.rx * 1.05 + L, c.rx * 1.05 + L, .006, 22, 1, false, -.9, 1.8); B.add(g, 'a', [0, c.crownY - .008, c.zc + c.rz * .15], [0, 0, 0], [1, 1, 1.0]); B.cyl(.009, .009, .004, [0, c.crownY + c.ry * 1.0, c.zc], 'b'); },
-  beanie(B, c, o) { hemi(B, 'a', 0, c.crownY - .02, c.zc - .005, c.rx * 1.05, c.ry * (o.tall ?? 1.1), c.rz * 1.05); ring(B, 'b', 0, c.crownY - .005, c.zc, c.rx * 1.04, c.rz * 1.04, .018); if (o.pom) B.sphere(.04, [0, c.crownY + c.ry * (o.tall ?? 1.1) + .02, c.zc], null, 'b'); },
-  bucket(B, c, o) { hemi(B, 'a', 0, c.crownY - .005, c.zc, c.rx * 1.05, (c.ry + .02) * 1.04, c.rz * 1.05); brim(B, 'a', 0, c.crownY - .011, c.zc, c.rx * 1.2, c.rx * 1.72, .034, c.rz / c.rx); },
-  brimmed(B, c, o) { const w = o.wide ?? 1.9; hemi(B, 'a', 0, c.crownY + .0, c.zc, c.rx * 1.05, c.ry * Math.max(1.05, (o.crown ?? .8) * 1.35), c.rz * 1.05); const h = .014 + .012 * (w - 1.4); brim(B, 'a', 0, c.crownY + .014 - h / 2, c.zc, c.rx * 1.04, c.rx * w, h, c.rz / c.rx); ring(B, 'b', 0, c.crownY + .018, c.zc, c.rx * 1.06, c.rz * 1.06, .012); },
-  beret(B, c) { hemi(B, 'a', .015, c.crownY + .002, c.zc - .005, c.rx * 1.18, c.ry * 1.02, c.rz * 1.18); B.cyl(.005, .005, .012, [.015, c.crownY + c.ry * 1.02, c.zc], 'a'); },
+  cap(B, c, o) { const R = c.rx * 1.05, sz = c.rz / c.rx, H = c.ry * 1.02, y0 = c.crownY - .012; // rounded crown with panel seams + button, curved bill in front
+    lathe(B, 'a', dome(R, H, 10, .9), 0, y0, c.zc, sz, null, (x, y, z, rel) => [x, y + .006 * rel * Math.max(0, z / R), z]);
+    for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + .26; const pts = []; for (let m = 0; m <= 10; m++) { const t = m / 10 * Math.PI / 2 * .97; pts.push([Math.sin(a) * R * Math.cos(t) * 1.006, y0 + H * Math.sin(t) * 1.006 + .001, c.zc + Math.cos(a) * R * Math.cos(t) * sz * 1.006]); } B.tube(pts, .0028, 'b', false, 16, 4); }
+    B.sphere(.011, [0, y0 + H * 1.0, c.zc], [1, .7, 1], 'b');
+    const L = o.brim ?? .09; solidFan(B, 'a', 0, y0 + .012, c.zc, sz, { t0: -1.12, t1: 1.12, nT: 28, nR: 6, th: .006, rIn: () => R * .985, rOut: th => R * .985 + L * (1 - .25 * (th / 1.12) ** 2), y: (th, t) => -(.035 * Math.pow(t, 1.5) * (L / .09) + .013 * Math.sin(th) ** 2 * t) });
+    ring(B, 'b', 0, y0 + .006, c.zc, R * 1.0, R * 1.0 * sz, .004); },
+  beanie(B, c, o) { const R = c.rx * 1.05, sz = c.rz / c.rx, tall = o.tall ?? 1.1, H = c.ry * tall * 1.0, y0 = c.crownY - .02; // knit dome that hugs the head + a folded cuff
+    lathe(B, 'a', dome(R * 1.0, H, 10, .8), 0, y0 + .018, c.zc - .004, sz, [.012, 46], tall > 1.3 ? (x, y, z, rel) => [x, y, z - .02 * rel * rel] : null);
+    lathe(B, 'b', [[R * .97, y0 - .012], [R * 1.06, y0 - .009], [R * 1.085, y0 + .012], [R * 1.07, y0 + .038], [R * 1.0, y0 + .046], [R * .97, y0 + .03]], 0, 0, c.zc - .004, sz, [.014, 56]);
+    if (o.pom) B.sphere(.042, [0, y0 + .018 + H * 1.0 + .018, c.zc - .004 - (tall > 1.3 ? .02 : 0)], null, 'b'); },
+  bucket(B, c, o) { const R = c.rx * 1.05, sz = c.rz / c.rx, H = c.ry * .98, y0 = c.crownY + .008; // tapered crown + a downward-sloping brim all round
+    lathe(B, 'a', [[R * 1.04, y0 - .01], [R * .99, y0 + H * .35], [R * .92, y0 + H * .75], [R * .84, y0 + H * .96], [R * .66, y0 + H * 1.01], [R * .3, y0 + H * 1.02], [0, y0 + H * 1.02]], 0, 0, c.zc, sz, null);
+    solidFan(B, 'a', 0, y0, c.zc, sz, { t0: -Math.PI, t1: Math.PI, nT: 40, nR: 6, th: .008, rIn: () => R * 1.0, rOut: () => R * 1.68, y: (th, t) => -.034 * Math.pow(t, 1.15) });
+    ring(B, 'b', 0, y0 + .004, c.zc, R * 1.012, R * 1.012 * sz, .005); },
+  brimmed(B, c, o) { const R = c.rx * 1.05, sz = c.rz / c.rx, st = o.style || 'fedora', w = o.wide ?? 1.9; const y0 = c.crownY + .008;
+    if (st === 'sun') { lathe(B, 'a', dome(R * 1.02, c.ry * .78, 10, .75), 0, y0 - .004, c.zc, sz, [.004, 64]); solidFan(B, 'a', 0, y0 - .002, c.zc, sz, { t0: -Math.PI, t1: Math.PI, nT: 48, nR: 8, th: .007, rIn: () => R * 1.0, rOut: () => R * w * .98, y: (th, t) => -.03 * Math.pow(t, 1.6) + .006 * Math.sin(th * 3) * t * t }); lathe(B, 'b', [[R * 1.05, y0 + .004], [R * 1.07, y0 + .014], [R * 1.07, y0 + .03], [R * 1.045, y0 + .034]], 0, 0, c.zc, sz); return; }
+    const H = c.ry * (st === 'western' ? 1.12 : 1.18);
+    const pinch = (x, y, z, rel) => { const q = sstep(.45, 1, rel); const front = .55 + .45 * Math.max(0, z / (R * sz)); const dent = (st === 'western' ? .012 : .02) * Math.exp(-Math.pow(x / (R * .28), 2)) * sstep(.55, 1, rel); return [x * (1 - (st === 'western' ? .1 : .28) * q * front), y - dent, z * (1 + .05 * q)]; };
+    lathe(B, 'a', [[R * 1.03, y0 - .012], [R * .99, y0 + H * .3], [R * .92, y0 + H * .62], [R * .86, y0 + H * .9], [R * .7, y0 + H * 1.0], [R * .35, y0 + H * 1.0], [0, y0 + H * 1.0]], 0, 0, c.zc, sz, null, pinch);
+    lathe(B, 'b', [[R * 1.045, y0 - .006], [R * 1.055, y0 + .004], [R * 1.045, y0 + .026], [R * 1.02, y0 + .03]], 0, 0, c.zc, sz);
+    const ww = st === 'western' ? 2.05 : 1.62; solidFan(B, 'a', 0, y0 - .004, c.zc, sz, { t0: -Math.PI, t1: Math.PI, nT: 56, nR: 8, th: .008, rIn: () => R * 1.0, rOut: () => R * ww,
+      y: (th, t) => st === 'western' ? Math.pow(t, 1.5) * (.058 * Math.sin(th) ** 2 - .026 * Math.max(0, Math.cos(th))) : Math.pow(t, 1.4) * (.012 * Math.sin(th) ** 2 - .022 * Math.cos(th) ** 2) }); },
+  beret(B, c) { const R = c.rx * 1.05, sz = c.rz / c.rx, y0 = c.crownY - .012; // flat, floppy disc pulled to one side, tight rim band + stalk
+    lathe(B, 'a', [[R * 1.0, y0], [R * 1.14, y0 + .012], [R * 1.3, y0 + .03], [R * 1.34, y0 + .052], [R * 1.22, y0 + .082], [R * .8, y0 + .1], [R * .3, y0 + .106], [0, y0 + .105]], .014, 0, c.zc - .004, sz, [.016, 9], (x, y, z, rel) => [x, y - .02 * Math.max(0, x / R) * rel, z]);
+    ring(B, 'b', 0, y0 + .003, c.zc, R * 1.0, R * 1.0 * sz, .007); B.cyl(.0055, .0065, .016, [.014 - .004, y0 + .112, c.zc - .004], 'b'); },
   headband(B, c, o) { ring(B, 'a', 0, c.eyeY + .09, c.zc, c.rx * 1.03, c.rz * 1.03, o.thick ?? .016); },
   bandana(B, c) { hemi(B, 'a', 0, c.crownY - .02, c.zc, c.rx * 1.04, c.ry * 1.0, c.rz * 1.04, .86); B.add(new THREE.ConeGeometry(.035, .13, 6), 'a', [.05, c.crownY - .08, c.back - .01], [-2.6, 0, 0]); B.add(new THREE.ConeGeometry(.035, .12, 6), 'a', [-.04, c.crownY - .08, c.back - .01], [-2.9, 0, 0]); },
-  hardhat(B, c) { hemi(B, 'a', 0, c.crownY - .005, c.zc, c.rx * 1.08, c.ry * 1.1, c.rz * 1.08); brim(B, 'a', 0, c.crownY - .004, c.zc + c.rz * .12, c.rx * 1.12, c.rx * 1.3, .014, (c.rz / c.rx) * 1.05); // short solid brim all round, plain dome (the old floating red strip is gone)
-  },
+  hardhat(B, c) { const R = c.rx * 1.08, sz = c.rz / c.rx, H = c.ry * 1.1, y0 = c.crownY - .01; // ridged shell, short brim all round with a longer front peak
+    lathe(B, 'a', dome(R, H, 10, .85), 0, y0, c.zc, sz, null);
+    for (const xo of [0, .055, -.055]) { const pts = []; for (let m = 0; m <= 16; m++) { const t = (-1.15 + 2.3 * m / 16); const zz = Math.sin(t) * R * sz * .98, rr = Math.max(.01, Math.cos(t)); const yy = y0 + H * Math.sqrt(Math.max(0, 1 - Math.pow(xo / R, 2))) * Math.pow(Math.cos(t), .85) ; pts.push([xo * Math.min(1, rr + .3), yy + .004, c.zc + zz]); } B.tube(pts, xo === 0 ? .0105 : .0075, 'a', false, 30, 6); }
+    solidFan(B, 'a', 0, y0 + .002, c.zc, sz, { t0: -Math.PI, t1: Math.PI, nT: 48, nR: 5, th: .011, rIn: () => R * 1.0, rOut: th => R * 1.14 + .042 * Math.pow(Math.max(0, Math.cos(th)), 2.2) * R / .13, y: (th, t) => -.008 * t - .006 * Math.max(0, Math.cos(th)) * t });
+    ring(B, 'b', 0, y0 + .008, c.zc, R * 1.0, R * 1.0 * sz, .005); },
   visor(B, c) { ring(B, 'a', 0, c.crownY - .01, c.zc, c.rx * 1.1, c.rz * 1.1, .01, PI * 1.6, -PI * .8 + PI); B.add(new THREE.CylinderGeometry(c.rx * 1.35, c.rx * 1.35, .005, 22, 1, false, -.9, 1.8), 'a', [0, c.crownY - .01, c.zc + c.rz * .15]); },
   crown(B, c, o) { ring(B, 'm', 0, c.crownY + .02, c.zc, c.rx * 1.0, c.rz * 1.0, .012); for (let i = 0; i < 7; i++) { const a = i / 7 * PI * 2; B.cone(.014, .06, [Math.sin(a) * c.rx, c.crownY + .06, c.zc + Math.cos(a) * c.rz], 'm'); B.sphere(.008, [Math.sin(a) * c.rx, c.crownY + .095, c.zc + Math.cos(a) * c.rz], null, 'g'); } },
   ears(B, c, o) { hemi(B, 'a', 0, c.crownY - .02, c.zc, c.rx * 1.04, c.ry * 1.0, c.rz * 1.04, .9); for (const s of [-1, 1]) B.cone(.04, .1, [s * c.rx * .6, c.crownY + c.ry * .95, c.zc + .01], 'a', [0, 0, -s * .15]); },
