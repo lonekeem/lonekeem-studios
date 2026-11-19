@@ -118,7 +118,7 @@ function grab(g, T, c) { const s = c.tn, ev = T.ev; s.state = 'grabbed'; s.t = 0
 function down(g, T, c) { const s = c.tn, ev = T.ev, p = c.root.position; s.state = 'down'; s.t = 0; c.play('Death01', { once: true, force: true, speed: 1.1 }); c.isVictim = true; c.struggle = 1; c.jolt = 0; c.screamT = rnd(.5, 1.5); c.id = Math.random() * 10;
   let i = 0; const zs = ev.zs.filter(z => !z.dead); for (const z of zs) { const a = i / zs.length * 6.28 + rnd(-.3, .3); z.root.position.set(p.x + Math.cos(a) * .95, 0, p.z + Math.sin(a) * .95); z.st = 'eat'; z.eat = c; z.eatOff = i++; z.play('Idle_Loop'); z.root.rotation.y = Math.atan2(p.x - z.root.position.x, p.z - z.root.position.z); }
   T.hooks.down(g, c, zs); ev.done = true; T.bodiesPending = c; }
-function bodyDone(g, T, c) { c.isVictim = false; c.struggle = 0; T.hooks.body(g, c); c.tn.frozen = true; const i = T.npcs.indexOf(c); if (i >= 0) T.npcs.splice(i, 1); delete g.npcs[c.key]; c.update = null; T.bodies.push(c); T.bodiesPending = null; }
+function bodyDone(g, T, c) { c.isVictim = false; c.struggle = 0; T.hooks.body(g, c); c.tn.frozen = true; const i = T.npcs.indexOf(c); if (i >= 0) T.npcs.splice(i, 1); delete g.npcs[c.key]; c.update = null; c.tn.bornAt = T.t; T.bodies.push(c); T.bodiesPending = null; }
 function finish(g, T, c, why) { const ev = T.ev; for (const z of ev.zs) if (!z.dead && z.st !== 'eat') { z.tgt = null; z.tgT = 0; z.speed = Math.min(z.speed, 1.6); } ev.done = true; T.log.push(why); kill(g, T, c, true); }
 
 // ---------------------------------------------------------------- scheduler
@@ -127,6 +127,8 @@ export function townUpdate(g, dt) {
   let T = g.town; if (!T || T.world !== g.world) T = g.town = fresh(g);
   if (!T.built) { T.built = true; try { buildDoors(g, T); } catch (e) { console.error('town build', e); } }
   FR++; T.t += dt; updateDoors(g, T, dt);
+  // old bodies stay a good while; only once they are long gone (2.5 min), far away (>45 m, deep in fog) and out of view are they quietly removed (never a pop in view)
+  if (T.bodies.length && (FR & 31) === 0) for (const b of T.bodies.slice()) { const P = b.root.position; if (T.t - (b.tn.bornAt || 0) > 150 && dFromP(g, P.x, P.z) > 45 && !onScreen(g, P.x, P.z, 0)) { T.bodies.splice(T.bodies.indexOf(b), 1); g.scene.remove(b.root); b.mixer.stopAllAction(); b.mixer.uncacheRoot(b.model); g.disposeTree && g.disposeTree(b.root); } }
   if (T.ev && T.ev.done && !T.npcs.length) T.ev = null;
   if (T.spare === undefined && T.t > 3) { T.spare = null; }
   if (T.ev || noTown(g)) { if (!T.ev) T.cd = Math.max(T.cd, 3); return; }

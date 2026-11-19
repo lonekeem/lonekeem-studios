@@ -52,7 +52,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
   function inView(x, z) { if (!camera) return false; camera.updateMatrixWorld(); pm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); fr.setFromProjectionMatrix(pm); return fr.containsPoint(tmpV.set(x, 1, z)); }
   function farFromPlayers(x, z, d) { for (const p of getPlayers()) if (Math.hypot(p.x - x, p.z - z) < d) return false; return true; }
   function seedScatter() { let n = 0, tries = 0; while (n < target && tries++ < 200) { const e = graph[Math.floor(rnd() * graph.length)]; const f = rnd(); const nb = graph[e.n[Math.floor(rnd() * e.n.length)]]; const x = e.x + (nb.x - e.x) * f + R(-2, 2), z = e.z + (nb.z - e.z) * f + R(-2, 2); if (Math.abs(x) > 100 || Math.abs(z) > 70 || !farFromPlayers(x, z, 30) || col.hit(x, z, .4)) continue; const c = make(x, z); c.node = -1; pickNode(c); n++; } }
-  function edgeSpawn() { const ends = graph.filter(n => (Math.abs(n.x) >= BOUNDS.x - 7 || Math.abs(n.z) >= BOUNDS.z - 7)); for (let k = 0; k < 6; k++) { const e = ends[Math.floor(rnd() * ends.length)]; const x = e.x + R(-2.5, 2.5), z = e.z + R(-2.5, 2.5); if (!farFromPlayers(x, z, 60)) continue; if (inView(x, z) && farFromPlayers(x, z, 104)) continue; const c = make(x, z); c.node = -1; pickNode(c); return c; } return null; }
+  function edgeSpawn() { const ends = graph.filter(n => (Math.abs(n.x) >= BOUNDS.x - 7 || Math.abs(n.z) >= BOUNDS.z - 7)); for (let k = 0; k < 6; k++) { const e = ends[Math.floor(rnd() * ends.length)]; const x = e.x + R(-2.5, 2.5), z = e.z + R(-2.5, 2.5); if (!farFromPlayers(x, z, 60)) continue; if (inView(x, z) && !farFromPlayers(x, z, 98)) continue; // never appear inside the visible, un-fogged area const c = make(x, z); c.node = -1; pickNode(c); return c; } return null; }
   seedScatter();
 
   // -------- damage / death --------
@@ -79,7 +79,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     for (let i = 0; i < zs.length; i++) { const z = zs[i], pp = z.root.position;
       if (z.dead) { dead++; z.deadT += dt; if (z.deadT < 3.2) { z.mixer.update(dt); if (z.vel.lengthSq() > .01) { const [nx, nz] = col.push(pp.x + z.vel.x * dt, pp.z + z.vel.z * dt, .3); pp.x = nx; pp.z = nz; z.vel.multiplyScalar(.9); } if (z.pool && z.poolGrow && z.pool.scale.x < 1.5) z.pool.scale.setScalar(z.pool.scale.x + dt * .5); } continue; }
       alive++; let near = null, nd = 1e9, ni = 0; P.forEach((p, k) => { const d = Math.hypot(p.x - pp.x, p.z - pp.z); if (d < nd) { nd = d; near = p; ni = k; } });
-      z.root.visible = nd < fogFar - 5;
+      z.root.visible = nd < fogFar - (z.root.visible ? 4 : 12); // hysteresis, and only vanish once ~90% fogged (no pop in view)
       const far = nd > fogFar * .7; // far from everyone: cheap drift only (no animation tick)
       if (z.hurtT > 0) { z.hurtT -= dt; if (z.oneShot || z.hurtT > 0) { const [nx, nz] = col.push(pp.x + z.vel.x * dt, pp.z + z.vel.z * dt, .3); pp.x = nx; pp.z = nz; z.vel.multiplyScalar(.85); if (!far) { z.mixer.update(dt); zBones(z); } continue; } }
       // state: notice / lose
