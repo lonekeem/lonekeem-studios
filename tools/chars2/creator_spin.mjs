@@ -3,7 +3,7 @@ import { chromium } from 'playwright'; import fs from 'fs';
 const OUT = process.env.OUT || 'docs/mp-chars-v2/creator'; fs.mkdirSync(OUT, { recursive: true });
 const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const ctx = await b.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 1.5 }); const p = await ctx.newPage(); p.on('pageerror', e => console.log('ERR', e.message));
-await p.goto('http://127.0.0.1:5240/'); await p.waitForSelector('#btnWarn'); await p.click('#btnWarn'); await p.waitForSelector('#btnMP'); await p.click('#btnMP');
+await p.goto('http://127.0.0.1:${process.env.PORT||5262}/'); await p.waitForSelector('#btnWarn'); await p.click('#btnWarn'); await p.waitForSelector('#btnMP'); await p.click('#btnMP');
 await p.waitForFunction(() => window.__mpCreator && window.__mpCreator.av(), null, { timeout: 180000 });
 const rot = () => p.evaluate(() => +(window.__mpCreator.av().root.rotation.y).toFixed(3));
 const box = await p.evaluate(() => { const c = document.querySelector('#mpc .stage'); const r = c.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; }); console.log('stage', JSON.stringify(box));
