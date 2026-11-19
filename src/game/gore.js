@@ -16,7 +16,7 @@ float wM = 0.0, wFresh = 0.0; vec3 wCol = vec3(0.0);
     if (abs(dn) < 0.2 && dot(wnrm, n) > 0.15) {
       vec3 tU = normalize(cross(n, vec3(0.0, 1.0, 0.0)) + vec3(0.0001, 0.0, 0.0)); vec3 tV = cross(n, tU);
       vec2 q = vec2(dot(lat, tU), dot(lat, tV)) / R; float r = length(q); float nz = wNz(q * 4.0 + sd) * 0.5 + wNz(q * 9.0 + sd * 3.0) * 0.25;
-      float m = 0.0; vec3 col = mix(vec3(0.20, 0.0, 0.0), vec3(0.55, 0.02, 0.02), fr);
+      float m = 0.0; vec3 col = mix(vec3(0.20, 0.0, 0.0), vec3(0.42, 0.015, 0.015), fr);
       if (kind < 0.5) { // bite: bruise halo, torn flesh, tooth punctures
         float bru = 1.0 - smoothstep(0.9, 1.6, r + nz * 0.4); wCol = mix(wCol, vec3(0.35, 0.12, 0.2), bru * 0.5); wM = max(wM, bru * 0.45);
         float fl = 1.0 - smoothstep(0.38, 0.62, r + (nz - 0.4) * 0.5); float ang = atan(q.y, q.x); float tooth = step(0.62, fract(ang * 1.6 + sd)) * smoothstep(0.1, 0.0, abs(r - 0.78 - nz * 0.1)) ;
@@ -42,7 +42,7 @@ export function initWounds(ch) {
   // mitten hands: blood amount on the hand material (local noise, heavier toward the fingertips)
   if (ch.handMats) for (const s of ['Left', 'Right']) { const hm = ch.handMats[s]; if (!hm) continue; const hu = { uHB: { value: 0 } }; (ch._hb = ch._hb || []).push(hu);
     hm.onBeforeCompile = (sh) => { Object.assign(sh.uniforms, hu); sh.vertexShader = 'varying vec3 vLP;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvLP = position;');
-      sh.fragmentShader = 'varying vec3 vLP; uniform float uHB;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n { float hn = sin(vLP.x*9.0+1.3)*sin(vLP.z*8.0+2.1)*0.5+0.5+sin(vLP.y*13.0)*0.2; float hb = smoothstep(0.55, 0.3, hn - vLP.y*0.35 - (1.0-uHB)*1.1 + 0.3) * step(0.001, uHB); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.3,0.0,0.0), clamp(hb,0.0,1.0)*0.95); }'); };
+      sh.fragmentShader = 'varying vec3 vLP; uniform float uHB;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\n { float hn = vLP.y*0.5+0.5 + (sin(vLP.x*5.0+1.3)*sin(vLP.z*4.0+2.1))*0.18; float hb = smoothstep(1.0-uHB*1.25, 1.0-uHB*1.25+0.22, hn) * step(0.001, uHB); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.17,0.0,0.0), clamp(hb,0.0,1.0)*0.9); }'); };
     hm.customProgramCacheKey = () => 'mittenblood'; hm.needsUpdate = true; }
 }
 // bind-space regions (m): [from bone, to bone] -> point along the limb
@@ -66,8 +66,8 @@ export function bloodyMouth(ch, amt = .25) {
   if (!m) { const pt = new THREE.Vector3(hp.x, hp.y + hl * .22, hf.z * .5 + hp.z * .5); m = W.mouth = { kind: 'smear', part: 'head', p: pt.clone().setZ(Math.max(hf.z, hp.z + .1) - .02), n: new THREE.Vector3(0, -.15, 1).normalize(), R: .03, run: .12, fresh: 1, seed: Math.random() * .99 }; W.list.push(m);
     c = W.chin = { kind: 'smear', part: 'head', p: m.p.clone().add(new THREE.Vector3(0, -hl * .13, -.01)), n: new THREE.Vector3(0, -.3, 1).normalize(), R: .025, run: hl * .6, fresh: 1, seed: Math.random() * .99 }; W.list.push(c);
     const ch2 = W.chest = { kind: 'smear', part: 'chest', p: regionPoint(ch, 'chest', .55), n: new THREE.Vector3(0, 0, 1), R: .02, run: .22, fresh: 1, seed: Math.random() * .99 }; W.list.push(ch2); }
-  m.R = Math.min(.1, m.R + amt * .03); c.R = Math.min(.08, c.R + amt * .025); W.chest.R = Math.min(.17, W.chest.R + amt * .03); syncWounds(ch);
-  (ch._hb || []).forEach(h => { h.uHB.value = Math.min(1, h.uHB.value + amt * .35); }); }
+  m.R = Math.min(.1, m.R + amt * .03); c.R = Math.min(.08, c.R + amt * .025); W.chest.R = Math.min(.11, W.chest.R + amt * .02); syncWounds(ch);
+  (ch._hb || []).forEach(h => { h.uHB.value = Math.min(1, h.uHB.value + amt * .18); }); }
 export function setHandBlood(ch, v) { (ch._hb || []).forEach(h => { h.uHB.value = Math.max(h.uHB.value, v); }); }
 
 // ---------- blood pools ----------
