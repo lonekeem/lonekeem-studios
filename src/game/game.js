@@ -201,6 +201,7 @@ export class Game {
     const pp = this.player ? this.player.root.position : V3(0, 0, 60); const base = Math.atan2(pp.x - x, pp.z - z); v.pose = Math.random(); v.life = 1; v.isVictim = true; v.struggle = 1; v.jolt = 0; v.screamT = rnd(.5, 2);
     v.root.rotation.order = 'YXZ'; v.root.rotation.y = base + (Math.random() < .5 ? 1 : -1) * Math.PI / 2 + rnd(-.25, .25);
     v.roll = v.pose < .45 ? 0 : v.pose < .75 ? (Math.random() < .5 ? 1.45 : -1.45) : Math.PI; v.root.rotation.z = v.roll; v.root.position.y = v.roll ? .09 : 0; // supine / on the side / face down
+    v.root.updateMatrixWorld(true); const hc = V3(); v.worldOf('DEF-hips', hc); if (Math.hypot(hc.x - x, hc.z - z) < 2.5) { x = hc.x; z = hc.z; } // pool + feeders centre on the body, not the root
     v.pool = this.settings.gore ? makePool(this, x, z, .7, 2.6) : null; this.decal(x + .6, z - .4, 0.8);
     if (this.settings.gore) { const back = Math.abs(v.roll) > 3; addWound(v, { kind: 'torn', part: back ? 'chest' : 'belly', nz: back ? -1 : 1, size: .1, run: .3 }); addWound(v, { kind: 'bite', part: eaters > 1 ? 'thighL' : 'uarmR', nz: back ? -1 : 1, nx: .3, size: .06 }); }
     const slots = eaters === 1 ? [Math.PI] : eaters === 2 ? [Math.PI * .72, -Math.PI * .72] : [Math.PI, Math.PI * .55, -Math.PI * .55];
