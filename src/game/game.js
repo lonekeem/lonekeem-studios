@@ -208,7 +208,7 @@ export class Game {
     const sc = (o.scale || rnd(.9, 1.1)); const c = new Char(this.lib, zl, sc); c.id = Math.random() * 10; c.root.position.set(x, 0, z); c.root.rotation.y = rnd(0, 6); this.scene.add(c.root);
     const runner = o.runner ?? Math.random() < (this.stepData.runners || 0.15);
     Object.assign(c, { z: true, hp: o.hp || (runner ? 50 : 70), maxHp: o.hp || (runner ? 50 : 70), runner, speed: runner ? rnd(3.6, 4.4) : rnd(1.1, 1.6), st: o.eat ? 'eat' : (o.idle ? 'idle' : 'chase'), eat: o.eat, cd: rnd(0, 1), stun: 0, dead: false, boss: !!o.boss, aggro: o.aggro ?? 30, vel: V3() });
-    if (o.eat) c.play('Fixing_Kneeling', { speed: 1.4 }); else c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.1 : 0.62 });
+    if (o.eat) c.play('Idle_Loop'); else c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.1 : 0.62 });
     if (c.act('Walk_Loop')) c.act('Walk_Loop').time = rnd(0, 1);
     if (o.raider) { c.raider = true; c.hp = c.maxHp = o.hp || 90; c.speed = 2.6; c.cd = rnd(1, 2.5); const h = new THREE.Group(); h.add(weaponMesh(o.gun || 'rifle')); h.rotation.set(Math.PI / 2, 0, 0); h.position.set(0, .08, .02); c.attach('DEF-hand.R', h); c.gunM = h; c.gunId = o.gun || 'rifle'; c.play('Pistol_Aim_Neutral'); if (c.mat && c.mat.userData.u && c.mat.userData.u.uShirt) if (o.shirt && c.mat.userData.u.uJacket) { c.mat.userData.u.uJacket.value.set(o.shirt); c.mat.userData.u.uShirt.value.set(o.shirt); } }
     this.zombies.push(c); return c; }
@@ -547,7 +547,7 @@ export class Game {
       if (k > .4 && k < .8) { shake = Math.sin(k * 55 + z.id) * .32 * (1 - (k - .4) / .4); pull = Math.sin((k - .4) / .4 * Math.PI) * .6; }
       if (k > .42 && !z.bitten) { z.bitten = true; const vol = Math.max(0, .55 * (1 - d / 22)); if (vol > .02) { this.audio.at(z.root.position); (Math.random() < .55 ? this.audio.tear : this.audio.chew).call(this.audio, .6); }
         if (v && v.root) { v.jolt = 1; const hp = V3(); z.worldOf('DEF-head', hp); const vp = v.root.position; const sp = V3((hp.x + vp.x) / 2, .35, (hp.z + vp.z) / 2);
-          if (gore) { this.blood(sp, V3(rnd(-.4, .4), 1, rnd(-.4, .4)), 9, 2.4, 1.1); if (Math.random() < .35) this.gib(sp, 1, '#4a0808'); if (Math.random() < .4) this.decal(vp.x + rnd(-.9, .9), vp.z + rnd(-.9, .9), rnd(.3, .6)); }
+          if (gore) { this.blood(sp, V3(rnd(-.4, .4), 1, rnd(-.4, .4)), 9, 2.4, .55); if (Math.random() < .35) this.gib(sp, 1, '#4a0808'); if (Math.random() < .4) this.decal(vp.x + rnd(-.9, .9), vp.z + rnd(-.9, .9), rnd(.3, .6)); }
           if (v.pool) v.pool.userData.target = Math.min(3.8, v.pool.userData.target + .12); if (gore) { bloodyMouth(z, .5); setHandBlood(z, Math.min(1, (z.hb = (z.hb || .5) + .1))); const tw = v._wounds && v._wounds.list.find(w => w.kind === 'torn'); if (tw) { tw.R = Math.min(.2, tw.R + .008); tw.fresh = 1; syncWounds(v); } } } } }
     else if (Math.random() < dt * .25) this.audio.at(z.root.position).chew(.35);
     const lk = z.lk; let rel = 0; if (lk > .01) { rel = Math.atan2(toP.x, toP.z) - z.root.rotation.y; rel = Math.atan2(Math.sin(rel), Math.cos(rel)); rel = clamp(rel, -1.3, 1.3); if (lk > .7) z.root.rotation.y = angLerp(z.root.rotation.y, z.root.rotation.y + rel, dt * .8); }
@@ -555,9 +555,11 @@ export class Game {
     if (sp2) sp2.rotateX((.6 + dip * .5 - pull * .1) * (1 - lk * .7)); if (sp3) sp3.rotateX((.35 + dip * .35) * (1 - lk * .8));
     if (nk) { nk.rotateX((dip * .45 - pull * .25) * (1 - lk) - lk * .35); nk.rotateY(rel * .45 * lk); }
     if (hd) { hd.rotateX((dip * .3 - pull * .35) * (1 - lk) - lk * .25); hd.rotateY(rel * .45 * lk + shake); hd.rotateZ(shake * .5); }
-    ['L', 'R'].forEach((s, i) => { const ua = B('DEF-upper_arm.' + s), fa = B('DEF-forearm.' + s); if (ua) ua.rotateX(-(.5 + dip * .35 + pull * .3) * (1 - lk * .5)); if (fa) fa.rotateX(-(.7 + pull * .4)); });
+    ['L', 'R'].forEach((s, i) => { const ua = B('DEF-upper_arm.' + s), fa = B('DEF-forearm.' + s); if (ua) { ua.rotateX((.75 + dip * .35 + pull * .3) * (1 - lk * .4)); ua.rotateZ((i ? -1 : 1) * -.12); } if (fa) fa.rotateX(.9 + pull * .4 + dip * .3); });
+    { /* kneel: hips drop onto both knees, shins fold back behind */ const hp = B('DEF-hips'); if (hp) hp.position.z -= .4 / (z.model.scale.x || 1) * (z.kn = Math.min(1, (z.kn || 0) + dt * 2));
+      ['L', 'R'].forEach((k) => { const th = B('DEF-thigh.' + k), sh = B('DEF-shin.' + k), ft = B('DEF-foot.' + k); if (th) th.rotateX(-.12); if (sh) sh.rotateX(1.65); if (ft) ft.rotateX(.5); }); }
     if (z.noHead && hd) hd.scale.setScalar(.001); }
-  // victims: struggle + scream + reach while alive, weaken (dying), then lie limp with the odd death-twitch; every bite jolts the body
+  /// victims: struggle + scream + reach while alive, weaken (dying), then lie limp with the odd death-twitch; every bite jolts the body
   victimStruggle(n, dt) { if (!n.isVictim) return; const eaters = this.zombies.filter(z => !z.dead && z.st === 'eat' && z.eat === n).length;
     if (n.life === undefined) n.life = 1; if (eaters) n.life = Math.max(0, n.life - dt * eaters / 26); const L = n.life; n.jolt = Math.max(0, (n.jolt || 0) - dt * 2.5);
     n.struggle = L > .5 ? Math.max(.4, n.struggle - dt * .02) : L > .12 ? .28 : 0; const t = this.t + (n.id || 0), B = (k) => n.bone(k), ps = n.pose || 0;

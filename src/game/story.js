@@ -43,7 +43,7 @@ export const STORY = [
       const dube = D.dube, ch = D.chaser; dube.root.position.set(-3, 0, 34); ch.root.position.set(-3, 0, 28.5); ch.st = 'script'; dube.play('Sprint_Loop');
       let t = 0; dube.update = (dt) => { t += dt; if (t < 2.2) { dube.root.position.z += dt * 4.6; dube.root.position.x += dt * 1.6; dube.root.rotation.y = .33; ch.root.position.z += dt * 5.6; ch.root.position.x += dt * 1.6; ch.root.rotation.y = .33; ch.mixer.update(0); }
         else if (!dube.down) { dube.down = true; dube.play('Death01', { once: true }); g.audio.scream(.16); g.blood(dube.root.position.clone().setY(.8), V(0, 1, 0), 30, 3); g.decal(dube.root.position.x, dube.root.position.z, 2); dube.bleed = true; dube.mat.userData.u.uBlood.value = g.settings.gore ? 1 : .2;
-          ch.root.position.set(dube.root.position.x - .7, 0, dube.root.position.z - .4); ch.root.rotation.y = 1; ch.st = 'eat'; ch.play('Fixing_Kneeling', { speed: 1.6 }); } };
+          ch.root.position.set(dube.root.position.x - .7, 0, dube.root.position.z - .4); ch.root.rotation.y = 1; ch.st = 'eat'; ch.play('Idle_Loop'); } };
       g.say([['keem', "Mr. Walt…? Oh {shit|nah}. Nah nah nah."], ['keem', "They're… they're eating him. They're {freakin' |}eating Mr. Walt."], ['dube', 'HELP! SOMEBODY HELP ME—'], ['keem', "Mr. Dube, run! RUN, bro!"], ['keem', "…"], ['keem', "Okay. Okay. That can't be real. That can't be real."], ['keem', "Dad and Nia are at the Pells'. Two streets. I gotta get to 'em."], ['keem', "Backpack. Bat. Dad's lockbox. Move, Keem."]], () => {
         g.cut = null; D.phase = 'gear'; g.objective('Gear up: backpack, bat, Dad\'s lockbox', 'Walk over the glowing items and press E / ✋. Collect all three.'); g.audio.beat(1); });
     },
