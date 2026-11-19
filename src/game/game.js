@@ -474,7 +474,7 @@ export class Game {
     if (!P.oneShot) { if (s.y > 0) P.play('Jump_Loop'); else if (!this.settings.smoothMove && mag > .08) { /* v1.9.7 classic locomotion */ if (s.crouch) P.play('Crouch_Fwd_Loop'); else if (run) P.play('Sprint_Loop'); else if (spd * mag > 2.6) P.play('Jog_Fwd_Loop', { speed: .9 }); else P.play('Walk_Loop', { speed: 1.1 }); }
       else if (this.settings.smoothMove && (mag > .08 || (s.spd || 0) > .35)) { const sp = s.spd || 0; if (s.crouch) P.play('Crouch_Fwd_Loop', { speed: clamp(sp / .64, .4, 2.2) }); else { const fy = P.root.rotation.y, bk = faceAim && sp > .3 && (Math.sin(fy) * MV.x + Math.cos(fy) * MV.z) < -.5 * sp; if (!P.locomote(sp, bk ? -1 : 1, dt)) P.play(run ? 'Sprint_Loop' : 'Jog_Fwd_Loop'); } }
       else if (s.crouch) P.play('Crouch_Idle_Loop'); else if (gun) P.play(s.aim ? 'Pistol_Aim_Neutral' : 'Pistol_Idle_Loop'); else P.play('Idle_Loop'); }
-    P.model.visible = !this.cam.fp; }
+    }
   // v2.0 aim assist (opt-in: "Simple" control scheme or the Aim-assist slider; default off = unchanged gameplay).
   // Gently steers the camera toward the best target near the crosshair while firing/aiming; optional auto-fire when a visible enemy is under it.
   aimAssist(rdt) { const S = this.settings, I = this.input, s = this.state; const str = S.ctl === 'simple' ? Math.max(S.assist || 0, .8) : (S.assist || 0); this._tgt = null; I.autoAtk = false;
@@ -628,6 +628,8 @@ export class Game {
     for (let i = this.grenadesLive.length - 1; i >= 0; i--) { const g = this.grenadesLive[i]; g.t -= dt; g.v.y -= 14 * dt; g.m.position.addScaledVector(g.v, dt); if (g.m.position.y < .06) { g.m.position.y = .06; g.v.multiplyScalar(.4); g.v.y = Math.abs(g.v.y) * .3; }
       if (g.t <= 0) { this.scene.remove(g.m); this.grenadesLive.splice(i, 1); this.explode(g.m.position.clone(), 6, 260); const tp = this.world.tanker.position; if (this.stepData.tankerHP > 0 && g.m.position.distanceTo(tp) < 8) this.stepData.tankerBoom = true; } }
     if (this.mT > 0) { this.mT -= dt; if (this.mT <= 0) { this.muzzle.visible = false; this.mLight.intensity = 0; } } if (this.trT > 0) { this.trT -= dt; if (this.trT <= 0) this.tracer.visible = false; } }
+  // hides/shows every drawable child of the player rig for first person (restores each child's own visibility afterwards)
+  setFPBody(on) { const P = this.player; if (!P) return; if (on) P.model.visible = false; if (!!this._fpBody === on) return; this._fpBody = on; for (const c of P.root.children) { if (on) { c.__fpv = c.visible; c.visible = false; } else if (c.__fpv !== undefined) { c.visible = c.__fpv; delete c.__fpv; } } if (!on) P.model.visible = true; }
   render(rdt) { const cam = this.camera, P = this.player, C = this.cam, I = this.input, T = this.truck;
     // camera
     I.lastLook = Math.hypot(I.look.x, I.look.y); C.yaw -= I.look.x; C.pitch = clamp(C.pitch - I.look.y, -1.1, 0.9); I.look.set(0, 0); this.aimAssist(rdt);
@@ -636,7 +638,7 @@ export class Game {
     if (this.cut && this.cut.cam) { cam.position.lerp(this.cut.cam, Math.min(1, rdt * 3)); const lk = this.cut.look; this._lk = this._lk ? this._lk.lerp(lk, Math.min(1, rdt * 3)) : lk.clone(); cam.lookAt(this._lk); }
     else if (this.dying) { const p = P.root.position; const want = V3(p.x + Math.sin(this.t * .3) * 2.4, 1.1, p.z + Math.cos(this.t * .3) * 2.4); cam.position.lerp(want, rdt * 2); cam.lookAt(p.x, .4, p.z); }
     else if (T && T.driving) { const p = T.g.position; T.ch = T.ch == null ? T.head : angLerp(T.ch, T.head, Math.min(1, rdt * 3)); const dd = 7.5 + Math.abs(T.v) * .12; desired = V3(p.x - Math.sin(T.ch) * dd, 3.3, p.z - Math.cos(T.ch) * dd); cam.position.lerp(desired, Math.min(1, rdt * 4)); cam.lookAt(p.x + Math.sin(T.ch) * 4, 1.2, p.z + Math.cos(T.ch) * 4); C.yaw = T.ch + Math.PI; }
-    else if (C.fp) { const hp = V3(); P.worldOf('DEF-head', hp); hp.y += .05; cam.position.copy(P.root.position).setY(P.root.position.y + (this.state.crouch ? 1.0 : 1.48)); const f = V3(-Math.sin(C.yaw), 0, -Math.cos(C.yaw)); cam.position.addScaledVector(f, .12);
+    else if (C.fp) { cam.position.copy(P.root.position).setY(P.root.position.y + (this.state.crouch ? 1.04 : 1.52)); const f = V3(-Math.sin(C.yaw), 0, -Math.cos(C.yaw)); cam.position.addScaledVector(f, .14); // eye height, a touch forward of the (hidden) head
       cam.rotation.set(0, 0, 0, 'YXZ'); cam.rotation.order = 'YXZ'; cam.rotation.y = C.yaw; cam.rotation.x = C.pitch; }
     else { target = P.root.position.clone(); target.y += this.state && this.state.crouch ? 1.05 : 1.5; const dist = aim ? 1.6 : 2.7, sh = aim ? .62 : .5;
       const cp = Math.cos(C.pitch), back = V3(Math.sin(C.yaw) * cp, -Math.sin(C.pitch), Math.cos(C.yaw) * cp); const right = V3(Math.cos(C.yaw), 0, -Math.sin(C.yaw));
@@ -644,15 +646,23 @@ export class Game {
       // side collision for shoulder
       const rc2 = new THREE.Raycaster(target, right, 0, sh + .2); const h2 = rc2.intersectObjects(this.world.walls, false)[0]; if (h2) { pivot.copy(target).addScaledVector(right, Math.max(0, h2.distance - .25)); }
       cam.position.copy(pivot).addScaledVector(back, dd); cam.rotation.order = 'YXZ'; cam.rotation.set(C.pitch, C.yaw, 0); }
+    // first person (v1.9.17): hide the player's whole body (mannequin, avatar skin, head/hair/hat/face parts, held weapon) and use a tight near plane so nothing of Keem is ever in the view
+    const fpOn = !!(C.fp && !this.cut && !this.dying && !(T && T.driving)); this.setFPBody(fpOn); const wantNear = fpOn ? .06 : .05; if (cam.near !== wantNear) { cam.near = wantNear; cam.updateProjectionMatrix(); }
     // shake
     if (this.trauma > 0) { const k = this.trauma * this.trauma * .25; cam.position.x += rnd(-k, k); cam.position.y += rnd(-k, k); cam.rotation.z += rnd(-k, k) * .4; this.trauma = Math.max(0, this.trauma - rdt * 1.6); }
     // viewmodel
-    this.vm.visible = !!(C.fp && !(T && T.driving) && !this.cut && !this.dying); if (this.vm.visible) { const s = this.state; const bob = Math.sin(this.t * 9) * .012 * Math.min(1, this.input.move.length()); this.vm.position.set(aim ? 0.0 : .22, (aim ? -.14 : -.2) + bob, -.45);
-      const w = WEAPONS[this.save.cur]; this.vm.rotation.set(s.atk > 0 && w.type === 'melee' ? -1.2 + s.atk / this.ws.rate * 2.4 : (s.reload > 0 ? .6 : 0), w.type === 'melee' ? .3 : 0, 0); }
+    this._fpWallD = 99; this.vm.visible = !!(C.fp && !(T && T.driving) && !this.cut && !this.dying); if (this.vm.visible) { const s = this.state; const bob = Math.sin(this.t * 9) * .012 * Math.min(1, this.input.move.length()); this.vm.position.set(aim ? 0.0 : .22, (aim ? -.14 : -.2) + bob, -.45);
+      const w = WEAPONS[this.save.cur]; this.vm.rotation.set(s.atk > 0 && w.type === 'melee' ? -1.2 + s.atk / this.ws.rate * 2.4 : (s.reload > 0 ? .6 : 0), w.type === 'melee' ? .3 : 0, 0);
+      // never let the held weapon poke through a wall: measure how far its tip reaches along the view and pull it back toward the camera when a wall is closer
+      cam.updateMatrixWorld(true); this.vm.updateMatrixWorld(true); const fwd = V3(); cam.getWorldDirection(fwd); const rc = this._fpRay || (this._fpRay = new THREE.Raycaster()); rc.set(cam.position, fwd); rc.near = 0; rc.far = 2.6; const wh = rc.intersectObjects(this.world.walls, false)[0]; this._fpWallD = wh ? wh.distance : 99;
+      let pull = 0; if (wh) { const bx = this._fpBox || (this._fpBox = new THREE.Box3()); bx.setFromObject(this.vm); let tip = 0; for (let i = 0; i < 8; i++) { const c = V3(i & 1 ? bx.max.x : bx.min.x, i & 2 ? bx.max.y : bx.min.y, i & 4 ? bx.max.z : bx.min.z); tip = Math.max(tip, c.sub(cam.position).dot(fwd)); } pull = clamp(tip - (wh.distance - .1), 0, 1.1); }
+      this._fpPull = lerp(this._fpPull || 0, pull, Math.min(1, rdt * 14)); this.vm.position.z += this._fpPull; this.vm.position.y -= this._fpPull * .7; this.vm.rotation.x -= this._fpPull * .5; if (this._fpPull > .62) this.vm.visible = false; /* weapon lowered out of view when your face is against a wall */ }
     $('#xhair').classList.toggle('hidden', !(WEAPONS[this.save?.cur]?.type === 'gun' || C.fp) || !!(T && T.driving) || !!this.cut || !!this.dying);
     // flashlight from chest
     const fl = this.flash; const fpos = P.root.position.clone(); fpos.y += 1.3; const fdir = V3(); cam.getWorldDirection(fdir); if (T && T.driving) { fpos.copy(T.g.position).y += 1; fdir.set(Math.sin(T.head), -.1, Math.cos(T.head)); }
-    fl.position.copy(fpos).addScaledVector(fdir, .3); fl.target.position.copy(fpos).addScaledVector(fdir, 10); fl.visible = !this.cut || this.cut.flash;
+    // first person: the torch sits at the eye (slightly low/right) instead of the chest and dims as a wall gets close, so a wall in your face is not a blown-out white blob
+    const fpT = fpOn && !(T && T.driving); if (fpT) { fpos.copy(cam.position); const rgt = V3(Math.cos(C.yaw), 0, -Math.sin(C.yaw)); fpos.addScaledVector(rgt, .02); fpos.y -= .04; } const wd = fpT ? this._fpWallD || 99 : 99; this._flI = lerp(this._flI == null ? 17 : this._flI, 17 * clamp(Math.pow(Math.max(wd, .05) / 2.5, 1.6) * (wd < 1.2 ? Math.pow(wd / 1.2, .85) : 1), .002, 1), Math.min(1, rdt * 30)); fl.intensity = this._flI; fl.angle = lerp(.42, .85, clamp((1.4 - wd) / 1.2, 0, 1));
+    fl.position.copy(fpos).addScaledVector(fdir, fpT ? 0 : .3); fl.target.position.copy(fpos).addScaledVector(fdir, 10); fl.visible = !this.cut || this.cut.flash;
     // moon shadow follows
     const mp = P.root.position; this.moon.position.set(mp.x - 20, 40, mp.z + 14); this.moon.target.position.copy(mp);
     if (this.player && this.scene) { if (!this.faceL) { this.faceL = new THREE.PointLight('#ffe6cc', 0.7, 4.5, 1.6); this.faceL.castShadow = false; this.scene.add(this.faceL); } this.faceL.visible = !!this.cut; /* v1.9.10: face fill only in cutscenes (made the player glow white in play) */ const hp = this.cut && this.cut.look ? this.cut.look : this.player.root.position, hy = this.cut && this.cut.look ? hp.y + .25 : hp.y + 1.7, cp = cam.position; this.faceL.position.set(hp.x + (cp.x - hp.x) * .45, hy, hp.z + (cp.z - hp.z) * .45); }
