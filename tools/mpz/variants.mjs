@@ -6,8 +6,6 @@ const dists = (process.env.DIST || '3,12,35').split(',').map(Number);
 const ALL = [null, 'zombie2', 'zombie_male', 'zombie_office', 'zombie_elder', 'zombie_big', 'zombie_cop', 'zombie_worker']; const RIGS = process.env.ONLY ? process.env.ONLY.split(',').map(i => ALL[+i]) : ALL;
 const b = await launch(); const ctx = await b.newContext({ ...ctxOpts, viewport: { width: 1000, height: 520 }, deviceScaleFactor: 1 }); const p = await client(ctx);
 await p.evaluate(() => { window.__MP_NOLOD = !!0; window.__mpTown.Z.killNear(0, 0, 400, 9999); });
-// hide the HUD (keep only the canvas chain)
-await p.evaluate(() => { const c = [...document.querySelectorAll('canvas')].sort((a, b) => b.width * b.height - a.width * a.height)[0]; let n = c; while (n && n !== document.body) { [...n.parentElement.children].forEach(s => { if (s !== n && s.tagName !== 'SCRIPT') s.style.visibility = 'hidden'; }); n = n.parentElement; } });
 await p.evaluate(([RIGS]) => { const T = window.__mpTown, Z = T.Z; window.__vz = RIGS.map((r, i) => { const z = Z.spawnAt(0, 0, { rig: r, runner: false }); z.speed = 0; z.hp = z.hp0 = 1e9; return z; }); }, [RIGS]);
 for (const D of dists) {
   await p.evaluate(([D, n]) => { const gap = D < 8 ? 1.15 : D < 20 ? 1.5 : 2.4; const X0 = -40, Z0 = 22; window.__pin && clearInterval(window.__pin);
