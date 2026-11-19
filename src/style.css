@@ -135,6 +135,7 @@ body.snap .layer{transition:none!important}
 #stickZone{position:absolute;left:0;bottom:0;width:42%;height:62%;pointer-events:auto}
 #stickKnob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(220,235,225,.55)}
 #dlg{position:absolute;left:50%;bottom:18%;transform:translateX(-50%);z-index:6;display:flex;gap:10px;align-items:center;max-width:min(720px,70vw);opacity:0;transition:opacity .3s;pointer-events:auto}
+#dlg:not(.on){pointer-events:none}/* v1.9.11: the hidden dialogue box was an invisible ~700px dead zone for camera drags */
 #dlg.on{opacity:1}#dlg #line{font-size:clamp(15px,2vw,22px)}
 #portrait{width:52px;height:52px}
 #loading{position:absolute;inset:0;z-index:9;background:#030805;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
@@ -239,7 +240,7 @@ body.hudv2 #dlg:not(.on){pointer-events:none}body.hudv2 #dlg{z-index:4}
 /* v1.9.10: classic v1.9.7 touch HUD is the default again; the thumb-arc layout (body.hudv2) is opt-in */
 body:not(.hudv2) #tSwap,body:not(.hudv2) #tGren,body:not(.hudv2) #lookRing{display:none!important}
 body:not(.hudv2) #stickBase{position:absolute;left:max(40px,env(safe-area-inset-left));bottom:28px}
-body:not(.hudv2) #lbtns{position:absolute;left:max(12px,env(safe-area-inset-left));top:112px;display:flex;flex-direction:column;gap:26px;pointer-events:auto;z-index:4}
+body:not(.hudv2) #lbtns{position:absolute;left:max(12px,env(safe-area-inset-left));top:112px;display:flex;flex-direction:column;gap:26px;pointer-events:none;z-index:4}
 @media (max-height:420px){body:not(.hudv2) #lbtns{gap:22px;top:104px}}
 body:not(.hudv2) #tbtns{position:absolute;right:max(14px,env(safe-area-inset-right));bottom:26px;width:240px;height:220px;pointer-events:none}
 body:not(.hudv2) #tbtns .rb{position:absolute;pointer-events:auto}
