@@ -285,7 +285,7 @@ export const STORY = [
     enter(g) { const D = g.stepData; fam(g, D, -1544, 0, true); D.n = 0;
       g.say([['reyes', "The battery door takes three keycards. Navy paranoia."], ['keem', "Three cards. I been finding stuff all week."]]);
       const got = () => { D.n++; g.audio.pickup(); g.objective('Find 3 keycards (' + D.n + '/3)', 'Barracks and the guard post.'); raiders(g, 2, [[g.player.root.position.x + 8, g.player.root.position.z - 8]]); if (D.n === 3) { g.wpTarget = [0, 1.2, -1652]; g.say([['nia', "That's all three! I ate that! …Well, you did."]], () => goto(g, 42, 300)); } };
-      D.uses = [[-14.5, -1580, 'Search the west barracks'], [14.5, -1600, 'Search the east barracks'], [0, -1640, 'Search the guard post']].map(([x, z, label]) => ({ x, z, label, fn: () => { D.uses = D.uses.filter(u => u.x !== x); got(); } }));
+      D.uses = [[-14.5, -1580, 'Search the west barracks'], [14.5, -1600, 'Search the east barracks'], [0, -1640, 'Search the guard post']].map(([x, z, label]) => ({ x, z, label, model: 'card', fn: () => { D.uses = D.uses.filter(u => u.x !== x); got(); } }));
       g.horde(10, [[-8, -1575], [8, -1600], [0, -1630]], { aggro: 16 }); } },
   { id: 'c9_cells', ch: 9, cp: [0, -1652, PI], obj: 'Find Dad in Battery Steele', hint: 'Through the door. The cells in the back.', mood: 'night', beat: 1,
     enter(g) { const D = g.stepData; fam(g, D, -1652, 0, true); g.wpTarget = [0, 1.2, -1680]; g.horde(6, [[-16, -1672], [16, -1676]], { aggro: 12 });

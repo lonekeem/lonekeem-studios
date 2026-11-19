@@ -1,0 +1,68 @@
+{"i":0,"id":0,"obj":"Check the boarded window","hard":"","loot":0,"wp":true,"uses":1}
+{"i":1,"id":1,"obj":"Get to the Pell house — Dad and Nia are ","hard":"dest(wp)","loot":19,"wp":true,"uses":0}
+{"i":2,"id":2,"obj":"Get the rifle from the sheriff's cruiser","hard":"","loot":0,"wp":true,"uses":1}
+{"i":3,"id":3,"obj":"Meet Dad at Hank's Garage","hard":"dest(wp)","loot":25,"wp":true,"uses":0}
+{"i":4,"id":4,"obj":"Get in the truck and drive to Riverside ","hard":"","loot":0,"wp":true,"uses":0}
+{"i":5,"id":5,"obj":"Defeat Big Gus","hard":"","loot":29,"wp":false,"uses":0}
+{"i":6,"id":6,"obj":"Cross Riverside Bridge","hard":"dest(wp)","loot":31,"wp":true,"uses":0}
+{"i":7,"id":7,"obj":"Reach the National Guard checkpoint","hard":"dest(wp)","loot":34,"wp":true,"uses":0}
+{"i":8,"id":8,"obj":"Clear the checkpoint","hard":"","loot":43,"wp":false,"uses":0}
+{"i":9,"id":9,"obj":"Find 3 fuses for the school gate (0/3)","hard":"use,use,use","loot":46,"wp":false,"uses":3}
+{"i":10,"id":10,"obj":"Hold the gate: 59s","hard":"","loot":46,"wp":false,"uses":0}
+{"i":11,"id":11,"obj":"Defeat Coach Brickman","hard":"","loot":48,"wp":false,"uses":0}
+{"i":12,"id":12,"obj":"Find the evac helicopter","hard":"use","loot":48,"wp":true,"uses":1}
+{"i":13,"id":13,"obj":"Find fuel at the Big Moose Truck Stop","hard":"dest(wp)","loot":4,"wp":true,"uses":0}
+{"i":14,"id":14,"obj":"Clear the truck stop","hard":"dest(wp)","loot":6,"wp":true,"uses":0}
+{"i":15,"id":15,"obj":"Check Dad at the Pine Tree Motel","hard":"talk","loot":7,"wp":true,"uses":1}
+{"i":16,"id":16,"obj":"Kill Big Rig Ronnie","hard":"dest(wp)","loot":7,"wp":true,"uses":0}
+{"i":17,"id":17,"obj":"Get to the turnpike on-ramp","hard":"dest(wp)","loot":7,"wp":true,"uses":0}
+{"i":18,"id":18,"obj":"Get through the toll plaza","hard":"dest(wp)","loot":4,"wp":true,"uses":0}
+{"i":19,"id":19,"obj":"Find Dad and Nia","hard":"","loot":0,"wp":true,"uses":0}
+{"i":20,"id":20,"obj":"Clear the camp, then break the cage","hard":"dest(wp)","loot":6,"wp":true,"uses":0}
+{"i":21,"id":21,"obj":"Kill Deacon","hard":"dest(wp)","loot":6,"wp":true,"uses":0}
+{"i":22,"id":22,"obj":"Head for the Maine Mall","hard":"dest(wp)","loot":6,"wp":true,"uses":0}
+{"i":23,"id":23,"obj":"Cross the Maine Mall parking lot","hard":"dest(wp)","loot":6,"wp":true,"uses":0}
+{"i":24,"id":24,"obj":"Find 3 antiviral packs (0/3)","hard":"use,use,use,dest(wp)","loot":7,"wp":true,"uses":3}
+{"i":25,"id":25,"obj":"Hold the doors: 48s","hard":"dest(wp)","loot":7,"wp":true,"uses":0}
+{"i":26,"id":26,"obj":"Kill Mall Santa","hard":"dest(wp)","loot":7,"wp":true,"uses":0}
+{"i":27,"id":27,"obj":"Talk to Dr. Reyes","hard":"talk","loot":7,"wp":true,"uses":1}
+{"i":28,"id":28,"obj":"Reach the old fort","hard":"dest(wp)","loot":5,"wp":true,"uses":0}
+{"i":29,"id":29,"obj":"Survive the Tollmen raid","hard":"dest(wp)","loot":6,"wp":true,"uses":0}
+{"i":30,"id":30,"obj":"Kill the Toll King","hard":"dest(wp)","loot":6,"wp":true,"uses":0}
+{"i":31,"id":31,"obj":"Signal the ship from the lighthouse","hard":"use","loot":6,"wp":true,"uses":1}
+{"i":32,"id":32,"obj":"","hard":"","loot":0,"wp":true,"uses":0}
+{"i":33,"id":33,"obj":"Get in the truck","hard":"","loot":0,"wp":true,"uses":0}
+{"i":34,"id":34,"obj":"Kill the Bait Man","hard":"dest(wp)","loot":3,"wp":true,"uses":0}
+{"i":35,"id":35,"obj":"Answer the marina radio","hard":"talk","loot":3,"wp":true,"uses":1}
+{"i":36,"id":36,"obj":"Reach the Peaks Island ferry","hard":"dest(wp)","loot":3,"wp":true,"uses":0}
+{"i":37,"id":37,"obj":"Hold the car deck: 43s","hard":"dest(wp)","loot":5,"wp":true,"uses":0}
+{"i":38,"id":38,"obj":"Kill the Deckhand","hard":"dest(wp)","loot":5,"wp":true,"uses":0}
+{"i":39,"id":39,"obj":"","hard":"","loot":0,"wp":true,"uses":0}
+{"i":40,"id":40,"obj":"Storm the Captain's gate","hard":"dest(wp)","loot":3,"wp":true,"uses":0}
+{"i":41,"id":41,"obj":"Find 3 keycards (0/3)","hard":"card,card,card,dest(wp)","loot":5,"wp":true,"uses":3}
+{"i":42,"id":42,"obj":"Find Dad in Battery Steele","hard":"use","loot":5,"wp":true,"uses":1}
+{"i":43,"id":43,"obj":"Kill the Captain","hard":"dest(wp)","loot":5,"wp":true,"uses":0}
+{"i":44,"id":44,"obj":"","hard":"","loot":0,"wp":true,"uses":0}
+{"i":45,"id":45,"obj":"Sneak Dad through Quarantine Row","hard":"","loot":0,"wp":true,"uses":0}
+{"i":46,"id":46,"obj":"Talk Dad down","hard":"","loot":0,"wp":true,"uses":1}
+{"i":47,"id":47,"obj":"Hold the dock: 43","hard":"","loot":4,"wp":false,"uses":0}
+{"i":48,"id":48,"obj":"Kill the Swan Knight","hard":"","loot":5,"wp":false,"uses":0}
+{"i":49,"id":49,"obj":"","hard":"","loot":0,"wp":false,"uses":0}
+{"i":50,"id":50,"obj":"Get through the harbor tunnel","hard":"dest(wp)","loot":1,"wp":true,"uses":0}
+{"i":51,"id":51,"obj":"Get in the ambulance","hard":"dest(wp),drive","loot":4,"wp":true,"uses":0}
+{"i":52,"id":52,"obj":"Clear the ER (0/20)","hard":"dest(wp)","loot":5,"wp":true,"uses":0}
+{"i":53,"id":53,"obj":"Kill Subject One","hard":"dest(wp)","loot":5,"wp":true,"uses":0}
+{"i":54,"id":54,"obj":"","hard":"","loot":0,"wp":true,"uses":0}
+{"i":55,"id":55,"obj":"Find Mom: cross the morgue","hard":"dest(wp)","loot":4,"wp":true,"uses":0}
+{"i":56,"id":56,"obj":"Find 3 fuses (0/3)","hard":"star,star,star","loot":6,"wp":false,"uses":0}
+{"i":57,"id":57,"obj":"Hold the hall: cell door opens in 44s","hard":"","loot":0,"wp":false,"uses":0}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+page.waitForTimeout: Target page, context or browser has been closed
+    at /workspace/atqglow/tools/audit_glow.mjs:8:146 {
+  log: []
+}
+
+Node.js v24.22.1

@@ -1,0 +1,114 @@
+[
+ {
+  "n": "story ch1 loads (New Game)",
+  "ok": true,
+  "d": {
+   "foot": "v1.9.21 · Story Mode · Chapters 1–13 · Biscuit Goes Rogue · Multiplayer (Beta)",
+   "step": 0,
+   "ch": 1,
+   "hp": 100,
+   "errs": []
+  }
+ },
+ {
+  "n": "Google sign-in shows in the multiplayer menu",
+  "ok": true,
+  "d": {
+   "acct": "Guest | Sign in with Google"
+  }
+ },
+ {
+  "n": "creator loads new characters",
+  "ok": true,
+  "d": {
+   "base": "mp_m1",
+   "tabs": [
+    "Body",
+    "Skin",
+    "Face",
+    "Eyes",
+    "Brows",
+    "Nose & mouth",
+    "Makeup",
+    "Hair",
+    "Beard",
+    "Tops",
+    "Jackets",
+    "Pants",
+    "Shoes",
+    "Gloves",
+    "Hats",
+    "Glasses",
+    "Ears",
+    "Piercings",
+    "Necklace",
+    "Wrists",
+    "Rings",
+    "Bags & belts",
+    "Masks",
+    "Looks"
+   ]
+  }
+ },
+ {
+  "n": "creator spins a full turn (4 angles, all different)",
+  "ok": true,
+  "d": {
+   "yaws": [
+    0,
+    1.57,
+    3.14,
+    4.71
+   ]
+  }
+ },
+ {
+  "n": "multiplayer town loads with the new character",
+  "ok": true,
+  "d": {
+   "base": "mp_m1",
+   "hasAv": true,
+   "anim": "Pistol_Idle_Loop"
+  }
+ },
+ {
+  "n": "a gun fires (pistol: mag 12 -> 11)",
+  "ok": true,
+  "d": {
+   "m0": 12,
+   "m1": 11,
+   "shot": true
+  }
+ },
+ {
+  "n": "car drives forward",
+  "ok": true,
+  "d": {
+   "car": {
+    "id": "c1",
+    "drv": "me",
+    "engine": true,
+    "x": -12,
+    "z": 26.1,
+    "ry": 1.5707963267948966
+   },
+   "fwd": {
+    "along": 8.78,
+    "v": 12.15
+   }
+  }
+ },
+ {
+  "n": "car drives in reverse",
+  "ok": true,
+  "d": {
+   "along": -5.96,
+   "v": -6
+  }
+ },
+ {
+  "n": "no page errors in multiplayer",
+  "ok": true,
+  "d": []
+ }
+]
