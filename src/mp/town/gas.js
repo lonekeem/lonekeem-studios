@@ -40,8 +40,13 @@ export function addGas(W) {
   }
   // pole sign by the road
   box('metal', CX - 17 - .15, CX - 17 + .15, 0, 7.4, -20.2 - .15, -20.2 + .15, '#8d9296'); col.add(CX - 17.2, CX - 16.8, -20.4, -20, 'prop');
-  const sg = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.6), new THREE.MeshStandardMaterial({ map: signTex(['KL FUEL', 'GAS · SNACKS'], '#1f6f45', '#fff6d6', 512, 320), roughness: .7, side: THREE.DoubleSide, emissive: '#2f9a63', emissiveIntensity: .4 })); sg.position.set(CX - 17, 8.1, -20.2); sg.rotation.y = Math.PI; root.add(sg);
-  const badge = new THREE.Mesh(new THREE.CircleGeometry(.7, 24), new THREE.MeshBasicMaterial({ map: klTex() })); badge.rotation.y = Math.PI; badge.position.set(CX - 17, 10.0, -20.25); root.add(badge); const b2 = badge.clone(); b2.rotation.y = 0; b2.position.z = -20.15; root.add(b2);
+  // double-sided sign: two single-sided panels back to back (a DoubleSide plane shows mirrored text from behind), each facing outward and reading correctly
+  { const SX = CX - 17, SZ = -20.2, tex = signTex(['KL FUEL', 'GAS · SNACKS'], '#1f6f45', '#fff6d6', 512, 320), bm = klTex();
+    box('metal', SX - 2.2, SX + 2.2, 6.8, 9.4, SZ - .1, SZ + .1, '#2b3a33'); // slab the faces sit on
+    for (const f of [1, -1]) { // f=+1 faces +z (into the lot), f=-1 faces -z (the road)
+      const sg = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.6), new THREE.MeshStandardMaterial({ map: tex, roughness: .7, emissive: '#2f9a63', emissiveMap: tex, emissiveIntensity: .55 })); sg.rotation.y = f > 0 ? 0 : Math.PI; sg.position.set(SX, 8.1, SZ + f * .105); root.add(sg);
+      const badge = new THREE.Mesh(new THREE.CircleGeometry(.7, 24), new THREE.MeshBasicMaterial({ map: bm })); badge.rotation.y = f > 0 ? 0 : Math.PI; badge.position.set(SX, 10.1, SZ + f * .06); root.add(badge); }
+    box('metal', SX - .7, SX + .7, 9.4, 10.8, SZ - .05, SZ + .05, '#2b3a33'); }
   // canopy underside light panels (cheap emissive look) + fuel-pump KL badges
   const lm = new THREE.MeshBasicMaterial({ color: '#fff4cf' }); for (const x of [-9, -3, 3, 9]) { const l = new THREE.Mesh(new THREE.PlaneGeometry(2.2, .5), lm); l.rotation.x = Math.PI / 2; l.position.set(CX + x, 4.52, CZ); root.add(l); }
   // small cartoon props: tyre stack + oil drums by the shop (no collision needed beyond a rect)
