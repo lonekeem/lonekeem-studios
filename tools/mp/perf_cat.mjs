@@ -1,0 +1,10 @@
+import { launch, client, ctxOpts } from './townlib.mjs';
+const b = await launch(); const ctx = await b.newContext(ctxOpts); const p = await client(ctx, 'A'); await p.evaluate(() => { window.__MP_DTCAP = .15; }); await p.evaluate(() => { const T = window.__mpTown; T.setPos(35, -8); T.setCam && T.setCam(1.5); }); await p.waitForTimeout(3000);
+const r = await p.evaluate(() => { const T = window.__mpTown; const R = T.renderer, S = T.scene, C = T.cam; R.shadowMap.autoUpdate = true; const m = () => { R.info.autoReset = false; R.info.reset(); R.render(S, C); const i = R.info.render; const o = i.calls; R.info.autoReset = true; return o; };
+  const base = m(); const zs = new Set(T.Z.zombies.map(z => z.root)); const carg = new Set(T.cars.map(c => c.g)); const cats = {};
+  const cat = c => zs.has(c) ? 'zombie' : carg.has(c) ? 'car' : c.name && c.name.startsWith('static_') ? 'static' : c.isInstancedMesh ? 'instMesh' : c.isMesh ? 'mesh' : c.isGroup ? (c.children.length > 40 ? 'bigGroup' : 'group') : c.type;
+  for (const c of S.children) { if (c.isLight) continue; const k = cat(c); (cats[k] = cats[k] || []).push(c); }
+  const out = { base }; for (const k in cats) { const was = cats[k].map(c => c.visible); cats[k].forEach(c => c.visible = false); out[k] = [cats[k].length, base - m()]; cats[k].forEach((c, i) => c.visible = was[i]); }
+  // big group children (trees/weeds chunks etc.) by instanced vs mesh
+  const bg = S.children.find(c => c.isGroup && c.children.length > 40); if (bg) { const was = bg.children.map(c => c.visible); const grp = {}; bg.children.forEach(c => { if (!c.geometry) { (grp.G = grp.G || []).push(c); return; } const k = c.isInstancedMesh ? 'I' + c.geometry.attributes.position.count : 'M' + c.geometry.attributes.position.count; (grp[k] = grp[k] || []).push(c); }); out.bigGroupKinds = {}; for (const k in grp) { grp[k].forEach(c => c.visible = false); out.bigGroupKinds[k] = [grp[k].length, base - m()]; grp[k].forEach(c => c.visible = true); } bg.children.forEach((c, i) => c.visible = was[i]); }
+  return out; }); console.log(JSON.stringify(r)); await b.close();

@@ -1,0 +1,5 @@
+import { launch, client, ctxOpts } from './townlib.mjs';
+const b = await launch(); const ctx = await b.newContext(ctxOpts); const p = await client(ctx, 'A'); await p.evaluate(() => { window.__MP_DTCAP = .15; }); await p.waitForTimeout(3000);
+const r = await p.evaluate(() => { const T = window.__mpTown; const S = T.scene; const px = T.me.x, pz = T.me.z; const zs = new Set(T.Z.zombies.map(z => z.root)); const carg = new Set(T.cars.map(c => c.g)); const agg = {}; const v = new T.scene.position.constructor();
+  S.traverse(o => { if (!o.isMesh || !o.castShadow) return; for (let q = o; q; q = q.parent) if (!q.visible) return; o.getWorldPosition(v); if (!o.isInstancedMesh && Math.hypot(v.x - px, v.z - pz) > 48 && !o.name.startsWith('static_')) return; let top = o; while (top.parent && top.parent !== S) top = top.parent; const k = zs.has(top) ? 'zombie' : carg.has(top) ? 'car' : o.isSkinnedMesh ? 'skinned' : o.isInstancedMesh ? 'inst' : o.name.startsWith('static_') ? 'static' : 'other:' + o.geometry.attributes.position.count; agg[k] = (agg[k] || 0) + 1; });
+  return agg; }); console.log(JSON.stringify(r)); await b.close();
