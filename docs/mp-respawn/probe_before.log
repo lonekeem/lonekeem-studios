@@ -1,0 +1,17 @@
+pre {"hp":100,"dead":0,"x":-6,"z":21.5,"vis":true,"cur":"Pistol_Idle_Loop","hud":"Health : 100  ·  $60","dispDead":"","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+hurt46 {"hp":54,"dead":0,"x":-6,"z":21.5,"vis":true,"cur":"Hit_Chest","hud":"Health : 100  ·  $60","dispDead":"","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+0 {"hp":0,"dead":3.1,"x":-6,"z":21.5,"vis":true,"cur":"Death01","hud":"Health : 0  ·  $30  ","dispDead":"flex","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+1 {"hp":0,"dead":3,"x":-6,"z":21.5,"vis":true,"cur":"Death01","hud":"Health : 0  ·  $30  ","dispDead":"flex","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+2 {"hp":0,"dead":2.9,"x":-6,"z":21.5,"vis":true,"cur":"Death01","hud":"Health : 0  ·  $30  ","dispDead":"flex","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+3 {"hp":0,"dead":2.8,"x":-6,"z":21.5,"vis":true,"cur":"Death01","hud":"Health : 0  ·  $30  ","dispDead":"flex","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+4 {"hp":0,"dead":2.7,"x":-6,"z":21.5,"vis":true,"cur":"Death01","hud":"Health : 0  ·  $30  ","dispDead":"flex","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+5 {"hp":0,"dead":2.7,"x":-6,"z":21.5,"vis":true,"cur":"Death01","hud":"Health : 0  ·  $30  ","dispDead":"flex","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+6 {"hp":0,"dead":2.567,"x":-6,"z":21.5,"vis":true,"cur":"Death01","hud":"Health : 0  ·  $30  ","dispDead":"flex","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+7 {"hp":0,"dead":2.467,"x":-6,"z":21.5,"vis":true,"cur":"Death01","hud":"Health : 0  ·  $30  ","dispDead":"flex","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+8 {"hp":0,"dead":2.367,"x":-6,"z":21.5,"vis":true,"cur":"Death01","hud":"Health : 0  ·  $30  ","dispDead":"flex","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+9 {"hp":0,"dead":2.367,"x":-6,"z":21.5,"vis":true,"cur":"Death01","hud":"Health : 0  ·  $30  ","dispDead":"flex","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+10 {"hp":0,"dead":2.167,"x":-6,"z":21.5,"vis":true,"cur":"Death01","hud":"Health : 0  ·  $30  ","dispDead":"flex","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+11 {"hp":0,"dead":2.067,"x":-6,"z":21.5,"vis":true,"cur":"Death01","hud":"Health : 0  ·  $30  ","dispDead":"flex","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+12 {"hp":0,"dead":1.967,"x":-6,"z":21.5,"vis":true,"cur":"Death01","hud":"Health : 0  ·  $30  ","dispDead":"flex","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+13 {"hp":0,"dead":1.967,"x":-6,"z":21.5,"vis":true,"cur":"Death01","hud":"Health : 0  ·  $30  ","dispDead":"flex","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}
+after hurt30 {"hp":0,"dead":1.967,"x":-6,"z":21.5,"vis":true,"cur":"Death01","hud":"Health : 0  ·  $30  ","dispDead":"flex","ammo":"9mm Pistol  ·  Ammo : 12 / 24"}

@@ -1,0 +1,36 @@
+PASS keem avatar active {}
+PASS keem_Kc1 dies: dead>0, overlay + countdown {"hp":0,"dead":3.2,"prot":0,"x":-6,"z":21.5,"vis":true,"attached":true,"cur":"Death01","overlay":"flex","cnt":"3","hud":"Health : 100  ·  $","ammoTxt":"9mm Pistol  ·  Ammo : 12 / 24","btn":"FIRE","mag":12,"bagAmmo":84}
+PASS keem_Kc1 cannot be hurt/fire while dead {"hp":0,"mag":12}
+PASS keem_Kc1 respawned: hp 100, dead exactly 0, avatar attached, prot<=2, overlay hidden {"hp":100,"dead":0,"prot":2,"x":-6,"z":21.5,"vis":false,"attached":true,"cur":"Pistol_Idle_Loop","overlay":"none","cnt":"1","hud":"Health : 100  ·  $","ammoTxt":"9mm Pistol  ·  Ammo : 12 / 84","btn":"FIRE","mag":12,"bagAmmo":84}
+PASS keem_Kc1 spawn protection blinks [false,true]
+PASS keem_Kc1 protection ends; zombie hits during it did no damage {"startProt":2,"minHpDuringProt":100}
+PASS keem_Kc1 zombie hit reduces health after protection {"hp":89,"hud":"Health : 89  ·  $3"}
+PASS keem_Kc1 FIRE uses ammo and damages a zombie {"dm":1,"dz":34,"btn":"FIRE"}
+PASS keem_Kc1 FIRE button press shoots {"m0":11,"mag":10}
+PASS keem_Kc1 reload works {"rl":true,"mag":12}
+PASS keem_Kc1 player can move {"moved":3.1}
+PASS keem_Kc1 pose reset: Death01 no longer active, standing, locomotion plays {"deathWeight":0,"deathRunning":false,"cur":"Jog_Fwd_Loop","isKeem":true,"rootY":0,"rotX":0,"rotZ":0}
+PASS keem_Kc2 dies: dead>0, overlay + countdown {"hp":0,"dead":3.2,"prot":0,"x":0.2,"z":21.5,"vis":true,"attached":true,"cur":"Death01","overlay":"flex","cnt":"1","hud":"Health : 89  ·  $3","ammoTxt":"9mm Pistol  ·  Ammo : 12 / 75","btn":"FIRE","mag":12,"bagAmmo":75}
+PASS keem_Kc2 cannot be hurt/fire while dead {"hp":0,"mag":12}
+PASS keem_Kc2 respawned: hp 100, dead exactly 0, avatar attached, prot<=2, overlay hidden {"hp":100,"dead":0,"prot":1.78,"x":-22,"z":21.5,"vis":false,"attached":true,"cur":"Pistol_Idle_Loop","overlay":"none","cnt":"1","hud":"Health : 100  ·  $","ammoTxt":"9mm Pistol  ·  Ammo : 12 / 75","btn":"FIRE","mag":12,"bagAmmo":75}
+PASS keem_Kc2 spawn protection blinks [false,true]
+PASS keem_Kc2 protection ends; zombie hits during it did no damage {"startProt":1.783300000000003,"minHpDuringProt":100}
+PASS keem_Kc2 zombie hit reduces health after protection {"hp":89,"hud":"Health : 89  ·  $1"}
+PASS keem_Kc2 FIRE uses ammo and damages a zombie {"dm":1,"dz":34,"btn":"FIRE"}
+PASS keem_Kc2 FIRE button press shoots {"m0":11,"mag":10}
+PASS keem_Kc2 reload works {"rl":true,"mag":12}
+PASS keem_Kc2 player can move {"moved":2.53}
+PASS keem_Kc2 pose reset: Death01 no longer active, standing, locomotion plays {"deathWeight":0,"deathRunning":false,"cur":"Jog_Fwd_Loop","isKeem":true,"rootY":0,"rotX":0,"rotZ":0}
+PASS keem_Kc3 dies: dead>0, overlay + countdown {"hp":0,"dead":3.2,"prot":0,"x":-0.4,"z":21.5,"vis":true,"attached":true,"cur":"Death01","overlay":"flex","cnt":"1","hud":"Health : 100  ·  $","ammoTxt":"9mm Pistol  ·  Ammo : 12 / 66","btn":"FIRE","mag":12,"bagAmmo":66}
+PASS keem_Kc3 cannot be hurt/fire while dead {"hp":0,"mag":12}
+PASS keem_Kc3 respawned: hp 100, dead exactly 0, avatar attached, prot<=2, overlay hidden {"hp":100,"dead":0,"prot":2,"x":10.6,"z":21.3,"vis":true,"attached":true,"cur":"Pistol_Idle_Loop","overlay":"none","cnt":"1","hud":"Health : 100  ·  $","ammoTxt":"9mm Pistol  ·  Ammo : 12 / 66","btn":"FIRE","mag":12,"bagAmmo":66}
+PASS keem_Kc3 spawn protection blinks [true,false]
+PASS keem_Kc3 protection ends; zombie hits during it did no damage {"startProt":2,"minHpDuringProt":100}
+PASS keem_Kc3 zombie hit reduces health after protection {"hp":89,"hud":"Health : 89  ·  $8"}
+PASS keem_Kc3 FIRE uses ammo and damages a zombie {"dm":1,"dz":34,"btn":"FIRE"}
+PASS keem_Kc3 FIRE button press shoots {"m0":11,"mag":10}
+PASS keem_Kc3 reload works {"rl":true,"mag":12}
+PASS keem_Kc3 player can move {"moved":2.58}
+PASS keem_Kc3 pose reset: Death01 no longer active, standing, locomotion plays {"deathWeight":0,"deathRunning":false,"cur":"Jog_Fwd_Loop","isKeem":true,"rootY":0,"rotX":0,"rotZ":0}
+PASS no page errors []
+keem DONE 35 pass 0 fail

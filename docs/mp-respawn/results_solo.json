@@ -1,0 +1,364 @@
+[
+ {
+  "n": "solo_Ac1 dies: dead>0, overlay + countdown",
+  "ok": true,
+  "d": {
+   "hp": 0,
+   "dead": 3.2,
+   "prot": 0,
+   "x": -6,
+   "z": 21.5,
+   "vis": true,
+   "attached": true,
+   "cur": "Death01",
+   "overlay": "flex",
+   "cnt": "3",
+   "hud": "Health : 100  ·  $",
+   "ammoTxt": "9mm Pistol  ·  Ammo : 12 / 24",
+   "btn": "FIRE",
+   "mag": 12,
+   "bagAmmo": 84
+  }
+ },
+ {
+  "n": "solo_Ac1 cannot be hurt/fire while dead",
+  "ok": true,
+  "d": {
+   "hp": 0,
+   "mag": 12
+  }
+ },
+ {
+  "n": "solo_Ac1 respawned: hp 100, dead exactly 0, avatar attached, prot<=2, overlay hidden",
+  "ok": true,
+  "d": {
+   "hp": 100,
+   "dead": 0,
+   "prot": 1.8,
+   "x": -6,
+   "z": 21.5,
+   "vis": false,
+   "attached": true,
+   "cur": "Pistol_Idle_Loop",
+   "overlay": "none",
+   "cnt": "1",
+   "hud": "Health : 100  ·  $",
+   "ammoTxt": "9mm Pistol  ·  Ammo : 12 / 84",
+   "btn": "FIRE",
+   "mag": 12,
+   "bagAmmo": 84
+  }
+ },
+ {
+  "n": "solo_Ac1 spawn protection blinks",
+  "ok": true,
+  "d": [
+   false,
+   true
+  ]
+ },
+ {
+  "n": "solo_Ac1 protection ends; zombie hits during it did no damage",
+  "ok": true,
+  "d": {
+   "startProt": 1.7665999999999986,
+   "minHpDuringProt": 100
+  }
+ },
+ {
+  "n": "solo_Ac1 zombie hit reduces health after protection",
+  "ok": true,
+  "d": {
+   "hp": 89,
+   "hud": "Health : 89  ·  $3"
+  }
+ },
+ {
+  "n": "solo_Ac1 FIRE uses ammo and damages a zombie",
+  "ok": true,
+  "d": {
+   "dm": 1,
+   "dz": 34,
+   "btn": "FIRE"
+  }
+ },
+ {
+  "n": "solo_Ac1 FIRE button press shoots",
+  "ok": true,
+  "d": {
+   "m0": 11,
+   "mag": 10
+  }
+ },
+ {
+  "n": "solo_Ac1 reload works",
+  "ok": true,
+  "d": {
+   "rl": true,
+   "mag": 12
+  }
+ },
+ {
+  "n": "solo_Ac1 player can move",
+  "ok": true,
+  "d": {
+   "moved": 3.1
+  }
+ },
+ {
+  "n": "solo_Ac1 pose reset: Death01 no longer active, standing, locomotion plays",
+  "ok": true,
+  "d": {
+   "deathWeight": 0,
+   "deathRunning": false,
+   "cur": "Jog_Fwd_Loop",
+   "isKeem": false,
+   "rootY": 0,
+   "rotX": 0,
+   "rotZ": 0
+  }
+ },
+ {
+  "n": "solo_Ac2 dies: dead>0, overlay + countdown",
+  "ok": true,
+  "d": {
+   "hp": 0,
+   "dead": 3.2,
+   "prot": 0,
+   "x": 0.2,
+   "z": 21.5,
+   "vis": true,
+   "attached": true,
+   "cur": "Death01",
+   "overlay": "flex",
+   "cnt": "1",
+   "hud": "Health : 89  ·  $3",
+   "ammoTxt": "9mm Pistol  ·  Ammo : 12 / 75",
+   "btn": "FIRE",
+   "mag": 12,
+   "bagAmmo": 75
+  }
+ },
+ {
+  "n": "solo_Ac2 cannot be hurt/fire while dead",
+  "ok": true,
+  "d": {
+   "hp": 0,
+   "mag": 12
+  }
+ },
+ {
+  "n": "solo_Ac2 respawned: hp 100, dead exactly 0, avatar attached, prot<=2, overlay hidden",
+  "ok": true,
+  "d": {
+   "hp": 100,
+   "dead": 0,
+   "prot": 1.8,
+   "x": -22,
+   "z": 21.5,
+   "vis": true,
+   "attached": true,
+   "cur": "Pistol_Idle_Loop",
+   "overlay": "none",
+   "cnt": "1",
+   "hud": "Health : 100  ·  $",
+   "ammoTxt": "9mm Pistol  ·  Ammo : 12 / 75",
+   "btn": "FIRE",
+   "mag": 12,
+   "bagAmmo": 75
+  }
+ },
+ {
+  "n": "solo_Ac2 spawn protection blinks",
+  "ok": true,
+  "d": [
+   false,
+   true
+  ]
+ },
+ {
+  "n": "solo_Ac2 protection ends; zombie hits during it did no damage",
+  "ok": true,
+  "d": {
+   "startProt": 1.7834000000000088,
+   "minHpDuringProt": 100
+  }
+ },
+ {
+  "n": "solo_Ac2 zombie hit reduces health after protection",
+  "ok": true,
+  "d": {
+   "hp": 89,
+   "hud": "Health : 89  ·  $1"
+  }
+ },
+ {
+  "n": "solo_Ac2 FIRE uses ammo and damages a zombie",
+  "ok": true,
+  "d": {
+   "dm": 1,
+   "dz": 34,
+   "btn": "FIRE"
+  }
+ },
+ {
+  "n": "solo_Ac2 FIRE button press shoots",
+  "ok": true,
+  "d": {
+   "m0": 11,
+   "mag": 10
+  }
+ },
+ {
+  "n": "solo_Ac2 reload works",
+  "ok": true,
+  "d": {
+   "rl": true,
+   "mag": 12
+  }
+ },
+ {
+  "n": "solo_Ac2 player can move",
+  "ok": true,
+  "d": {
+   "moved": 2.64
+  }
+ },
+ {
+  "n": "solo_Ac2 pose reset: Death01 no longer active, standing, locomotion plays",
+  "ok": true,
+  "d": {
+   "deathWeight": 0,
+   "deathRunning": false,
+   "cur": "Jog_Fwd_Loop",
+   "isKeem": false,
+   "rootY": 0,
+   "rotX": 0,
+   "rotZ": 0
+  }
+ },
+ {
+  "n": "solo_Ac3 dies: dead>0, overlay + countdown",
+  "ok": true,
+  "d": {
+   "hp": 0,
+   "dead": 3.2,
+   "prot": 0,
+   "x": -0.3,
+   "z": 21.5,
+   "vis": true,
+   "attached": true,
+   "cur": "Death01",
+   "overlay": "flex",
+   "cnt": "1",
+   "hud": "Health : 100  ·  $",
+   "ammoTxt": "9mm Pistol  ·  Ammo : 12 / 66",
+   "btn": "FIRE",
+   "mag": 12,
+   "bagAmmo": 66
+  }
+ },
+ {
+  "n": "solo_Ac3 cannot be hurt/fire while dead",
+  "ok": true,
+  "d": {
+   "hp": 0,
+   "mag": 12
+  }
+ },
+ {
+  "n": "solo_Ac3 respawned: hp 100, dead exactly 0, avatar attached, prot<=2, overlay hidden",
+  "ok": true,
+  "d": {
+   "hp": 100,
+   "dead": 0,
+   "prot": 2,
+   "x": -22,
+   "z": 21.5,
+   "vis": false,
+   "attached": true,
+   "cur": "Pistol_Idle_Loop",
+   "overlay": "none",
+   "cnt": "1",
+   "hud": "Health : 100  ·  $",
+   "ammoTxt": "9mm Pistol  ·  Ammo : 12 / 66",
+   "btn": "FIRE",
+   "mag": 12,
+   "bagAmmo": 66
+  }
+ },
+ {
+  "n": "solo_Ac3 spawn protection blinks",
+  "ok": true,
+  "d": [
+   false,
+   true
+  ]
+ },
+ {
+  "n": "solo_Ac3 protection ends; zombie hits during it did no damage",
+  "ok": true,
+  "d": {
+   "startProt": 2,
+   "minHpDuringProt": 100
+  }
+ },
+ {
+  "n": "solo_Ac3 zombie hit reduces health after protection",
+  "ok": true,
+  "d": {
+   "hp": 89,
+   "hud": "Health : 89  ·  $8"
+  }
+ },
+ {
+  "n": "solo_Ac3 FIRE uses ammo and damages a zombie",
+  "ok": true,
+  "d": {
+   "dm": 1,
+   "dz": 34,
+   "btn": "FIRE"
+  }
+ },
+ {
+  "n": "solo_Ac3 FIRE button press shoots",
+  "ok": true,
+  "d": {
+   "m0": 11,
+   "mag": 10
+  }
+ },
+ {
+  "n": "solo_Ac3 reload works",
+  "ok": true,
+  "d": {
+   "rl": true,
+   "mag": 12
+  }
+ },
+ {
+  "n": "solo_Ac3 player can move",
+  "ok": true,
+  "d": {
+   "moved": 3.1
+  }
+ },
+ {
+  "n": "solo_Ac3 pose reset: Death01 no longer active, standing, locomotion plays",
+  "ok": true,
+  "d": {
+   "deathWeight": 0,
+   "deathRunning": false,
+   "cur": "Jog_Fwd_Loop",
+   "isKeem": false,
+   "rootY": 0,
+   "rotX": 0,
+   "rotZ": 0
+  }
+ },
+ {
+  "n": "no page errors",
+  "ok": true,
+  "d": []
+ }
+]
