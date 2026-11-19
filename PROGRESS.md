@@ -130,3 +130,15 @@ Based on `feat/mp-town` a091c98. New files: `src/mp/town/camcol.js`, `src/mp/tow
 - Release: https://github.com/lonekeem/lonekeem-studios/releases/tag/v1.9.18-debug (debug APK + AAB, built locally with gradle assembleDebug bundleDebug like earlier releases). Pages deploy run 44484296210 succeeded.
 - Live check (`tools/live_check.mjs`, headless Chrome on the live URL): story New Game starts, first-person has 0 visible player meshes, near 0.06; Title > Multiplayer (Beta) > creator > Save & enter > town; two guest sessions (GuestA/GuestB) see each other, positions sync. Frames in `docs/live-1918/`.
 - Known issues: zombies are not synced between players; Google sign-in + saving characters/wallets/houses to accounts not done; "Original Keem" picker not done; store interior is dark brick; remote name tags float at hip height; favicon 404 in console; the shared room can hold stray sessions (a leftover client showed once as a 3rd player).
+
+---
+
+## mp controls/chars/sound pass (branch feat/mp-controls-chars, NOT released)
+- Controls: multiplayer on-foot + car now use the same `src/game/pctl.js` (stepMove/startRoll/startJump/stepVehicle) as story. Car steering fixed (was reversed); holding BRAKE (REV) from a stop reverses (`tools/mp/t_reverse.mjs`). Animations: story clips retargeted onto the MP avatar (`src/mp/motion.js`, `attachRig` target mode). Smoke: idle, Jog 3.1 m/s, Sprint 6.2, Roll .45 s, Jump (`tools/mp/t_smoke.mjs`, shots in `docs/mp-fix2/`).
+- HUD: minimap redrawn (grass/roads/lots/buildings/cars); button rects equal story's (`t_hud_compare.mjs`, `t_hud_mp.mjs`).
+- Store moved off road/sidewalk (z -24..-12 -> -17..-5); overlap check 0 building/lot overlaps (`tools/mp/overlap_check.mjs`).
+- Corpses: settle onto the ground after the death clip; bodies persist then fade.
+- Sound: story AudioSys reused in MP (footsteps by surface, hurt, pickup, door, crash, engine/tires). `noKeem` flag blocks all Keem voice/breath/shout for non-Keem characters (`t_audio_fps.mjs`: 0 Keem events).
+- Keem character: 'Play as Keem' in the creator only when role is admin; uses story Keem Char (voice, anims, look). Admin email lillykemoy1@gmail.com added to `atq_mp.admin_emails` (migration `20261119_mp_admin_keem.sql`, applied). Google OAuth still not configured.
+- Faces: added nose + eyelashes (`src/mp/facepart.js`). Still rough: hairline jagged, head shape not yet Bitmoji-like.
+- FPS can't be measured here (software GL runs ~0.7 fps headless), so no FPS claim.

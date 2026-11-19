@@ -7,6 +7,7 @@ import { shellMaterial } from './hair.js';
 import { Builder, rigid } from './build.js';
 import { makeCtx, HAT, GLASSES, EAR, PIERCE, NECK, WRIST, RING, BAG, BELT } from './acc.js';
 import { buildHair } from './hairx.js';
+import { faceParts } from './facepart.js';
 import * as C from './catalog.js';
 import { MORPH_KEYS } from './look.js';
 
@@ -97,5 +98,6 @@ export function dress(av, look) {
   for (const [nm, s] of [['ringL', 1], ['ringR', -1]]) { const it = A[nm], d = it && C.RINGS.find(e => e[0] === it.id); if (d) { const B = new Builder(); RING[d[2]](B, ctx, { ...d[3], sides: [s] }); mount(av, nm, B, { m: metalOf(it), g: { c: C.SWATCH.gem[it.g ?? 1], r: .2 }, a: { c: '#888' } }, s > 0 ? 'LeftHand' : 'RightHand'); } else clearAcc(av, nm); }
   const bg = A.bag && C.BAGS.find(e => e[0] === A.bag.id); if (bg) { const B = new Builder(); BAG[bg[2]](B, ctx, bg[3]); mount(av, 'bag', B, { a: { c: A.bag.c, r: .85 }, b: { c: A.bag.c2 || '#222', r: .85 }, m: metalOf(A.bag) }, 'Spine02'); } else clearAcc(av, 'bag');
   const bt = A.belt && C.BELTS.find(e => e[0] === A.belt.id); if (bt) { const B = new Builder(); BELT[bt[2]](B, ctx, bt[3]); mount(av, 'belt', B, { a: { c: A.belt.c, r: .8 }, m: metalOf(A.belt) }, 'Hips'); } else clearAcc(av, 'belt');
+  { const B = new Builder(); faceParts(B, ctx, look, f, mo); const skc = '#' + sk.clone().multiplyScalar(.97).getHexString(); mount(av, 'faceparts', B, { a: { c: skc, r: .62 }, k: { c: '#171210', r: .5 } }, 'Head'); }
   return av;
 }

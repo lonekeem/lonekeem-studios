@@ -1,0 +1,36 @@
+{
+ "ev": [
+  {
+   "t": 23507,
+   "fn": "play",
+   "arg": "step_asphalt",
+   "noKeem": true
+  },
+  {
+   "t": 24148,
+   "fn": "play",
+   "arg": "roll",
+   "noKeem": true
+  },
+  {
+   "t": 24148,
+   "fn": "play",
+   "arg": "cloth",
+   "noKeem": true
+  },
+  {
+   "t": 25043,
+   "fn": "play",
+   "arg": "jump",
+   "noKeem": true
+  }
+ ],
+ "raw": 7,
+ "n": 5,
+ "avg": 1350.159999999404,
+ "p99": 1892.199999999255,
+ "max": 1892.199999999255,
+ "over100": 5,
+ "noKeem": true,
+ "keemEv": 0
+}

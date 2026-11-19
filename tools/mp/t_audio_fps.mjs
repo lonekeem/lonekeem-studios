@@ -1,0 +1,11 @@
+import { boot } from '../mpfix/lib.mjs';
+import fs from 'fs'; const OUT = '/workspace/atq1919/docs/mp-fix2'; 
+const { b, p } = await boot();
+await p.evaluate(() => { const a = window.__mpTown.aud; window.__ev = []; for (const k of ['play', 'shout', 'voice', 'breathe']) { const o = a[k]; a[k] = function (...r) { window.__ev.push({ t: Math.round(performance.now()), fn: k, arg: String(r[0]).slice(0, 30), noKeem: this.noKeem }); return o.apply(this, r); }; } window.__fr = []; let l = performance.now(); const f = () => { const n = performance.now(); window.__fr.push(n - l); l = n; requestAnimationFrame(f); }; requestAnimationFrame(f); });
+await p.keyboard.down('KeyW'); await p.keyboard.down('ShiftLeft'); await p.waitForTimeout(4000);
+await p.keyboard.press('ControlLeft'); await p.waitForTimeout(1200); await p.keyboard.press('Space'); await p.waitForTimeout(1500);
+await p.keyboard.press('KeyF'); await p.waitForTimeout(800); await p.keyboard.up('KeyW'); await p.keyboard.up('ShiftLeft');
+const r = await p.evaluate(() => { const f = window.__fr.slice(2).sort((a, b) => a - b); return { ev: window.__ev, raw: window.__fr.length, n: f.length, avg: f.reduce((a, b) => a + b, 0) / f.length, p99: f[Math.floor(f.length * .99)], max: f[f.length - 1], over100: f.filter(x => x > 100).length, noKeem: window.__mpTown.aud.noKeem, keemEv: window.__ev.filter(e => /keem/i.test(e.arg)).length }; });
+fs.writeFileSync(OUT + '/audio_fps.json', JSON.stringify(r, null, 1));
+const c = {}; r.ev.forEach(e => c[e.fn + ':' + e.arg] = (c[e.fn + ':' + e.arg] || 0) + 1);
+console.log(JSON.stringify({ ...r, ev: undefined, counts: c })); await b.close();
