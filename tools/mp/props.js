@@ -15,7 +15,7 @@ const H = window.H = { THREE, W, s, cam, r, players, Bag, pumpNear, refuelCar, f
 (async () => {
   const [cm, zm] = await Promise.all([loadCarModels(), loadZombieModels('/')]);
   H.cars = createCars({ scene: s, W, models: cm }); H.zm = zm;
-  H.mkZ = (o) => (H.Z = createZombies(Object.assign({ scene: s, W, camera: cam, getPlayers: () => players, onHitPlayer: (d, x, z) => { H.hits = (H.hits || 0) + 1; }, models: zm }, o)));
+  H.mkZ = async (o) => (H.Z = await createZombies(Object.assign({ scene: s, W, camera: cam, getPlayers: () => players, onHitPlayer: (d, from) => { H.hits = (H.hits || 0) + 1; }, models: zm, bodies: [] }, o)));
   H.step = (n, dt = 1 / 30, ctl = {}) => { for (let i = 0; i < n; i++) { H.cars.update(dt, ctl); H.Z && H.Z.update(dt); updateLoot(W, dt); if (players[0].car) { const c = players[0].car; players[0].x = c.x; players[0].z = c.z; } } };
   H.look = (x, y, z, lx, ly, lz) => { cam.position.set(x, y, z); cam.lookAt(lx, ly, lz); sun.position.set(lx + 40, 80, lz + 30); sun.target.position.set(lx, 0, lz); sun.target.updateMatrixWorld(); W.closed.update(lx, lz); r.render(s, cam); };
   H.ready = true; document.title = 'ready';
