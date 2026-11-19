@@ -56,7 +56,7 @@ export class Game {
     if (hdr) { const pm = new THREE.PMREMGenerator(r); const env = pm.fromEquirectangular(hdr).texture; scene.environment = env; scene.environmentIntensity = 0.32; scene.background = env; scene.backgroundIntensity = 0.06; scene.backgroundBlurriness = 0.35; hdr.dispose(); }
     // night lighting
     const GRADE = /[?&]grade=1/.test(location.search); // optional visual-only night grade (test shots): cooler moon, warmer fill, slightly lifted fog
-    scene.add(GRADE ? new THREE.HemisphereLight('#4a5f78', '#2a2418', 0.85) : new THREE.HemisphereLight('#3a4a5a', '#151a12', 0.55));
+    scene.add(this.hemi = GRADE ? new THREE.HemisphereLight('#4a5f78', '#2a2418', 0.85) : new THREE.HemisphereLight('#3a4a5a', '#151a12', 0.55));
     if (GRADE) { scene.fog.color.set('#1b2628'); scene.fog.density *= .8; scene.background = new THREE.Color('#16201f'); }
     const moon = this.moon = new THREE.DirectionalLight(GRADE ? '#a9c0e0' : '#9fb4d0', GRADE ? 1.25 : 0.9); moon.position.set(-30, 50, 20); moon.castShadow = Q.shadows; moon.shadow.mapSize.set(Q.shadowMap, Q.shadowMap);
     const sc = moon.shadow.camera; sc.left = sc.bottom = -26; sc.right = sc.top = 26; sc.near = 1; sc.far = 140; moon.shadow.bias = -0.0005; moon.shadow.normalBias = 0.03; scene.add(moon, moon.target);
@@ -114,6 +114,13 @@ export class Game {
   clearActors() { townReset(this); this.zombies.forEach(z => { this.scene.remove(z.root); z.mixer.stopAllAction(); z.mixer.uncacheRoot(z.model); this.disposeTree(z.root); }); this.zombies = []; for (const k in this.npcs) { const n = this.npcs[k]; this.scene.remove(n.root); n.mixer.stopAllAction(); n.mixer.uncacheRoot(n.model); this.disposeTree(n.root); } this.npcs = {};
     this.pickups.forEach(p => this.scene.remove(p.mesh)); this.pickups = []; this.props.forEach(p => { this.scene.remove(p); this.disposeTree(p); }); this.props = []; this.decalN = 0; this.decals.forEach(d => d.visible = false); (this.pools || []).forEach(o => { this.scene.remove(o); o.material.dispose(); }); this.pools = [];
     if (this.truck) this.truck.driving = false; document.body.classList.remove('driving'); $('#drive')?.classList.add('hidden'); this.drv = {}; this.boss = null; $('#boss').classList.add('hidden'); this.dlgQ = []; this.dlgCur = null; $('#dlg').classList.remove('on'); }
+  // v1.9.17: lighting modes for the hospital chapters. null = the usual night; 'dark' = Sublevel B (flashlight + emergency lights); 'ward' = lit upper floors.
+  setLight(mode) { const S = this.scene, f = this.world.flags, sky = this.world.env && this.world.env.sky; if (!this._L0) this._L0 = { moon: this.moon.intensity, hemi: this.hemi.intensity, hc: this.hemi.color.clone(), hg: this.hemi.groundColor.clone(), env: S.environmentIntensity, fog: S.fog.density, fc: S.fog.color.clone() };
+    const o = this._L0, ind = !!mode; if (f) f.indoor = ind; if (sky) sky.visible = !ind; this.moon.visible = !ind; this.moon.intensity = ind ? 0 : o.moon;
+    if (!ind) { this.hemi.intensity = o.hemi; this.hemi.color.copy(o.hc); this.hemi.groundColor.copy(o.hg); S.environmentIntensity = o.env; S.fog.density = o.fog; S.fog.color.copy(o.fc); S.background = this.world.env && sky ? null : S.background; return; }
+    if (mode === 'dark') { this.hemi.intensity = .5; this.hemi.color.set('#4a6a68'); this.hemi.groundColor.set('#1a2422'); S.environmentIntensity = .06; S.fog.density = o.fog * .55; S.fog.color.set('#0a1214'); }
+    else { this.hemi.intensity = 1.5; this.hemi.color.set('#e8f2f4'); this.hemi.groundColor.set('#a89a86'); S.environmentIntensity = .25; S.fog.density = o.fog * .22; S.fog.color.set('#cdd6d4'); }
+    S.background = new THREE.Color(S.fog.color); }
   loadStep(i) {
     if (!this._keep) this.keepSet(); this.clearActors(); const st = STORY[i]; if (this.step !== i) this._bossRetry = false; this.step = i; this.stuckT = 0; this.stepTok = (this.stepTok || 0) + 1; this.stepData = {}; const P = this.player; this.dead = false; this.dying = null; this.cut = null;
     this.maxHp = 100 + (perk(this.save, 2) ? 20 : 0) + (perk(this.save, 9) ? 20 : 0) + (this.settings.qteEasy ? 50 : 0); this.hp = this.maxHp;
@@ -125,7 +132,7 @@ export class Game {
     if (!st.survival) LOOT.forEach(l => { const lc = chOf(l.minStep || 0); if (!this.save.loot.includes(l.id) && (l.minStep || 0) <= i + 1 && (lc === ch || (ch <= 2 && lc <= 2))) this.addPickup(l); });
     this.world.frontDoor.rotation.y = i >= 3 ? -1.6 : 0; this.setDoor(i >= 3);
     this.setTruck(i);
-    st.enter(this); this.objective(st.obj, st.hint); this.audio.setMood(st.mood || 'night'); this.audio.rain && this.audio.rain(st.rain !== false && st.mood !== 'day'); this.audio.beat(st.beat || 0);
+    this.slowMul = 1; this.setLight(st.light || null); st.enter(this); this.objective(st.obj, st.hint); this.audio.setMood(st.mood || 'night'); this.audio.rain && this.audio.rain(st.rain !== false && st.mood !== 'day'); this.audio.beat(st.beat || 0);
     partnerEnter(this); this.checkpoint(); this.grace = 1.5; if (!this._warm) { this._warm = 1; this.prewarm(); } else try { this.renderer.compile(this.scene, this.camera); } catch (e) { }
     this.last = performance.now(); }
   // v1.6.3 failsafes: unstick player/targets, respawn a missing boss, offer an objective skip after 3 min stuck
@@ -167,7 +174,8 @@ export class Game {
   // ---------- pickups ----------
   addPickup(l) { const g = new THREE.Group(); let m;
     const glow = new THREE.MeshBasicMaterial({ color: l.kind === 'page' ? '#e8e0a0' : l.kind === 'hp' ? '#ff5050' : l.drop ? '#ffd040' : '#7fd49a', transparent: true, opacity: .35, depthWrite: false });
-    if (['cash', 'ammo', 'hp', 'med', 'grenade'].includes(l.kind) && (m = buildPickup(l.kind, l.drop))) { /* v2.0 realistic pickup models */ }
+    if (l.mk) m = l.mk();
+    else if (['cash', 'ammo', 'hp', 'med', 'grenade'].includes(l.kind) && (m = buildPickup(l.kind, l.drop))) { /* v2.0 realistic pickup models */ }
     else if (l.kind === 'cash') m = new THREE.Mesh(new THREE.BoxGeometry(.25, .06, .14), new THREE.MeshStandardMaterial({ color: '#5a8a4a', emissive: '#203a10' }));
     else if (l.kind === 'ammo' && l.drop) m = (this._amM || (this._amM = new THREE.Mesh(new THREE.BoxGeometry(.3, .18, .2), new THREE.MeshStandardMaterial({ color: '#c9a227', emissive: '#3a2a00', metalness: .4 })))).clone();
     else if (l.kind === 'ammo') m = new THREE.Mesh(new THREE.BoxGeometry(.3, .18, .2), new THREE.MeshStandardMaterial({ color: '#4a5a2a', metalness: .4 }));
@@ -212,7 +220,8 @@ export class Game {
     const sc = (o.scale || rnd(.9, 1.1)); const c = new Char(this.lib, zl, sc); c.id = Math.random() * 10; c.root.position.set(x, 0, z); c.root.rotation.y = rnd(0, 6); this.scene.add(c.root);
     const runner = o.runner ?? Math.random() < (this.stepData.runners || 0.15);
     Object.assign(c, { z: true, hp: o.hp || (runner ? 50 : 70), maxHp: o.hp || (runner ? 50 : 70), runner, speed: runner ? rnd(3.6, 4.4) : rnd(1.1, 1.6), st: o.eat ? 'eat' : (o.idle ? 'idle' : 'chase'), eat: o.eat, cd: rnd(0, 1), stun: 0, dead: false, boss: !!o.boss, aggro: o.aggro ?? 30, vel: V3() });
-    if (o.eat) c.play('Idle_Loop'); else c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.1 : 0.62 });
+    if (o.det) c.det = o.det; if (o.hear) c.hear = 1; // v1.9.17 sleepers: custom wake radius (crouching = 40%) + wake on gunfire
+    if (o.eat || o.still) c.play('Idle_Loop'); else c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.1 : 0.62 });
     if (c.act('Walk_Loop')) c.act('Walk_Loop').time = rnd(0, 1);
     if (o.raider) { c.raider = true; c.hp = c.maxHp = o.hp || 90; c.speed = 2.6; c.cd = rnd(1, 2.5); const h = new THREE.Group(); h.add(weaponMesh(o.gun || 'rifle')); h.rotation.set(Math.PI / 2, 0, 0); h.position.set(0, .08, .02); c.attach('DEF-hand.R', h); c.gunM = h; c.gunId = o.gun || 'rifle'; c.play('Pistol_Aim_Neutral'); if (c.mat && c.mat.userData.u && c.mat.userData.u.uShirt) if (o.shirt && c.mat.userData.u.uJacket) { c.mat.userData.u.uJacket.value.set(o.shirt); c.mat.userData.u.uShirt.value.set(o.shirt); } }
     this.zombies.push(c); return c; }
@@ -457,7 +466,7 @@ export class Game {
     if (I.pressed('crouch')) s.crouch = !s.crouch; if (I.pressed('view')) { this.cam.fp = !this.cam.fp; this.settings.fp = this.cam.fp; }
     s.aim = I.aim && gun; { const tap = I.pressed('atk'); if (tap || (I.atk && (!gun || w.auto)) || (gun && I.atk && tap)) this.attack(); }
     const mv = I.move; const mag = Math.min(1, mv.length()); const run = (I.run || mag > .95 && I.touchRun) && !s.crouch && !s.aim;
-    let spd = s.crouch ? 1.6 : run ? 6.2 * (perk(this.save, 7) ? 1.15 : 1) : 3.1; if (s.aim) spd = 2.2; if (s.atk > 0) spd *= .3; if (s.stun > 0) { spd = 0; s.stun -= dt; }
+    let spd = s.crouch ? 1.6 : run ? 6.2 * (perk(this.save, 7) ? 1.15 : 1) : 3.1; if (s.aim) spd = 2.2; if (this.slowMul) spd *= this.slowMul; if (s.atk > 0) spd *= .3; if (s.stun > 0) { spd = 0; s.stun -= dt; }
     const yaw = this.cam.yaw; let dx = 0, dz = 0; if (s.shotT > 0) s.shotT -= dt; const faceAim = (gun && (s.aim || s.shotT > 0)) || this.cam.fp; // v1.9.2: face the crosshair only while aiming/firing (or first-person); otherwise turn toward travel
     if (mag > .08) { const a = Math.atan2(mv.x, mv.y) + yaw; dx = Math.sin(a) * spd * mag; dz = Math.cos(a) * spd * mag;
       if (!faceAim && s.atk <= 0 && s.roll <= 0) P.root.rotation.y = angLerp(P.root.rotation.y, a, Math.min(1, dt * (this.settings.smoothMove ? 16 : 12))); }
@@ -523,7 +532,7 @@ export class Game {
       if (z.st === 'feast') { z.mixer.update(dt); if (Math.random() < dt * 8 && this.settings.gore) { const b = P.root.position.clone(); b.y = .3; this.blood(b, V3(rnd(-1, 1), .5, rnd(-1, 1)), 4, 2); } continue; }
       if (z.st === 'eat') { const det = this.state.crouch ? 4 : 7.5; if ((d < det && !this.cut) || z.hp < z.maxHp) { z.st = 'chase'; z.lk = 0; this.audio.at(zp).groan(.14); if (Math.random() < .5) this.audio.zAttack && this.audio.zAttack(); }
         z.mixer.update(dt); this.feedPose(z, dt, d, toP); continue; }
-      if (z.st === 'eat' || z.st === 'idle') { const det = this.state.crouch ? 4 : (z.st === 'eat' ? 7 : 12); if (d < det && !this.cut || z.hp < z.maxHp) { z.st = 'chase'; this.audio.at(zp).groan(.12); } z.mixer.update(dt); if (z.st === 'eat' && Math.random() < dt * .3) this.audio.at(zp).groan(.05); if (z.st === 'eat' && d < 16 && (z.eatT = (z.eatT ?? rnd(0, 2)) - dt) <= 0) { z.eatT = rnd(2.2, 3.4); this.audio.at(zp).eat(Math.max(.05, .55 * (1 - d / 16))); } continue; }
+      if (z.st === 'eat' || z.st === 'idle') { const det = z.det ? (this.state.crouch ? z.det * .4 : z.det) : this.state.crouch ? 4 : (z.st === 'eat' ? 7 : 12); if (d < det && !this.cut || z.hp < z.maxHp || (z.hear && this.mT > 0 && d < 26)) { z.st = 'chase'; this.audio.at(zp).groan(.12); } z.mixer.update(dt); if (z.st === 'eat' && Math.random() < dt * .3) this.audio.at(zp).groan(.05); if (z.st === 'eat' && d < 16 && (z.eatT = (z.eatT ?? rnd(0, 2)) - dt) <= 0) { z.eatT = rnd(2.2, 3.4); this.audio.at(zp).eat(Math.max(.05, .55 * (1 - d / 16))); } continue; }
       if (z.raider && !z.boss) { this.raiderAI(z, d, toP, dt, zp); z.mixer.update(dt); this.zBones(z); continue; }
       if (z.boss) { this.updateBoss(z, d, toP, dt); z.mixer.update(dt); this.zBones(z); continue; }
       if (z.stun > 0) { z.stun -= dt; this.moveCollide(zp, z.vel.x * dt, z.vel.z * dt, .3); z.vel.multiplyScalar(.85); z.mixer.update(dt); this.zBones(z); continue; }

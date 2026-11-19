@@ -72,6 +72,7 @@ export const CAST = {
   gus: { rig: 'gus', outfit: 'smock', hair: 'bald', hairColor: '#2a2018', skin: '#c68e6a', face: 'strong', eyes: '#3a2210', beard: 'full', build: 1.25, seed: 4 },
   reyes: { rig: 'reyes', outfit: 'scrubs', hair: 'curls', hairColor: '#120b08', skin: '#6a4430', face: 'soft', eyes: '#2a1608', beard: 'none', build: .97, seed: 21 },
   tuck: { rig: 'tuck', outfit: 'hoodie', hair: 'short', hairColor: '#b08a4a', skin: '#d9a98c', face: 'round', eyes: '#5a4a2a', beard: 'none', build: .9, seed: 22 },
+  dana: { rig: 'genf', outfit: 'scrubs', hair: 'long', hairColor: '#1a0f0a', skin: '#7a4f36', face: 'soft', eyes: '#3a2210', beard: 'none', build: .98, seed: 31 },
   vance: { rig: 'vance', outfit: 'scrubs', hair: 'ponytail', hairColor: '#b8b09a', skin: '#e6c4ac', face: 'narrow', eyes: '#5a6a8a', beard: 'none', build: 1, seed: 23 },
 };
 const pick = (r, a) => a[Math.floor(r() * a.length) % a.length];

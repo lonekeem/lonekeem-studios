@@ -6,7 +6,7 @@ import { makeEnv } from './env.js';
 
 // Riverside, Maine — procedural night town built from CC0 Poly Haven PBR textures.
 export function buildWorld(scene, Q, texLoader, base, CM = {}) {
-  const colliders = [], walls = [], updaters = [], lights = [];
+  const colliders = [], walls = [], updaters = [], lights = []; const flags = { indoor: false }; // indoor (hospital chapters 12-13): no rain, no sky — set by game.setLight()
   const T = (n, rep = 1, srgb = true) => { const t = texLoader.load(base + 'tex/' + n + '.jpg'); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep, rep); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = Q.aniso; return t; };
   const pbr = (n, rep, o = {}) => { const m = new THREE.MeshStandardMaterial(Object.assign({ map: T(n + '_diff', rep), roughness: 1 }, o));
     if (Q.normals) { m.normalMap = T(n + '_nor_gl', rep, false); m.normalScale = new THREE.Vector2(o.ns || 1, o.ns || 1); }
@@ -359,7 +359,7 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
   // rain
   let rain = null; if (Q.rain) { const N = Q.rain, pos = new Float32Array(N * 6); for (let i = 0; i < N; i++) { const x = rnd(-25, 25), y = rnd(0, 20), z = rnd(-25, 25); pos.set([x, y, z, x + .03, y - .5, z], i * 6); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); rain = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: '#9fb0b0', transparent: true, opacity: .32 })); rain.frustumCulled = false; scene.add(rain);
-    updaters.push((dt, t, cam) => { rain.visible = !(cam.x > KH.x0 && cam.x < KH.x1 && cam.z > KH.z0 && cam.z < KH.z1); const p = g.attributes.position.array; for (let i = 0; i < N; i++) { const k = i * 6; let y = p[k + 1] - dt * 22; if (y < 0) { y = 20; p[k] = cam.x + rnd(-25, 25); p[k + 2] = cam.z + rnd(-25, 25); }
+    updaters.push((dt, t, cam) => { rain.visible = !flags.indoor && !(cam.x > KH.x0 && cam.x < KH.x1 && cam.z > KH.z0 && cam.z < KH.z1); const p = g.attributes.position.array; for (let i = 0; i < N; i++) { const k = i * 6; let y = p[k + 1] - dt * 22; if (y < 0) { y = 20; p[k] = cam.x + rnd(-25, 25); p[k + 2] = cam.z + rnd(-25, 25); }
       p[k + 1] = y; p[k + 3] = p[k] + .03; p[k + 4] = y - .5; p[k + 5] = p[k + 2]; } g.attributes.position.needsUpdate = true; }); }
 
   // bounds
@@ -418,7 +418,7 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
   { const gN = new THREE.Mesh(new THREE.PlaneGeometry(300, 2120), groundMat); gN.rotation.x = -Math.PI / 2; gN.position.set(0, -0.006, -3850); gN.receiveShadow = true; scene.add(gN);
     const kitCtx = { THREE, scene, Q, box, wallBox, sign, road, Z_pl, Z_lamp, fire, car, plankMat, swMat, groundMat, signTex, lights, walls, updaters, colliders };
     Object.keys(ZONE_BUILDERS).forEach(n => zone(+n, () => ZONE_BUILDERS[n](kitCtx))); }
-  return { env, ch2, zones, houses: houseList, cars: carList, signTex, colliders, walls, updaters, lights, fire, car, sign, frontDoor, doorCol, doorBoards, tanker, tankCol, KH, mud, update(dt, t, cam) { updaters.forEach(u => u(dt, t, cam)); } };
+  return { env, ch2, zones, flags, houses: houseList, cars: carList, signTex, colliders, walls, updaters, lights, fire, car, sign, frontDoor, doorCol, doorBoards, tanker, tankCol, KH, mud, update(dt, t, cam) { updaters.forEach(u => u(dt, t, cam)); } };
 }
 function mergeTwo(a, b) { const g = new THREE.BufferGeometry(); ['position', 'normal', 'uv'].forEach(k => { const A = a.attributes[k].array, B = b.attributes[k].array, o = new Float32Array(A.length + B.length); o.set(A); o.set(B, A.length); g.setAttribute(k, new THREE.BufferAttribute(o, a.attributes[k].itemSize)); });
   const ia = a.index.array, ib = b.index.array, n = a.attributes.position.count, idx = new Uint16Array(ia.length + ib.length); idx.set(ia); for (let i = 0; i < ib.length; i++) idx[ia.length + i] = ib[i] + n; g.setIndex(new THREE.BufferAttribute(idx, 1)); return g; }
