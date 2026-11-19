@@ -10,9 +10,7 @@
 import * as THREE from 'three';
 import { Char } from './chars.js';
 import { randomLook } from './looks.js';
-import * as ACT from './actions.js';
-import { prepCarDoors, setDoor as setCarDoor, outPoint } from './carseq.js';
-import { angDiff, sstep, TAU } from './motion.js';
+const angDiff = (a, b) => ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (a) => a[(Math.random() * a.length) | 0];
@@ -70,7 +68,16 @@ function makeChar(g) { const seed = (Math.random() * 1e6) | 0, look = randomLook
   // head look-back / forward lean ride on top of the animation mixer (bones the clips drive, so nothing accumulates)
   const mu = c.mixer.update; c.mixer.update = function (dt) { const r = mu.call(this, dt); overlay(c); return r; }; return c; }
 function overlay(c) { const s = c.tn; if (!s || s.frozen) return; const B = (n) => c.bone(n), h = B('DEF-head'), nk = B('DEF-neck'), sp = B('DEF-spine.003'), sp1 = B('DEF-spine.001');
-  if (h) h.rotateY(s.hy * .55); if (nk) nk.rotateY(s.hy * .3); if (sp) sp.rotateY(s.hy * .35); if (sp1) sp1.rotateX(.16 * s.lean); }
+  if (h) h.rotateY(s.hy * .55); if (nk) nk.rotateY(s.hy * .3); if (sp) sp.rotateY(s.hy * .35); if (sp1) sp1.rotateX(.16 * s.lean);
+  if (s.reach > .01) { for (const k of ['L', 'R']) { const ua = B('DEF-upper_arm.' + k), fa = B('DEF-forearm.' + k); if (ua) ua.rotateX(1.3 * s.reach); if (fa) fa.rotateX(.25 * s.reach); } } }
+
+
+// measured-speed locomotion (feet follow the ground speed actually covered): Walk<->Jog<->Sprint blend via Char.locomote (self-contained; main has no autoLoco)
+let FR = 0; // frame counter (main's Char has none)
+function loco(c, dt, idle = 'Idle_Loop') { const p = c.root.position, lp = c._lp || (c._lp = { x: p.x, z: p.z, f: FR - 1 }); let sp = c._as || 0;
+  if (dt > 0 && lp.f === FR - 1) { const inst = hyp(p.x - lp.x, p.z - lp.z) / dt; if (inst < 14) sp += (inst - sp) * Math.min(1, dt * (inst > sp ? 9 : 6)); } else if (lp.f < FR - 1) sp = 0;
+  lp.x = p.x; lp.z = p.z; lp.f = FR; c._as = sp; const on = c.locoOn ? sp > .12 : sp > .22;
+  if (on) { if (!c.locomote(sp, 1, dt, 6.4)) c.play(sp > 2.5 ? 'Jog_Fwd_Loop' : 'Walk_Loop'); return true; } c.play(idle); return false; }
 
 // move toward (tx,tz) at speed with whisker steering around colliders; returns remaining distance
 function steer(g, c, tx, tz, spd, dt, col = true) { const p = c.root.position, s = c.tn; let dx = tx - p.x, dz = tz - p.z; const d = hyp(dx, dz) || 1e-3; let a = Math.atan2(dx, dz);
@@ -88,14 +95,14 @@ function panic(g, T, c, dt) { const s = c.tn, th = nearestThreat(g, T, c); s.lea
   s.sc -= dt; if (th && s.td < 18 && s.sc <= 0) { s.sc = rnd(3.2, 5); g.audio.shout && g.audio.shout(c.female ? 'npcf_scream' : 'npcm_scream', false, c.root.position); } }
 
 function tick(g, T, c, dt) { const s = c.tn, ev = T.ev; if (!ev) return; const p = c.root.position;
-  if (s.state === 'run') { panic(g, T, c, dt); steer(g, c, s.tx, s.tz, s.spd, dt); c.autoLoco(dt, 'Idle_Loop', 6.4); s.stuck = (s.stuck || 0) + dt; if (s.lp === undefined || hyp(p.x - s.lp[0], p.z - s.lp[1]) > .8) { s.lp = [p.x, p.z]; s.stuck = 0; }
+  if (s.state === 'run') { panic(g, T, c, dt); steer(g, c, s.tx, s.tz, s.spd, dt); loco(c, dt); s.stuck = (s.stuck || 0) + dt; if (s.lp === undefined || hyp(p.x - s.lp[0], p.z - s.lp[1]) > .8) { s.lp = [p.x, p.z]; s.stuck = 0; }
     if (s.stuck > 4.5 && !onScreen(g, p.x, p.z, 0)) return finish(g, T, c, 'stuck');
     if (s.fate === 'caught') { const z = ev.catcher; if (z && !z.dead && dist(z.root.position, p) < 1.15) return grab(g, T, c); }
-    if (s.fate === 'door') { if (hyp(p.x - s.tx, p.z - s.tz) < .7) { s.state = 'open'; s.t = 0; c.play('Idle_Loop', { force: true }); ACT.actStart(c, { pose: 'reachBoth', dur: .9 }); doorOpen(g, s.D); } }
+    if (s.fate === 'door') { if (hyp(p.x - s.tx, p.z - s.tz) < .7) { s.state = 'open'; s.t = 0; c.play('Idle_Loop', { force: true }); s.reach = 1; doorOpen(g, s.D); } }
     else if (s.fate === 'away') { if (hyp(p.x - s.tx, p.z - s.tz) < 1.5 || (dFromP(g, p.x, p.z) > 52 && !onScreen(g, p.x, p.z, 0) && s.t > 4)) return finish(g, T, c, 'away'); }
     s.t += dt; }
-  else if (s.state === 'open') { s.t += dt; panic(g, T, c, dt); const yaw = Math.atan2(-s.D.f * 0, 0); c.root.rotation.y += angDiff(c.root.rotation.y, s.D.f > 0 ? -Math.PI / 2 : Math.PI / 2) * Math.min(1, dt * 12); if (s.t > .55) { s.state = 'in'; s.t = 0; } c.autoLoco(dt, 'Idle_Loop'); }
-  else if (s.state === 'in') { s.t += dt; const D = s.D; steer(g, c, D.wallX - D.f * 1.1, D.cz, 2.6, dt, false); c.autoLoco(dt, 'Idle_Loop'); if (-(p.x - D.wallX) * D.f > .5 || s.t > 2.5) { c.root.visible = false; doorShut(g, D); s.state = 'hidden'; s.t = 0; } }
+  else if (s.state === 'open') { s.t += dt; panic(g, T, c, dt); const yaw = Math.atan2(-s.D.f * 0, 0); c.root.rotation.y += angDiff(c.root.rotation.y, s.D.f > 0 ? -Math.PI / 2 : Math.PI / 2) * Math.min(1, dt * 12); if (s.t > .55) { s.state = 'in'; s.t = 0; s.reach = 0; } loco(c, dt); }
+  else if (s.state === 'in') { s.t += dt; const D = s.D; steer(g, c, D.wallX - D.f * 1.1, D.cz, 2.6, dt, false); loco(c, dt); if (-(p.x - D.wallX) * D.f > .5 || s.t > 2.5) { c.root.visible = false; doorShut(g, D); s.state = 'hidden'; s.t = 0; } }
   else if (s.state === 'hidden') { s.t += dt; if (s.t > .8) finish(g, T, c, 'door'); }
   else if (s.state === 'grabbed') { s.t += dt; if (s.t > .7 && !s.fell) { s.fell = 1; down(g, T, c); } }
   else if (s.state === 'down') { s.t += dt; if (s.t > 9) bodyDone(g, T, c); } }
@@ -113,7 +120,7 @@ const noTown = (g) => g.cut || g.dlgCur || g.dying || g.dead || g.boss || g.carS
 export function townUpdate(g, dt) {
   let T = g.town; if (!T || T.world !== g.world) T = g.town = fresh(g);
   if (!T.built) { T.built = true; try { buildDoors(g, T); } catch (e) { console.error('town build', e); } }
-  T.t += dt; updateDoors(g, T, dt);
+  FR++; T.t += dt; updateDoors(g, T, dt);
   if (T.ev && T.ev.done && !T.npcs.length) T.ev = null;
   if (T.spare === undefined && T.t > 3) { T.spare = null; }
   if (T.ev || noTown(g)) { if (!T.ev) T.cd = Math.max(T.cd, 3); return; }
@@ -132,7 +139,7 @@ export function startEvent(g, T, force, o = {}) { const SD = o.sd || 46;
   if (!spawn) return false;
   if (fate === 'door') { H = houses.sort((a, b) => Math.abs(a.cz - P.z) - Math.abs(b.cz - P.z))[0]; }
   const c = T.spare || makeChar(g); T.spare = null; const key = 'tn' + (++T.count);
-  c.tn = { state: 'run', fate, spd: fate === 'caught' ? 4.3 : 4.9, sv: fate === 'caught' ? 4.3 : 4.9, hy: 0, lean: 0, gt: rnd(.2, 1), gd: 0, sc: rnd(.3, 1), t: 0, D: H && H.tdoor }; c.key = key; c.lookKey = ''; c.update = (dt) => tick(g, T, c, dt);
+  c.tn = { state: 'run', reach: 0, fate, spd: fate === 'caught' ? 4.3 : 4.9, sv: fate === 'caught' ? 4.3 : 4.9, hy: 0, lean: 0, gt: rnd(.2, 1), gd: 0, sc: rnd(.3, 1), t: 0, D: H && H.tdoor }; c.key = key; c.lookKey = ''; c.update = (dt) => tick(g, T, c, dt);
   c.root.position.set(spawn.x, 0, spawn.z); g.scene.add(c.root); g.npcs[key] = c; T.npcs.push(c); c.play('Jog_Fwd_Loop');
   const away = new THREE.Vector3(spawn.kind === 'woods' ? Math.sign(spawn.x) : 0, 0, spawn.kind === 'woods' ? 0 : spawn.dir).normalize();
   const D = H && H.tdoor; if (D) { c.tn.tx = D.porchX; c.tn.tz = D.cz; } else if (spawn.kind === 'woods') { c.tn.tx = -spawn.x; c.tn.tz = spawn.z + rnd(-6, 6); } else { c.tn.tx = (Math.random() < .5 ? 1 : -1) * 3; c.tn.tz = P.z - spawn.dir * 70; }

@@ -1,5 +1,5 @@
 # feat/town-npcs — living town events (draft PR, DO NOT merge/release; audio untouched)
-Branched from feat/realism-anim-v2. All logic in `src/game/townlife.js`; game.js only: import, `townReset(this)` in clearActors, `townUpdate(this, dt)` once per frame. world.js only exposes `world.houses` / `world.cars` registries.
+Rebased onto main (v1.9.15) — no dependency on feat/realism-anim-v2 (checked: townlife.js imports only three, chars.js, looks.js; arm-reach and locomotion helpers are local). All logic in `src/game/townlife.js`; game.js only: import, `townReset(this)` in clearActors, `townUpdate(this, dt)` once per frame. world.js only exposes `world.houses` / `world.cars` registries.
 
 ## Done
 - Real hinged house doors (all generic houses): swing out on the porch, dark doorway behind, frame, knob. Old static slab hidden.
@@ -15,11 +15,12 @@ Branched from feat/realism-anim-v2. All logic in `src/game/townlife.js`; game.js
 Fence climbing, cars, helping others, stumbling variety.
 
 ## Proof
-`docs/town-proof/*.jpg` (844x390 phone-size frames), tools: `tools/proof_town.mjs`, `tools/test_town.mjs`.
+`docs/town-proof/1_door_flee_open_in_shut.jpg`, `2_caught_grab_ground_eaten.jpg`, `3_run_away.jpg` (+ single frames in `frames/`), 844x390, shoulder camera at gameplay height with wall/car clip protection, HUD markers/pickups hidden. Tools: `tools/proof_town2.mjs`, `tools/proof_sheet.py`, `tools/test_town.mjs` (proof_lib.mjs copied from the realism branch, dev tool only).
 
 ## Known flaws
 - Bodies are cleared when the step reloads (clearActors) — they stay while you play the step.
-- NPCs/zombies use simple whisker steering, no pathfinding: a parked car can briefly snag them.
+- Whisker steering only, no pathfinding: a parked car can briefly snag NPCs/zombies.
 - Zombies that lose their NPC (door shut / escaped) then go after the player.
-- Caught animation is Hit_Chest + Death01 (no custom drag); gore worker can enhance via hooks.
-- Only generic neighbourhood/town houses have doors; Keem's house door is unchanged.
+- Caught animation is Hit_Chest + Death01 (no custom drag); the gore worker can enhance via g.town.hooks.
+- Door-opening reach is a simple two-arm raise; only generic neighbourhood/town houses get doors (Keem's house door unchanged); tuned/tested in Riverside only.
+- Proof camera is a close shoulder cam (not the stock follow cam) so the NPC is readable.
