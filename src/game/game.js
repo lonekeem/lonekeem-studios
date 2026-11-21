@@ -39,7 +39,7 @@ export function langLine(raw, mode) { const re = /\{([^|}]*)\|([^}]*)\}/g; const
   const sub = mode === 'bleep' ? raw.replace(re, (m, a) => a.replace(/[A-Za-z]/g, (ch, i) => (i === 0 || !/[A-Za-z]/.test(a[i - 1] || '') ? ch : '*'))) : voice;
   const bleeps = []; if (mode === 'bleep') { let pos = 0, out = 0; raw.replace(re, (m, a, b, off) => { const st = off - pos + out; bleeps.push([st, st + a.trimEnd().length]); out = st + a.length; pos = off + m.length; return m; });
     const len = voice.length || 1; bleeps.forEach(b => { b[0] /= len; b[1] /= len; }); } return { sub, voice, bleeps }; }
-export function playerLook() { try { const l = JSON.parse(localStorage.getItem('atq3.look') || 'null'); if (l && l.hair) return Object.assign({}, DEFAULT_LOOK, l, { rig: 'keem' }); } catch (e) { } return DEFAULT_LOOK; }
+export function playerLook() { return DEFAULT_LOOK; } // v1.9.28: story Keem always keeps his canon look (customization now dresses the multiplayer character)
 
 // v1.9.2: touch wording for objective hints on phones
 const touchHint = (h) => h.replace(/\(WASD \/ left stick\)/g, '(left stick)').replace(/\bE \/ ✋/g, '✋ hand button').replace(/\bPress E\b/g, 'Tap ✋').replace(/GAS\/BRAKE \+ ◀ ▶ \([^)]*\)/g, 'GAS/BRAKE + ◀ ▶').replace(/\bWASD\b/g, 'left stick');
