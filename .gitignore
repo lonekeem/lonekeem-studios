@@ -10,3 +10,7 @@ dist
 keystore.properties
 lonekeem-studios-keys/
 android/app/release/
+
+# Local ElevenLabs zombie-voice generation artifacts (not needed in the repo)
+tools/zvo-raw/
+tools/zvo_gen_state.json
