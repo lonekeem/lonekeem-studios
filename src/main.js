@@ -19,6 +19,20 @@ try { audio.loadTracks(); } catch (e) { /* ignore */ }
 
 function showScreen(id) { $$('.screen').forEach(s => s.classList.add('hidden')); if (id) $(id).classList.remove('hidden'); }
 function fadeIn() { $('#fade').style.opacity = 0; }
+const prologueSeen = () => LS.getItem('atq_prologue_seen') === '1';
+async function playPrologueToMenu() {
+  goLandscape(); showScreen(null); $('#stage').classList.remove('hidden'); state = 'loading';
+  showLoading({ message: 'THE NIGHT BEFORE', title: 'Riverside' });
+  import('./game/prologue.js').then(m => m.preloadPrologue(audio)).catch(() => {});
+  try {
+    const g = await ensureGame(); g.save = save; g.settings = S; audio.init(); hideLoading();
+    $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden');
+    try { const m = await import('./game/prologue.js'); await Promise.race([m.preloadPrologue(audio), new Promise(r => setTimeout(r, 6000))]); } catch (e) {}
+    g.onPrologueEnd = () => { g.cut = null; g._lk = null; g.holdSave = false; g.paused = true; toTitle(); };
+    g.holdSave = true; g.wantPrologue = true; g.start(0);
+  } catch (e) { console.error(e); hideLoading(); toTitle(); }
+}
+
 function toTitle() { state = 'title'; if (game) { game.paused = true; } $('#stage').classList.add('hidden'); $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden'); audio.beat && audio.beat(0); audio.setMood('menu'); save = loadSave(LS) || save; { const sv = loadSave(LS), has = !!(sv && (sv.played || sv.step > 0)); const b = $('#btnContinue'); b.classList.toggle('hidden', !has); if (has) b.textContent = 'Continue · Chapter ' + chOf(sv.step || 0) + (CHN[chOf(sv.step || 0)] ? ' · ' + CHN[chOf(sv.step || 0)] : ''); } showScreen('#title'); back = '#title'; }
 
 async function ensureGame() { if (game) return game; if (gamePromise) return gamePromise;
@@ -118,7 +132,7 @@ $('#btnWarn').onclick = async () => {
   showScreen(null); const st = $('#studio'); st.classList.remove('hidden'); fadeIn();
   const tracks = audio.loadTracks().then(() => { try { audio.playSting(); } catch (e) {} });
   let done = false;
-  const finish = () => { if (done) return; done = true; st.classList.add('hidden'); toTitle(); };
+  const finish = () => { if (done) return; done = true; st.classList.add('hidden'); if (!prologueSeen()) playPrologueToMenu(); else toTitle(); };
   const onSkip = () => finish();
   st.addEventListener('pointerdown', onSkip, { once: true });
   addEventListener('keydown', onSkip, { once: true });
@@ -127,12 +141,13 @@ $('#btnWarn').onclick = async () => {
   hideLoading(); // preload quietly behind the intro
   await tracks.catch(() => {});
 };
-$('#btnNew').onclick = () => { if (loadSave(LS) && loadSave(LS).step > 0 && !confirm('Start a new game? Your current progress (level, cash, weapons) will be reset.')) return; clearSave(LS); save = defaultSave(); writeSave(LS, save); play(0, { prologue: true }); };
+$('#btnNew').onclick = () => { if (loadSave(LS) && loadSave(LS).step > 0 && !confirm('Start a new game? Your current progress (level, cash, weapons) will be reset.')) return; clearSave(LS); save = defaultSave(); writeSave(LS, save); play(0); };
+$('#btnWatchIntro').onclick = () => playPrologueToMenu();
 $('#btnEndNext').onclick = () => { save = loadSave(LS) || save; const nc = Math.min(LAST_CH, Math.max(2, save.ch || 2)); if (chOf(save.step || 0) !== nc) save.step = CH_START[nc]; writeSave(LS, save); play(save.step); };
 var CHN = CHAPTERS.map(c => (c ? c.title : '')), CHS = CHAPTERS.map(c => (c ? c.start : 0)); // derived from the chapter registry
 const unlockedCh = (s) => Math.max(s.maxCh || 1, s.done || (s.step || 0) >= 7 ? 2 : 1, s.done2 ? 3 : 1, CHS.findLastIndex(v => (s.step || 0) >= v) || 1);
 // chapter-select buttons are generated from the registry (src/game/chapters), so adding a chapter needs no HTML/menu edits
-{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.26 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
+{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.27 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
 const chList = $('#chList'); for (let c = 1; c <= LAST_CH; c++) { const b = document.createElement('button'); b.id = 'btnCh' + c; b.textContent = 'Chapter ' + c + ' · ' + CHN[c]; chList.appendChild(b); }
 $('#btnChapters').onclick = () => { const s = loadSave(LS) || defaultSave(); const u = unlockedCh(s); for (let c = 2; c <= LAST_CH; c++) { const b = $('#btnCh' + c); b.disabled = c > u; b.textContent = 'Chapter ' + c + ' · ' + CHN[c] + (c > u ? ' (finish Chapter ' + (c - 1) + ')' : ''); } showScreen('#chapters'); };
 $('#btnCh1').onclick = () => { save = loadSave(LS) || defaultSave(); writeSave(LS, save); play(0); };

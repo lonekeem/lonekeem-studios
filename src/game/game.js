@@ -99,7 +99,7 @@ export class Game {
     P.attach('DEF-spine.003', this.pack); this.pack.position.set(0, 0.12, -0.2); this.pack.rotation.set(0.1, 0, 0); if (P.skin) { this.pack.scale.setScalar(.6); this.pack.position.set(0, -0.03, -0.05); } else this.pack.scale.setScalar(1);
     P.attach('DEF-hand.R', this.hand); this.hand.rotation.set(Math.PI / 2, 0, 0); this.hand.position.set(0, 0.08, 0.02);
     this.pack.visible = !!(P.wantsPack || (this.save && this.save.items.includes('backpack'))); return P; }
-  start(step) { if (this._lookKey !== JSON.stringify(playerLook())) this.makePlayer(); step = step || 0; if (!(STORY[step] && STORY[step].survival)) this.save.step = step; this.loadStep(step); this.paused = false; if (!this.running) { this.running = true; this.last = performance.now(); requestAnimationFrame((t) => this.frame(t)); } }
+  start(step) { if (this._lookKey !== JSON.stringify(playerLook())) this.makePlayer(); step = step || 0; if (!this.holdSave && !(STORY[step] && STORY[step].survival)) this.save.step = step; this.loadStep(step); this.paused = false; if (!this.running) { this.running = true; this.last = performance.now(); requestAnimationFrame((t) => this.frame(t)); } }
   // v1.9.1 leak fix: actors removed on retry/step change free their GPU geometry/materials/textures (world + pooled fx are kept)
   keepSet() { const K = this._keep = new WeakSet(); const add = (m) => { if (!m) return; K.add(m); for (const k in m) { const v = m[k]; if (v && v.isTexture) K.add(v); } const u = m.userData && m.userData.u; if (u) for (const k in u) { const v = u[k] && u[k].value; if (v && v.isTexture) K.add(v); } };
     this.scene.traverse(o => { if (o.geometry) K.add(o.geometry); (Array.isArray(o.material) ? o.material : [o.material]).forEach(add); }); this.lib.gltf.scene.traverse(o => { if (o.geometry) K.add(o.geometry); }); }
@@ -157,7 +157,7 @@ export class Game {
     if (this.wpTarget) { P.x = this.wpTarget[0]; P.z = this.wpTarget[2]; return; }
     if (this.step < STORY.length - 1 && !STORY[this.step].survival && !STORY[this.step + 1].survival) this.loadStep(this.step + 1); }
   restartCheckpoint() { this.stepTok = (this.stepTok || 0) + 1; this.paused = false; this.last = performance.now(); try { this.loadStep(this.step); } catch (e) { console.error(e); this.clearActors(); this.cut = null; this.dying = null; this.dead = false; const cp = STORY[this.step].cp; this.player.root.position.set(cp[0], 0, cp[1]); } }
-  checkpoint() { if (!this.survival) { this.save.step = this.step; this.save.played = true; } writeSave(this.LS, this.save); }
+  checkpoint() { if (this.holdSave) return; if (!this.survival) { this.save.step = this.step; this.save.played = true; } writeSave(this.LS, this.save); }
   setDoor(open) { const w = this.world; w.doorCol.x0 = open ? 999 : 11.9; w.doorCol.x1 = open ? 999 : 12.1; w.doorBoards.forEach(b => b.visible = !open); w.frontDoor.rotation.y = open ? -1.6 : 0; }
   setTruck(i) { if (!this.truck) { const g = this.world.car(22, -64, 0, '#7a2218', { truck: true, lights: true }); this.truck = { g, v: 0, head: 0, driving: false }; this.truck.col = g.userData.col; }
     const T = this.truck; T.g.position.set(22, 0, -64); T.head = 0; T.v = 0; T.g.rotation.y = 0; T.driving = false; this.updateTruckCol(); if (i >= 7) { T.g.position.set(1.5, 0, -95); T.g.rotation.y = 0.5; this.updateTruckCol(); } }

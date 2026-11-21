@@ -1,4 +1,4 @@
-// v1.9.26 opening cutscene ("Prologue"): plays once on New Game before Chapter 1 takes control.
+// v1.9.27 opening cutscene ("Prologue"): plays the first time the game opens (after the warning and studio ident, before the title menu), and from Watch Intro. Skippable. New Game no longer replays it.
 // Everything on screen is the real game: the Riverside map, the story rigs for Keem / Dad / Nia (+ Biscuit in her hoodie)
 // and the in-game zombies, filmed with scripted cameras. Audio is one pre-mixed ElevenLabs track (narrator, character
 // lines in their in-game voices, score, SFX): public/music/atq-prologue.mp3. Timeline + subtitles: src/data/prologue.json.
@@ -120,6 +120,7 @@ export function runPrologue(g, done) {
   }
   function finish(skipped) {
     if (ended) return; ended = true; g.pro = null; if (R) R.toneMappingExposure = exp0; removeEventListener('keydown', onKey, true);
+    try { (g.LS || localStorage).setItem('atq_prologue_seen', '1'); } catch (e) {}
     try { if (src) { const gn = A.ctx.createGain(); src.disconnect(); src.connect(gn); gn.connect(A.master); gn.gain.setValueAtTime(1, A.ctx.currentTime); gn.gain.linearRampToValueAtTime(0, A.ctx.currentTime + .5); setTimeout(() => { try { src.stop(); } catch (e) { } }, 600); } } catch (e) { }
     if (A.windG && A._proWind != null) A.windG.gain.setTargetAtTime(A._proWind, A.ctx.currentTime, 1);
     blk.style.transition = 'opacity .35s'; blk.style.opacity = '1';

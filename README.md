@@ -50,6 +50,12 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.27
+- Feeding victims (Mr. Walt, Mr. Dube, and people pulled down in town) now lie flat on their backs on the street, with arms and legs relaxed and on the ground. They no longer arch like a bridge, tumble through the asphalt, or leave a limb buried. The zombies feeding on them kneel and hunch forward over the body instead of standing stiff or bending backward.
+- Trees stay out of buildings, the road, the spawn and objective areas, and foliage fades when it would block the camera.
+- The opening cutscene "The Night Before" now plays automatically the first time you open the game, after the content warning and studio ident and before the title menu (still skippable). After that the game opens straight to the menu. New Game no longer replays it. A Watch Intro button on the title menu plays it again and returns to the menu.
+- Keem's legs now move from the first step in every direction, including a light stick push or when sliding along a wall. Dad and Nia no longer glide when they follow you. Blood splats on walls fade at the edges so they no longer look like a solid red box.
+
 ### v1.9.26
 - New opening cutscene "The Night Before" (about 65 s, plays on New Game, skippable: Skip button, tap twice, or Esc/Enter/Space). Filmed in-engine with the real Riverside map and the story models for Keem, Dad, Nia (with Biscuit) and the zombies. Keem, Dad and Nia talk in their in-game ElevenLabs voices, with an ElevenLabs narrator, original score, sound effects and subtitles. It hands straight off into Chapter 1.
 - Zombies now each get their own ElevenLabs voice (idle groans, alerts, attack snarls, hurt and death sounds, feeding), matched to the zombie's gender and body type: men, women, teens, elders, big brutes, gurglers and bosses sound different, with several takes each so they do not repeat.
