@@ -6,7 +6,7 @@ import { makeEnv } from './env.js';
 
 // Riverside, Maine — procedural night town built from CC0 Poly Haven PBR textures.
 export function buildWorld(scene, Q, texLoader, base, CM = {}) {
-  const colliders = [], walls = [], updaters = [], lights = []; const flags = { indoor: false }; // indoor (hospital chapters 12-13): no rain, no sky — set by game.setLight()
+  const colliders = [], walls = [], updaters = [], lights = [], signList = []; const flags = { indoor: false }; // indoor (hospital chapters 12-13): no rain, no sky — set by game.setLight()
   const T = (n, rep = 1, srgb = true) => { const t = texLoader.load(base + 'tex/' + n + '.jpg'); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep, rep); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = Q.aniso; return t; };
   const pbr = (n, rep, o = {}) => { const m = new THREE.MeshStandardMaterial(Object.assign({ map: T(n + '_diff', rep), roughness: 1 }, o));
     if (Q.normals) { m.normalMap = T(n + '_nor_gl', rep, false); m.normalScale = new THREE.Vector2(o.ns || 1, o.ns || 1); }
@@ -166,10 +166,13 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
   road(0, -150, 11, 40);
 
   // signs
-  function sign(lines, x, y, z, rot, w = 3, h = 1, bg) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: signTex(lines, bg), roughness: .8 })); m.position.set(x, y, z); m.rotation.y = rot; scene.add(m); return m; }
+  // v1.9.28: the canvas matches the board's shape (text is no longer squashed / stretched), and every sign is registered so the
+  // post-pass at the end of buildWorld can give free-standing boards posts and a plain back (no more boards hanging in mid-air)
+  function sign(lines, x, y, z, rot, w = 3, h = 1, bg) { const cw = 512, ch = Math.max(96, Math.min(1024, Math.round(cw * h / w)));
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: signTex(lines, bg, undefined, cw, ch), roughness: .8 })); m.position.set(x, y, z); m.rotation.y = rot; scene.add(m); signList.push({ m, w, h, bg }); return m; }
   const welcome = sign(['WELCOME TO RIVERSIDE', 'MAINE · Est. 1871', 'Pop. 4,012'], -8.5, 2.2, 58, Math.PI * 0.85, 3.6, 1.6);
   [[-8.6, 57.6], [-7.4, 58.2]].forEach(([x, z]) => { const p = new THREE.Mesh(new THREE.BoxGeometry(.12, 2.2, .12), new THREE.MeshStandardMaterial({ color: '#3a2a1a' })); p.position.set(x, 1.1, z); scene.add(p); });
-  sign(['MAIN ST'], 7.4, 2.8, 8.4, -Math.PI / 2, 1.6, .4, '#1d4a2a'); sign(['BIRCH ST'], 7.4, 2.4, 8.4, 0, 1.6, .4, '#1d4a2a');
+  sign(['MAIN ST'], 7.34, 2.8, 8.4, -Math.PI / 2, 1.6, .4, '#1d4a2a'); sign(['BIRCH ST'], 7.4, 2.4, 8.46, 0, 1.6, .4, '#1d4a2a'); // v1.9.28: blades sit on the pole's face (the pole cut through the middle: "MAI ST")
   const pp = new THREE.Mesh(new THREE.BoxGeometry(.1, 3, .1), swMat); pp.position.set(7.4, 1.5, 8.4); scene.add(pp);
   sign(['STAY INSIDE', 'BY ORDER OF RIVERSIDE PD'], -6.4, 1.3, 14, Math.PI / 2, 2.4, 1, '#3a1010');
 
@@ -207,7 +210,7 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
   // town
   const town = [[-14, -176, 7, 8, 1, '#7a6a5a'], [14, -178, 7, 9, -1, '#5a6a7a'], [-14, -188, 8, 8, 1, '#8a4a3a'], [14, -214, 8, 9, -1, '#c8a060'], [-14, -216, 7, 8, 1, '#6a7a5a'], [14, -230, 7, 8, -1, '#7a5a6a'], [-14, -232, 7, 9, 1, '#5a5a5a'], [-30, -190, 8, 8, 1, '#4a5a6a'], [30, -192, 8, 8, -1, '#7a7060'], [-30, -210, 8, 7, 1, '#6a5040'], [30, -210, 8, 8, -1, '#8a8a7a']];
   town.forEach(t => house(t[0], t[1], t[2], t[3], t[4], t[5], Math.random() < .3));
-  sign(['HAVERFORD HARDWARE'], -10.3, 2.6, -188, Math.PI / 2, 3.2, .6, '#6a1a10');
+  sign(['HAVERFORD HARDWARE'], -9.95, 2.6, -188, /* v1.9.28: was 0.3 m inside the shop wall (invisible) */ Math.PI / 2, 3.2, .6, '#6a1a10');
   sign(['DOUGHNUT DEPOT', 'open 24/7 (lol)'], 9.9, 2.6, -214, -Math.PI / 2, 3.2, .8, '#c84a8a');
   sign(['SUDS-N-DUDS LAUNDROMAT'], -25.9, 2.6, -190, Math.PI / 2, 3.2, .6, '#1a4a6a');
   sign(['WATER ST'], 6, 2.6, -195.4, 0, 1.6, .4, '#1d4a2a');
@@ -428,7 +431,36 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
   { const gN = new THREE.Mesh(new THREE.PlaneGeometry(300, 2120), groundMat); gN.rotation.x = -Math.PI / 2; gN.position.set(0, -0.006, -3850); gN.receiveShadow = true; scene.add(gN);
     const kitCtx = { THREE, scene, Q, box, wallBox, sign, road, Z_pl, Z_lamp, fire, car, plankMat, swMat, groundMat, signTex, lights, walls, updaters, colliders };
     Object.keys(ZONE_BUILDERS).forEach(n => zone(+n, () => ZONE_BUILDERS[n](kitCtx))); }
+  mountSigns(signList, scene);
   return { env, ch2, zones, flags, houses: houseList, cars: carList, signTex, colliders, walls, updaters, lights, fire, car, sign, frontDoor, doorCol, doorBoards, tanker, tankCol, KH, mud, update(dt, t, cam) { updaters.forEach(u => u(dt, t, cam)); } };
+}
+// v1.9.28: a sign that is not on a wall and has nothing under it (a barrier, a post, a counter) gets two posts down to the
+// ground and a back face that carries the same lettering (like a real two-sided road sign), so it no longer floats and does not
+// vanish when seen from behind (planes are one-sided; several chapter signs face away from the way you walk in).
+function mountSigns(list, scene) {
+  const rc = new THREE.Raycaster(), cands = []; const bb = new THREE.Box3(), sz = new THREE.Vector3();
+  scene.updateMatrixWorld(true);
+  scene.traverse(o => { if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || list.some(s => s.m === o)) return; if (!o.geometry) return; if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    bb.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld); bb.getSize(sz); if (sz.x > 400 || sz.z > 400) return; cands.push(o); });
+  const sb = new THREE.Box3(); const small = cands.filter(o => { o.wb = new THREE.Box3().setFromObject(o); const v = o.wb.getSize(new THREE.Vector3()); return Math.max(v.x, v.z) < 80 && v.y > .3; });
+  const postM = new THREE.MeshStandardMaterial({ color: '#3a342c', roughness: .9, metalness: .2 }); const nrm = new THREE.Vector3(), o3 = new THREE.Vector3(), dn = new THREE.Vector3(0, -1, 0), q = new THREE.Quaternion();
+  let posts = 0;
+  for (const s of list) { const m = s.m; m.updateMatrixWorld(true); const wp = m.getWorldPosition(new THREE.Vector3()); m.getWorldQuaternion(q); nrm.set(0, 0, 1).applyQuaternion(q);
+    if (Math.abs(nrm.y) > .5) continue; // flat / ceiling boards
+    sb.setFromObject(m).expandByScalar(.2); if (small.some(o => sb.intersectsBox(o.wb))) continue; // already on posts / a frame / a barrier
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(q); let mounted = false;
+    // 1) wall behind it?
+    for (const k of [-.35, 0, .35]) { o3.copy(wp).addScaledVector(right, k * s.w).addScaledVector(nrm, .4); rc.set(o3, nrm.clone().negate()); rc.far = 1.0; const h = rc.intersectObjects(cands, false)[0]; if (h) { mounted = true; break; } }
+    // 2) something holding it from below (barrier, post, roof)?
+    if (!mounted) for (const k of [-.42, 0, .42]) { o3.copy(wp).addScaledVector(right, k * s.w); o3.y = wp.y - s.h / 2 + .02; rc.set(o3, dn); rc.far = o3.y; const h = rc.intersectObjects(cands, false).find(h => h.point.y > .12); if (h && wp.y - s.h / 2 - h.point.y < .45) { mounted = true; break; } }
+    if (mounted) continue;
+    const bottom = wp.y - s.h / 2; if (bottom < .05) continue;
+    // overhead boards (tunnel portal, hospital front) only get the back face, no posts in the road
+    const L = wp.y + s.h / 2 - .05; const geo = new THREE.BoxGeometry(.09, L, .09);
+    if (bottom < 3.2) for (const sx of [-1, 1]) { const pm = new THREE.Mesh(geo, postM); pm.position.set(sx * (s.w / 2 - Math.min(.25, s.w * .12)), (s.h / 2 - .05) - L / 2, -.06); pm.castShadow = true; m.add(pm); }
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(s.w, s.h), new THREE.MeshStandardMaterial({ map: m.material.map, color: '#c8c8c8', roughness: .85 })); back.rotation.y = Math.PI; back.position.z = -.012; m.add(back);
+    posts++; m.userData.posted = true; }
+  return posts;
 }
 function mergeTwo(a, b) { const g = new THREE.BufferGeometry(); ['position', 'normal', 'uv'].forEach(k => { const A = a.attributes[k].array, B = b.attributes[k].array, o = new Float32Array(A.length + B.length); o.set(A); o.set(B, A.length); g.setAttribute(k, new THREE.BufferAttribute(o, a.attributes[k].itemSize)); });
   const ia = a.index.array, ib = b.index.array, n = a.attributes.position.count, idx = new Uint16Array(ia.length + ib.length); idx.set(ia); for (let i = 0; i < ib.length; i++) idx[ia.length + i] = ib[i] + n; g.setIndex(new THREE.BufferAttribute(idx, 1)); return g; }
