@@ -4,7 +4,7 @@
 //  - Joining a game = entering the existing multiplayer town (src/mp/town/town.js) with that room id (Realtime broadcast room).
 //  - Leaderboard: public.lb_top / public.lb_submit (supabase/migrations/20261121_world_lobby_leaderboard.sql). Guests need no login.
 import { sb, getUser, signInGoogle, signOut, googleEnabled, installNativeAuth } from './online.js';
-import { profiles, profileScreen, syncOnSignIn, signedOut, onSyncStatus, watchTitle } from './cloud.js';
+import { profiles, openProfileScreen, syncOnSignIn, signedOut, onSyncStatus, watchTitle } from './cloud.js';
 const $ = s => document.querySelector(s);
 const LS = (() => { try { localStorage.setItem('__w', 1); localStorage.removeItem('__w'); return localStorage; } catch (e) { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; } })();
 const MAX_PLAYERS = 8;
@@ -59,17 +59,13 @@ const MOCK_ROOMS = [{ room: 'w-a1', host: 'Nia_Rose', title: "Nia_Rose's game", 
 
 // ---------- joining: character creator (existing) -> town in that room ----------
 async function joinRoom(room, title, ui) {
-  const p = await profile(); if (!p.name) { ui.askName(() => joinRoom(room, title, ui)); return; }
-  ui.hide(); $('#title').classList.add('hidden');
+  const PR = await profiles(); ui.hide(); $('#title').classList.add('hidden');
   const back = () => { $('#title').classList.remove('hidden'); ui.open('games'); };
-  const mod = await import('./creator.js');
-  const c = await mod.openCreator({ onClose: back, onPlay: async look => {
-    const tw = await import('./town/town.js'); let L = null;
-    const api = await tw.enterTown({ look: Object.assign({}, look, { name: p.name }), room, onExit: () => { try { L && L.ch.untrack(); } catch (e) { /* ignore */ } back(); } });
-    try { L = await lobbyChannel(); const meta = { room, title: title || (p.name + "'s game"), name: p.name, avatar: p.avatar, at: Date.now() }; await L.ch.track(meta); } catch (e) { console.warn('[world] could not list this game in the lobby:', e.message); }
-    return api;
-  } });
-  window.__mpCreator = c;
+  if (!PR.hasProfile()) { const made = await openProfileScreen('auto'); if (!made) { back(); return; } } // first time: sign in or create (new creator)
+  const p = PR.getProfile(); const look = Object.assign({}, p.look, { name: p.name });
+  const tw = await import('./town/town.js'); let L = null;
+  await tw.enterTown({ look, room, onExit: () => { try { L && L.ch.untrack(); } catch (e) { /* ignore */ } back(); } });
+  try { L = await lobbyChannel(); await L.ch.track({ room, title: title || (p.name + "'s game"), name: p.name, avatar: p.avatarUrl || null, at: Date.now() }); } catch (e) { console.warn('[world] could not list this game in the lobby:', e.message); }
 }
 
 // ---------- UI ----------
@@ -131,11 +127,10 @@ function buildUI() {
   function flash(t) { const s = q('#wGamesInfo'); s.textContent = t; s.classList.add('warn'); setTimeout(() => { s.classList.remove('warn'); s.textContent = 'Open games from players anywhere in the world'; }, 5000); }
   // first time in Online: Sign in (load a saved profile) or Create profile; 'new' = signed in but this account has no profile yet
   async function welcome(kind, gOn = true) {
-    const ps = await profileScreen().catch(() => null);
-    if (ps && ps.openProfile) { // fix/customize's full profile screen (welcome, Google button, step-by-step character)
-      ui.hide(); const p = await ps.openProfile({ mode: kind === 'new' ? 'create' : 'auto', onSignIn: () => signInGoogle('online') });
+    { // the profile screen from fix/customize (welcome, Google button, step-by-step creator)
+      ui.hide(); const p = await openProfileScreen(kind === 'new' ? 'create' : 'auto');
       if (p && pendingNew) { const PR = await profiles(); PR.saveProfile(Object.assign({}, p, { uid: pendingNew.uid, email: pendingNew.email, avatarUrl: p.avatarUrl || pendingNew.avatarUrl })); pendingNew = null; }
-      if (p) ui.show(); else { $('#title').classList.remove('hidden'); } return;
+      if (p) ui.show(); else $('#title').classList.remove('hidden'); return;
     }
     const w = q('#wWel'); w.classList.remove('hidden'); root.classList.add('wfirst');
     const nameStep = (signedIn) => {
@@ -160,11 +155,7 @@ function buildUI() {
   }
   // existing multiplayer character creator; the result becomes the profile's character (and syncs if signed in)
   async function makeCharacter() {
-    ui.hide(); $('#title').classList.add('hidden'); const back = () => { $('#title').classList.remove('hidden'); ui.show(); };
-    const ps = await profileScreen().catch(() => null); if (ps && ps.openProfile) { await ps.openProfile({ mode: 'edit', onSignIn: () => signInGoogle('online') }); back(); return; }
-    const PR = await profiles(); const keep = l => { if (l) PR.saveProfile(Object.assign({}, PR.getProfile() || {}, { look: l })); };
-    const mod = await import('./creator.js');
-    window.__mpCreator = await mod.openCreator({ onClose: l => { keep(l); back(); }, onPlay: l => { keep(l); back(); } });
+    ui.hide(); $('#title').classList.add('hidden'); await openProfileScreen('edit'); $('#title').classList.remove('hidden'); ui.show();
   }
   function editName(then) {
     const el = q('#wProf'); el.innerHTML = `<form class="wnameform"><input id="wNameIn" maxlength="16" placeholder="Your nickname" value="${esc(prof && prof.name || '')}" autocomplete="off"><button class="primary" type="submit">Save</button><button type="button" id="wNameX">Cancel</button></form>`;

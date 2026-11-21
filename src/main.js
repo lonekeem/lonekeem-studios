@@ -85,7 +85,7 @@ function renderShop() { $('#shopCash').textContent = `Cash: $${save.cash}  ·  L
 // v1.9.28: story Keem always keeps his canon look. "My Character" opens the player PROFILE + character creator (src/mp/profileui.js):
 // the player's own multiplayer survivor, paid for with the shared cash. Data lives behind src/mp/profile.js (getProfile / saveProfile).
 async function openCustom(from) { back = from; state = 'profile';
-  const { openProfile } = await import('./mp/profileui.js'); await openProfile({ mode: 'auto' }); save = loadSave(LS) || save;
+  const { openProfileScreen } = await import('./mp/cloud.js'); await openProfileScreen('auto'); // same profile screen + Google cloud sync save = loadSave(LS) || save;
   if (from === '#pause') { state = 'paused'; showScreen('#pause'); } else if (from === '#shop') openShop(); else { state = 'title'; showScreen('#title'); } }
 // ---------- inventory ----------
 function openInv() { state = 'inv'; renderInv(); showScreen('#inv'); }
@@ -120,7 +120,7 @@ $('#btnEndNext').onclick = () => { save = loadSave(LS) || save; const nc = Math.
 var CHN = CHAPTERS.map(c => (c ? c.title : '')), CHS = CHAPTERS.map(c => (c ? c.start : 0)); // derived from the chapter registry
 const unlockedCh = (s) => Math.max(s.maxCh || 1, s.done || (s.step || 0) >= 7 ? 2 : 1, s.done2 ? 3 : 1, CHS.findLastIndex(v => (s.step || 0) >= v) || 1);
 // chapter-select buttons are generated from the registry (src/game/chapters), so adding a chapter needs no HTML/menu edits
-{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.28 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
+{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.29 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
 const chList = $('#chList'); for (let c = 1; c <= LAST_CH; c++) { const b = document.createElement('button'); b.id = 'btnCh' + c; b.textContent = 'Chapter ' + c + ' · ' + CHN[c]; chList.appendChild(b); }
 $('#btnChapters').onclick = () => { const s = loadSave(LS) || defaultSave(); const u = unlockedCh(s); for (let c = 2; c <= LAST_CH; c++) { const b = $('#btnCh' + c); b.disabled = c > u; b.textContent = 'Chapter ' + c + ' · ' + CHN[c] + (c > u ? ' (finish Chapter ' + (c - 1) + ')' : ''); } showScreen('#chapters'); };
 $('#btnCh1').onclick = () => { save = loadSave(LS) || defaultSave(); writeSave(LS, save); play(0); };

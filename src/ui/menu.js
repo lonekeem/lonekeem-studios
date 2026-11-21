@@ -15,6 +15,8 @@ export function initMenu() {
   $('#btnBoard').addEventListener('click', () => world().then(m => m.openOnline('board')));
   const best = () => { const b = +(LSget('atq3.survBest') || 0); $('#survBestTxt').textContent = b ? 'Endless waves · your best: wave ' + b : 'Endless waves'; };
   best(); new MutationObserver(best).observe($('#title'), { attributes: true, attributeFilter: ['class'] });
+  // profile cloud sync: register with profile.js, load a signed-in account's profile, push changes when the title comes back
+  setTimeout(() => import('../mp/cloud.js').then(m => { m.watchTitle(); m.autoSync().catch(() => {}); }).catch(() => {}), 1500);
   // finish a Google sign-in (web redirect or Android app link) and reopen the Online screen
   if ((window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) || LSget('atq.online.resume')) world().then(m => m.bootOnline()).catch(() => {});
 }
