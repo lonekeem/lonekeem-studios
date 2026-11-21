@@ -22,6 +22,7 @@ import { stepMove, startRoll, startJump, stepVehicle } from './pctl.js';
 import { syncWounds, addWound, bloodyMouth, makePool, tickPools, setHandBlood } from './gore.js';
 import { STORY, LOOT, chOf, TOTAL_PAGES, SPEAKER_NAMES } from './story.js';
 import { onDialogueLine, tickDialogueFace, endDialogueFace, resetDialogueFace } from './dialogueFace.js';
+import { hitChar, capsOf, updateAimPose, placeShotFx, muzzleWorld } from './aim.js';
 
 const $ = (s) => document.querySelector(s);
 export const PRESETS = {
@@ -167,7 +168,7 @@ export class Game {
   equip(id, silent) { if (!this.save.owned.includes(id)) id = 'fists'; this.save.cur = id; const w = WEAPONS[id];
     this.hand.clear(); const m = this.weaponMeshes[id]; this.hand.add(m); this.vm.clear(); const vmm = m.clone(); this.vm.add(vmm); this.vmMesh = vmm;
     if (w.type === 'gun' && this.save.mags[id] == null) this.save.mags[id] = stat(this.save, id).mag;
-    this.ws = stat(this.save, id); if (!silent) { this.toast(w.name); this.audio.click(); } this.state && (this.state.reload = 0); }
+    this.ws = stat(this.save, id); if (!silent) { this.toast(w.name); this.audio.click(); } this.state && (this.state.reload = 0); this.rldSync && this.rldSync(); }
   swap(dir = 1) { const o = WEAPON_ORDER.filter(k => this.save.owned.includes(k)); const i = o.indexOf(this.save.cur); this.equip(o[(i + dir + o.length) % o.length]); this.audio.play('cloth', { vol: .35, flat: true }); this.audio.play('reload_in', { vol: .4, delay: .18, rate: 1.2, flat: true }); }
   give(id) { if (!this.save.owned.includes(id)) this.save.owned.push(id); this.equip(id); }
   addXP(n, why) { const s = this.save; s.xp += n; let up = false; while (s.xp >= xpFor(s.level)) { s.xp -= xpFor(s.level); s.level++; up = true; }
@@ -444,7 +445,7 @@ export class Game {
     // tanker can be smashed too? no — only shot
   }
   // v1.9.3: camera ray through the crosshair. Spread is an angle (not NDC, which was stretched 2x sideways on landscape phones); single-bullet guns: dead-on when aiming, small cone hip-fire; pellets keep their cone
-  aimRay(pellets = 1) { const r = new THREE.Raycaster(); const ws = this.ws; const sp = pellets > 1 ? (this.state.aim ? ws.spread * .45 : ws.spread * (this.cam.fp ? .8 : 1.4)) * 4 : (this.state.aim ? 0 : ws.spread * .35 * 4);
+  aimRay(pellets = 1, exact = false) { const r = new THREE.Raycaster(); const ws = this.ws; const sp = exact ? 0 : pellets > 1 ? (this.state.aim ? ws.spread * .45 : ws.spread * (this.cam.fp ? .8 : 1.4)) * 4 : (this.state.aim ? 0 : ws.spread * .35 * 4);
     const xr = $('#xhair').getBoundingClientRect(), cr = this.renderer.domElement.getBoundingClientRect(); const cy = (xr.width && cr.height) ? 1 - 2 * ((xr.top + xr.height / 2 - cr.top) / cr.height) : 0.08, cx = (xr.width && cr.width) ? 2 * ((xr.left + xr.width / 2 - cr.left) / cr.width) - 1 : 0;
     r.setFromCamera(new THREE.Vector2(cx, cy), this.camera); if (sp > 0) { const th = Math.random() * 6.283, m = Math.sqrt(Math.random()) * sp * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
       const up = V3(0, 1, 0).applyQuaternion(this.camera.quaternion), rt = V3(1, 0, 0).applyQuaternion(this.camera.quaternion); r.ray.direction.addScaledVector(rt, Math.cos(th) * m).addScaledVector(up, Math.sin(th) * m).normalize(); }
@@ -453,9 +454,9 @@ export class Game {
   fire() { const s = this.state, id = this.save.cur, w = WEAPONS[id], ws = this.ws; if (s.reload > 0 || s.fireCd > 0) return;
     if ((this.save.mags[id] || 0) <= 0) { this.audio.click(); if ((this.save.ammo[w.ammo] || 0) <= 0) this.audio.shout && this.audio.shout('keem_empty'); s.fireCd = .25; if ((this.save.ammo[w.ammo] || 0) > 0) this.reload(); else this.toast('Out of ammo — loot or buy more'); return; }
     this.save.mags[id]--; s.fireCd = w.rate; this.audio.shot(id); this.shake(id === 'shotgun' || id === 'sniper' ? .28 : .1); this.cam.pitch += (id === 'sniper' ? .05 : .015) * (s.aim ? .5 : 1); this.cam.yaw += rnd(-.006, .006); s.shotT = .5;
-    const mz = V3(); const muzzle = (this.cam.fp ? this.vmMesh : this.weaponMeshes[id]).getObjectByName('muzzle'); if (muzzle) muzzle.getWorldPosition(mz); else this.player.worldOf('DEF-hand.R', mz);
+    const mz = muzzleWorld(this, V3()); // v1.9.28: re-glued to the barrel tip every frame after the aim pose (placeShotFx)
     this.muzzle.position.copy(mz); this.muzzle.visible = true; this.muzzle.material.rotation = rnd(0, 6); this.mLight.position.copy(mz); this.mLight.color.set('#ffc070'); this.mLight.intensity = 30; this.mT = 0.05;
-    if (!this.cam.fp && this.player.curName.startsWith('Pistol') || this.player.curName === 'Idle_Loop') this.player.play('Pistol_Shoot', { once: true, force: true, speed: 2, cb: () => { this.player.curName = ''; } });
+    if (!this.cam.fp && (this.player.curName.startsWith('Pistol') || this.player.curName === 'Idle_Loop')) this.player.play('Pistol_Shoot', { once: true, force: true, speed: 2, cb: () => { this.player.curName = ''; } });
     if (w.gl) { const ray = this.aimRay(); const nr = ray.near || 0; const rc = new THREE.Raycaster(ray.at(nr, V3()), ray.direction, 0, ws.range); const wh = rc.intersectObjects(this.world.walls, false)[0]; let bd = (wh ? wh.distance : ws.range) + nr;
       this.alive().forEach(z => { const a = z.root.position.clone().setY(.2), b = z.root.position.clone().setY(1.8 * z.scale), pr = V3(); const d2 = ray.distanceSqToSegment(a, b, pr); const t = pr.sub(ray.origin).dot(ray.direction); const rr = .6 * z.scale; if (t > 0 && t < bd && d2 < rr * rr) bd = t; }); this.explode(ray.at(Math.max(nr + 1.5, bd), V3()), 5.5, 220 * (ws.dmg / w.dmg)); return; }
     if (w.flame) { const ray = this.aimRay(); for (let i = 0; i < 2; i++) this.flameAt(mz, 1, ray.direction.clone().multiplyScalar(rnd(9, 13))); this.mLight.color && this.mLight.color.set('#ff8030');
@@ -464,7 +465,10 @@ export class Game {
     for (let k = 0; k < pellets; k++) { const ray = this.aimRay(pellets); const nr = ray.near || 0; let best = null, bd = ws.range + nr;
       // world walls: cast from Keem's depth (ignore cam-side walls); zombies are tested from the camera so close/tall ones beside Keem still get hit (v1.9.4)
       const rc = new THREE.Raycaster(ray.at(nr, V3()), ray.direction, 0, ws.range); const wh = rc.intersectObjects(this.world.walls, false)[0]; if (wh) bd = wh.distance + nr;
-      const hp = V3(), tmp = V3(); this.alive().forEach(z => { z.worldOf('DEF-head', hp); hp.y += .08 * z.scale; const hr = (z.boss ? Math.max(.28, .17 * z.scale * z.root.scale.x) : .17); // v1.9.6: boss head hitbox scales with the boss (Subject One's head was ~6.5m up with a 0.28m box)
+      // v1.9.28: hit the zombie's VISIBLE body (capsules fitted per bone to its skinned mesh, so any pose / build / lunge counts); the old
+      // single vertical capsule + head sphere is only the fallback for a body without a skin
+      const hp = V3(), tmp = V3(); this.alive().forEach(z => { const hc = capsOf(z) ? hitChar(ray, z, bd) : undefined; if (hc !== undefined) { if (hc && !(hc.head && z.noHead)) { bd = hc.t; best = { z, head: hc.head }; } return; }
+        z.worldOf('DEF-head', hp); hp.y += .08 * z.scale; const hr = (z.boss ? Math.max(.28, .17 * z.scale * z.root.scale.x) : .17); // v1.9.6: boss head hitbox scales with the boss (Subject One's head was ~6.5m up with a 0.28m box)
         const t = tmp.copy(hp).sub(ray.origin).dot(ray.direction); if (t > 0 && t < bd) { const c = ray.at(t, V3()); if (c.distanceTo(hp) < hr && !z.noHead) { bd = t; best = { z, head: true }; return; } }
         const a = z.root.position.clone(); a.y = .15; const b = z.root.position.clone(); b.y = Math.max(1.35 * z.scale, hp.y - hr - .02); const pr = V3(), ps = V3(); const d2 = ray.distanceSqToSegment(a, b, pr, ps); const dd = pr.distanceTo(ray.origin);
         if (d2 < (z.boss ? .5 : .13 * z.scale * z.scale) && dd < bd) { bd = dd; best = { z, head: false }; } });
@@ -474,11 +478,13 @@ export class Game {
       if (best && best.z) { const dmg = ws.dmg * (best.head ? (2.5 * (perk(this.save, 8) ? 1.5 : 1)) * (best.z.boss ? .6 : 1) : 1); this.damageZ(best.z, dmg, ray.direction.clone().setY(0).normalize(), { head: best.head, pellets: pellets > 1 }); this.hitMark(best.head); }
       else if (best && best.tanker) { this.stepData.tankerHP -= ws.dmg * pellets / pellets; this.blood(end, V3(0, 1, 0), 3, 1); if (this.stepData.tankerHP <= 0) this.stepData.tankerBoom = true; }
       else if (end) { this.pMat.color.set('#3a3a34'); } }
-    const tp = this.tracer.geometry.attributes.position; tp.setXYZ(0, mz.x, mz.y, mz.z); tp.setXYZ(1, end.x, end.y, end.z); tp.needsUpdate = true; this.tracer.visible = true; this.trT = 0.04; }
+    const tp = this.tracer.geometry.attributes.position; tp.setXYZ(0, mz.x, mz.y, mz.z); tp.setXYZ(1, end.x, end.y, end.z); tp.needsUpdate = true; this.tracer.visible = true; this.trT = 0.04; this._trEnd = (this._trEnd || V3()).copy(end); }
   hitMark(head) { const x = $('#xhair'); x.style.color = head ? '#f44' : '#fc8'; clearTimeout(this._hm); this._hm = setTimeout(() => x.style.color = '#fff', 120); }
   reload() { const id = this.save.cur, w = WEAPONS[id]; if (w.type !== 'gun' || this.state.reload > 0) return; const need = this.ws.mag - (this.save.mags[id] || 0); if (need <= 0 || !(this.save.ammo[w.ammo] > 0)) return;
     this.state.reload = this.ws.reload; this.audio.reload ? this.audio.reload() : this.audio.click(); if (!this.cam.fp) this.player.play('Pistol_Reload', { once: true, force: true, speed: 1.4 / this.ws.reload, cb: () => { this.player.curName = ''; } }); }
-  finishReload() { const id = this.save.cur, w = WEAPONS[id]; const need = this.ws.mag - (this.save.mags[id] || 0); const n = Math.min(need, this.save.ammo[w.ammo] || 0); this.save.mags[id] += n; this.save.ammo[w.ammo] -= n; this.audio.click(); }
+  finishReload() { const id = this.save.cur, w = WEAPONS[id]; const need = this.ws.mag - (this.save.mags[id] || 0); const n = Math.min(need, this.save.ammo[w.ammo] || 0); this.save.mags[id] += n; this.save.ammo[w.ammo] -= n; this.audio.click(); this.state.reload = 0; this.rldSync(); }
+  // v1.9.28: the RELOADING bar mirrors state.reload every rendered frame (also while paused / in cutscenes), so it can never be left on screen
+  rldSync() { const rl = $('#rld'); if (!rl) return; const st = this.state; const on = !!(st && st.reload > 0 && !this.dying && !this.cut && WEAPONS[this.save?.cur]?.type === 'gun'); if (rl.classList.contains('on') !== on) { rl.classList.toggle('on', on); rl.style.transition = on ? '' : 'none'; } if (on && rl.firstChild) rl.firstChild.style.width = Math.round((1 - st.reload / ((this.ws && this.ws.reload) || 1)) * 100) + '%'; }
   attack() { const w = WEAPONS[this.save.cur]; if (this.truck.driving || this.cut || this.dying) return; if (w.type === 'gun') return this.fire(); const s = this.state; if (s.atk > 0 || s.roll > 0) return;
     const P = this.player; // soft lock
     let best = null, bd = this.meleeReach() + .9; this.alive().forEach(z => { const d = z.root.position.distanceTo(P.root.position); if (d < bd) { bd = d; best = z; } }); if (best) P.root.rotation.y = Math.atan2(best.root.position.x - P.root.position.x, best.root.position.z - P.root.position.z);
@@ -523,7 +529,7 @@ export class Game {
     if (this.hp < this.maxHp && this.t - (this.lastHurt || 0) > 5) this.hp = Math.min(this.maxHp, this.hp + dt * 4);
     if (T.driving) this.updateTruck(dt); else if (!this.cut) this.updatePlayer(dt);
     else { if (P.locoOn) P.endLoco(); P.play(this.cut.anim || 'Idle_Loop', { speed: this.cut.animSpeed || 1 }); }
-    P.mixer.update(dt);
+    P.mixer.update(dt); if (!T.driving) updateAimPose(this, dt); placeShotFx(this); // v1.9.28: upper body + gun on the crosshair, flash on the barrel
     if (!this.truck.driving) this.stepTrack(this.player, this.player.root.position, 'p'); this.chatter(dt);
     tickPools(this, dt); this.updateZ(dt); for (const k in this.npcs) { const n = this.npcs[k]; n.update && n.update(dt); n.mixer.update(dt); this.victimStruggle(n, dt); this.stepTrack(n, n.root.position, 'n'); if (n.bleed && Math.random() < dt * 3) { const p = n.root.position.clone(); p.y = .3; this.blood(p, V3(0, .6, 0), 3, 1.2); } } tickDialogueFace(this, dt);
     townUpdate(this, dt);
@@ -537,7 +543,7 @@ export class Game {
     if (I.pressed('swap')) this.swap(1); if (I.pressed('reload')) this.reload(); if (I.pressed('gren')) this.grenade(); if (I.pressed('heal')) this.heal(); if (I.pressed('jump')) this.jump(); if (I.pressed('roll')) this.roll(); if (I.pressed('use')) this.use();
     if (I.pressed('crouch')) s.crouch = !s.crouch; if (I.pressed('view')) { this.cam.fp = !this.cam.fp; this.settings.fp = this.cam.fp; }
     s.aim = I.aim && gun; { const tap = I.pressed('atk'); if (tap || (I.atk && (!gun || w.auto)) || (gun && I.atk && tap)) this.attack(); }
-    const mvr = stepMove({ P, s, I, set: this.settings, yaw: this.cam.yaw, fp: this.cam.fp, gun, slow: this.slowMul, runMul: perk(this.save, 7) ? 1.15 : 1, audio: this.audio, onMeleeHit: () => this.meleeHit(), collide: (p, dx, dz, r) => this.moveCollide(p, dx, dz, r) }, dt);
+    const mvr = stepMove({ P, s, I, set: this.settings, yaw: this.cam.yaw, fp: this.cam.fp, gun, aimTwist: true, slow: this.slowMul, runMul: perk(this.save, 7) ? 1.15 : 1, audio: this.audio, onMeleeHit: () => this.meleeHit(), collide: (p, dx, dz, r) => this.moveCollide(p, dx, dz, r) }, dt);
     }
   // v2.0 aim assist (opt-in: "Simple" control scheme or the Aim-assist slider; default off = unchanged gameplay).
   // Gently steers the camera toward the best target near the crosshair while firing/aiming; optional auto-fire when a visible enemy is under it.
@@ -712,7 +718,7 @@ export class Game {
       cam.updateMatrixWorld(true); this.vm.updateMatrixWorld(true); const fwd = V3(); cam.getWorldDirection(fwd); const rc = this._fpRay || (this._fpRay = new THREE.Raycaster()); rc.set(cam.position, fwd); rc.near = 0; rc.far = 2.6; const wh = rc.intersectObjects(this.world.walls, false)[0]; this._fpWallD = wh ? wh.distance : 99;
       let pull = 0; if (wh) { const bx = this._fpBox || (this._fpBox = new THREE.Box3()); bx.setFromObject(this.vm); let tip = 0; for (let i = 0; i < 8; i++) { const c = V3(i & 1 ? bx.max.x : bx.min.x, i & 2 ? bx.max.y : bx.min.y, i & 4 ? bx.max.z : bx.min.z); tip = Math.max(tip, c.sub(cam.position).dot(fwd)); } pull = clamp(tip - (wh.distance - .1), 0, 1.1); }
       this._fpPull = lerp(this._fpPull || 0, pull, Math.min(1, rdt * 14)); this.vm.position.z += this._fpPull; this.vm.position.y -= this._fpPull * .7; this.vm.rotation.x -= this._fpPull * .5; if (this._fpPull > .62) this.vm.visible = false; /* weapon lowered out of view when your face is against a wall */ }
-    $('#xhair').classList.toggle('hidden', !(WEAPONS[this.save?.cur]?.type === 'gun' || C.fp) || !!(T && T.driving) || !!this.cut || !!this.dying);
+    this.rldSync(); $('#xhair').classList.toggle('hidden', !(WEAPONS[this.save?.cur]?.type === 'gun' || C.fp) || !!(T && T.driving) || !!this.cut || !!this.dying);
     // flashlight from chest
     const fl = this.flash; const fpos = P.root.position.clone(); fpos.y += 1.3; const fdir = V3(); cam.getWorldDirection(fdir); if (T && T.driving) { fpos.copy(T.g.position).y += 1; fdir.set(Math.sin(T.head), -.1, Math.cos(T.head)); }
     // first person: the torch sits at the eye (slightly low/right) instead of the chest and dims as a wall gets close, so a wall in your face is not a blown-out white blob
@@ -727,7 +733,7 @@ export class Game {
     if (this.running && !this.paused) this.hud(); }
   hud() { const s = this.save, w = WEAPONS[s.cur];
     $('#hpb i').style.width = (this.hp / this.maxHp * 100) + '%'; $('#hpTxt').textContent = `Health : ${Math.ceil(this.hp)}  ·  Lv ${s.level}  ·  $${s.cash}  ·  Med ${s.meds}${s.pages.length ? `  ·  Pages ${s.pages.length}/${TOTAL_PAGES}` : ''}`;
-    { const st = this.state, rl = $('#rld'); if (rl) { const on = st && st.reload > 0 && !this.dying; rl.classList.toggle('on', !!on); if (on) rl.firstChild.style.width = Math.round((1 - st.reload / (this.ws.reload || 1)) * 100) + '%'; } }
+    this.rldSync();
     $('#ammoTxt').textContent = w.type === 'gun' ? `${w.name}  ·  Ammo : ${s.mags[s.cur] || 0} / ${s.ammo[w.ammo] || 0}${this.state.reload > 0 ? '  (reloading)' : ''}` : w.name;
     $('#grenN').textContent = s.grenades; { const gn = $('#grenN2'); if (gn) gn.textContent = s.grenades; } $('#tAtk').textContent = w.type === 'gun' ? 'FIRE' : 'HIT'; $('#pages').textContent = '';
     $('#lowhp').style.opacity = this.dying ? 1 : clamp(1 - this.hp / this.maxHp * 2.2, 0, .9); const cb = $('#combo'); if (this.state.combo >= 2) { cb.textContent = `x${this.state.combo} COMBO`; cb.classList.add('on'); } else cb.classList.remove('on');
