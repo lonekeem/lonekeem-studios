@@ -218,6 +218,13 @@ export class Game {
   // lift a lying character so the lowest skinned vertex sits just on the terrain (Death01 is feet-pivoted, so a root roll buries the body)
   seatOnGround(c) { const gy = this.groundAt(c.root.position.x, c.root.position.z), minY = this.skinMinY(c); if (minY < 8 && minY < gy + .015) { c.root.position.y += (gy + .02) - minY; c.root.updateMatrixWorld(true); } return gy; }
   torsoMinY(c) { const W = this._seatW || (this._seatW = V3()); let m = 9; for (const n of ['DEF-hips', 'DEF-spine', 'DEF-spine.001', 'DEF-spine.002', 'DEF-spine.003', 'DEF-head']) { const b = c.bone(n); if (!b) continue; b.getWorldPosition(W); if (W.y < m) m = W.y; } return m; }
+  // park a feeder kneeling beside the victim's torso (root = knees), facing the hips, close enough for hands/head to reach the body
+  placeFeeder(z, v, i = 0, n = 1) { if (!z || !v || !v.root) return; const h = this._feedH || (this._feedH = V3()); v.root.updateMatrixWorld(true); v.worldOf('DEF-hips', h);
+    const pp = this.player ? this.player.root.position : h, base = Math.atan2(pp.x - h.x, pp.z - h.z);
+    const slots = n === 1 ? [Math.PI] : n === 2 ? [Math.PI * .68, -Math.PI * .68] : [Math.PI, Math.PI * .48, -Math.PI * .48];
+    const a = base + (slots[((i % n) + n) % n] ?? i * 2.1), r = n === 1 ? .55 : .62, gy = this.groundAt(h.x, h.z);
+    z.root.position.set(h.x + Math.sin(a) * r, gy, h.z + Math.cos(a) * r);
+    z.root.rotation.y = Math.atan2(h.x - z.root.position.x, h.z - z.root.position.z); }
   victim(x, z, look, eaters = 3) { const v = this.npc('v' + Math.random(), look, x, z, 0, 'Death01'); v.play('Death01', { once: true }); v.mixer.update(5); v.mat.userData.u.uBlood.value = this.settings.gore ? 1 : 0.2; v.bleed = true;
     // lie broadside to where the player will come from; roll around the hips (not the feet) so side / face-down poses stay on the ground
     const pp = this.player ? this.player.root.position : V3(0, 0, 60); const base = Math.atan2(pp.x - x, pp.z - z); v.pose = Math.random(); v.life = 1; v.isVictim = true; v.struggle = 1; v.jolt = 0; v.screamT = rnd(.5, 2);
@@ -233,8 +240,7 @@ export class Game {
     v.pool = this.settings.gore ? makePool(this, x, z, .7, 2.6) : null; if (v.pool) v.pool.position.y = gy + .025;
     const d0 = this.decal(x, z, 1.15); if (d0) d0.position.y = gy + .018; const d1 = this.decal(x + rnd(-.35, .35), z + rnd(-.35, .35), .7); if (d1) d1.position.y = gy + .02;
     if (this.settings.gore) { const back = Math.abs(v.roll) > 3; addWound(v, { kind: 'torn', part: back ? 'chest' : 'belly', nz: back ? -1 : 1, size: .1, run: .3 }); addWound(v, { kind: 'bite', part: eaters > 1 ? 'thighL' : 'uarmR', nz: back ? -1 : 1, nx: .3, size: .06 }); }
-    const slots = eaters === 1 ? [Math.PI] : eaters === 2 ? [Math.PI * .72, -Math.PI * .72] : [Math.PI, Math.PI * .55, -Math.PI * .55];
-    for (let i = 0; i < eaters; i++) { const a = base + (slots[i % slots.length] ?? (i * 2.1)) + rnd(-.12, .12); const zz = this.spawnZ(x + Math.sin(a) * 1.05, z + Math.cos(a) * 1.05, { eat: v }); zz.root.position.y = gy; zz.eatOff = i; if (this.settings.gore) { bloodyMouth(zz, 1.2 + i * .3); setHandBlood(zz, .6); } zz.root.rotation.y = Math.atan2(x - zz.root.position.x, z - zz.root.position.z); }
+    for (let i = 0; i < eaters; i++) { const zz = this.spawnZ(x, z, { eat: v }); zz.eatOff = i; this.placeFeeder(zz, v, i, eaters); if (this.settings.gore) { bloodyMouth(zz, 1.2 + i * .3); setHandBlood(zz, .6); } }
     return v; }
   spawnZ(x, z, o = {}) { const zl = Object.assign((o.raider ? raiderLook : randomLook)((ZSEED++ * 7919 + (Math.random() * 1e5 | 0)) | 0, !o.raider), o.raider ? { grime: .6, blood: .1 } : { grime: 1, blood: this.settings.gore ? rnd(.5, 1) : 0.15 }); if (o.rig !== undefined) zl.rig = o.rig; if (o.fem != null) zl.fem = !!o.fem; if (Math.random() < .3 && !o.boss) zl.hair = 'balding'; if (o.boss) { const femBoss = o.fem || o.rig === 'zombie_office'; if (femBoss) { zl.fem = true; zl.beard = 'none'; } else { zl.fem = false; zl.hair = 'bald'; zl.beard = 'full'; } zl.build = 1.3; }
     const sc = (o.scale || rnd(.9, 1.1)); const c = new Char(this.lib, zl, sc); c.id = Math.random() * 10; c.root.position.set(x, 0, z); c.root.rotation.y = rnd(0, 6); this.scene.add(c.root);
@@ -560,10 +566,10 @@ export class Game {
     const lk = z.lk; let rel = 0; if (lk > .01) { rel = Math.atan2(toP.x, toP.z) - z.root.rotation.y; rel = Math.atan2(Math.sin(rel), Math.cos(rel)); rel = clamp(rel, -1.3, 1.3); if (lk > .7) z.root.rotation.y = angLerp(z.root.rotation.y, z.root.rotation.y + rel, dt * .8); }
     const sp2 = B('DEF-spine.002'), sp3 = B('DEF-spine.003'), nk = B('DEF-neck'), hd = B('DEF-head');
     const bob = Math.sin((this.t + (z.id || 0)) * 5.2) * .07 + Math.sin((this.t + (z.id || 0)) * 9.1) * .03; // continuous feeding bob between bites
-    if (sp2) sp2.rotateX((.6 + dip * .5 - pull * .1 + bob) * (1 - lk * .7)); if (sp3) sp3.rotateX((.35 + dip * .35 + bob * .7) * (1 - lk * .8));
-    if (nk) { nk.rotateX((dip * .45 - pull * .25) * (1 - lk) - lk * .35); nk.rotateY(rel * .45 * lk); }
-    if (hd) { hd.rotateX((dip * .3 - pull * .35) * (1 - lk) - lk * .25); hd.rotateY(rel * .45 * lk + shake); hd.rotateZ(shake * .5); }
-    ['L', 'R'].forEach((s, i) => { const ua = B('DEF-upper_arm.' + s), fa = B('DEF-forearm.' + s); if (ua) { ua.rotateX((.75 + dip * .35 + pull * .3) * (1 - lk * .4)); ua.rotateZ((i ? -1 : 1) * -.12); } if (fa) fa.rotateX(.9 + pull * .4 + dip * .3); });
+    if (sp2) sp2.rotateX((.85 + dip * .55 - pull * .1 + bob) * (1 - lk * .45)); if (sp3) sp3.rotateX((.5 + dip * .4 + bob * .7) * (1 - lk * .5));
+    if (nk) { nk.rotateX(.35 + (dip * .5 - pull * .25) * (1 - lk) - lk * .25); nk.rotateY(rel * .45 * lk); }
+    if (hd) { hd.rotateX(.25 + (dip * .35 - pull * .35) * (1 - lk) - lk * .2); hd.rotateY(rel * .45 * lk + shake); hd.rotateZ(shake * .5); }
+    ['L', 'R'].forEach((s, i) => { const ua = B('DEF-upper_arm.' + s), fa = B('DEF-forearm.' + s); if (ua) { ua.rotateX(1.05 + dip * .4 + pull * .3); ua.rotateZ((i ? -1 : 1) * -.18); ua.rotateY((i ? 1 : -1) * .15); } if (fa) fa.rotateX(1.15 + pull * .35 + dip * .25); });
     { /* kneel: shins fold back, then the hips drop (calibrated once per zombie) until the knees rest on the ground */ const hp = B('DEF-hips');
       ['L', 'R'].forEach((k) => { const th = B('DEF-thigh.' + k), sh = B('DEF-shin.' + k), ft = B('DEF-foot.' + k); if (th) th.rotateX(-.12); if (sh) sh.rotateX(1.65); if (ft) ft.rotateX(.5); });
       if (hp) { if (z.hipZ0 === undefined) z.hipZ0 = hp.position.z; z.kneelK = clamp((z.kneelK || 0) + Math.max(0, dt) * 2, 0, 1);
@@ -575,7 +581,10 @@ export class Game {
         hp.position.z = z.hipZ0 - (z.hipDrop + (this.kneelAdj || 0)) * z.kneelK; } }
     if (z.noHead && hd) hd.scale.setScalar(.001); }
   // victims: struggle + scream + reach while alive, weaken (dying), then lie limp with the odd death-twitch; every bite jolts the body
-  victimStruggle(n, dt) { if (!n.isVictim) return; if (n.poolFix > 0) { n.poolFix -= dt; if (n.poolFix <= 0 && n.pool) { const h = V3(); n.root.updateMatrixWorld(true); n.worldOf('DEF-hips', h); if (Math.hypot(h.x - n.root.position.x, h.z - n.root.position.z) < 2.5) n.pool.position.set(h.x, n.pool.position.y, h.z); this.zombies.forEach(z => { if (z.st === 'eat' && z.eat === n) { const dx = z.root.position.x - h.x, dz = z.root.position.z - h.z, l = Math.hypot(dx, dz) || 1; const gy = this.groundAt(h.x, h.z); z.root.position.set(h.x + dx / l * 1.0, gy, h.z + dz / l * 1.0); z.root.rotation.y = Math.atan2(-dx, -dz); } }); } } const eaters = this.zombies.filter(z => !z.dead && z.st === 'eat' && z.eat === n).length;
+  victimStruggle(n, dt) { if (!n.isVictim) return; const feeding = this.zombies.filter(z => !z.dead && z.st === 'eat' && z.eat === n);
+    if (n.poolFix > 0) { n.poolFix -= dt; if (n.poolFix <= 0 && n.pool) { const h = V3(); n.root.updateMatrixWorld(true); n.worldOf('DEF-hips', h); if (Math.hypot(h.x - n.root.position.x, h.z - n.root.position.z) < 2.5) n.pool.position.set(h.x, n.pool.position.y, h.z); } }
+    feeding.forEach((z, i) => this.placeFeeder(z, n, z.eatOff ?? i, feeding.length));
+    const eaters = feeding.length;
     if (n.life === undefined) n.life = 1; if (eaters) n.life = Math.max(0, n.life - dt * eaters / 26); const L = n.life; n.jolt = Math.max(0, (n.jolt || 0) - dt * 2.5);
     n.struggle = L > .5 ? Math.max(.4, n.struggle - dt * .02) : L > .12 ? .28 : 0; const t = this.t + (n.id || 0), B = (k) => n.bone(k), ps = n.pose || 0;
     if (L <= .12) { n.tw = (n.tw ?? rnd(1, 3)) - dt; if (n.tw <= 0) { n.tw = rnd(1.8, 4.5); n.jolt = Math.max(n.jolt, .7); } }
