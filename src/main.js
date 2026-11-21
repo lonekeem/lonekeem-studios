@@ -1,6 +1,7 @@
 import { initLayout } from './game/layout.js';
 import { showLoading, hideLoading, setProgress } from './ui/loading.js';
 import { AudioSys } from './audio.js';
+import { initMenu, trackGame } from './ui/menu.js';
 import { SURVIVAL_STEP, chOf, CH_START, CHAPTERS, LAST_CH, LAST_STORY_STEP, TOTAL_PAGES } from './game/story.js';
 import { WEAPONS, WEAPON_ORDER, UPGRADES, upCost, AMMO_SHOP, PERKS, xpFor, defaultSave, loadSave, writeSave, clearSave, stat } from './game/data.js';
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -45,6 +46,7 @@ async function ensureGame() { if (game) return game; if (gamePromise) return gam
     g.onComplete = (ch = 1) => { const C = CHAPTERS, last = ch >= LAST_CH, nx = Math.min(LAST_CH, ch + 1); // chapter table comes from src/game/chapters (no hard-coded last chapter)
       save.done = true; if (ch >= 2) save.done2 = true; save.maxCh = Math.max(save.maxCh || 1, nx); save.ch = nx; save.step = last ? LAST_STORY_STEP : CH_START[nx]; writeSave(LS, save); state = 'ending'; g.paused = true; $('#endStats').innerHTML = `Kills: ${save.kills} · Level ${save.level} · Cash $${save.cash} · Comic pages ${save.pages.length}/${TOTAL_PAGES}`;
       $('#endH').textContent = 'End of Chapter ' + ch + ' · ' + C[ch].title; $('#endQ').textContent = C[ch].endQuote; $('#endNext').textContent = last ? (C[ch].nextTeaser || 'To be continued — Chapter ' + (ch + 1) + ' coming soon.') : 'Chapter ' + (ch + 1) + ' · ' + C[ch + 1].title + ' is unlocked. Your level, cash and weapons carry over.'; $('#btnEndNext').textContent = 'Continue to Chapter ' + nx; $('#btnEndNext').classList.toggle('hidden', last); showScreen('#ending'); audio.setMood('sad'); };
+    try { trackGame(g, i => i === SURVIVAL_STEP); } catch (e) { console.warn('leaderboard tracking off', e); }
     game = g; hideLoading(); return g; })();
   return gamePromise; }
 function goLandscape() { if (document.body.dataset.dev !== 'touch' || window.Capacitor?.isNativePlatform?.()) return; try { const d = document.documentElement, rq = d.requestFullscreen || d.webkitRequestFullscreen; const p = !document.fullscreenElement && rq ? rq.call(d, { navigationUI: 'hide' }) : null; Promise.resolve(p).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape')).catch(() => {}); } catch (e) {} }
@@ -189,6 +191,7 @@ document.body.dataset.dev = 'ontouchstart' in window ? 'touch' : 'kbd'; fadeIn()
 const qs = new URLSearchParams(location.search);
 if (qs.has('prologue')) { $('#warning').classList.add('hidden'); save = defaultSave(); play(0, { prologue: true }); }
 else if (qs.has('step')) { $('#warning').classList.add('hidden'); save = defaultSave(); if (qs.has('god')) Object.assign(save, { owned: ['fists', 'bat', 'pistol', 'rifle', 'shotgun'], items: ['backpack'], ammo: { light: 99, shell: 30, rifle: 200 }, grenades: 3, cash: 2000, cur: 'rifle' }); play(+qs.get('step')); }
+initMenu();
 window.__atqBooted = true;
 // (title background image removed in v1.3.1)
 

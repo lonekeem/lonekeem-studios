@@ -39,7 +39,33 @@ export async function goOnline(room = 'town') {
 // ---- accounts ----
 const FAKE = () => (typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) ? window.__MP_FAKE_AUTH : null; // dev/test hook (localhost only)
 export async function getUser() { const f = FAKE(); if (f) return f.email ? { email: f.email, user_metadata: { name: f.name } } : null; try { const c = await sb(); const { data } = await c.auth.getSession(); return data.session ? data.session.user : null; } catch (e) { return null; } }
-export async function signInGoogle() { const c = await sb(); const redirectTo = location.href.split('#')[0].split('?')[0]; try { sessionStorage.setItem('atq.mp.resume', '1'); } catch (e) { /* ignore */ } const { error } = await c.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } }); if (error) throw error; }
+// Google sign-in. Web: normal redirect back to this page. Android app: Google refuses sign-in inside an embedded WebView, so the
+// sign-in page opens in the phone's browser and comes back through the app link com.lonekeemstudios.app://auth-callback?code=...
+// (AndroidManifest intent-filter, launchMode singleTask), handled by installNativeAuth() below. resume: 'mp' (town creator) or 'online' (world lobby).
+export const isNative = () => { try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (e) { return false; } };
+export const NATIVE_REDIRECT = 'com.lonekeemstudios.app://auth-callback';
+export async function signInGoogle(resume = 'mp') {
+  const c = await sb(); try { if (resume === 'online') localStorage.setItem('atq.online.resume', String(Date.now())); else sessionStorage.setItem('atq.mp.resume', '1'); } catch (e) { /* ignore */ }
+  if (isNative()) {
+    const { data, error } = await c.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: NATIVE_REDIRECT, skipBrowserRedirect: true, queryParams: { prompt: 'select_account' } } }); if (error) throw error;
+    location.href = data.url; return; // Capacitor hands non-app URLs to the system browser
+  }
+  const redirectTo = location.href.split('#')[0].split('?')[0];
+  const { error } = await c.auth.signInWithOAuth({ provider: 'google', options: { redirectTo, queryParams: { prompt: 'select_account' } } }); if (error) throw error;
+}
+let nativeAuthOn = false;
+/** Android only: finish a Google sign-in when the browser hands the code back to the app. onDone(user|null) runs after the session is stored. */
+export async function installNativeAuth(onDone) {
+  if (!isNative() || nativeAuthOn) return; nativeAuthOn = true;
+  const { App } = await import('@capacitor/app');
+  const finish = async url => {
+    if (!url || !url.startsWith(NATIVE_REDIRECT)) return; let code = null, err = null;
+    try { const u = new URL(url.replace(NATIVE_REDIRECT, 'https://cb.local/')); code = u.searchParams.get('code'); err = u.searchParams.get('error_description') || u.searchParams.get('error'); } catch (e) { /* ignore */ }
+    try { if (code) { const c = await sb(); const { data, error } = await c.auth.exchangeCodeForSession(code); if (error) throw error; onDone && onDone(data.user || null); } else onDone && onDone(null, err); } catch (e) { console.warn('[auth] code exchange failed', e); onDone && onDone(null, e.message || String(e)); }
+  };
+  App.addListener('appUrlOpen', ({ url }) => finish(url));
+  try { const l = await App.getLaunchUrl(); if (l && l.url) finish(l.url); } catch (e) { /* ignore */ }
+}
 export async function signOut() { const f = FAKE(); if (f) { window.__MP_FAKE_AUTH = {}; return; } const c = await sb(); await c.auth.signOut(); }
 /** 'admin' | 'player' | null (signed out / unreachable). Reads the caller's own row (RLS: own role read). */
 export async function getRole() { const f = FAKE(); if (f) return f.email ? (f.role || 'player') : null; try { const c = await sb(); const u = await getUser(); if (!u) return null; const { data, error } = await c.schema('public').rpc('mp_my_role'); if (error) return null; return data; } catch (e) { return null; } }

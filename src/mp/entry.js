@@ -1,7 +1,7 @@
 // One dynamic import from src/main.js: adds the "Multiplayer (Beta)" button to the title menu. Story mode code is untouched.
 export function install() {
   const menu = document.querySelector('#title .menu'); if (!menu || document.getElementById('btnMP')) return;
-  const b = document.createElement('button'); b.id = 'btnMP'; b.textContent = 'Multiplayer (Beta)'; const anchor = document.getElementById('btnSurvival'); anchor ? anchor.after(b) : menu.prepend(b);
+  const b = document.createElement('button'); b.id = 'btnMP'; b.textContent = 'Free Roam Town (Beta)'; const pane = document.getElementById('paneOnline'); const anchor = document.getElementById('btnSurvival'); if (pane) pane.append(b); else if (anchor) anchor.after(b); else menu.prepend(b);
   const title = document.getElementById('title');
   const show = () => title.classList.remove('hidden');
   b.addEventListener('click', async () => {
