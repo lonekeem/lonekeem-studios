@@ -1,0 +1,204 @@
+{
+ "dur": 65.0,
+ "lines": [
+  {
+   "t": 0.6,
+   "who": "narrator",
+   "f": "narr",
+   "a": 0.0,
+   "b": 5.7,
+   "text": "Riverside, Maine. Four thousand people… and nothing ever happened here."
+  },
+  {
+   "t": 6.8,
+   "who": "narrator",
+   "f": "narr",
+   "a": 6.15,
+   "b": 11.75,
+   "text": "Then the news out of Boston turned bad. Mom was down there. She never came home."
+  },
+  {
+   "t": 13.6,
+   "who": "keem",
+   "f": "keem",
+   "a": 0.0,
+   "b": 3.45,
+   "text": "Dad, it's Boston. That's like three hours away."
+  },
+  {
+   "t": 17.3,
+   "who": "marcus",
+   "f": "dad",
+   "a": 0.0,
+   "b": 5.45,
+   "text": "Then it gets here in three hours. Hold that board, son."
+  },
+  {
+   "t": 23.0,
+   "who": "nia",
+   "f": "nia",
+   "a": 0.0,
+   "b": 2.3,
+   "text": "Biscuit says you're paranoid."
+  },
+  {
+   "t": 25.5,
+   "who": "marcus",
+   "f": "dad",
+   "a": 7.6,
+   "b": 9.4,
+   "text": "Biscuit can hold a board too."
+  },
+  {
+   "t": 28.0,
+   "who": "narrator",
+   "f": "narr",
+   "a": 18.75,
+   "b": 24.35,
+   "text": "The phones went quiet. The radio went quiet. Then… the whole town did."
+  },
+  {
+   "t": 34.0,
+   "who": "narrator",
+   "f": "narr",
+   "a": 24.55,
+   "b": 29.45,
+   "text": "Something was walking in from the highway. Something that used to be people."
+  },
+  {
+   "t": 40.0,
+   "who": "marcus",
+   "f": "dad",
+   "a": 11.1,
+   "b": 16.3,
+   "text": "I'm taking your sister to the Pells'. Two streets. Stay put."
+  },
+  {
+   "t": 45.4,
+   "who": "keem",
+   "f": "keem",
+   "a": 4.65,
+   "b": 6.4,
+   "text": "Dad. I'm good. Go."
+  },
+  {
+   "t": 47.4,
+   "who": "nia",
+   "f": "nia",
+   "a": 4.15,
+   "b": 7.25,
+   "text": "Bye, Keem. Don't eat my cereal."
+  },
+  {
+   "t": 50.7,
+   "who": "marcus",
+   "f": "dad",
+   "a": 17.45,
+   "b": 21.1,
+   "text": "Lock the door behind me. I'll be right back."
+  },
+  {
+   "t": 55.4,
+   "who": "narrator",
+   "f": "narr",
+   "a": 36.2,
+   "b": 41.12,
+   "text": "Keem was alone. And for the first time… Riverside was quiet."
+  }
+ ],
+ "sfx": [
+  {
+   "t": 0.0,
+   "f": "score",
+   "a": 0,
+   "b": 54.5,
+   "g": 0.55,
+   "fadeOut": 3.0
+  },
+  {
+   "t": 13.0,
+   "f": "sfx_hammer",
+   "a": 0,
+   "b": 4.05,
+   "g": 0.55
+  },
+  {
+   "t": 27.6,
+   "f": "sfx_radio",
+   "a": 0,
+   "b": 4.05,
+   "g": 0.45
+  },
+  {
+   "t": 33.6,
+   "f": "sfx_growls",
+   "a": 0,
+   "b": 6.03,
+   "g": 0.6
+  },
+  {
+   "t": 54.3,
+   "f": "sfx_door",
+   "a": 0,
+   "b": 4.05,
+   "g": 0.7
+  },
+  {
+   "t": 53.0,
+   "f": "sfx_heartgrowl",
+   "a": 0,
+   "b": 7.0,
+   "g": 0.4
+  },
+  {
+   "t": 60.4,
+   "f": "sting",
+   "a": 3.8,
+   "b": 10.0,
+   "g": 0.8,
+   "fadeOut": 2.0
+  }
+ ],
+ "shots": [
+  {
+   "id": "town",
+   "t": 0.0
+  },
+  {
+   "id": "sign",
+   "t": 6.5
+  },
+  {
+   "id": "board",
+   "t": 12.8
+  },
+  {
+   "id": "keemC",
+   "t": 16.9
+  },
+  {
+   "id": "niaC",
+   "t": 22.6
+  },
+  {
+   "id": "street",
+   "t": 27.5
+  },
+  {
+   "id": "horde",
+   "t": 33.5
+  },
+  {
+   "id": "porch",
+   "t": 39.0
+  },
+  {
+   "id": "alone",
+   "t": 54.6
+  },
+  {
+   "id": "title",
+   "t": 60.3
+  }
+ ]
+}

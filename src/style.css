@@ -290,3 +290,29 @@ body:not(.hudv2).driving #tbtns{bottom:150px}
 .glowArrow i{display:block;font-style:normal;font-size:22px;filter:drop-shadow(0 0 5px #ffb000);animation:glowArr 1s ease-in-out infinite}
 .glowArrow b{display:block;font-weight:800}
 @keyframes glowArr{50%{opacity:.55}}
+/* v1.9.25 opening cutscene */
+body.cine #hud,body.cine #touch,body.cine #wp,body.cine #prompt,body.cine #dlg,body.cine #xhair,body.cine #bark,body.cine #toast,body.cine #obj,body.cine #mini{display:none!important}
+body.cine #rotate{display:none!important}
+#cine{position:fixed;inset:0;z-index:40;pointer-events:auto;user-select:none;-webkit-user-select:none;transition:opacity .8s}
+#cine.out{opacity:0;pointer-events:none}
+#cine .bar{position:absolute;left:0;right:0;height:9vh;background:#000}
+#cine .bar.top{top:0}#cine .bar.bot{bottom:0}
+@media (orientation:portrait){#cine .bar{height:6vh}}
+#cine .blk{position:absolute;inset:0;background:#000;opacity:1;pointer-events:none}
+#cine .cap{position:absolute;left:50%;bottom:calc(9vh + 18px);transform:translateX(-50%);width:max-content;max-width:min(860px,86vw);text-align:center;color:#f1efe8;font:500 clamp(15px,2.3vw,24px)/1.35 Georgia,'Times New Roman',serif;text-shadow:0 2px 6px #000,0 0 2px #000;opacity:0;transition:opacity .25s;padding:4px 12px;border-radius:8px;background:rgba(0,0,0,.35)}
+#cine .cap.on{opacity:1}
+#cine .cap b{font:700 .78em system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;margin-right:.45em}
+#cine .cap .w-keem{color:#7ee0a8}#cine .cap .w-marcus{color:#f0c27a}#cine .cap .w-nia{color:#d9a6ff}
+#cine .cap i{color:#e6e2d6}
+@media (orientation:portrait){#cine .cap{bottom:calc(6vh + 24px);font-size:clamp(15px,4.4vw,22px)}}
+#cine .place{position:absolute;left:5vw;top:calc(9vh + 22px);color:#d8e6dc;font:600 clamp(12px,1.6vw,17px) system-ui,sans-serif;letter-spacing:.32em;opacity:0;transition:opacity 1.6s;text-shadow:0 2px 6px #000}
+#cine .place.on{opacity:.92}
+@media (orientation:portrait){#cine .place{top:calc(6vh + 18px);letter-spacing:.2em}}
+#cine .ttl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#000;opacity:0;transition:opacity 1.2s;pointer-events:none}
+#cine .ttl.on{opacity:1}
+#cine .t1{color:#e9efe9;font:800 clamp(30px,7vw,84px)/1 Georgia,serif;letter-spacing:.12em;text-shadow:0 0 28px rgba(120,230,170,.25);text-align:center}
+#cine .t2{color:#9fbfae;font:600 clamp(11px,1.6vw,16px) system-ui,sans-serif;letter-spacing:.35em;text-align:center}
+#cine .skip{position:absolute;right:max(16px,3vw);top:calc(9vh + 14px);background:rgba(0,0,0,.45);color:#e6efe9;border:1px solid rgba(255,255,255,.28);border-radius:20px;padding:7px 14px;font:600 13px system-ui,sans-serif;letter-spacing:.06em;cursor:pointer}
+@media (orientation:portrait){#cine .skip{top:calc(6vh + 12px)}}
+#cine .hint{position:absolute;left:50%;top:calc(9vh + 18px);transform:translateX(-50%);color:#e6efe9;font:600 13px system-ui,sans-serif;opacity:0;transition:opacity .2s;background:rgba(0,0,0,.45);padding:5px 12px;border-radius:14px}
+#cine .hint.on{opacity:1}

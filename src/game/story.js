@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { V, PI, rnd, dist2, $q, follow, goto, afterBoss, clearThen, fam, dadGun, dadTick, boss, raiders, rnd2, bindStory } from './chapters/helpers.js';
+import { runPrologue } from './prologue.js';
 import { NEW_STEPS, NEW_LOOT, SPEAKER_NAMES as NEW_SPEAKERS, CHAPTER_LIST } from './chapters/index.js';
 
 // Chapter 1 — The Day Before … it ends. Opens at night in Keem's boarded-up house in Riverside, Maine.
 export const STORY = [
   { id: 'house', cp: [18.1, 42.6, -PI / 2], obj: 'Wake up', hint: '', mood: 'night', beat: 0,
-    enter(g) { const D = g.stepData; D.phase = 'wake';
+    enter(g) { if (g.wantPrologue) { g.wantPrologue = false; runPrologue(g, () => g.loadStep(0)); return; } const D = g.stepData; D.phase = 'wake';
       g.cut = { anim: 'Sitting_Idle_Loop', cam: V(15.2, 1.7, 41), look: V(18.1, 0.9, 42.6), flash: false }; g.camera.position.copy(g.cut.cam);
       // the street scene outside the boarded window
       g.victim(3.5, 43.6, 'walt', 3);

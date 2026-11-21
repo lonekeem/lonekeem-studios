@@ -34,10 +34,10 @@ async function ensureGame() { if (game) return game; if (gamePromise) return gam
     game = g; hideLoading(); return g; })();
   return gamePromise; }
 function goLandscape() { if (document.body.dataset.dev !== 'touch' || window.Capacitor?.isNativePlatform?.()) return; try { const d = document.documentElement, rq = d.requestFullscreen || d.webkitRequestFullscreen; const p = !document.fullscreenElement && rq ? rq.call(d, { navigationUI: 'hide' }) : null; Promise.resolve(p).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape')).catch(() => {}); } catch (e) {} }
-async function play(step) { goLandscape(); showScreen(null); $('#stage').classList.remove('hidden'); state = 'loading';
+async function play(step, o = {}) { if (o.prologue) import('./game/prologue.js').then(m => m.preloadPrologue(audio)).catch(() => {}); goLandscape(); showScreen(null); $('#stage').classList.remove('hidden'); state = 'loading';
   if (step === SURVIVAL_STEP) showLoading({ message: 'SURVIVAL', title: 'Endless waves' });
   else { const ch = chOf(step || 0); showLoading({ ch, title: (CHAPTERS[ch] && CHAPTERS[ch].title) || 'Riverside' }); }
-  const g = await ensureGame(); g.save = save; g.settings = S; state = 'play'; audio.init(); hideLoading(); $('#hud').classList.remove('hidden'); $('#touch').classList.toggle('hidden', !(matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window)); g.start(step); }
+  const g = await ensureGame(); g.save = save; g.settings = S; state = 'play'; audio.init(); hideLoading(); $('#hud').classList.remove('hidden'); $('#touch').classList.toggle('hidden', !(matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window)); if (o.prologue) { g.wantPrologue = true; try { const m = await import('./game/prologue.js'); await Promise.race([m.preloadPrologue(audio), new Promise(r => setTimeout(r, 6000))]); } catch (e) { } } g.start(step); }
 function pause() { if (state !== 'play' || !game) return; state = 'paused'; game.paused = true; if (document.pointerLockElement) document.exitPointerLock(); writeSave(LS, save); showScreen('#pause'); back = '#pause'; }
 function resume() { state = 'play'; showScreen(null); if (game) { game.paused = false; game.last = performance.now(); } }
 addEventListener('keydown', e => { audio.init(); if ((e.key === 'Escape' || e.key === 'p' || e.key === 'P') && state !== 'play') { if (state === 'paused') resume(); else if (['shop', 'inv', 'settings'].includes(state) && back === '#pause') { state = 'paused'; showScreen('#pause'); } }
@@ -127,7 +127,7 @@ $('#btnWarn').onclick = async () => {
   hideLoading(); // preload quietly behind the intro
   await tracks.catch(() => {});
 };
-$('#btnNew').onclick = () => { if (loadSave(LS) && loadSave(LS).step > 0 && !confirm('Start a new game? Your current progress (level, cash, weapons) will be reset.')) return; clearSave(LS); save = defaultSave(); writeSave(LS, save); play(0); };
+$('#btnNew').onclick = () => { if (loadSave(LS) && loadSave(LS).step > 0 && !confirm('Start a new game? Your current progress (level, cash, weapons) will be reset.')) return; clearSave(LS); save = defaultSave(); writeSave(LS, save); play(0, { prologue: true }); };
 $('#btnEndNext').onclick = () => { save = loadSave(LS) || save; const nc = Math.min(LAST_CH, Math.max(2, save.ch || 2)); if (chOf(save.step || 0) !== nc) save.step = CH_START[nc]; writeSave(LS, save); play(save.step); };
 var CHN = CHAPTERS.map(c => (c ? c.title : '')), CHS = CHAPTERS.map(c => (c ? c.start : 0)); // derived from the chapter registry
 const unlockedCh = (s) => Math.max(s.maxCh || 1, s.done || (s.step || 0) >= 7 ? 2 : 1, s.done2 ? 3 : 1, CHS.findLastIndex(v => (s.step || 0) >= v) || 1);
@@ -172,7 +172,8 @@ $$('.back2').forEach(b => b.onclick = () => { $('#sSens').value = S.sens; showSc
 // boot
 document.body.dataset.dev = 'ontouchstart' in window ? 'touch' : 'kbd'; fadeIn();
 const qs = new URLSearchParams(location.search);
-if (qs.has('step')) { $('#warning').classList.add('hidden'); save = defaultSave(); if (qs.has('god')) Object.assign(save, { owned: ['fists', 'bat', 'pistol', 'rifle', 'shotgun'], items: ['backpack'], ammo: { light: 99, shell: 30, rifle: 200 }, grenades: 3, cash: 2000, cur: 'rifle' }); play(+qs.get('step')); }
+if (qs.has('prologue')) { $('#warning').classList.add('hidden'); save = defaultSave(); play(0, { prologue: true }); }
+else if (qs.has('step')) { $('#warning').classList.add('hidden'); save = defaultSave(); if (qs.has('god')) Object.assign(save, { owned: ['fists', 'bat', 'pistol', 'rifle', 'shotgun'], items: ['backpack'], ammo: { light: 99, shell: 30, rifle: 200 }, grenades: 3, cash: 2000, cur: 'rifle' }); play(+qs.get('step')); }
 window.__atqBooted = true;
 // (title background image removed in v1.3.1)
 
