@@ -78,12 +78,16 @@ export function updateAimPose(g, dt) {
   P.root.updateMatrixWorld(true);
   // 2) twist / pitch the spine so the shoulder -> hand line points at the target (two passes: the arm line is not on the spine axis)
   const sh = P.bone('DEF-upper_arm.R'), hd = P.bone('DEF-hand.R'), sp = [P.bone('DEF-spine.001'), P.bone('DEF-spine.002'), P.bone('DEF-spine.003')].filter(Boolean);
-  if (sh && hd && sp.length) for (let it = 0; it < 2; it++) {
-    sh.getWorldPosition(_a); hd.getWorldPosition(_b); const cur = _b.sub(_a); const goal = _w.copy(tgt).sub(_a);
-    const dy = wrapA(Math.atan2(goal.x, goal.z) - Math.atan2(cur.x, cur.z)); const yaw = Math.max(-1.75, Math.min(1.75, dy)) * W;
+  const sl = P.bone('DEF-upper_arm.L');
+  if (sh && hd && sl && sp.length) for (let it = 0; it < 2; it++) {
+    // yaw: square the chest (shoulder line) to the target, with the left shoulder ~15 deg forward like a real right-handed stance
+    sh.getWorldPosition(_b); sl.getWorldPosition(_a); const ax0 = _b.x - _a.x, az0 = _b.z - _a.z; const chestYaw = Math.atan2(az0, -ax0); // forward = up x (R - L)
+    _a.add(_b).multiplyScalar(.5); const goalYaw = Math.atan2(tgt.x - _a.x, tgt.z - _a.z) - .26;
+    const yaw = Math.max(-1.75, Math.min(1.75, wrapA(goalYaw - chestYaw))) * W;
     sp.forEach((b, i) => rotWorld(b, _up, yaw * [.3, .3, .4][i]));
+    // pitch: tilt the chest so the shoulder -> hand line rises / drops to the target
     sh.getWorldPosition(_a); hd.getWorldPosition(_b); const c2 = _b.sub(_a), gl = _w.copy(tgt).sub(_a); const ax = new THREE.Vector3(gl.z, 0, -gl.x).normalize(); // horizontal axis across the aim line
-    const pc = Math.atan2(c2.y, Math.hypot(c2.x, c2.z)), pg = Math.atan2(gl.y, Math.hypot(gl.x, gl.z)); const pit = Math.max(-1.2, Math.min(1.2, pc - pg)) * W;
+    const pc = Math.atan2(c2.y, Math.hypot(c2.x, c2.z)), pg = Math.atan2(gl.y, Math.hypot(gl.x, gl.z)); const pit = Math.max(-1.2, Math.min(1.2, pc - pg)) * W * .6;
     sp.slice(-2).forEach((b, i) => rotWorld(b, ax, pit * [.45, .55][i]));
   }
   P.root.updateMatrixWorld(true); if (P.syncSkin) P.syncSkin();
