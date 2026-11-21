@@ -5,7 +5,9 @@ export function install() {
   const title = document.getElementById('title');
   const show = () => title.classList.remove('hidden');
   b.addEventListener('click', async () => {
-    title.classList.add('hidden'); const mod = await import('./creator.js');
+    title.classList.add('hidden');
+    { const PR = await import('./profile.js'); if (!PR.hasProfile()) { const { openProfile } = await import('./profileui.js'); const p = await openProfile({ mode: 'auto' }); if (!p) { show(); return; } const tw = await import('./town/town.js'); tw.enterTown({ look: p.look, onExit: show }); return; } } // v1.9.28: first time online = sign in or create a profile
+    const mod = await import('./creator.js');
     const c = await mod.openCreator({ onClose: show, onPlay: async look => { const tw = await import('./town/town.js'); tw.enterTown({ look, onExit: show }); } });
     window.__mpCreator = c;
   });

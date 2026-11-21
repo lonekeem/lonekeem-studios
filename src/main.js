@@ -79,45 +79,11 @@ function renderShop() { $('#shopCash').textContent = `Cash: $${save.cash}  ·  L
   if (shopTab === 'sup') Object.entries(AMMO_SHOP).forEach(([k, a]) => { const have = k === 'grenade' ? save.grenades : k === 'med' ? save.meds : save.ammo[k] || 0;
     card(`<b>${a.name}</b><div class="st">You have: ${have}</div>`, [[`Buy $${a.price}`, () => { if (buy(a.price)) { if (k === 'grenade') save.grenades += a.n; else if (k === 'med') save.meds += a.n; else save.ammo[k] = (save.ammo[k] || 0) + a.n; } }, save.cash < a.price]]); }); }
 // ---------- customizer ----------
-// v1.9.28 "My Character": story Keem always keeps his canon look; this screen dresses the player's own MULTIPLAYER avatar
-// (saved to atq.mp.look.v1, sent to other players in the town). Outfits are bought with the shared cash; selections persist in atq3.look.
-let cust = null;
-async function openCustom(from) { back = from; state = 'custom'; showScreen('#custom'); $('#cList').innerHTML = '<p class="small">Loading…</p>';
-  const [{ OUTFITS, OUTFIT, HAIRS, HAIR_COLORS, SKINS, FACES, BEARDS, EYES, DEFAULT_LOOK }, THREE, AV, { dress }, { animate }, K, SL] = await Promise.all([import('./game/looks.js'), import('three'), import('./mp/avatar.js'), import('./mp/dress.js'), import('./mp/anim.js'), import('./mp/look.js'), import('./mp/storeLook.js')]);
-  SL.migrateOnce(OUTFIT); save.outfits = save.outfits || ['classic'];
-  const DEF = Object.assign({}, DEFAULT_LOOK, { outfit: 'classic', glasses: false }); let L; try { L = Object.assign({}, DEF, JSON.parse(LS.getItem(SL.SEL_KEY) || '{}')); } catch { L = Object.assign({}, DEF); }
-  const base = K.loadLook() || K.defaultLook('mp_m1'); const touched = new Set(K.loadLook() ? [] : SL.ALL_PARTS); let M = base;
-  if (!cust) { const cv = $('#cPrev'); const r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); r.setPixelRatio(Math.min(2, devicePixelRatio)); r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping;
-    const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight('#dfe6ff', '#5a5448', 1.15)); const d = new THREE.DirectionalLight('#fff4e6', 2.3); d.position.set(1.6, 2.6, 3); sc.add(d); const d2 = new THREE.DirectionalLight('#9bb4ff', .9); d2.position.set(-2, 2, -2.5); sc.add(d2);
-    const cam = new THREE.PerspectiveCamera(30, 0.78, 0.05, 50); cust = { r, sc, cam, av: null, rot: 0.35, zoom: 0, drag: null, clock: new THREE.Clock(), t: 0, gen: 0 };
-    cv.addEventListener('pointerdown', e => { cust.drag = e.clientX; cv.setPointerCapture(e.pointerId); }); cv.addEventListener('pointermove', e => { if (cust.drag != null) { cust.rot += (e.clientX - cust.drag) * 0.012; cust.drag = e.clientX; } }); cv.addEventListener('pointerup', () => { cust.drag = null; });
-    const loop = () => { if (state === 'custom') { const w = cv.clientWidth, h = cv.clientHeight; if (w && (cv.width !== w * cust.r.getPixelRatio() | 0)) { cust.r.setSize(w, h, false); cust.cam.aspect = w / h; cust.cam.updateProjectionMatrix(); }
-        const dt = Math.min(.05, cust.clock.getDelta()); cust.t += dt; if (cust.av) { cust.av.root.rotation.y = cust.rot; try { animate(cust.av, cust.t, 0); } catch (e) { /* ignore */ } } const zf = cust.tab === 'hair' || cust.tab === 'face' || cust.tab === 'skin' ? 1 : 0; cust.zoom += (zf - cust.zoom) * Math.min(1, dt * 5);
-        const s = cust.av ? cust.av.root.scale.y : 1; cust.cam.position.set(0, (1.0 + cust.zoom * 0.52) * s, 3.7 - cust.zoom * 2.0); cust.cam.lookAt(0, (0.9 + cust.zoom * 0.58) * s, 0); cust.r.render(cust.sc, cust.cam); } requestAnimationFrame(loop); }; loop(); }
-  const rebuild = async () => { M = SL.applySel(base, L, [...touched], OUTFIT); const gen = ++cust.gen; const tpl = await AV.loadBase(M.base); if (gen !== cust.gen) return;
-    if (!cust.av || cust.av.tpl !== tpl) { if (cust.av) { cust.sc.remove(cust.av.root); cust.av.dispose(); } cust.av = new AV.Avatar(tpl); cust.sc.add(cust.av.root); }
-    try { dress(cust.av, M); } catch (e) { console.error('dress failed', e); } };
-  const owned = (o) => !o.price || save.outfits.includes(o.id);
-  cust.tab = cust.tab || 'outfit';
-  const render = () => { $('#cCash').textContent = `Cash: $${save.cash} · Level ${save.level} · Your multiplayer character`; const T = $('#cTabs'); T.innerHTML = '';
-    [['outfit', 'Outfits'], ['hair', 'Hair'], ['face', 'Face'], ['skin', 'Skin & eyes'], ['extra', 'Extras']].forEach(([k, n]) => { const b = document.createElement('button'); b.textContent = n; b.className = cust.tab === k ? 'on' : ''; b.onclick = () => { cust.tab = k; render(); }; T.appendChild(b); });
-    const Lst = $('#cList'); Lst.innerHTML = ''; const btn = (html, on, fn, cls = '', part = cust.tab) => { const b = document.createElement('button'); b.innerHTML = html; b.className = (on ? 'on ' : '') + cls; b.onclick = () => { if (fn() === false) return; touched.add(part); rebuild(); render(); }; Lst.appendChild(b); };
-    const sw = (key, arr) => arr.forEach(c => btn(`<span class="sw" style="background:${c}"></span>`, L[key] === c, () => { L[key] = c; }, 'swb'));
-    const head = (t) => { const h = document.createElement('div'); h.className = 'small'; h.style.gridColumn = '1/-1'; h.textContent = t; Lst.appendChild(h); };
-    if (cust.tab === 'outfit') OUTFITS.forEach(o => { const own = owned(o), lockLv = o.lvl && save.level < o.lvl;
-      btn(`<b>${o.name}</b><br><small>${own ? (L.outfit === o.id ? 'Wearing' : 'Owned') : lockLv ? `🔒 Level ${o.lvl} · $${o.price}` : `$${o.price}`}</small>`, L.outfit === o.id, () => {
-        if (!own) { if (lockLv) { toastC(`Reach level ${o.lvl} to unlock ${o.name}.`); return false; } if (save.cash < o.price) { toastC(`Need $${o.price} — loot more cash.`); return false; } if (!confirm(`Buy ${o.name} for $${o.price} (in-game cash)?`)) return false; save.cash -= o.price; save.outfits.push(o.id); writeSave(LS, save); audio.pickup && audio.pickup(); }
-        L.outfit = o.id; }, own ? '' : 'lock'); });
-    if (cust.tab === 'hair') { Object.entries(HAIRS).forEach(([k, n]) => btn(n, L.hair === k, () => { L.hair = k; })); head('Hair colour'); sw('hairColor', HAIR_COLORS); }
-    if (cust.tab === 'face') { Object.entries(FACES).forEach(([k, f]) => btn(f.name === 'Keem' ? 'Classic' : f.name, L.face === k, () => { L.face = k; })); head('Facial hair'); Object.entries(BEARDS).forEach(([k, n]) => btn(n, L.beard === k, () => { L.beard = k; })); }
-    if (cust.tab === 'skin') { head('Skin tone'); sw('skin', SKINS); head('Eye colour'); sw('eyes', EYES); }
-    if (cust.tab === 'extra') { btn(`Backpack: <b>${L.pack ? 'On' : 'Off'}</b>`, L.pack, () => { L.pack = !L.pack; }); btn(`Glasses: <b>${L.glasses ? 'On' : 'Off'}</b>`, L.glasses, () => { L.glasses = !L.glasses; });
-      head('Build'); [[.92, 'Slim'], [1, 'Average'], [1.1, 'Stocky']].forEach(([v, n]) => btn(n, L.build === v, () => { L.build = v; })); }
-  };
-  const toastC = (t) => { $('#cCash').textContent = t; setTimeout(() => { if (state === 'custom') render(); }, 2200); };
-  $('#cSave').onclick = () => { LS.setItem(SL.SEL_KEY, JSON.stringify(L)); if (touched.size) K.saveLook(SL.applySel(K.loadLook() || base, L, [...touched], OUTFIT)); writeSave(LS, save); if (back === '#pause') { state = 'paused'; showScreen('#pause'); } else if (back === '#shop') openShop(); else { state = 'title'; showScreen('#title'); } };
-  $('#cReset').onclick = () => { L = Object.assign({}, DEF); SL.ALL_PARTS.forEach(p => touched.add(p)); rebuild(); render(); };
-  await rebuild(); render(); }
+// v1.9.28: story Keem always keeps his canon look. "My Character" opens the player PROFILE + character creator (src/mp/profileui.js):
+// the player's own multiplayer survivor, paid for with the shared cash. Data lives behind src/mp/profile.js (getProfile / saveProfile).
+async function openCustom(from) { back = from; state = 'profile';
+  const { openProfile } = await import('./mp/profileui.js'); await openProfile({ mode: 'auto' }); save = loadSave(LS) || save;
+  if (from === '#pause') { state = 'paused'; showScreen('#pause'); } else if (from === '#shop') openShop(); else { state = 'title'; showScreen('#title'); } }
 // ---------- inventory ----------
 function openInv() { state = 'inv'; renderInv(); showScreen('#inv'); }
 function renderInv() { const s = save; const need = xpFor(s.level);
