@@ -9,7 +9,7 @@ await ctx.addInitScript(() => localStorage.setItem('atq3.settings', JSON.stringi
 const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
 await p.goto(`http://localhost:${port}/?step=3&god${process.env.Q || ""}`, { waitUntil: 'load' });
 await p.waitForFunction(() => window.__atq && window.__atq.game && window.__atq.game.running, null, { timeout: 120000 }); await p.waitForTimeout(2000);
-const r = await p.evaluate(async ([gun, dist, aim, move, shots]) => { const g = window.__atq.game, dt = 1 / 60, I = g.input; g.paused = true; g.god = true;
+const runOne = (gun, dist, aim, move, shots) => p.evaluate(async ([gun, dist, aim, move, shots]) => { const g = window.__atq.game, dt = 1 / 60, I = g.input; g.paused = true; g.god = true;
   for (let i = 0; i < 80; i++) g.skipLine && g.skipLine(); g.dlgCur = null; g.cut = null;
   const S = g.save; if (!S.owned.includes(gun)) S.owned.push(gun); g.equip(gun, true);
   const step = (n) => { for (let i = 0; i < n; i++) { I.poll(dt); g.update(dt, dt); g.render(dt); } };
@@ -32,8 +32,8 @@ const r = await p.evaluate(async ([gun, dist, aim, move, shots]) => { const g = 
   if (move === 'fwd') I.stick.set(0, -0.6); else if (move === 'strafe') I.stick.set(0.8, 0); else if (move === 'back') I.stick.set(0, 0.6);
   let fired = 0, mz0 = S.mags[gun], log = [];
   const ang = []; const W = new g.camera.position.constructor();
-  for (let k = 0; k < 2000 && fired < shots; k++) { S.mags[gun] = 999; g.cam.pitch = window.__pitch; g.cam.yaw = window.__yaw; /* the player keeps the crosshair centred on the chest (recoil re-centred every frame) */  g.state.reload = 0; I.btn.atk = true; I.poll(dt); g.update(dt, dt); g.render(dt);
-    if (g.save.mags[gun] < 999) { fired++;
+  let shotHits = 0; for (let k = 0; k < 2000 && fired < shots; k++) { const hb = hits; S.mags[gun] = 999; g.cam.pitch = window.__pitch; g.cam.yaw = window.__yaw; /* the player keeps the crosshair centred on the chest (recoil re-centred every frame) */  g.state.reload = 0; I.btn.atk = true; if (g.state.fireCd <= 0) I.edge.atk = true; /* semi-auto guns: a fresh trigger pull whenever the gun is ready */ I.poll(dt); g.update(dt, dt); g.render(dt);
+    if (g.save.mags[gun] < 999) { fired++; if (hits > hb) shotHits++;
       // gun barrel direction vs camera forward (yaw diff, degrees)
       const m = g.weaponMeshes[gun]; const mzO = m.getObjectByName('muzzle'); const a = new g.camera.position.constructor(), bb = a.clone(); m.localToWorld(a.set(0, .02, 0)); mzO.getWorldPosition(bb); const d = bb.clone().sub(a).normalize();
       const cf = new g.camera.position.constructor(); g.camera.getWorldDirection(cf); const yd = (Math.atan2(d.x, d.z) - Math.atan2(cf.x, cf.z)) * 57.3; ang.push(((yd + 540) % 360) - 180);
@@ -41,8 +41,10 @@ const r = await p.evaluate(async ([gun, dist, aim, move, shots]) => { const g = 
     if (fired >= 1 && fired === 1 && !window.__snap) { window.__snap = 1; } }
   I.btn.atk = false; I.stick.set(0, 0);
   const rld = document.querySelector('#rld'); const at = document.querySelector('#ammoTxt').textContent;
-  return { fired, hits, heads, rate: +(hits / Math.max(1, fired) * 100).toFixed(1), rig: ss.look && ss.look.rig, zscale: +(ss.scale||1).toFixed(2), zanim: ss.curName, zd: +Math.hypot(ss.root.position.x - T.x, ss.root.position.z - T.z).toFixed(2), gunYawVsCam: ang.slice(0, 5).map(v => +v.toFixed(1)), rootRot: +g.player.root.rotation.y.toFixed(2), camYaw: +g.cam.yaw.toFixed(2), anim: g.player.curName, pitch: +window.__pitch.toFixed(2), locoOn: g.player.locoOn, rldOn: rld && rld.classList.contains('on'), ammoTxt: at, first: log[0], spd: +(g.state.spd || 0).toFixed(2) };
-}, [gun, +dist, aim === '1', move, +shots]);
-console.log(JSON.stringify(r));
+  return { fired, hits, heads, rate: +(shotHits / Math.max(1, fired) * 100).toFixed(1), pelletHits: hits, rig: ss.look && ss.look.rig, zscale: +(ss.scale||1).toFixed(2), zanim: ss.curName, zd: +Math.hypot(ss.root.position.x - T.x, ss.root.position.z - T.z).toFixed(2), gunYawVsCam: ang.slice(0, 5).map(v => +v.toFixed(1)), rootRot: +g.player.root.rotation.y.toFixed(2), camYaw: +g.cam.yaw.toFixed(2), anim: g.player.curName, pitch: +window.__pitch.toFixed(2), locoOn: g.player.locoOn, rldOn: rld && rld.classList.contains('on'), ammoTxt: at, first: log[0], spd: +(g.state.spd || 0).toFixed(2) };
+}, [gun, +dist, aim, move, +shots]);
+const out = [];
+for (const G of gun.split(',')) for (const A of aim.split(',')) for (const M of move.split(',')) for (const D of dist.split(',')) { const r = await runOne(G, +D, A === '1', M, +shots); const row = { gun: G, dist: +D, ads: A === '1', move: M, fired: r.fired, hits: r.hits, rate: r.rate, rig: r.rig, gunYawVsCam: r.gunYawVsCam[0], spd: r.spd, rldOn: r.rldOn }; out.push(row); console.log(JSON.stringify(row)); }
+const r = out[out.length - 1] || {};
 if (shot) { await p.evaluate(() => { const g = window.__atq.game; g.input.btn.atk = true; for (let i = 0; i < 3; i++) { g.input.poll(1 / 60); g.update(1 / 60, 1 / 60); } g.mT = 1; g.trT = 1; g.input.btn.atk = false; }); await p.waitForTimeout(400); await p.screenshot({ path: shot, timeout: 120000 }); }
 console.log('errs', errs.slice(0, 3)); await b.close();
