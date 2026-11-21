@@ -69,7 +69,7 @@ export const STORY = [
 
   { id: 'boss', cp: [0.5, -93.5, PI], obj: 'Defeat Big Gus', hint: 'Roll away from his slam (red ring) and his charge. Headshots hurt him most.', mood: 'tense', beat: 2,
     enter(g) { const D = g.stepData; const dad = g.npc('marcus', 'marcus', 3.5, -92.5, PI, 'Idle_Loop'); const nia = g.npc('nia', 'nia', 4.2, -91.6, PI, 'Idle_Loop', .62);
-      const b = g.spawnZ(-0.2, -103.5, { boss: true, hp: 900, scale: 1.5, runner: false }); b.speed = 1.7; b.cd = 2; g.audio.roar && setTimeout(() => { g.audio.roar(); g.audio.shout('keem_boss', true); }, 1200); b.aggro = 99; b.mat.userData.u.uShirt.value.set('#e8e2d2'); b.mat.userData.u.uBlood.value = g.settings.gore ? 1.3 : .2; g.boss = b; $q('#bossn').textContent = 'BIG GUS — the barber';
+      const b = g.spawnZ(-0.2, -103.5, { boss: true, hp: 900, scale: 1.5, runner: false }); b.speed = 1.7; b.cd = 2; g.audio.roar && setTimeout(() => { g.audio.roar(b); g.audio.shout('keem_boss', true); }, 1200); b.aggro = 99; b.mat.userData.u.uShirt.value.set('#e8e2d2'); b.mat.userData.u.uBlood.value = g.settings.gore ? 1.3 : .2; g.boss = b; $q('#bossn').textContent = 'BIG GUS — the barber';
       g.horde(4, [[-4, -104], [4, -104]]); D.hordeAll = true; g.wpTarget = null;
       g.say([['keem', "Hold up… is that Gus? From the barbershop?"], ['marcus', 'Gus was always big. That is NOT {fuckin\' |}normal big.'], ['keem', "He gave me the worst {damn |}fade of my life. This is personal."]]); },
     update(g) { if (g.boss && g.boss.dead && !g.stepData.won) { g.stepData.won = true; afterBoss(g, () => g.say([['keem', "Lineup's crooked, Gus. Shoulda let me cut it."], ['nia', "Ewww, that was so gross. …Okay, that was kinda fire. Do it again!"], ['marcus', 'Bridge. Now. {Move your ass|Move it}!']], () => goto(g, 6, 400))); } } },
@@ -361,7 +361,7 @@ export const STORY = [
   { id: 'c11_boss', ch: 11, cp: [0, -2640, PI], obj: 'Kill Subject One', hint: 'He is huge. Explosives and headshots. Roll when he leaps.', mood: 'tense', beat: 3,
     enter(g) { const D = g.stepData; fam(g, D, -2640, 0, true); const b = boss(g, 0, -2672, 5400, '#3a5a3a', 'SUBJECT ONE — the first volunteer'); b.root.scale.setScalar(2.4); b.speed = 2.4;
       D.hordeAll = true; g.say([['vance', "Subject One. My first volunteer. He was a firefighter."], ['keem', "You did this to a firefighter?"], ['vance', "I did it for everybody. Show me what your father's son can do."]]); },
-    update(g) { const D = g.stepData, b = g.boss; if (b && !b.dead) { if (!D.p2 && b.hp < 2700) { D.p2 = true; g.shake(1); g.audio.roar && g.audio.roar(); b.speed = 3.4; g.horde(8, [[-14, -2660], [14, -2662]], { runner: true, aggro: 99 }); g.say([['nia', "He's MAD now!"], ['keem', "Yeah, I see him. Stay down."]]); } }
+    update(g) { const D = g.stepData, b = g.boss; if (b && !b.dead) { if (!D.p2 && b.hp < 2700) { D.p2 = true; g.shake(1); g.audio.roar && g.audio.roar(b); b.speed = 3.4; g.horde(8, [[-14, -2660], [14, -2662]], { runner: true, aggro: 99 }); g.say([['nia', "He's MAD now!"], ['keem', "Yeah, I see him. Stay down."]]); } }
       if (b && b.dead && !D.won) { D.won = true; afterBoss(g, () => goto(g, 54, 800)); } } },
   { id: 'c11_end', ch: 11, cp: [0, -2650, PI], obj: '', hint: '', mood: 'sad', beat: 0,
     enter(g) { g.npc('marcus', 'marcus', 1.4, -2654, PI, 'Idle_Loop'); g.npc('nia', 'nia', -1.4, -2653, PI, 'Idle_Loop', .62); g.npc('vance', null, 0, -2664, 0, 'Idle_Loop');

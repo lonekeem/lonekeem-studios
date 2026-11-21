@@ -201,6 +201,17 @@ export const vhash = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h
 const BASE = (import.meta.env && import.meta.env.BASE_URL || '/') + 'sfx/';
 const FAM = { gun_pistol: 3, gun_rifle: 3, gun_shotgun: 3, gun_revolver: 3, gun_smg: 3, gun_sniper: 3, thunder: 3, z_growl: 6, z_moan: 4, z_attack: 3, z_eat: 3, z_chew: 4, z_tear: 3, scream: 4,
   step_concrete: 5, step_grass: 5, step_wood: 5, punch: 5, bat: 5, flesh: 5, metal: 5, shell: 5, plank: 5, glass: 5, cloth: 2, step_mud: 5, step_asphalt: 5, z_shuffle: 4, breath: 4, jump: 2, land: 2, squelch: 3 };
+// Per-profile ElevenLabs zombie vocals (public/sfx/zvo_{profile}_{kind}{i}.mp3). Missing files fall back to the old synth banks.
+const ZVO_CIV = { idle: 3, alert: 2, attack: 3, hurt: 2, death: 2 };
+const ZVO_TEEN = { idle: 2, alert: 2, attack: 2, hurt: 2, death: 2 };
+const ZVO_BOSS = { idle: 2, alert: 2, attack: 3, hurt: 2, death: 2, roar: 3 };
+[['male', ZVO_CIV], ['female', ZVO_CIV], ['elder', ZVO_CIV], ['brute', ZVO_CIV], ['gurgler', ZVO_CIV],
+  ['teen_m', ZVO_TEEN], ['teen_f', ZVO_TEEN], ['boss_m', ZVO_BOSS], ['boss_f', ZVO_BOSS],
+  ['feed', { eat: 3, chew: 3 }]].forEach(([p, cats]) => { for (const k in cats) FAM['zvo_' + p + '_' + k] = cats[k]; });
+const ZVO_CD = { idle: 3.4, alert: 3.8, attack: 1.15, hurt: .5, death: 0, eat: 2.2, chew: 1.7, roar: 3.2 };
+const ZVO_MAXD = { idle: 36, alert: 46, attack: 26, hurt: 24, death: 42, eat: 16, chew: 16, roar: 70 };
+const ZVO_CONCUR = { idle: 3, alert: 2, attack: 3, hurt: 3, death: 3, eat: 2, chew: 2, roar: 2 };
+const ZVO_VOL = { idle: 1, alert: 1, attack: 1, hurt: 1, death: 1, eat: 1, chew: 1, roar: 1 };
 const ONE = ['explosion', 'rain_loop', 'truck_loop', 'boss_roar', 'reload_out', 'reload_in', 'door_open', 'creak', 'knife', 'coins', 'chop', 'roll', 'alarm_loop', 'wind_loop', 'tire_loop'];
 const P = AudioSys.prototype, O = {};
 ['init', 'applyVolumes', 'setMood', 'ambientTick', 'shot', 'hit', 'swing', 'hurt', 'groan', 'thud', 'crash', 'explode', 'pickup', 'engine', 'scream', 'click', 'splat', 'glass'].forEach(k => O[k] = P[k]);
@@ -258,9 +269,47 @@ P.shot = function (kind = 'pistol') { kind = { saw: 'rifle', lever: 'sniper', au
 P.hit = function () { if (!this.play(Math.random() < .5 ? 'punch' : 'bat', { vol: .9 })) O.hit.call(this); this.play('flesh', { vol: .5 }); };
 P.swing = function () { if (!this.play('cloth', { vol: .5, rate: 1.4 })) O.swing.call(this); };
 P.hurt = function () { O.hurt.call(this); this.play('punch', { vol: .6, rate: .8 }); if (Math.random() < .4) this.shout('keem_hurt'); };
-P.groan = function (vol = .1) { const k = vol >= .2 ? 'z_attack' : Math.random() < .5 ? 'z_moan' : 'z_growl'; if (!this.play(k, { vol: Math.min(1, vol * 5), verb: true, rate: .92, jit: .12 })) O.groan.call(this, vol); };
-P.zAttack = function (vol = .5) { this.play('z_attack', { vol, jit: .12 }); };
-P.roar = function () { if (!this.play('boss_roar', { vol: 1, verb: true })) O.groan.call(this, .3); };
+P._zvoBump = function (kind) { this._zvoN = this._zvoN || {}; this._zvoN[kind] = (this._zvoN[kind] || 0) + 1; };
+P._zvoDrop = function (kind) { if (this._zvoN) this._zvoN[kind] = Math.max(0, (this._zvoN[kind] || 1) - 1); };
+P._zvoOf = function (z, kind) {
+  if (!z) return { profile: kind === 'roar' ? 'boss_m' : 'male', pitch: 1 };
+  if (z.boss && z.zvo && z.zvo.profile !== 'boss_m' && z.zvo.profile !== 'boss_f')
+    z.zvo.profile = (z.zvo.fem || (z.look && (z.look.fem || z.look.rig === 'zombie_office'))) ? 'boss_f' : 'boss_m';
+  return z.zvo || { profile: 'male', pitch: 1 };
+};
+P.zVocal = function (kind, z, vol = .5, o = {}) {
+  if (!this.ctx) return null;
+  const now = this.ctx.currentTime;
+  const info = this._zvoOf(z, kind);
+  let prof = info.profile, pitch = info.pitch || 1;
+  if (kind === 'eat' || kind === 'chew') prof = 'feed';
+  if (kind === 'roar' && prof !== 'boss_m' && prof !== 'boss_f') prof = info.fem ? 'boss_f' : 'boss_m';
+  const fam = 'zvo_' + prof + '_' + kind;
+  if (z && kind !== 'death') { z._zvoCd = z._zvoCd || {}; if (z._zvoCd[kind] && now < z._zvoCd[kind]) return DUMMY; }
+  this._zvoN = this._zvoN || {};
+  if ((this._zvoN[kind] || 0) >= (ZVO_CONCUR[kind] || 2)) return DUMMY;
+  const maxD = o.maxD || ZVO_MAXD[kind] || 40;
+  const s = this.play(fam, { vol: vol * (ZVO_VOL[kind] || 1), verb: kind !== 'idle' && kind !== 'eat', rate: pitch, jit: o.jit ?? .05, maxD, ref: kind === 'roar' ? 6 : 2.5, roll: kind === 'idle' ? 1.3 : 1.1 });
+  if (!s) return null;
+  if (s.dummy) return s;
+  if (z) z._zvoCd[kind] = now + (ZVO_CD[kind] || 2) * (.8 + Math.random() * .45);
+  this._zvoBump(kind);
+  const prev = s.onended;
+  s.onended = () => { this._zvoDrop(kind); if (typeof prev === 'function') prev(); };
+  return s;
+};
+P.groan = function (vol = .1, z) {
+  const kind = vol >= .2 ? ((z && z.boss) ? 'roar' : 'attack') : vol >= .1 ? 'alert' : 'idle';
+  const v = Math.min(1, vol * 5);
+  if (this.zVocal(kind, z, v)) return;
+  const k = vol >= .2 ? 'z_attack' : Math.random() < .5 ? 'z_moan' : 'z_growl';
+  const rate = (z && z.zvo && z.zvo.pitch) || .92;
+  if (!this.play(k, { vol: v, verb: true, rate, jit: .12 })) O.groan.call(this, vol);
+};
+P.zAttack = function (vol = .5, z) { if (!this.zVocal('attack', z, vol)) this.play('z_attack', { vol, jit: .12, rate: (z && z.zvo && z.zvo.pitch) || 1 }); };
+P.roar = function (z) { if (!this.zVocal('roar', z || (typeof this.bossZ === 'function' ? this.bossZ() : null), 1)) { if (!this.play('boss_roar', { vol: 1, verb: true, rate: (z && z.zvo && z.zvo.pitch) || 1 })) O.groan.call(this, .3); } };
+P.zHurt = function (z, vol = .55) { return this.zVocal('hurt', z, vol); };
+P.zDeath = function (z, vol = .7) { return this.zVocal('death', z, vol); };
 P.thud = function () { O.thud.call(this); this.play('plank', { vol: .7, rate: .8 }); };
 P.crash = function () { if (!this.play('metal', { vol: 1, rate: .8 })) return O.crash.call(this); this.play('glass', { vol: .8 }); O.thud.call(this); };
 P.glass = function () { if (!this.play('glass', { vol: .9 })) O.glass.call(this); };
@@ -274,9 +323,9 @@ P.door = function () { this.play('door_open', { vol: .8 }); };
 P.pickup = function () { O.pickup.call(this); this.play('coins', { vol: .35 }); if (Math.random() < .2) this.shout('keem_pickup'); };
 P.scream = function (vol = .12) { if (!this.play('scream', { vol: Math.min(1, vol * 6), verb: true })) O.scream.call(this, vol); };
 P.victimScream = function (vol = .12) { this.scream(vol); if (Math.random() < .7) setTimeout(() => this.shout(Math.random() < .5 ? 'npcf_help' : 'npcm_help', true), 900); };
-P.chew = function (vol = .3) { if (!this.play('z_chew', { vol, jit: .12 })) this.eat(vol * .8); };
+P.chew = function (vol = .3, z) { this.zVocal('chew', z, vol * .7); if (!this.play('z_chew', { vol, jit: .12 })) this.eat(vol * .8, z); };
 P.tear = function (vol = .3) { if (!this.play('z_tear', { vol, jit: .1 })) this.splat(); };
-P.eat = function (vol = .3) { this.play('z_eat', { vol, jit: .1 }); };
+P.eat = function (vol = .3, z) { this.zVocal('eat', z, vol * .65); this.play('z_eat', { vol, jit: .1 }); };
 P.thunder = function (vol = .7) { if (!this.play('thunder', { vol, verb: true, jit: .1, delay: Math.random() * 1.5 })) this.boom(); };
 P.rain = function (on, vol = .16) { if (!this.ctx) return; this.rainOn = on; const t = this.ctx.currentTime;
   if (on && !this.rainSrc) { this.rainSrc = this.play('rain_loop', { loop: true, vol: 0, bus: this.amb, jit: 0, flat: true }); this.wind(true, .1); if (!this.rainSrc) { setTimeout(() => this.rain(on, vol), 800); return; } }
