@@ -91,3 +91,6 @@ revoke all on function public.lb_submit(uuid, text, text, int, int, int, int) fr
 revoke all on function public.lb_top(text, int, uuid) from public;
 grant execute on function public.lb_submit(uuid, text, text, int, int, int, int) to anon, authenticated;
 grant execute on function public.lb_top(text, int, uuid) to anon, authenticated;
+
+-- advisor: pin search_path
+alter function atq_mp.lb_clean_name(text) set search_path = pg_catalog;

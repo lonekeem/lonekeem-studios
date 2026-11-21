@@ -21,7 +21,7 @@ export function initMenu() {
 
 // Survival stats for the worldwide leaderboard: kills, headshots and wave of each run (counted here, no game.js changes).
 export function trackGame(g, isSurvivalStep) {
-  if (!g || g.__lbTracked) return; g.__lbTracked = true; let run = null;
+  if (!g || g.__lbTracked) return; g.__lbTracked = true; let run = null; g.__lbRun = () => run; // (debug/test hook)
   const finish = why => { if (!run || run.sent) return; const r = { kills: Math.max(0, (g.save.kills || 0) - run.k0), hs: run.hs, wave: (g.stepData && g.stepData.wave) || 0, secs: (performance.now() - run.t0) / 1000 }; run.sent = true;
     if (r.kills <= 0 && r.wave <= 0) return;
     world().then(m => m.submitRun(r)).then(d => { LSset('atq.lbLast', JSON.stringify({ at: Date.now(), ...r, rank: d && d.rank })); }).catch(e => { console.warn('[leaderboard] submit failed (' + why + '):', e.message); LSset('atq.lbPending', JSON.stringify(r)); }); };
