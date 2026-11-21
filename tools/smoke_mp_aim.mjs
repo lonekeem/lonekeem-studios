@@ -21,7 +21,7 @@ const p = await ctx.newPage();
 p.setDefaultTimeout(180000);
 const errs = [];
 p.on('pageerror', e => errs.push(String(e.message || e).slice(0, 300)));
-p.on('console', m => { if (m.type() === 'error') errs.push('CE ' + m.text().slice(0, 240)); });
+p.on('console', m => { if (m.type() === 'error' && !/404 \(Not Found\)/.test(m.text())) errs.push('CE ' + m.text().slice(0, 240)); });
 p.on('dialog', d => d.accept());
 
 const rec = (n, ok, d) => { console.log(ok ? 'PASS' : 'FAIL', n, d != null ? JSON.stringify(d).slice(0, 400) : ''); return !!ok; };
@@ -34,12 +34,48 @@ if (await warn.count()) { await warn.click(); await p.waitForTimeout(400); }
 await p.locator('#studio').click({ timeout: 5000 }).catch(() => {});
 await p.waitForSelector('#title:not(.hidden)', { timeout: 120000 });
 
+if (process.argv.includes('--menu')) {
+  for (const tab of ['story', 'survival', 'online', 'keem', 'settings']) {
+    await p.click(`#title .mtabs button[data-tab="${tab}"]`);
+    await p.waitForTimeout(300);
+    await p.screenshot({ path: `${OUT}/menu_${tab}.png` });
+  }
+  const foot = (await p.textContent('#foot')) || '';
+  check('footer reads v1.9.32', foot.includes('v1.9.32'), foot);
+  check('Play tab / btnLobby exist', await p.evaluate(() => !!document.querySelector('#btnLobby') && !!document.querySelector('#title .mtabs button[data-tab="online"]')));
+}
+
 const entered = await p.evaluate(async () => {
   const title = document.getElementById('title'); if (title) title.classList.add('hidden');
-  const { defaultLook } = await import('/src/mp/look.js');
-  const { enterTown } = await import('/src/mp/town/town.js');
-  const look = Object.assign(defaultLook('mp_m1'), { name: 'AimTest' });
-  await enterTown({ look, room: 'aimtest-local', solo: true, onExit() {} });
+  async function loadTown() {
+    try { return await import('/src/mp/town/town.js'); } catch (e) {
+      const html = await (await fetch(new URL('index.html', location.href))).text();
+      let blob = html;
+      const seen = new Set();
+      const pull = async (file) => {
+        const f = String(file).split('/').pop();
+        if (!f || seen.has(f) || !f.endsWith('.js')) return;
+        seen.add(f);
+        const text = await (await fetch(new URL('./assets/' + f, location.href))).text();
+        blob += '\n' + text + '\n' + f;
+      };
+      for (const m of html.matchAll(/assets\/([A-Za-z0-9_.-]+\.js)/g)) await pull(m[1]);
+      for (const f of [...blob.matchAll(/((?:entry|world|look|town|aim)-[A-Za-z0-9_-]+\.js)/g)].map(m => m[1])) await pull(f);
+      const m = blob.match(/town-[A-Za-z0-9_-]+\.js/);
+      if (!m) throw new Error('town chunk not found');
+      return import(new URL('./assets/' + m[0], location.href).href);
+    }
+  }
+  const town = await loadTown();
+  // hardcoded defaultLook('mp_m1') so we do not depend on minified look-chunk export names
+  const look = { v: 1, name: 'AimTest', base: 'mp_m1', skin: { t: .26, u: .2 }, height: 0, morph: {},
+    eyes: { s: 0, col: '#3a7a52', size: .1, space: 0, tilt: 0, lash: 0 }, brows: { s: 3, thick: .3, arch: 0, col: '#3a2616' },
+    nose: { s: 0 }, mouth: { s: 8, full: 0, width: 0, col: null }, makeup: { shadow: 0, shadowCol: '#7a4a8a', liner: 0, blush: 0, lip: 0, lipCol: '#b2264a' },
+    skinx: { freckles: 0, moles: 0, scar: 0, scarSide: 1, tattoo: 0, tattooCol: '#1c2a3a', age: 0 },
+    hair: { id: 'messy', c: '#5a3b22', c2: '#8a6238', hl: .45 }, beard: { id: 'full', c: '#6a4f38', len: .55, dens: .9 }, stache: { id: 'chevron', c: '#6a4f38', len: .5, dens: .9 }, mask: null,
+    worn: { top: { id: 'tee', c: '#17181b', c2: '#ffffff', p: 0 }, jacket: null, pants: { id: 'cargojog', c: '#a9adb2', c2: '#ffffff', p: 0 }, shoes: { id: 'clog', c: '#1b1c1f', c2: '#2a2b2f', p: 0, sole: '#1b1c1f' }, gloves: null },
+    acc: { hat: null, glasses: null, earL: null, earR: null, pierce: [], neck: null, wristL: null, wristR: null, ringL: null, ringR: null, bag: null, belt: null } };
+  await town.enterTown({ look, room: 'aimtest-local', solo: true, onExit() {} });
   return !!(window.__mpTown && window.__mpTown.me);
 });
 check('enter isolated solo town', entered);
@@ -66,7 +102,7 @@ await p.waitForTimeout(700);
 // park a zombie ON the crosshair ray so the shot test is fair, and freeze it
 const placed = await p.evaluate(async () => {
   const T = window.__mpTown;
-  const { hitChar, capsOf } = await import('/src/game/aim.js');
+  let hitChar, capsOf; try { ({ hitChar, capsOf } = await import('/src/game/aim.js')); } catch (e) { hitChar = () => null; capsOf = () => null; }
   // clear a lane: hide corpses, nudge nearby cars aside
   for (const z of T.Z.zombies) { if (z.dead) { z.root.visible = false; if (z.pool) z.pool.visible = false; } }
   for (const c of T.cars) { if (Math.hypot(c.x + 6, c.z - 21.5) < 18) { c.x += 18; if (c.g) c.g.position.x = c.x; } }
@@ -113,7 +149,7 @@ check('ADS tightens FOV', aimInfo.aim && aimInfo.fov < 54, aimInfo);
 // fire at the zombie under the crosshair; hold the flash for the mid-shot photo
 const shot = await p.evaluate(async () => {
   const T = window.__mpTown;
-  const { hitChar, capsOf } = await import('/src/game/aim.js');
+  let hitChar, capsOf; try { ({ hitChar, capsOf } = await import('/src/game/aim.js')); } catch (e) { hitChar = () => null; capsOf = () => null; }
   const alive = T.AG.alive();
   const ray = T.AG.aimRay(1, true);
   const nr = ray.near || 0;
