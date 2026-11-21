@@ -307,7 +307,7 @@ body.cine #rotate{display:none!important}
 @media (orientation:portrait){#cine .cap{bottom:calc(6vh + 24px);font-size:clamp(15px,4.4vw,22px)}}
 #cine .place{position:absolute;left:5vw;top:calc(9vh + 22px);color:#d8e6dc;font:600 clamp(12px,1.6vw,17px) system-ui,sans-serif;letter-spacing:.32em;opacity:0;transition:opacity 1.6s;text-shadow:0 2px 6px #000}
 #cine .place.on{opacity:.92}
-@media (orientation:portrait){#cine .place{top:calc(6vh + 18px);letter-spacing:.2em}}
+@media (orientation:portrait){#cine .place{top:calc(6vh + 18px);letter-spacing:.2em;max-width:58vw;line-height:1.6}}
 #cine .ttl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#000;opacity:0;transition:opacity 1.2s;pointer-events:none}
 #cine .ttl.on{opacity:1}
 #cine .t1{color:#e9efe9;font:800 clamp(30px,7vw,84px)/1 Georgia,serif;letter-spacing:.12em;text-shadow:0 0 28px rgba(120,230,170,.25);text-align:center}
