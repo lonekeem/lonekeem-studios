@@ -57,7 +57,7 @@ export function runPrologue(g, done) {
   const zs = []; [[-2.2, -40], [1.4, -41.5], [-0.3, -43.5], [3.1, -44.5], [-3.6, -45.5], [0.9, -47]].forEach(([x, z], i) => { const c = g.spawnZ(x, z, { idle: true, aggro: 0, det: .001, runner: false }); c.det = .001; c.aggro = 0; c.root.rotation.y = (i % 2 ? .12 : -.1); c.play('Walk_Loop', { speed: .55 + i * .03 }); zs.push(c); });
   const R = g.renderer, exp0 = R ? R.toneMappingExposure : 1; if (R) R.toneMappingExposure = exp0 * 1.4;
   (g.pickups || []).forEach(p => { p.mesh.visible = false; });
-  const cut = g.cut = { anim: 'Idle_Loop', cam: V(0, 17, 80), look: V(0, 1, 22), snap: true, fov: 62, flash: false };
+  const cut = g.cut = { anim: 'Idle_Loop', cam: V(0, 17, 80), look: V(0, 1, 22), snap: true, fov: 62, flash: false, noFace: true };
   // ---- audio
   let src = null, t0 = 0, t = 0, ended = false;
   const startAudio = () => { if (!BUF || !A.ctx) return; try { src = A.ctx.createBufferSource(); src.buffer = BUF; const gn = A.ctx.createGain(); gn.gain.value = 1; src.connect(gn); gn.connect(A.master); src.start(); t0 = A.ctx.currentTime; } catch (e) { src = null; } };

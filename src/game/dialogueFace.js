@@ -29,6 +29,7 @@ function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 function keyOf(who) { return ALIAS[who] || who; }
 
 function stagedLook(g) {
+  if (g.pro) return true; // opening cutscene stages its own actors
   if (g.cut && g.cut.noFace) return true;
   const ph = g.stepData && g.stepData.phase;
   if (ph === 'peek' || ph === 'wake') return true;
