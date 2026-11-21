@@ -10,7 +10,8 @@ export function bindStory(s) { STORY = s; }
 export const stepIndex = (id) => STORY.findIndex(s => s.id === id);
 const _ix = (i) => (typeof i === 'string' ? stepIndex(i) : i);
 export const $q = (s) => document.querySelector(s);
-export function follow(g, n, off) { n.update = (dt) => { const P = g.player.root.position, p = n.root.position; const tx = P.x + off[0], tz = P.z + off[1]; const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
+export function follow(g, n, off) { n.update = (dt) => { if (g.dlgFace && g.dlgFace.hold && g.dlgFace.hold.has(n)) { if (n.locoOn) n.endLoco(); n.play(g.dlgFace.speaker === n && n.lib && n.lib.clips && n.lib.clips.Idle_Talking_Loop ? 'Idle_Talking_Loop' : 'Idle_Loop'); return; }
+  const P = g.player.root.position, p = n.root.position; const tx = P.x + off[0], tz = P.z + off[1]; const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
   if (d > 1.2) { const sp = Math.min(d, 1) * (d > 4 ? 5 : 2.8); p.x += dx / d * sp * dt; p.z += dz / d * sp * dt; n.root.rotation.y = Math.atan2(dx, dz); n.play(d > 4 ? 'Jog_Fwd_Loop' : 'Walk_Loop'); } else n.play('Idle_Loop'); }; }
 // v1.9.4: never snap the player to a far checkpoint mid-play — fade to black with the next objective instead
 export function goto(g, i, xp = 100) { i = _ix(i); const tok = g.stepTok; g.addXP(xp); g.audio.pickup(); setTimeout(() => { if (g.stepTok !== tok) return; const cp = STORY[i] && STORY[i].cp, P = g.player.root.position; if (cp && Math.hypot(cp[0] - P.x, cp[1] - P.z) > 4 && g.fadeStep) g.fadeStep(i); else g.loadStep(i); }, 50); }
