@@ -14,7 +14,7 @@ async function page(name) {
 const p = await page('ZzTestRun');
 await p.click('#title .mtabs button[data-tab="survival"]'); await p.click('#btnSurvival');
 await p.waitForFunction(() => window.__atq.game && window.__atq.game.survival && window.__atq.state === 'play', null, { timeout: 180000 });
-await p.waitForTimeout(16000);
+await p.waitForFunction(() => (window.__atq.game.zombies || []).filter(z => !z.dead).length >= 2, null, { timeout: 120000 }).catch(() => {}); await p.waitForTimeout(16000);
 const sim = await p.evaluate(async () => { const g = window.__atq.game; const zs = (g.zombies || []).filter(z => !z.dead); let hs = 0; for (const z of zs.slice(0, 3)) { g.killZ(z, null, { head: true }); hs++; } g.save.kills += 4; g.stepData.wave = Math.max(1, g.stepData.wave || 0); g.onDeath(); return { killed: hs, zs: zs.length, wave: g.stepData.wave }; });
 await p.waitForTimeout(4000); const last = await p.evaluate(() => localStorage.getItem('atq.lbLast') || localStorage.getItem('atq.lbPending'));
 rec('survival run submitted', !!last && !!JSON.parse(last).rank, { sim, last }); rec('headshot kills counted', JSON.parse(last).hs === sim.killed && sim.killed > 0, { hs: JSON.parse(last).hs, killed: sim.killed });

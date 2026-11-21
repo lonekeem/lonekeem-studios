@@ -409,3 +409,16 @@ body.cine #rotate{display:none!important}
 /* Continue carries the chapter name: let it wrap to two lines instead of cutting off */
 #title .mm #btnContinue{white-space:normal;line-height:1.2;text-overflow:clip}
 #online .wpanel{background:#08160e}
+/* profile: first-open welcome (Sign in / Create profile) */
+#online.wfirst .wseg,#online.wfirst .wbody,#online.wfirst .wprof{display:none!important}
+#online .wwel{grid-column:1/-1;grid-row:2/4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:10px;min-height:0;overflow:auto;flex:1}
+#online .wwel h3{margin:0;color:var(--g);font:700 20px system-ui;letter-spacing:.06em}
+#online .wwel p{margin:0;max-width:440px}
+#online .wwbtns{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:min(560px,100%)}
+#online .wwbtns .wbig{min-height:72px!important;display:flex;align-items:center;justify-content:center;gap:10px;text-align:left}
+#online .wwbtns .wbig span{display:flex;flex-direction:column;gap:2px}#online .wwbtns .wbig small{font:500 12px system-ui;opacity:.75}
+#online .wwbtns .wg .gdot{width:28px;height:28px;font-size:15px;flex:none}
+#online .wwel .wnameform{width:min(440px,100%)}#online .wwel .wact{width:min(440px,100%);display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#online .wlink{background:transparent!important;border-color:transparent!important;color:#a9c4b0;min-height:36px}
+#online .wpb button{padding:6px 9px}
+@media (max-width:700px){#online .wpb button{font-size:13px;padding:5px 7px}}

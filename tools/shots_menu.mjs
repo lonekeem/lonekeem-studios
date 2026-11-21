@@ -25,7 +25,12 @@ for (const [w, h, tag] of [[844, 390, 'iphone'], [667, 375, 'small'], [915, 412,
   await p.close();
   const p2 = await page(w, h, { save: true }); await p2.click('#title .mtabs button[data-tab="story"]'); await p2.waitForTimeout(200); await p2.screenshot({ path: `${OUT}/menu_${tag}_continue.png` }); { const c = await p2.evaluate(() => { const e = document.querySelector('#btnContinue'); return { cut: e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1, h: e.clientHeight }; }); rec(tag + ': Continue label fits', !c.cut, c); } await p2.close();
   // live online screens (real Supabase)
-  const p3 = await page(w, h); await p3.click('#title .mtabs button[data-tab="online"]'); await p3.click('#btnLobby'); await p3.waitForTimeout(4000); await p3.screenshot({ path: `${OUT}/lobby_${tag}_live.png` });
+  const p3 = await page(w, h); await p3.click('#title .mtabs button[data-tab="online"]'); await p3.click('#btnLobby'); await p3.waitForTimeout(2500);
+  await p3.screenshot({ path: `${OUT}/profile_${tag}_welcome.png` }); rec(tag + ': first open shows Sign in / Create profile', await p3.evaluate(() => !!document.querySelector('#wWelNew') && !!document.querySelector('#wWelG')));
+  await p3.click('#wWelNew'); await p3.waitForTimeout(300); await p3.screenshot({ path: `${OUT}/profile_${tag}_name.png` });
+  await p3.fill('#wNewName', 'Keem Test'); await p3.click('#wWel button[type=submit]'); await p3.waitForTimeout(300); await p3.screenshot({ path: `${OUT}/profile_${tag}_character.png` });
+  await p3.click('#wSkip'); await p3.waitForTimeout(2500);
+  rec(tag + ': guest profile saved locally', await p3.evaluate(() => localStorage.getItem('atq.profile.created') === '1' && localStorage.getItem('atq.profile.name') === 'Keem Test')); await p3.screenshot({ path: `${OUT}/lobby_${tag}_live.png` });
   rec(tag + ': live lobby connects', await p3.evaluate(() => document.querySelector('#wNet').textContent.includes('Online')), await p3.evaluate(() => document.querySelector('#wNet').textContent));
   await p3.click('#online .wseg button[data-t="board"]'); await p3.waitForTimeout(3000); await p3.screenshot({ path: `${OUT}/board_${tag}_live.png` });
   rec(tag + ': live leaderboard loads', await p3.evaluate(() => !!document.querySelector('#wRows .wtr, #wRows .wempty') && !/Can't load/.test(document.querySelector('#wRows').textContent)), await p3.evaluate(() => document.querySelector('#wRows').textContent.slice(0, 120)));
