@@ -25,7 +25,7 @@ export const TOWN_HOOKS = {
     if (g.settings.gore) { n.pool = makePool(g, p.x, p.z, .5, 2.4); n.poolFix = 1.6; g.decal(p.x + .6, p.z - .4, 0.8); addWound(n, { kind: 'torn', part: 'belly', nz: 1, size: .1, run: .3 }); addWound(n, { kind: 'bite', part: zs.length > 1 ? 'thighL' : 'uarmR', nz: 1, nx: .3, size: .06 }); g.blood(new THREE.Vector3(p.x, .3, p.z), new THREE.Vector3(0, .8, 0), 10, 2.4, .6);
       // feeders kneel on the far side and flanks (away from the player) so the body and pool stay readable
       const pp = g.player.root.position, base = Math.atan2(pp.x - p.x, pp.z - p.z), slots = zs.length === 1 ? [Math.PI] : zs.length === 2 ? [Math.PI * .72, -Math.PI * .72] : [Math.PI, Math.PI * .55, -Math.PI * .55];
-      zs.forEach((z, i) => { const a = base + (slots[i] ?? i * 2.1) + rnd(-.12, .12); z.root.position.set(p.x + Math.sin(a) * 1.15, 0, p.z + Math.cos(a) * 1.15); z.root.rotation.y = Math.atan2(p.x - z.root.position.x, p.z - z.root.position.z); bloodyMouth(z, 1.2 + i * .3); setHandBlood(z, .6); }); } },
+      zs.forEach((z, i) => { const a = base + (slots[i] ?? i * 2.1) + rnd(-.12, .12); z.root.position.set(p.x + Math.sin(a) * 1.15, (g.groundAt ? g.groundAt(p.x, p.z) : 0), p.z + Math.cos(a) * 1.15); z.root.rotation.y = Math.atan2(p.x - z.root.position.x, p.z - z.root.position.z); bloodyMouth(z, 1.2 + i * .3); setHandBlood(z, .6); }); } },
   body(g, n) { n.bleed = false; },
 };
 
@@ -116,7 +116,7 @@ function tick(g, T, c, dt) { const s = c.tn, ev = T.ev; if (!ev) return; const p
 function grab(g, T, c) { const s = c.tn, ev = T.ev; s.state = 'grabbed'; s.t = 0; c.endLoco(); c.play('Hit_Chest', { once: true, force: true, speed: .8, cb: () => { c.curName = ''; } }); s.hy = 0; s.lean = 0;
   for (const z of ev.zs) if (!z.dead) { z.tgt = null; z.tgT = 0; } T.hooks.grab(g, c, ev.zs); g.audio.shout && g.audio.shout(c.female ? 'npcf_help' : 'npcm_help', true, c.root.position); }
 function down(g, T, c) { const s = c.tn, ev = T.ev, p = c.root.position; s.state = 'down'; s.t = 0; c.play('Death01', { once: true, force: true, speed: 1.1 }); c.isVictim = true; c.struggle = 1; c.jolt = 0; c.screamT = rnd(.5, 1.5); c.id = Math.random() * 10;
-  let i = 0; const zs = ev.zs.filter(z => !z.dead); for (const z of zs) { const a = i / zs.length * 6.28 + rnd(-.3, .3); z.root.position.set(p.x + Math.cos(a) * .95, 0, p.z + Math.sin(a) * .95); z.st = 'eat'; z.eat = c; z.eatOff = i++; z.play('Idle_Loop'); z.root.rotation.y = Math.atan2(p.x - z.root.position.x, p.z - z.root.position.z); }
+  let i = 0; const zs = ev.zs.filter(z => !z.dead); for (const z of zs) { const a = i / zs.length * 6.28 + rnd(-.3, .3); z.root.position.set(p.x + Math.cos(a) * .95, (g.groundAt ? g.groundAt(p.x, p.z) : 0), p.z + Math.sin(a) * .95); z.st = 'eat'; z.eat = c; z.eatOff = i++; z.play('Idle_Loop'); z.root.rotation.y = Math.atan2(p.x - z.root.position.x, p.z - z.root.position.z); }
   T.hooks.down(g, c, zs); ev.done = true; T.bodiesPending = c; }
 function bodyDone(g, T, c) { c.isVictim = false; c.struggle = 0; T.hooks.body(g, c); c.tn.frozen = true; const i = T.npcs.indexOf(c); if (i >= 0) T.npcs.splice(i, 1); delete g.npcs[c.key]; c.update = null; c.tn.bornAt = T.t; T.bodies.push(c); T.bodiesPending = null; }
 function finish(g, T, c, why) { const ev = T.ev; for (const z of ev.zs) if (!z.dead && z.st !== 'eat') { z.tgt = null; z.tgT = 0; z.speed = Math.min(z.speed, 1.6); } ev.done = true; T.log.push(why); kill(g, T, c, true); }
