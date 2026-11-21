@@ -455,8 +455,9 @@ function mountSigns(list, scene) {
     if (!mounted) for (const k of [-.42, 0, .42]) { o3.copy(wp).addScaledVector(right, k * s.w); o3.y = wp.y - s.h / 2 + .02; rc.set(o3, dn); rc.far = o3.y; const h = rc.intersectObjects(cands, false).find(h => h.point.y > .12); if (h && wp.y - s.h / 2 - h.point.y < .45) { mounted = true; break; } }
     if (mounted) continue;
     const bottom = wp.y - s.h / 2; if (bottom < .05) continue;
+    // overhead boards (tunnel portal, hospital front) only get the back face, no posts in the road
     const L = wp.y + s.h / 2 - .05; const geo = new THREE.BoxGeometry(.09, L, .09);
-    if (bottom < 3.2) for (const sx of [-1, 1]) { // overhead boards (tunnel portal, hospital front) only get the back face, no posts in the road const pm = new THREE.Mesh(geo, postM); pm.position.set(sx * (s.w / 2 - Math.min(.25, s.w * .12)), (s.h / 2 - .05) - L / 2, -.06); pm.castShadow = true; m.add(pm); }
+    if (bottom < 3.2) for (const sx of [-1, 1]) { const pm = new THREE.Mesh(geo, postM); pm.position.set(sx * (s.w / 2 - Math.min(.25, s.w * .12)), (s.h / 2 - .05) - L / 2, -.06); pm.castShadow = true; m.add(pm); }
     const back = new THREE.Mesh(new THREE.PlaneGeometry(s.w, s.h), new THREE.MeshStandardMaterial({ map: m.material.map, color: '#c8c8c8', roughness: .85 })); back.rotation.y = Math.PI; back.position.z = -.012; m.add(back);
     posts++; m.userData.posted = true; }
   return posts;
