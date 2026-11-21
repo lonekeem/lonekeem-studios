@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { CharLib, Char } from '../../game/chars.js';
 import { loadRigs } from '../../game/avatar.js';
-import { randomLook } from '../../game/looks.js';
+import { randomLook, zVoiceAssign } from '../../game/looks.js';
 import { addWound, bloodyMouth, setHandBlood } from '../../game/gore.js'; // the story's wound / blood shader marks (rigged zombies)
 import { BASE, mulberry, bloodTex, angDiff } from './kit.js';
 import { CFG, BOUNDS } from './map.js';
@@ -48,6 +48,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     const look = Object.assign(randomLook((zseed++ * 7919 + (seed * 104729)) | 0, true), { grime: 1, blood: R(.5, 1) }); if (o.rig !== undefined) look.rig = o.rig; /* same override as story spawnZ */ if (rnd() < .3) look.hair = 'balding';
     const c = new Char(lib, look, o.scale || R(.9, 1.1)); c.root.position.set(x, 0, z); c.root.rotation.y = R(0, 6.28); scene.add(c.root);
     const runner = o.runner ?? rnd() < .15;
+    c.zvo = zVoiceAssign(look, { runner });
     Object.assign(c, { z: true, hp: runner ? 50 : 70, maxHp: runner ? 50 : 70, runner, speed: runner ? R(3.4, 4.2) : R(1.1, 1.6), st: 'wander', cd: R(0, 1), dead: false, deadT: 0, id: R(0, 10), vel: new THREE.Vector3(), off: [R(-2.6, 2.6), R(-2.6, 2.6)], node: -1, prev: -1, tgt: null, hitAt: 0, hitCd: 0, tgT: 0, hurtT: 0, noHead: false, hp0: runner ? 50 : 70 });
     c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.1 : .62 }); const a = c.act('Walk_Loop'); if (a) a.time = R(0, 1);
     pickNode(c); zs.push(c); S.spawned++; return c;
@@ -65,7 +66,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
   // -------- damage / death --------
   function kill(z, dir, o = {}) { if (z.dead) return; z.dead = true; z.st = 'dead'; z.deadT = 0; S.killed++; z.play('Death01', { once: true, force: true, speed: o.car ? 1.6 : 1.05, fade: .1 }); if (dir) z.vel.set(dir.x * (o.car ? 7 : 2.2), 0, dir.z * (o.car ? 7 : 2.2));
     z.pool = poolMesh(z.root.position.x, z.root.position.z, .5); z.poolGrow = 1; onEvent && onEvent('kill', z); }
-  function hurt(z, dmg, dir, o) { if (z.dead) return false; z.hp -= dmg; z.hurtT = .25; if (z.hp <= 0) { kill(z, dir, o); return true; } z.st = 'chase'; z.lose = 0; z.vel.set(dir.x * 1.8, 0, dir.z * 1.8); z.play(rnd() < .5 ? 'Hit_Chest' : 'Hit_Head', { once: true, force: true, speed: 1.7, fade: .08, cb: () => { z.curName = ''; } }); return false; }
+  function hurt(z, dmg, dir, o) { if (z.dead) return false; z.hp -= dmg; z.hurtT = .25; if (z.hp <= 0) { kill(z, dir, o); return true; } z.st = 'chase'; z.lose = 0; z.vel.set(dir.x * 1.8, 0, dir.z * 1.8); z.play(rnd() < .5 ? 'Hit_Chest' : 'Hit_Head', { once: true, force: true, speed: 1.7, fade: .08, cb: () => { z.curName = ''; } }); onEvent && onEvent('hurt', z); return false; }
   out.killNear = (x, z, r, dmg, dir0) => { let n = 0; for (const q of zs) { if (q.dead) continue; const p = q.root.position, dx = p.x - x, dz = p.z - z, d = Math.hypot(dx, dz); if (d < r) { const l = d || 1; hurt(q, dmg, dir0 || { x: dx / l, z: dz / l }); n++; } } return n; };
   // hitscan: nearest living zombie within .45 m of the ray (origin ox,oz heading dx,dz unit) inside `range`; returns {t,dead} or null
   out.shoot = (ox, oz, dx, dz, range, dmg) => { let best = null, bt = range; for (const q of zs) { if (q.dead) continue; const p = q.root.position, rx = p.x - ox, rz = p.z - oz, t = rx * dx + rz * dz; if (t < .2 || t >= bt) continue; if (Math.abs(rx * dz - rz * dx) < .45) { best = q; bt = t; } } if (!best) return null; const dead = hurt(best, dmg, { x: dx, z: dz }); return { t: bt, dead }; };

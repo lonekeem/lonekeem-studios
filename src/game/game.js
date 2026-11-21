@@ -10,7 +10,7 @@ import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { townUpdate, townReset } from './townlife.js';
 import { buildWorld } from './world.js';
-import { CAST, randomLook, raiderLook, DEFAULT_LOOK } from './looks.js';
+import { CAST, randomLook, raiderLook, DEFAULT_LOOK, zVoiceAssign } from './looks.js';
 import { bossProp, wrap, walkie } from './props.js';
 import { CharLib, Char, backpack, weaponMesh, makeDog, makeRabbit } from './chars.js';
 import { buildPickup } from './gear.js';
@@ -221,13 +221,14 @@ export class Game {
     const slots = eaters === 1 ? [Math.PI] : eaters === 2 ? [Math.PI * .72, -Math.PI * .72] : [Math.PI, Math.PI * .55, -Math.PI * .55];
     for (let i = 0; i < eaters; i++) { const a = base + (slots[i % slots.length] ?? (i * 2.1)) + rnd(-.12, .12); const zz = this.spawnZ(x + Math.sin(a) * 1.15, z + Math.cos(a) * 1.15, { eat: v }); zz.eatOff = i; if (this.settings.gore) { bloodyMouth(zz, 1.2 + i * .3); setHandBlood(zz, .6); } zz.root.rotation.y = Math.atan2(x - zz.root.position.x, z - zz.root.position.z); }
     return v; }
-  spawnZ(x, z, o = {}) { const zl = Object.assign((o.raider ? raiderLook : randomLook)((ZSEED++ * 7919 + (Math.random() * 1e5 | 0)) | 0, !o.raider), o.raider ? { grime: .6, blood: .1 } : { grime: 1, blood: this.settings.gore ? rnd(.5, 1) : 0.15 }); if (o.rig !== undefined) zl.rig = o.rig; if (Math.random() < .3) zl.hair = 'balding'; if (o.boss) { zl.hair = 'bald'; zl.beard = 'full'; zl.build = 1.3; }
+  spawnZ(x, z, o = {}) { const zl = Object.assign((o.raider ? raiderLook : randomLook)((ZSEED++ * 7919 + (Math.random() * 1e5 | 0)) | 0, !o.raider), o.raider ? { grime: .6, blood: .1 } : { grime: 1, blood: this.settings.gore ? rnd(.5, 1) : 0.15 }); if (o.rig !== undefined) zl.rig = o.rig; if (o.fem != null) zl.fem = !!o.fem; if (Math.random() < .3 && !o.boss) zl.hair = 'balding'; if (o.boss) { const femBoss = o.fem || o.rig === 'zombie_office'; if (femBoss) { zl.fem = true; zl.beard = 'none'; } else { zl.fem = false; zl.hair = 'bald'; zl.beard = 'full'; } zl.build = 1.3; }
     const sc = (o.scale || rnd(.9, 1.1)); const c = new Char(this.lib, zl, sc); c.id = Math.random() * 10; c.root.position.set(x, 0, z); c.root.rotation.y = rnd(0, 6); this.scene.add(c.root);
     const runner = o.runner ?? Math.random() < (this.stepData.runners || 0.15);
     Object.assign(c, { z: true, hp: o.hp || (runner ? 50 : 70), maxHp: o.hp || (runner ? 50 : 70), runner, speed: runner ? rnd(3.6, 4.4) : rnd(1.1, 1.6), st: o.eat ? 'eat' : (o.idle ? 'idle' : 'chase'), eat: o.eat, cd: rnd(0, 1), stun: 0, dead: false, boss: !!o.boss, aggro: o.aggro ?? 30, vel: V3() });
     if (o.det) c.det = o.det; if (o.hear) c.hear = 1; // v1.9.17 sleepers: custom wake radius (crouching = 40%) + wake on gunfire
     if (o.eat || o.still) c.play('Idle_Loop'); else c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.1 : 0.62 });
     if (c.act('Walk_Loop')) c.act('Walk_Loop').time = rnd(0, 1);
+    if (!o.raider) c.zvo = zVoiceAssign(zl, { boss: !!o.boss, fem: zl.fem });
     if (o.raider) { c.raider = true; c.hp = c.maxHp = o.hp || 90; c.speed = 2.6; c.cd = rnd(1, 2.5); const h = new THREE.Group(); h.add(weaponMesh(o.gun || 'rifle')); h.rotation.set(Math.PI / 2, 0, 0); h.position.set(0, .08, .02); c.attach('DEF-hand.R', h); c.gunM = h; c.gunId = o.gun || 'rifle'; c.play('Pistol_Aim_Neutral'); if (c.mat && c.mat.userData.u && c.mat.userData.u.uShirt) if (o.shirt && c.mat.userData.u.uJacket) { c.mat.userData.u.uJacket.value.set(o.shirt); c.mat.userData.u.uShirt.value.set(o.shirt); } }
     this.zombies.push(c); return c; }
   horde(n, pts, o = {}) { for (let i = 0; i < n; i++) { const p = pts[i % pts.length]; this.spawnZ(p[0] + rnd(-3, 3), p[1] + rnd(-3, 3), o); } }
@@ -343,6 +344,7 @@ export class Game {
     this.blood(hp, dir, o.head ? 18 : 10, o.boom ? 6 : 2.5); if (this.settings.gore && !o.boom && (!z.boss || Math.random() < .3)) this.woundFrom(z, null, o.blade ? 'claw' : 'bullet', dir, o.head); if (!o.boom && Math.random() < .4) this.decal(z.root.position.x + dir.x * .8, z.root.position.z + dir.z * .8, .7);
     z.mat.userData.u.uBlood.value = Math.min(1.3, z.mat.userData.u.uBlood.value + (this.settings.gore ? .15 : 0)); this.audio.at(hp).splat(); if (this.settings.gore && Math.random() < .5) this.audio.at(hp).squelch(.6);
     if (z.hp <= 0) { this.killZ(z, dir, o); return; }
+    this.audio.at(hp).zHurt && this.audio.zHurt(z, z.boss ? .75 : .55);
     if (!z.boss || dmg > 60) { z.stun = z.boss ? 0.25 : 0.45; z.play(o.head ? 'Hit_Head' : 'Hit_Chest', { once: true, force: true, cb: () => { z.curName = ''; } }); z.vel.addScaledVector(dir, z.boss ? 1 : 3); } }
   // pooled additive flame sprites (flamethrower, burning zombies, launcher blasts): 24 sprites total, no allocations per frame
   flameAt(p, n = 1, v) { if (!this.flames) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); const gr = x.createRadialGradient(32, 32, 2, 32, 32, 30); gr.addColorStop(0, 'rgba(255,240,180,1)'); gr.addColorStop(.4, 'rgba(255,140,30,.8)'); gr.addColorStop(1, 'rgba(120,20,0,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
@@ -350,6 +352,7 @@ export class Game {
     for (let i = 0; i < n; i++) { const f = this.flames[this.flameI = (this.flameI + 1) % 24]; f.s.position.copy(p); f.s.visible = true; f.life = rnd(.25, .5); f.v.copy(v || V3()).add(V3(rnd(-.8, .8), rnd(.6, 1.8), rnd(-.8, .8))); f.s.scale.setScalar(rnd(.3, .6)); } }
   spurt(z, bone, dur) { (this.spurts = this.spurts || []).push({ z, bone, t: dur }); if (this.spurts.length > 4) this.spurts.shift(); }
   killZ(z, dir, o = {}) { if (!dir || !dir.clone) dir = V3(0, 0, 1); if (Math.random() < (z.boss ? 1 : .15)) this.audio.shout && this.audio.shout('keem_kill'); z.dead = true; z.deadT = 0; z.st = 'dead'; const mine = !o.ai || z.playerHit; if (mine) this.save.kills++; const gore = this.settings.gore;
+    this.audio.at(z.root.position).zDeath && this.audio.zDeath(z, z.boss ? .95 : .7);
     const xp = z.boss ? 400 : (o.head ? 18 : 12); if (mine) this.addXP(xp); if (z.boss) this.addCash(500);
     else if (mine && Math.random() < .35) this.addCash(rnd(5, 18)); if (mine && !z.boss) this.dropLoot(z);
     if (o.boom || z.boss) z.play('Death01', { once: true, force: true, speed: o.boom ? 1.6 : 1, fade: .12 }); else { z.play(o.head ? 'Hit_Head' : 'Hit_Chest', { once: true, force: true, speed: 1.7, fade: .08, cb: () => { if (z.dead) z.play('Death01', { once: true, force: true, speed: 1.05, fade: .28 }); } }); } z.vel.addScaledVector(dir, o.boom ? 9 : 2.5); if (o.boom) z.vel.y = 6;
@@ -509,9 +512,9 @@ export class Game {
         z.mixer.update(dt); this.zBones(z); if (z.deadT > 90 && Z.length > 70) { this.scene.remove(z.root); Z.splice(i--, 1); } continue; }
       const toP = V3(pp.x - zp.x, 0, pp.z - zp.z); let d = toP.length();
       if (z.st === 'feast') { z.mixer.update(dt); if (Math.random() < dt * 8 && this.settings.gore) { const b = P.root.position.clone(); b.y = .3; this.blood(b, V3(rnd(-1, 1), .5, rnd(-1, 1)), 4, 2); } continue; }
-      if (z.st === 'eat') { const det = this.state.crouch ? 4 : 7.5; if ((d < det && !this.cut) || z.hp < z.maxHp) { z.st = 'chase'; z.lk = 0; this.audio.at(zp).groan(.14); if (Math.random() < .5) this.audio.zAttack && this.audio.zAttack(); }
+      if (z.st === 'eat') { const det = this.state.crouch ? 4 : 7.5; if ((d < det && !this.cut) || z.hp < z.maxHp) { z.st = 'chase'; z.lk = 0; this.audio.at(zp).groan(.14, z); if (Math.random() < .5) this.audio.zAttack && this.audio.zAttack(.5, z); }
         z.mixer.update(dt); this.feedPose(z, dt, d, toP); continue; }
-      if (z.st === 'eat' || z.st === 'idle') { const det = z.det ? (this.state.crouch ? z.det * .4 : z.det) : this.state.crouch ? 4 : (z.st === 'eat' ? 7 : 12); if (d < det && !this.cut || z.hp < z.maxHp || (z.hear && this.mT > 0 && d < 26)) { z.st = 'chase'; this.audio.at(zp).groan(.12); } z.mixer.update(dt); if (z.st === 'eat' && Math.random() < dt * .3) this.audio.at(zp).groan(.05); if (z.st === 'eat' && d < 16 && (z.eatT = (z.eatT ?? rnd(0, 2)) - dt) <= 0) { z.eatT = rnd(2.2, 3.4); this.audio.at(zp).eat(Math.max(.05, .55 * (1 - d / 16))); } continue; }
+      if (z.st === 'eat' || z.st === 'idle') { const det = z.det ? (this.state.crouch ? z.det * .4 : z.det) : this.state.crouch ? 4 : (z.st === 'eat' ? 7 : 12); if (d < det && !this.cut || z.hp < z.maxHp || (z.hear && this.mT > 0 && d < 26)) { z.st = 'chase'; this.audio.at(zp).groan(.12, z); } z.mixer.update(dt); if (z.st === 'eat' && Math.random() < dt * .3) this.audio.at(zp).groan(.05, z); if (z.st === 'eat' && d < 16 && (z.eatT = (z.eatT ?? rnd(0, 2)) - dt) <= 0) { z.eatT = rnd(2.2, 3.4); this.audio.at(zp).eat(Math.max(.05, .55 * (1 - d / 16)), z); } continue; }
       if (z.raider && !z.boss) { this.raiderAI(z, d, toP, dt, zp); z.mixer.update(dt); this.zBones(z); continue; }
       if (z.boss) { this.updateBoss(z, d, toP, dt); z.mixer.update(dt); this.zBones(z); continue; }
       if (z.stun > 0) { z.stun -= dt; this.moveCollide(zp, z.vel.x * dt, z.vel.z * dt, .3); z.vel.multiplyScalar(.85); z.mixer.update(dt); this.zBones(z); continue; }
@@ -526,7 +529,7 @@ export class Game {
         for (let j = 0; j < Z.length; j++) { if (j === i || Z[j].dead) continue; const o = Z[j].root.position; const ex = zp.x - o.x, ez = zp.z - o.z, e2 = ex * ex + ez * ez; if (e2 < .5 && e2 > 1e-4) { sx += ex / e2 * dt * .25; sz += ez / e2 * dt * .25; } }
         this.moveCollide(zp, sx, sz, .3); z.root.rotation.y = angLerp(z.root.rotation.y, Math.atan2(toP.x, toP.z), Math.min(1, dt * 6)); z.play(z.runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: z.runner ? 1.1 : .62 }); }
       if (z.hitAt > 0) { z.hitAt -= dt; if (z.hitAt <= 0 && d < 1.45) { if (tg && tg.raider) this.damageZ(tg, 14, toP.clone().normalize(), { ai: true }); else if (tg) { tg.root.position.addScaledVector(toP.clone().normalize(), .25); if (this.settings.gore && tg.skin) this.woundFrom(tg, zp, 'melee'); if (/nia/.test(tg.key || '') && Math.random() < .3 && this.audio.shout) this.audio.shout('nia_spot', false, tg.root.position); } else if (!this.truck.driving) this.hurt(this.settings.qteEasy ? 6 : 11, zp); } }
-      if (Math.random() < dt * .08) this.audio.at(zp).groan(.06);
+      if (Math.random() < dt * .08) this.audio.at(zp).groan(.06, z);
       z.mixer.update(dt); this.zBones(z); this.stepTrack(z, zp, 'z'); } }
   // v1.4 feeding: kneel (Fixing_Kneeling) + procedural head-dip / tear / shake, bite-synced spurts, growing pool, look-up toward Keem
   feedPose(z, dt, d, toP) { const v = z.eat, gore = this.settings.gore, B = (n) => z.bone(n); const near = !this.cut && d < 14;
@@ -534,11 +537,11 @@ export class Game {
     z.bt = (z.bt ?? rnd(0, 1.6)) - dt; if (z.bt <= 0 && z.lk < .55) { z.bt = rnd(1.1, 2.2); z.bite = .95; z.bitten = false; }
     let dip = 0, shake = 0, pull = 0; if (z.bite > 0) { z.bite -= dt; const k = 1 - z.bite / .95; dip = k < .4 ? k / .4 : Math.max(0, 1 - (k - .4) / .6);
       if (k > .4 && k < .8) { shake = Math.sin(k * 55 + z.id) * .32 * (1 - (k - .4) / .4); pull = Math.sin((k - .4) / .4 * Math.PI) * .6; }
-      if (k > .42 && !z.bitten) { z.bitten = true; const vol = Math.max(0, .55 * (1 - d / 22)); if (vol > .02) { this.audio.at(z.root.position); (Math.random() < .55 ? this.audio.tear : this.audio.chew).call(this.audio, .6); }
+      if (k > .42 && !z.bitten) { z.bitten = true; const vol = Math.max(0, .55 * (1 - d / 22)); if (vol > .02) { this.audio.at(z.root.position); (Math.random() < .55 ? this.audio.tear : this.audio.chew).call(this.audio, .6, z); }
         if (v && v.root) { v.jolt = 1; const hp = V3(); z.worldOf('DEF-head', hp); const vp = v.root.position; const sp = V3((hp.x + vp.x) / 2, .35, (hp.z + vp.z) / 2);
           if (gore) { this.blood(sp, V3(rnd(-.4, .4), 1, rnd(-.4, .4)), 9, 2.4, .55); if (Math.random() < .35) this.gib(sp, 1, '#4a0808'); if (Math.random() < .4) this.decal(vp.x + rnd(-.9, .9), vp.z + rnd(-.9, .9), rnd(.3, .6)); }
           if (v.pool) v.pool.userData.target = Math.min(3.8, v.pool.userData.target + .12); if (gore) { bloodyMouth(z, .5); setHandBlood(z, Math.min(1, (z.hb = (z.hb || .5) + .1))); const tw = v._wounds && v._wounds.list.find(w => w.kind === 'torn'); if (tw) { tw.R = Math.min(.2, tw.R + .008); tw.fresh = 1; syncWounds(v); } } } } }
-    else if (Math.random() < dt * .25) this.audio.at(z.root.position).chew(.35);
+    else if (Math.random() < dt * .25) this.audio.at(z.root.position).chew(.35, z);
     const lk = z.lk; let rel = 0; if (lk > .01) { rel = Math.atan2(toP.x, toP.z) - z.root.rotation.y; rel = Math.atan2(Math.sin(rel), Math.cos(rel)); rel = clamp(rel, -1.3, 1.3); if (lk > .7) z.root.rotation.y = angLerp(z.root.rotation.y, z.root.rotation.y + rel, dt * .8); }
     const sp2 = B('DEF-spine.002'), sp3 = B('DEF-spine.003'), nk = B('DEF-neck'), hd = B('DEF-head');
     if (sp2) sp2.rotateX((.6 + dip * .5 - pull * .1) * (1 - lk * .7)); if (sp3) sp3.rotateX((.35 + dip * .35) * (1 - lk * .8));
@@ -598,8 +601,8 @@ export class Game {
       if (d < 1.6 && !z.hitP) { z.hitP = true; this.hurt(25, zp); } if (z.mt <= 0) { z.mode = 'back'; z.mt = 1.2; z.cd = 1.5; } return; }
     toP.normalize(); z.root.rotation.y = angLerp(z.root.rotation.y, Math.atan2(toP.x, toP.z), dt * 4); z.cd -= dt;
     if (z.cd <= 0 && d < 3) { z.mode = 'slam'; z.mt = 0.9; z.play('Sword_Attack', { once: true, force: true, speed: .7, cb: () => z.curName = '' }); const ring = z.ring = new THREE.Mesh(new THREE.RingGeometry(.9, 1.1, 32), new THREE.MeshBasicMaterial({ color: '#f22', transparent: true, opacity: .6, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.copy(zp).y = .06; this.scene.add(ring); return; }
-    if (z.cd <= 0 && d > 7) { z.mode = 'wind'; z.mt = .8; this.audio.groan(.3); this.audio.roar && this.audio.roar(); this.toast('He\'s winding up…', 0.7); return; }
-    if (d > 2.4) { this.moveCollide(zp, toP.x * z.speed * dt, toP.z * z.speed * dt, .6); z.play('Walk_Loop', { speed: .55 }); } else z.play('Idle_Loop'); if (Math.random() < dt * .4) this.audio.groan(.2); }
+    if (z.cd <= 0 && d > 7) { z.mode = 'wind'; z.mt = .8; this.audio.groan(.3, z); this.audio.roar && this.audio.roar(z); this.toast('He\'s winding up…', 0.7); return; }
+    if (d > 2.4) { this.moveCollide(zp, toP.x * z.speed * dt, toP.z * z.speed * dt, .6); z.play('Walk_Loop', { speed: .55 }); } else z.play('Idle_Loop'); if (Math.random() < dt * .4) this.audio.groan(.2, z); }
   updateDying(dt) { const D = this.dying; D.t += dt; this.player.mixer.update(dt); if (D.z) { D.z.mixer.update(dt); }
     if (this.settings.gore && Math.random() < dt * 10) { const p = this.player.root.position.clone(); p.y = .4; this.blood(p, V3(rnd(-1, 1), 1, rnd(-1, 1)), 6, 3); if (Math.random() < .2) this.decal(p.x + rnd(-1, 1), p.z + rnd(-1, 1), 1); }
     if (D.t > .3 && !D.s1) { D.s1 = 1; this.screenSplat(); this.audio.splat(); } if (D.t > 1.2 && !D.s2) { D.s2 = 1; this.screenSplat(); this.audio.scream(.1); }

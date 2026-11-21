@@ -86,7 +86,53 @@ export function randomLook(seed, zed) { const r = mulberry(seed * 9973 + 1); con
   const casual = ['classic', 'hoodie', 'flannel', 'denim', 'track', 'scrubs', 'work', 'cardigan', 'blouse', 'button', 'chef', 'street', 'bomber', 'parka', 'overalls', 'pinkhood', 'survivor', 'denim'];
   const hc = r() < .15 ? '#aaa69e' : pick(r, HAIR_COLORS.slice(0, 8));
   return { outfit: pick(r, casual), hair: pick(r, hairs), hairColor: hc, skin: pick(r, SKINS), face: pick(r, Object.keys(FACES)), eyes: pick(r, EYES), beard: fem ? 'none' : pick(r, ['none', 'none', 'stubble', 'mustache', 'goatee', 'full']),
-    glasses: r() < .15, build: .9 + r() * .3, height: .93 + r() * .12, seed: seed | 0, tint: [r(), r(), r()], zed, rig: zed ? zedRig(seed) : (mulberry(seed * 17 + 5)() < .35 ? null : (fem ? 'genf' : 'genm')) }; // v1.9.12: zombies mix old procedural look + original + 6 new rigs; ~35% of townspeople/victims keep the original procedural look
+    glasses: r() < .15, build: .9 + r() * .3, height: .93 + r() * .12, seed: seed | 0, tint: [r(), r(), r()], fem, zed, rig: zed ? zedRig(seed) : (mulberry(seed * 17 + 5)() < .35 ? null : (fem ? 'genf' : 'genm')) }; // v1.9.12: zombies mix old procedural look + original + 6 new rigs; ~35% of townspeople/victims keep the original procedural look
+}
+// Voice profile for a zombie: matches the visible body (named rig, then gender/size).
+//   male / female / teen_m / teen_f / elder / brute / gurgler / boss_m / boss_f
+// Named male rigs always stay male even if randomLook rolled fem (the mesh is a man).
+// zombie_office is the Lunch Lady body and also generic office undead — use fem when set.
+// Procedural (rig null) and zombie2 use the stored fem flag + build/height.
+const FEM_HAIR = new Set(['long', 'bun', 'ponytail', 'braids', 'puffs']);
+export function lookIsFem(look) {
+  if (!look) return false;
+  if (look.fem === true) return true;
+  if (look.fem === false) return false;
+  if (look.rig === 'genf') return true;
+  if (look.rig === 'genm') return false;
+  if (look.beard && look.beard !== 'none') return false;
+  return FEM_HAIR.has(look.hair);
+}
+export function zVoiceProfile(look, o = {}) {
+  const fem = o.fem != null ? !!o.fem : lookIsFem(look);
+  const rig = (look && look.rig) || null;
+  const boss = !!(o.boss || (look && look.boss));
+  if (boss) return (fem || rig === 'zombie_office') ? 'boss_f' : 'boss_m';
+  if (rig === 'zombie_big') return 'brute';
+  if (rig === 'zombie_elder') return 'elder';
+  if (rig === 'zombie_male' || rig === 'zombie_cop' || rig === 'zombie_worker') return 'male';
+  if (rig === 'zombie_office') return fem ? 'female' : 'gurgler';
+  const build = (look && look.build) || 1, height = (look && look.height) || 1, seed = (look && look.seed) || 0;
+  if (fem) return (build < .96 || height < .96) ? 'teen_f' : 'female';
+  if (build > 1.15) return 'brute';
+  if (build < .95 || height < .96) return 'teen_m';
+  if (seed % 5 === 0) return 'gurgler';
+  return 'male';
+}
+export function zVoiceAssign(look, o = {}) {
+  const profile = zVoiceProfile(look, o);
+  const r = mulberry(((look && look.seed) || 1) * 9137 + 17 + (profile.length * 13));
+  let lo = .92, hi = 1.08;
+  if (profile === 'brute' || profile === 'boss_m') { lo = .86; hi = .98; }
+  else if (profile === 'elder') { lo = .88; hi = 1.02; }
+  else if (profile === 'teen_f') { lo = 1.02; hi = 1.14; }
+  else if (profile === 'teen_m') { lo = .98; hi = 1.10; }
+  else if (profile === 'female' || profile === 'boss_f') { lo = .96; hi = 1.10; }
+  else if (profile === 'gurgler') { lo = .90; hi = 1.06; }
+  if (look && look.rig === 'zombie_cop') { lo = .97; hi = 1.07; }
+  if (look && look.rig === 'zombie_worker') { lo = .88; hi = 1.00; }
+  const pitch = lo + r() * (hi - lo);
+  return { profile, pitch, fem: !!(o.fem != null ? o.fem : lookIsFem(look)) };
 }
 // raiders: masked, leather-jacketed scavengers (same avatar style as everyone else)
 export function raiderLook(seed) { const r = mulberry(seed * 7331 + 5); const L = randomLook(seed, false); L.rig = 'raider'; L.outfit = r() < .6 ? 'raider1' : 'raider2'; L.tint = [r(), r(), r()]; L.hair = 'short'; L.hairColor = '#150f0a'; L.beard = 'none'; L.glasses = false; return L; }
