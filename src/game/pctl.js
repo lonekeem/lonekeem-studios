@@ -12,7 +12,11 @@ export function stepMove(C, dt) {
     const yaw = C.yaw; let dx = 0, dz = 0; if (s.shotT > 0) s.shotT -= dt; const faceAim = (gun && (s.aim || s.shotT > 0)) || C.fp; // v1.9.2: face the crosshair only while aiming/firing (or first-person); otherwise turn toward travel
     if (mag > .08) { const a = Math.atan2(mv.x, mv.y) + yaw; dx = Math.sin(a) * spd * mag; dz = Math.cos(a) * spd * mag;
       s.faceTo = a; }
-    if (faceAim) P.root.rotation.y = angLerp(P.root.rotation.y, yaw + Math.PI, Math.min(1, dt * 18));
+    // v1.9.28 (story, C.aimTwist): while aiming/firing the LEGS face the way he walks (up to 80 deg off the aim; backpedal when moving away
+    // from it) and the upper body twists onto the crosshair (game.js updateAimPose), instead of the whole body facing the camera and
+    // the legs walking forward while he slides sideways
+    if (faceAim) { let fy = yaw + Math.PI; if (C.aimTwist && !C.fp && mag > .08 && s.faceTo != null) { const df = (a, b) => ((b - a + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; let d = df(fy, s.faceTo); if (Math.abs(d) > 1.75) d = df(fy, s.faceTo + Math.PI); fy += clamp(d, -1.4, 1.4); }
+      P.root.rotation.y = angLerp(P.root.rotation.y, fy, Math.min(1, dt * (C.aimTwist ? 12 : 18))); }
     if (run && mag > .5 && !s.crouch) { s.brT = (s.brT || 0) - dt; s.runT = (s.runT || 0) + dt; if (s.brT <= 0 && s.runT > 2.5) { s.brT = rnd(1.1, 1.5); C.audio.breathe && C.audio.breathe(Math.min(.35, .1 + s.runT * .02)); } } else s.runT = Math.max(0, (s.runT || 0) - dt * 2);
     if (s.roll > 0) { s.roll -= dt; const f = 6.5; dx = Math.sin(P.root.rotation.y) * f; dz = Math.cos(P.root.rotation.y) * f; }
     if (s.atk > 0) { s.atk -= dt; if (s.atkHit > 0) { s.atkHit -= dt; if (s.atkHit <= 0) C.onMeleeHit(); } }

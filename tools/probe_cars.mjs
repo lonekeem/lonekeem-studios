@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';
+const port = process.argv[2];
+const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'] });
+const p = await (await b.newContext({ viewport: { width: 640, height: 360 } })).newPage();
+await p.addInitScript(() => { localStorage.setItem('atq3.settings', JSON.stringify({ qual: 'low' })); localStorage.setItem('atq_prologue_seen', '1'); });
+await p.goto(`http://127.0.0.1:${port}/?step=0&god`); await p.waitForFunction(() => window.__atq?.game?.running, null, { timeout: 180000 });
+const r = await p.evaluate(async () => { const T = await import('/node_modules/three/build/three.module.js'); const g = window.__atq.game; const out = []; const bx = new T.Box3();
+  (g.world.cars || []).forEach((c, i) => { const o = c.mesh || c.g || c.obj || c; if (!o || !o.isObject3D) { out.push({ i, keys: Object.keys(c).slice(0, 8) }); return; } bx.setFromObject(o, true); out.push({ i, kind: c.kind, p: o.position.toArray().map(v => +v.toFixed(2)), rz: +o.rotation.z.toFixed(2), minY: +bx.min.y.toFixed(3), maxY: +bx.max.y.toFixed(2) }); });
+  return out; });
+console.log(JSON.stringify(r.slice(0, 3))); r.filter(c => c.minY > 0.03 || c.minY < -0.15).forEach(c => console.log('ODD', JSON.stringify(c))); console.log('total', r.length);
+await b.close();
