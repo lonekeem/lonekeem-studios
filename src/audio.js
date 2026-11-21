@@ -46,11 +46,11 @@ export class AudioSys {
     else if (mode === 'loading') this.playLoadingLoop();
     else { this._stopTrack('menu', 0.8); this._stopTrack('loading', 0.45); }
   }
-  // ---- v1.9.23 scored tracks (menu theme, intro sting, loading loop). They ride `this.music`, so the Music slider applies.
+  // ---- v1.9.23/v1.9.24 scored tracks (menu theme, studio ident, loading loop). They ride `this.music`, so the Music slider applies.
   async loadTracks() {
     if (this._tracksP) return this._tracksP;
     const base = (import.meta.env && import.meta.env.BASE_URL) || './';
-    const files = { menu: 'music/atq-menu-theme.mp3', sting: 'music/atq-intro-sting.mp3', loading: 'music/atq-loading-loop.mp3' };
+    const files = { menu: 'music/atq-menu-theme.mp3', sting: 'music/atq-studio-intro.mp3', loading: 'music/atq-loading-loop.mp3' };
     this._tracksP = Promise.all(Object.entries(files).map(async ([k, rel]) => {
       try {
         const r = await fetch(base + rel);

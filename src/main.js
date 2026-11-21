@@ -116,16 +116,13 @@ $$('.back').forEach(b => b.onclick = () => { if (state === 'custom' && back === 
 $('#btnWarn').onclick = async () => {
   try { audio.init(); audio.unlock && audio.unlock(); } catch (e) {}
   showScreen(null); const st = $('#studio'); st.classList.remove('hidden'); fadeIn();
-  const vid = $('#studioVid');
   const tracks = audio.loadTracks().then(() => { try { audio.playSting(); } catch (e) {} });
-  if (vid) { vid.muted = true; vid.setAttribute('playsinline', ''); const pr = vid.play(); if (pr && pr.catch) pr.catch(() => {}); }
   let done = false;
-  const finish = () => { if (done) return; done = true; st.classList.add('hidden'); try { vid && vid.pause(); } catch (e) {} toTitle(); };
-  if (vid) vid.onended = finish;
+  const finish = () => { if (done) return; done = true; st.classList.add('hidden'); toTitle(); };
   const onSkip = () => finish();
   st.addEventListener('pointerdown', onSkip, { once: true });
   addEventListener('keydown', onSkip, { once: true });
-  setTimeout(finish, 11000);
+  setTimeout(finish, 7000);
   ensureGame().catch(e => console.error(e));
   hideLoading(); // preload quietly behind the intro
   await tracks.catch(() => {});
@@ -135,7 +132,7 @@ $('#btnEndNext').onclick = () => { save = loadSave(LS) || save; const nc = Math.
 var CHN = CHAPTERS.map(c => (c ? c.title : '')), CHS = CHAPTERS.map(c => (c ? c.start : 0)); // derived from the chapter registry
 const unlockedCh = (s) => Math.max(s.maxCh || 1, s.done || (s.step || 0) >= 7 ? 2 : 1, s.done2 ? 3 : 1, CHS.findLastIndex(v => (s.step || 0) >= v) || 1);
 // chapter-select buttons are generated from the registry (src/game/chapters), so adding a chapter needs no HTML/menu edits
-{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.23 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
+{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.24 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
 const chList = $('#chList'); for (let c = 1; c <= LAST_CH; c++) { const b = document.createElement('button'); b.id = 'btnCh' + c; b.textContent = 'Chapter ' + c + ' · ' + CHN[c]; chList.appendChild(b); }
 $('#btnChapters').onclick = () => { const s = loadSave(LS) || defaultSave(); const u = unlockedCh(s); for (let c = 2; c <= LAST_CH; c++) { const b = $('#btnCh' + c); b.disabled = c > u; b.textContent = 'Chapter ' + c + ' · ' + CHN[c] + (c > u ? ' (finish Chapter ' + (c - 1) + ')' : ''); } showScreen('#chapters'); };
 $('#btnCh1').onclick = () => { save = loadSave(LS) || defaultSave(); writeSave(LS, save); play(0); };

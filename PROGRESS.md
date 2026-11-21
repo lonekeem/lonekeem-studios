@@ -182,6 +182,11 @@ Based on `feat/mp-town` a091c98. New files: `src/mp/town/camcol.js`, `src/mp/tow
 ## v1.9.22 release (mp hair + respawn + zombie heads live)
 - Merged feat/mp-hair (db81db7), feat/mp-respawn (634d159), feat/mp-zombies (1891b2d). feat/mp-aim NOT included.
 
+## v1.9.24 studio ident (Dream Jar video removed)
+
+- Removed the portrait Dream Jar intro video from the game (it pillarboxed and looked small).
+- New 7s skippable full-screen Lone Keem Studios title card in the game's style, with an ElevenLabs Music v2.5 cinematic ident and a short deep voiceover ("Lone Keem Studios") timed to the hit.
+
 ## v1.9.23 polish (intro, score, loading, cover)
 
 - Replaced the 4.2s text studio card with the shared Lone Keem Studios intro (compressed Dream Jar ident, skippable) and a 10s instrumental sting.
