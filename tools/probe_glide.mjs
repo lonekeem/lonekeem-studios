@@ -5,6 +5,8 @@ const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args
 const ctx = await b.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
 await ctx.addInitScript(() => localStorage.setItem('atq3.settings', JSON.stringify({ qual: 'low', gore: true })));
 if (smooth === '1') await ctx.addInitScript(() => { const o = JSON.parse(localStorage.getItem('atq3.settings')); o.smoothMove = true; o.ctlRev = 2; localStorage.setItem('atq3.settings', JSON.stringify(o)); });
+if (process.env.KBD) await ctx.addInitScript(() => { window.__kbd = true; });
+if (process.env.POS) await ctx.addInitScript((v) => { window.__pos = v.split(',').map(Number); }, process.env.POS);
 const p = await ctx.newPage(); const errs = []; p.on('pageerror', e => errs.push(e.message));
 await p.goto(`http://localhost:${port}/?step=0`, { waitUntil: 'load' });
 await p.waitForFunction(() => window.__atq && window.__atq.game && window.__atq.game.running, null, { timeout: 120000 }); await p.waitForTimeout(2500);
@@ -14,7 +16,7 @@ const out = await p.evaluate(([mx, my, frames, weapon, fdt]) => { const g = wind
   const P = g.player, s = g.state; const rows = []; const V = P.root.position.constructor; const fl = new V(), fr = new V(); let prevF = null, slideSum = 0, slideN = 0, sepMin = 9, sepMax = 0;
   const w = () => Object.entries(P.actions).filter(([k, a]) => a.isScheduled() && a.getEffectiveWeight() > .01).map(([k, a]) => `${k}:${a.getEffectiveWeight().toFixed(2)}@${a.timeScale.toFixed(2)}`).join(' ');
   rows.push(`pre cut=${!!g.cut} dlg=${!!g.dlgCur} cur=${P.curName} one=${!!P.oneShot} | ${w()}`);
-  g.input.stick.set(mx, my);
+  if (window.__kbd) { g.input.keys.KeyS = true; g.input.keys.KeyD = true; } else g.input.stick.set(mx, my); if (window.__pos) { g.player.root.position.set(...window.__pos); g.cam.yaw = window.__pos[3]; }
   for (let i = 0; i < frames; i++) { const x0 = P.root.position.x, z0 = P.root.position.z; g.input.poll(dt); g.update(dt, dt); P.root.updateMatrixWorld(true); P.skin && P.syncSkin && P.syncSkin(); P.bone('DEF-foot.L').getWorldPosition(fl); P.bone('DEF-foot.R').getWorldPosition(fr); let slide = 0; if (prevF) { slide = Math.min(Math.hypot(fl.x - prevF.l.x, fl.z - prevF.l.z), Math.hypot(fr.x - prevF.r.x, fr.z - prevF.r.z)) / dt; if (i > 8) { slideSum += slide; slideN++; } } prevF = { l: fl.clone(), r: fr.clone() }; const sep = Math.hypot(fl.x - fr.x, fl.z - fr.z); if (i > 8) { sepMin = Math.min(sepMin, sep); sepMax = Math.max(sepMax, sep); }
     rows.push(`${i} slide=${slide.toFixed(2)} sep=${sep.toFixed(2)} cut=${!!g.cut} cur=${P.curName} one=${!!P.oneShot} mag=${g.input.move.length().toFixed(2)} mv=${(Math.hypot(P.root.position.x - x0, P.root.position.z - z0) / dt).toFixed(2)} spd=${(s.spd||0).toFixed(2)} rot=${P.root.rotation.y.toFixed(2)} yaw=${g.cam.yaw.toFixed(2)} | ${w()}`); }
   rows.push(`SUMMARY plantedFootSlide(avg m/s, frames>8)=${(slideSum / Math.max(1, slideN)).toFixed(2)} footSeparation range=${sepMin.toFixed(2)}..${sepMax.toFixed(2)}`); return rows; }, [+mx, +my, +frames, weapon, +fdt]);
