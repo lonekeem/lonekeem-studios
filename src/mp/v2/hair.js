@@ -302,7 +302,7 @@ export const LIP_CUT = (p, L) => Math.abs(p.x) < .034 && p.y > L.mouthY + .004 &
 function topLine(a, L, k) { const aa = Math.abs(a); return interp([[0, L.mouthY + .024], [16, L.mouthY + .025], [28, -.052 + .01 * (k - 1)], [45, -.04 + .015 * (k - 1)], [62, -.026 + .02 * (k - 1)], [78, -.004 + .01 * (k - 1)], [86, .006], [94, .012]], aa); }
 // trimmed 'full' beard: curved natural cheek line (sideburn up by the ear, sweeping down to the mouth corners, no vertical wall),
 // bottom edge close to the jaw. Mirrored in GLSL by beardMask() in headrig.js (skin underlay) — keep both in sync.
-const cheekY = ax => -.08 + .018 * ss(.036, .065, ax) + .030 * ss(.065, .09, ax) + .020 * ss(.09, .12, ax);
+const cheekY = ax => -.08 + .068 * ss(.03, .12, ax); // v1.9.28: one smooth cheek line (was a 3-step staircase)
 const cheekDrop = a => 0;
 const fullFloor = p => -.148 + Math.abs(p.x) * .25;
 const offNeck = p => Math.hypot(p.x, p.z + .025) > .056 || p.y > -.08;
@@ -320,7 +320,7 @@ export function buildBand(head, st, opt = {}) {
   // fill empty columns with a zero-width band at the neighbour's position (keeps one closed grid), then smooth
   for (let j = 0; j < NPH; j++) if (tin[j] < 0) { let k = 1; while (k < NPH && tin[(j + k) % NPH] < 0 && tin[(j - k + NPH) % NPH] < 0) k++; const src = tin[(j + k) % NPH] >= 0 ? (j + k) % NPH : (j - k + NPH) % NPH; const m = (tin[src] + tout[src]) / 2; tin[j] = -m - 10; tout[j] = m; }
   const fix = arr => { const t = Float32Array.from(arr); for (let j = 0; j < NPH; j++) { const a = t[(j + NPH - 1) % NPH], b = t[j], c = t[(j + 1) % NPH]; arr[j] = (a + 2 * b + c) / 4; } };
-  const empty = Array.from(tin, v => v < -5); for (let j = 0; j < NPH; j++) if (empty[j]) tin[j] = tout[j]; fix(tin); fix(tout);
+  const empty = Array.from(tin, v => v < -5); for (let j = 0; j < NPH; j++) if (empty[j]) tin[j] = tout[j]; for (let k = 0; k < 6; k++) { fix(tin); fix(tout); } // v1.9.28: extra passes = smooth cartoon beard edge
   const pos = [], tan = [], aux = [], aE = [], idx = []; const NR = NU + 3; const FL = st.fade || .03;
   for (let j = 0; j <= NPH; j++) { const jj = j % NPH, ph = jj / NPH * Math.PI * 2; const w0 = tin[jj], w1 = tout[jj]; const band = Math.max(0, w1 - w0); const zero = empty[jj] || band < .5 * D2R; const pe = surf(head, dirOf(fr, w1, ph));
     for (let i = 0; i < NR; i++) { let th, t; if (i === 0) { th = Math.max(0, w0 - 1 * D2R); t = -.0025; } else if (i === NR - 1) { th = w1 + 1 * D2R; t = -.0025; } else { const u = (i - 1) / (NU); th = w0 + band * u; const e = ss(0, .2, u) * ss(1, .62, u); t = zero ? -.0025 : st.T * Math.pow(e, .7) + .0008 * (1 - e); }

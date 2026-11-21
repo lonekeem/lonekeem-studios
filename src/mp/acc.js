@@ -95,7 +95,16 @@ export const GLASSES = {
     B.tube([[-ex + w, c.eyeY + h * .25, c.faceZ(0, c.eyeY) + .012], [0, c.eyeY + h * .38, c.faceZ(0, c.eyeY + .01) + .02], [ex - w, c.eyeY + h * .25, c.faceZ(0, c.eyeY) + .012]], th, 'a', false, 14, 4);
     if (o.aviator) B.tube([[-ex + w, c.eyeY + h * 1.0, c.faceZ(0, c.eyeY) + .014], [ex - w, c.eyeY + h * 1.0, c.faceZ(0, c.eyeY) + .014]], th * .8, 'a', false, 10, 4); },
   visor(B, c, o) { for (const s of [-1, 1]) { B.add(new THREE.BoxGeometry(c.hw * .7, .004, c.hw * .35), 'g', [0, c.eyeY, c.front * .9 + .02]); } B.add(new THREE.CylinderGeometry(c.rx * 1.02, c.rx * 1.02, .03, 22, 1, true, -1.2, 2.4), 'a', [0, c.eyeY, c.zc]); },
-  goggles(B, c, o) { for (const s of [-1, 1]) { const x = s * c.hw * .41, z = c.faceZ(x, c.eyeY) + .018; B.add(new THREE.CylinderGeometry(.03, .03, .02, 18), 'g', [x, c.eyeY, z], [PI / 2, 0, 0]); B.torus(.032, .006, [x, c.eyeY, z + .01], 'a', [0, 0, 0]); } B.add(new THREE.TorusGeometry(c.rx * 1.02, .01, 6, 30, PI * 1.5), 'a', [0, c.eyeY, c.zc], [PI / 2, 0, PI * .75], [1, c.rz / c.rx, 1]); },
+  goggles(B, c, o) { // v1.9.28 scavenger goggles: two rounded lens cups in a chunky frame, a nose bridge and a strap around the back of the head
+    const hs = c.hs, w = .033 * hs, h = .025 * hs, ex = c.hw * .43, y = c.eyeY + .002, sy = y + .006;
+    const rim = (x, z, k) => { const pts = []; for (let i = 0; i < 24; i++) { const a = i / 24 * PI * 2; const px = Math.cos(a), py = Math.sin(a); pts.push([x + Math.sign(px) * Math.pow(Math.abs(px), .6) * w * k, y + Math.sign(py) * Math.pow(Math.abs(py), .6) * h * k, z]); } return pts; };
+    const zs = []; for (const s of [-1, 1]) { const x = s * ex, z = Math.max(c.faceZ(x, y), c.faceZ(x * .7, y + .01)) + .014; zs.push(z);
+      B.add(new THREE.CylinderGeometry(1, 1.15, .024, 24), 'k', [x, y, z - .01], [PI / 2, 0, 0], [w * 1.02, 1, h * 1.02]); // cup (frame body)
+      B.add(new THREE.CylinderGeometry(1, 1, .003, 24), 'g', [x, y, z + .001], [PI / 2, 0, 0], [w * .86, 1, h * .86]); // lens
+      B.tube(rim(x, z + .002, 1.0), .0052 * hs, 'a', true, 40, 6); // front rim
+      B.tube([[x + s * w * 1.05, y, z - .006], [s * c.rx * 1.1 * Math.sin(PI * .38), sy, c.zc + c.rz * 1.1 * Math.cos(PI * .38)]], .01 * hs, 'k', false, 8, 6); } // strap from cup to the temple
+    B.tube([[-ex + w * .9, y + h * .1, zs[0] - .004], [0, y + h * .3, Math.max(zs[0], zs[1]) + .002], [ex - w * .9, y + h * .1, zs[1] - .004]], .006 * hs, 'k', false, 12, 5); // bridge
+    ring(B, 'k', 0, sy, c.zc, c.rx * 1.1, c.rz * 1.1, .01 * hs, PI * 1.24, PI * .38); }, // strap round the back
 };
 // ---------- jewellery ----------
 export const EAR = { // each is built for one side (s = +1 / -1); lobe position from the mesh

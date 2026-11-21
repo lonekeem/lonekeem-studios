@@ -92,7 +92,7 @@ vec3 paintSkin(vec3 p, vec3 n, vec4 R){
       c = mix(c, uTatCol, clamp(m, 0.0, 1.0) * 0.85); }
     if (uStub.x > 0.0) { float jaw = smoothstep(uM1.x + 0.7, uM1.x - 0.1, fc.y) * smoothstep(0.5, 0.7, fc.y) * (1.0 - smoothstep(0.7, 1.05, ax * (1.0 + (fc.y - 0.6) * 0.15)));
       float must = smoothstep(uM1.x + 0.55, uM1.x + 0.3, fc.y) * step(uM1.x + 0.12, fc.y) * smoothstep(0.7, 0.4, ax);
-      float zone = max(jaw, must * uStub.y); float dots = step(1.0 - uStub.x, vn(p * 700.0) * 0.7 + 0.3 * vn(p * 300.0)); c = mix(c, mix(c, uHairCol, 0.9), zone * (0.35 + 0.5 * dots) * uStub.x); }
+      float zone = max(jaw, must * uStub.y); float dots = step(1.0 - uStub.x, vn(p * 700.0) * 0.7 + 0.3 * vn(p * 300.0)); c = mix(c, mix(c, uHairCol, 0.85), smoothstep(0.0, 1.0, zone) * 0.5 * uStub.x); dots = 0.0; } // v1.9.28 smooth stubble shadow
   }
   return c;
 }`;

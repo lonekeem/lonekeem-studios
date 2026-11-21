@@ -73,6 +73,11 @@ export function openProfile({ mode = 'auto', onSignIn } = {}) {
 
     function build() { root.innerHTML = '';
       const top = el('div', { cls: 'top' }, el('h2', {}, mode === 'create' ? 'Create your profile' : 'Your profile'), el('div', { cls: 'cash', id: 'profCash' }), el('button', { cls: 'x', on: { click: () => finish(null) } }, mode === 'create' ? 'Cancel' : 'Close'));
+      { // admin (Keem's own account) only: play online as the real story Keem (story look + voice) instead of the custom character; the custom one is saved and kept, so he can switch back on any visit
+        const kb = el('button', { cls: 'keemBtn', style: 'display:none;background:#b8741c;border:1px solid #e0a050;color:#fff;border-radius:8px;padding:6px 12px;font-weight:700;margin-left:auto;margin-right:8px', on: { click: () => { const p = saveProfile({ name: name || 'Survivor', sel, look: look() }); finish(Object.assign({}, p, { playAsKeem: true, look: Object.assign({}, p.look, { exclusive: 'skin.keem_story', name: 'Keem' }) })); } } }, '★ Play as Keem');
+        top.insertBefore(kb, top.lastChild); window.__profKeemBtn = kb;
+        import('./online.js').then(async o => { const u = await o.getUser().catch(() => null); const r = u ? await o.getRole().catch(() => null) : null; const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+          if (r === 'admin' || (local && window.__MP_FORCE_ADMIN)) kb.style.display = ''; }).catch(() => {}); }
       const stepsEl = el('div', { cls: 'steps' }); const stage = el('div', { cls: 'stage' }); const canvas = el('canvas'); const nm = el('div', { cls: 'nm' }); stage.append(canvas, nm, el('div', { cls: 'hint' }, 'Drag to turn'));
       const side = el('div', { cls: 'side' }); const h3 = el('h3'); const sub = el('div', { cls: 'sub' }); const body = el('div', { cls: 'body' }); const foot = el('div', { cls: 'foot' }); side.append(h3, sub, body, foot);
       root.append(top, stepsEl, el('div', { cls: 'main' }, stage, side));
@@ -116,7 +121,7 @@ export function openProfile({ mode = 'auto', onSignIn } = {}) {
             el('button', { cls: 'pri', on: { click: () => { if (key === 'name' && !name.trim()) { toast('Type a name first (or tap an idea).'); return; } done.add(step); if (step < STEPS.length - 1) { step++; body.scrollTop = 0; render(); } else save(); } } }, step < STEPS.length - 1 ? 'Next ›' : 'Finish ✓')); }
         else foot.append(el('button', { on: { click: () => finish(null) } }, 'Cancel'), el('button', { cls: 'pri', on: { click: save } }, 'Save'));
       }
-      window.__profUI = { get step() { return step; }, setStep: i => { step = i; render(); }, get sel() { return sel; }, rot: v => { rot = v; auto = false; } };
+      window.__profUI = { get step() { return step; }, setStep: i => { step = i; render(); }, get sel() { return sel; }, rot: v => { rot = v; auto = false; }, av: () => av, apply: (o, parts = ALL_PARTS) => { Object.assign(sel, o); parts.forEach(x => touched.add(x)); return rebuild().then(render); } }; // test hook
       rebuild(); render();
     }
   });

@@ -35,7 +35,7 @@ const headWeights = (av, Cy, s) => (i, x, y) => { const k = Math.min(1, Math.max
 
 const BEARD_GLSL = `
         float bh(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
-float beardMask(vec3 p){ float ax = abs(p.x); float cy = -.08 + .018 * smoothstep(.036, .065, ax) + .030 * smoothstep(.065, .09, ax) + .020 * smoothstep(.09, .12, ax);
+float beardMask(vec3 p){ float ax = abs(p.x); float cy = -.08 + .068 * smoothstep(.03, .12, ax);
   float up = smoothstep(0.0, .014, cy - p.y); float fl = smoothstep(0.0, .012, p.y - (-.148 + ax * .25)); float fr = smoothstep(-.035, -.005, p.z);
   float mx = p.x / .048, my = (p.y + .084) / .0208; float mh = smoothstep(.85, 1.15, mx * mx + my * my); return up * fl * fr * mh; }
 `.replace(/\n/g, ' ');
@@ -48,7 +48,7 @@ export function skinMaterial(U, faceTex, plain = false) { // plain: the neck tub
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uSkin; uniform sampler2D uFace; uniform float uHasFace; varying vec2 vUv2; varying float vF; varying vec3 vL; uniform vec4 uBeard; uniform vec3 uBeardCol;' + BEARD_GLSL)
       .replace('#include <color_fragment>', `#include <color_fragment>
         vec3 c = uSkin; if (uHasFace > .5 && vF > .001) { vec4 t = texture2D(uFace, vUv2); c = mix(c, t.rgb, t.a * vF); }
-        if (uBeard.x > .5) { float bm = beardMask(vL); float dn = step(bh(floor(vL * 1700.)), .55 + .3 * bm); c = mix(c, uBeardCol, bm * (.36 + .36 * dn) * uBeard.y); }
+        if (uBeard.x > .5) { float bm = beardMask(vL); c = mix(c, uBeardCol, smoothstep(0.0, 1.0, bm) * .8 * uBeard.y); /* v1.9.28 smooth cartoon underlay (no stipple) */ }
         diffuseColor.rgb = c;`)
       .replace('#include <emissivemap_fragment>', plain ? '#include <emissivemap_fragment>' : `#include <emissivemap_fragment>
         { float rimF = pow(1.0 - clamp(dot(normalize(vNormal), normalize(vViewPosition)), 0.0, 1.0), 2.4);
@@ -117,7 +117,7 @@ export function buildHairMesh(av, look, opt = {}) {
   if (av._hairKey === key) { if (av._hair) av._hair.material = hairMaterial(look.hair.c, look.hair.c2 || look.hair.c, look.hair.hl ?? .35, skinHex(av)); return av._hair; }
   if (av._hair) { av._hair.parent && av._hair.parent.remove(av._hair); av._hair.geometry.dispose(); av._hair = null; }
   av._hairKey = key; if (!st0) return null;
-  let st = st0; if (opt.hatCut) st = Object.assign({}, st0, { tufts: 0, top: Math.min(st0.top, .003), front: 0, spikes: 0, round: 0, locks: 0, lockAmp: 0, tips: 0, frontLift: 0, waves: 0, T: Math.min(st0.T, .008), curl: Math.min(st0.curl, .002), ex: (st0.ex || []).filter(e => e[0] === 'dutch' || (e[0] === 'locs' && e[1] > .1) || (e[0] === 'bun' && e[1] === 'low') || (e[0] === 'pony' && e[1] === 'low') || e[0] === 'braidpony' || e[0] === 'pigtails') });
+  let st = st0; if (opt.hatCut) st = Object.assign({}, st0, { mohawk: 0, tufts: 0, top: Math.min(st0.top, .003), front: 0, spikes: 0, round: 0, locks: 0, lockAmp: 0, tips: 0, frontLift: 0, waves: 0, T: Math.min(st0.T, opt.hatCut > 1 ? .004 : .006), curl: Math.min(st0.curl, .001), ex: (st0.ex || []).filter(e => (e[0] === 'locs' && e[1] > .1 && opt.hatCut < 2) || (e[0] === 'bun' && e[1] === 'low') || (e[0] === 'pony' && e[1] === 'low') || e[0] === 'braidpony' || e[0] === 'pigtails') });
   const parts = [...buildCap(h, st), ...buildExtras(h, st)];
   const geo = mergeGeometries(parts.map(g => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'aT', 'aH', 'aE'].includes(k)) g.deleteAttribute(k); if (!g.attributes.aE) g.setAttribute('aE', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count), 1)); return g; }), false);
   geo.scale(h.s, h.s, h.s); geo.translate(h.C.x, h.C.y, h.C.z);
@@ -134,15 +134,20 @@ export function buildFacialHair(av, look) {
   const h = av.head2; const bid = look.beard && look.beard.id || 'none', sid = look.stache && look.stache.id || 'none';
   const bs = BEARD_STYLES[bid] || BEARD_STYLES[BEARD_ALIAS[bid]], ss_ = STACHE_STYLES[sid] || STACHE_STYLES[STACHE_ALIAS[sid]];
   const len = look.beard && look.beard.len != null ? look.beard.len : .4; const key = JSON.stringify([bid, sid, len.toFixed(2), av._headKey]);
-  const col0 = (look.beard && look.beard.c) || look.hair.c; const col = bid === 'full' ? '#' + new THREE.Color(col0).multiplyScalar(1.35).getHexString() : col0; const c2 = ('#' + new THREE.Color(col).multiplyScalar(1.25).getHexString());
+  const col0 = (look.beard && look.beard.c) || look.hair.c; const col = col0;
   { const mu = av._headMesh && av._headMesh.material.userData; if (mu) { mu.beard.value.set(bid === 'full' ? 1 : 0, 1, 0, 0); mu.beardCol.value.set(col0).multiplyScalar(.9); } }
-  if (av._fhKey === key) { if (av._fh) av._fh.material = hairMaterial(col, c2, .4, skinHex(av)); return; }
+  if (av._fhKey === key) { if (av._fh) av._fh.material = beardMaterial(col); return; }
   if (av._fh) { av._fh.parent && av._fh.parent.remove(av._fh); av._fh.geometry.dispose(); av._fh = null; } av._fhKey = key;
   const parts = []; const lipCut = !!(bs && ss_) && bid !== 'full'; // with a mustache, the beard leaves the upper lip so the mustache reads as its own shape
   if (bs) parts.push(buildBand(h, Object.assign({}, bs, { T: bs.T * (.5 + .9 * len) }, lipCut ? { mask: (p, a, L) => bs.mask(p, a, L) && !LIP_CUT(p, L) } : {}))); if (ss_) { const sg = buildBand(h, Object.assign({}, ss_, { fade: .007, T: ss_.T * (.7 + .6 * ((look.stache && look.stache.len) ?? .4)) * (bs ? 1.35 : 1) })); const a = sg.attributes.aH; for (let k = 0; k < a.count; k++) a.setW(k, 6); parts.push(sg); }
   if (!parts.length) return; const geo = parts.length > 1 ? mergeGeometries(parts, false) : parts[0]; geo.scale(h.s, h.s, h.s); geo.translate(h.C.x, h.C.y, h.C.z);
-  skinTo(av, geo, () => [['Head', 1]]); av._fh = bindMesh(av, new THREE.SkinnedMesh(geo, hairMaterial(col, c2, .4, skinHex(av))), 2);
+  skinTo(av, geo, () => [['Head', 1]]); av._fh = bindMesh(av, new THREE.SkinnedMesh(geo, beardMaterial(col)), 2);
 }
+// v1.9.28: facial hair is a smooth, solid cartoon shape in the hair colour (the strand/stipple hair shader read as a grainy rash)
+const _bm = new Map();
+function beardMaterial(col) { if (_bm.has(col)) return _bm.get(col); const m = new THREE.MeshStandardMaterial({ color: col, roughness: .82, metalness: 0 });
+  m.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n { float rimF = pow(1.0 - clamp(dot(normalize(vNormal), normalize(vViewPosition)), 0.0, 1.0), 2.4); totalEmissiveRadiance += diffuseColor.rgb * (0.1 + rimF * 0.18); }'); };
+  m.customProgramCacheKey = () => 'v2beard1'; _bm.set(col, m); return m; }
 // accessory context (bind-space landmarks) from the analytic head, merged over the body context
 export function headCtx(av, base) {
   const h = av.head2, L = h.L, C = h.C, s = h.s; const st = styleOf(av.look && av.look.hair ? av.look.hair.id : 'bald'); const hairT = st ? Math.min(.012, st.T + .003) : 0;

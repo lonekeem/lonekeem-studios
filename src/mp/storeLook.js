@@ -14,11 +14,11 @@ const shade = (h, k) => { const n = parseInt(hex(h).slice(1), 16); const f = (v)
 const HAIR = { crop: 'crew', hightop: 'curlfade', afro: 'afro', curls: 'curlcrop', puffs: 'afropuffs', braids: 'braids2', cornrows: 'cornrows', locs: 'dreads', waves: 'waves', buzz: 'buzz',
   short: 'messy', slick: 'slickback', long: 'shoulder', bun: 'manbun', ponytail: 'ponylow', mohawk: 'mohawk', balding: 'receding', bald: 'bald' };
 // face presets: [morph overrides, eye preset, brow preset, nose preset, mouth preset, age]
-const FACE = {
-  keem: [{ jaw: .2, chin: 0, faceW: .1 }, 0, 3, 2, 1, 0], soft: [{ jaw: -.5, chin: -.3, cheekFull: .6, faceW: -.1 }, 1, 0, 1, 3, 0],
-  strong: [{ jaw: 1, chin: .7, faceW: .35, cheekbone: .4 }, 11, 8, 4, 0, 0], narrow: [{ jaw: -.7, faceW: -.8, faceLen: .6, chinW: -.5 }, 3, 1, 7, 2, 0],
-  round: [{ jaw: .3, faceW: .8, cheekFull: 1, faceLen: -.6, chin: -.5 }, 7, 0, 1, 8, 0], sharp: [{ jaw: -.2, chin: 1, cheekbone: 1, faceW: -.3 }, 9, 6, 7, 7, 0],
-  elder: [{ jaw: .1, cheekFull: -.4, noseLen: .4 }, 6, 5, 3, 2, .75] };
+const FACE = { // v1.9.28: gentle morphs (strong values made tall egg-shaped heads); the eye / brow / nose / mouth presets carry the difference
+  keem: [{ jaw: .1, faceW: .05 }, 0, 3, 2, 1, 0], soft: [{ jaw: -.2, cheekFull: .3 }, 1, 0, 1, 3, 0],
+  strong: [{ jaw: .35, chinW: .25, cheekbone: .2 }, 11, 8, 4, 0, 0], narrow: [{ jaw: -.25, faceW: -.3, chinW: -.2 }, 3, 1, 7, 2, 0],
+  round: [{ faceW: .3, cheekFull: .4, faceLen: -.25, chin: -.2 }, 7, 0, 1, 8, 0], sharp: [{ jaw: -.1, cheekbone: .35, chin: .15, faceW: -.1 }, 9, 6, 7, 7, 0],
+  elder: [{ cheekFull: -.2, noseLen: .2 }, 6, 5, 3, 2, .6] };
 const BEARD = { none: ['none', 'none'], stubble: ['stubble', 'none'], mustache: ['none', 'chevron'], goatee: ['goatee', 'chevron'], full: ['full', 'none'], jaw: ['strap', 'none'] };
 
 export function skinToT(h) { // closest point on the mp skin ramp
@@ -47,7 +47,7 @@ export function outfitWorn(o) { // one story outfit -> mp garments + outfit acce
     : acc.includes('helmet_fire') ? it('hardhat', '#d8a020') : acc.includes('hood') ? it('hood', o.jacket || '#2a2a2e', shade(o.jacket || '#2a2a2e', .7)) : null;
   const mask = acc.includes('rmask') || acc.includes('gasmask') ? { id: 'gaiter', c: '#1e1e22', p: 0 } : acc.includes('bandana') ? { id: 'bandanam', c: '#7a1f1f', p: pat('Speckle') } : acc.includes('mask') ? { id: 'surgical', c: '#2a2a2e', p: 0 } : null;
   const neck = acc.includes('scarf_red') ? it('scarf', '#b8282c') : acc.includes('chain') ? it('chainMid', '#d9b44a', '#fff', 0) : acc.includes('dogtags') ? it('chainMidtag', '#cfd3d8', '#fff', 1) : acc.includes('badge') ? it('lanyard', '#2a2a2e') : null;
-  const goggles = acc.includes('goggles') ? it('bigdark', '#2a2a2e', '#fff', 3) : null;
+  const goggles = acc.includes('goggles') ? Object.assign(it('goggles', '#2a2a2e', '#fff', 3), { g: 5 }) : null; // amber lenses, black strap
   return { worn, hat, mask, neck, goggles, bag: acc.includes('pack') ? it('packbig', '#3a4632') : null, belt: acc.includes('belt') || acc.includes('vest') ? it('beltwide', '#2a2018') : null };
 }
 
