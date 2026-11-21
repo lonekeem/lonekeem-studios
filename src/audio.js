@@ -292,7 +292,7 @@ P.zVocal = function (kind, z, vol = .5, o = {}) {
   const s = this.play(fam, { vol: vol * (ZVO_VOL[kind] || 1), verb: kind !== 'idle' && kind !== 'eat', rate: pitch, jit: o.jit ?? .05, maxD, ref: kind === 'roar' ? 6 : 2.5, roll: kind === 'idle' ? 1.3 : 1.1 });
   if (!s) return null;
   if (s.dummy) return s;
-  if (z) z._zvoCd[kind] = now + (ZVO_CD[kind] || 2) * (.8 + Math.random() * .45);
+  if (z) (z._zvoCd = z._zvoCd || {})[kind] = now + (ZVO_CD[kind] || 2) * (.8 + Math.random() * .45);
   this._zvoBump(kind);
   const prev = s.onended;
   s.onended = () => { this._zvoDrop(kind); if (typeof prev === 'function') prev(); };
