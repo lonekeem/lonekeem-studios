@@ -2,6 +2,7 @@
 // (yaw only, ~0.3s slerp) and stand in an idle / talking pose instead of a frozen walk.
 // The player is only turned / idled when input is locked (g.cut). Peek, wake, victims,
 // and scripted runners are left alone.
+import * as THREE from 'three';
 import { angLerp } from './util.js';
 
 const RANGE = 16;
@@ -20,8 +21,8 @@ const MENTION = [
 ];
 const BUSY_ANIM = /Death|Sit|Sleep|Lie/;
 const LOCO_ANIM = /__loco|Walk_Loop|Jog_Fwd|Sprint_Loop|Crouch_Fwd/;
-const _hp = { x: 0, y: 0, z: 0 };
-const _tp = { x: 0, y: 0, z: 0 };
+const _hp = new THREE.Vector3();
+const _tp = new THREE.Vector3();
 
 function angDiff(a, b) { return ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; }
 function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -88,6 +89,11 @@ function targetOf(g, speaker, text, present) {
     const p = present.find(x => x.who === named);
     if (p) return p;
   }
+  // "you" in a line spoken by someone else is almost always aimed at Keem
+  if (speaker !== 'keem' && text && /\byou\b/i.test(text)) {
+    const p = present.find(x => x.who === 'keem');
+    if (p) return p;
+  }
   if (S.lastWho && S.lastWho !== speaker) {
     const p = present.find(x => x.who === S.lastWho);
     if (p) return p;
@@ -120,14 +126,15 @@ function poseFor(ch, talking) {
   ch.play(name);
 }
 
+function wrapYaw(y) { return Math.atan2(Math.sin(y), Math.cos(y)); }
+function wantYaw(ch, target) { return Math.atan2(target.root.position.x - ch.root.position.x, target.root.position.z - ch.root.position.z); }
 function setTurn(S, ch, target, isPlayer) {
   if (!ch || !target || ch === target) return;
   let t = S.turns.get(ch);
-  if (!t) { t = { ch, from: ch.root.rotation.y, t: 0, isPlayer }; S.turns.set(ch, t); }
+  if (!t) { t = { ch, t: 0, isPlayer }; S.turns.set(ch, t); }
+  if (t.target !== target) t.t = 0;
   t.target = target;
   t.isPlayer = isPlayer;
-  const want = Math.atan2(target.root.position.x - ch.root.position.x, target.root.position.z - ch.root.position.z);
-  if (!t.want || Math.abs(angDiff(t.want, want)) > .08) { t.from = ch.root.rotation.y; t.t = 0; t.want = want; }
 }
 
 function headOf(ch, out) {
@@ -210,12 +217,11 @@ export function tickDialogueFace(g, dt) {
   for (const [ch, t] of S.turns) {
     if (!ch || !ch.root || !t.target || !t.target.root) { S.turns.delete(ch); continue; }
     if (t.isPlayer && !locked) continue;
-    const want = Math.atan2(t.target.root.position.x - ch.root.position.x, t.target.root.position.z - ch.root.position.z);
-    if (Math.abs(angDiff(t.want || want, want)) > .08) { t.from = ch.root.rotation.y; t.t = 0; t.want = want; }
-    t.t = (t.t || 0) + dt;
-    const u = Math.min(1, t.t / TURN);
-    const s = u * u * (3 - 2 * u);
-    ch.root.rotation.y = angLerp(t.from, t.want, s);
+    const want = wantYaw(ch, t.target);
+    const cur = wrapYaw(ch.root.rotation.y);
+    // ~0.3s to settle (3 * tau), shortest-path yaw, always wrapped so Euler y cannot unwind
+    const k = 1 - Math.exp(-dt / (TURN / 3));
+    ch.root.rotation.set(0, wrapYaw(angLerp(cur, want, k)), 0);
     if (S.hold.has(ch) && !t.isPlayer) poseFor(ch, ch === S.speaker);
     lookHead(ch, t.target);
   }
