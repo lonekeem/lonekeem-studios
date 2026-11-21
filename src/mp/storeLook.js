@@ -19,7 +19,7 @@ const FACE = { // v1.9.28: gentle morphs (strong values made tall egg-shaped hea
   strong: [{ jaw: .35, chinW: .25, cheekbone: .2 }, 11, 8, 4, 0, 0], narrow: [{ jaw: -.25, faceW: -.3, chinW: -.2 }, 3, 1, 7, 2, 0],
   round: [{ faceW: .3, cheekFull: .4, faceLen: -.25, chin: -.2 }, 7, 0, 1, 8, 0], sharp: [{ jaw: -.1, cheekbone: .35, chin: .15, faceW: -.1 }, 9, 6, 7, 7, 0],
   elder: [{ cheekFull: -.2, noseLen: .2 }, 6, 5, 3, 2, .6] };
-const BEARD = { none: ['none', 'none'], stubble: ['stubble', 'none'], mustache: ['none', 'chevron'], goatee: ['goatee', 'chevron'], full: ['full', 'none'], jaw: ['strap', 'none'] };
+const BEARD = { none: ['none', 'none'], stubble: ['stubble', 'none'], mustache: ['none', 'chevron'], goatee: ['goatee', 'chevron'], full: ['strap', 'chevron'] /* v1.9.28: jawline beard + mustache, mouth stays visible (the solid 'full' read as a mask) */, jaw: ['strap', 'none'] };
 
 export function skinToT(h) { // closest point on the mp skin ramp
   let best = 0, bd = 9; const c = hex(h); const n = parseInt(c.slice(1), 16); const r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
@@ -45,8 +45,8 @@ export function outfitWorn(o) { // one story outfit -> mp garments + outfit acce
   const it = (iid, c = '#2b2b30', c2 = '#f2f2f0', m = 3) => ({ id: iid, m, g: 0, c, c2, p: 0 });
   const hat = acc.includes('cap_back') ? it('capflat', '#17181b', '#f2f2f0') : acc.includes('cap_tac') ? it('capshort', '#3a4032') : acc.includes('cap_orange') ? it('capflat', '#e0601a') : acc.includes('beanie') ? it('beanie', '#3a3a40')
     : acc.includes('helmet_fire') ? it('hardhat', '#d8a020') : acc.includes('hood') ? it('hood', o.jacket || '#2a2a2e', shade(o.jacket || '#2a2a2e', .7)) : null;
-  const mask = acc.includes('rmask') || acc.includes('gasmask') ? { id: 'gaiter', c: '#1e1e22', p: 0 } : acc.includes('bandana') ? { id: 'bandanam', c: '#7a1f1f', p: pat('Speckle') } : acc.includes('mask') ? { id: 'surgical', c: '#2a2a2e', p: 0 } : null;
-  const neck = acc.includes('scarf_red') ? it('scarf', '#b8282c') : acc.includes('chain') ? it('chainMid', '#d9b44a', '#fff', 0) : acc.includes('dogtags') ? it('chainMidtag', '#cfd3d8', '#fff', 1) : acc.includes('badge') ? it('lanyard', '#2a2a2e') : null;
+  const mask = acc.includes('mask') /* v1.9.28: raider face masks (rmask/gasmask/bandana) dropped by default - they hid the whole face; the bandana is worn round the neck instead */ ? { id: 'surgical', c: '#2a2a2e', p: 0 } : null;
+  const neck = acc.includes('bandana') ? it('scarf', '#7a1f1f') : acc.includes('scarf_red') ? it('scarf', '#b8282c') : acc.includes('chain') ? it('chainMid', '#d9b44a', '#fff', 0) : acc.includes('dogtags') ? it('chainMidtag', '#cfd3d8', '#fff', 1) : acc.includes('badge') ? it('lanyard', '#2a2a2e') : null;
   const goggles = acc.includes('goggles') ? Object.assign(it('goggles', '#2a2a2e', '#fff', 3), { g: 5 }) : null; // amber lenses, black strap
   return { worn, hat, mask, neck, goggles, bag: acc.includes('pack') ? it('packbig', '#3a4632') : null, belt: acc.includes('belt') || acc.includes('vest') ? it('beltwide', '#2a2018') : null };
 }

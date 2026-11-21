@@ -147,7 +147,7 @@ export function buildFacialHair(av, look) {
 const _bm = new Map();
 function beardMaterial(col) { if (_bm.has(col)) return _bm.get(col); const m = new THREE.MeshStandardMaterial({ color: col, roughness: .82, metalness: 0 });
   m.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n { float rimF = pow(1.0 - clamp(dot(normalize(vNormal), normalize(vViewPosition)), 0.0, 1.0), 2.4); totalEmissiveRadiance += diffuseColor.rgb * (0.1 + rimF * 0.18); }'); };
-  m.customProgramCacheKey = () => 'v2beard1'; _bm.set(col, m); return m; }
+  m.envMapIntensity = .3; /* green scene light turned grey facial hair teal */ m.customProgramCacheKey = () => 'v2beard1'; _bm.set(col, m); return m; }
 // accessory context (bind-space landmarks) from the analytic head, merged over the body context
 export function headCtx(av, base) {
   const h = av.head2, L = h.L, C = h.C, s = h.s; const st = styleOf(av.look && av.look.hair ? av.look.hair.id : 'bald'); const hairT = st ? Math.min(.012, st.T + .003) : 0;

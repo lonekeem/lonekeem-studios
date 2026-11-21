@@ -81,7 +81,13 @@ export const HAT = {
   visor(B, c) { ring(B, 'a', 0, c.crownY - .01, c.zc, c.rx * 1.1, c.rz * 1.1, .01, PI * 1.6, -PI * .8 + PI); B.add(new THREE.CylinderGeometry(c.rx * 1.35, c.rx * 1.35, .005, 22, 1, false, -.9, 1.8), 'a', [0, c.crownY - .01, c.zc + c.rz * .15]); },
   crown(B, c, o) { ring(B, 'm', 0, c.crownY + .02, c.zc, c.rx * 1.0, c.rz * 1.0, .012); for (let i = 0; i < 7; i++) { const a = i / 7 * PI * 2; B.cone(.014, .06, [Math.sin(a) * c.rx, c.crownY + .06, c.zc + Math.cos(a) * c.rz], 'm'); B.sphere(.008, [Math.sin(a) * c.rx, c.crownY + .095, c.zc + Math.cos(a) * c.rz], null, 'g'); } },
   ears(B, c, o) { hemi(B, 'a', 0, c.crownY - .02, c.zc, c.rx * 1.04, c.ry * 1.0, c.rz * 1.04, .9); for (const s of [-1, 1]) B.cone(.04, .1, [s * c.rx * .6, c.crownY + c.ry * .95, c.zc + .01], 'a', [0, 0, -s * .15]); },
-  hood(B, c) { hemi(B, 'a', 0, c.crownY - .04, c.zc - .03, c.rx * 1.2, c.ry * 1.25, c.rz * 1.25, 1.0); B.sphere(c.rx * .75, [0, c.eyeY - .1, c.zc - c.rz * .7], [1, 1.3, .8], 'a'); },
+  hood(B, c) { // v1.9.28: a real hood - wraps the top, back and sides of the head down past the jaw, open at the face (was a bowl over the eyes)
+    const g = new THREE.SphereGeometry(1, 48, 28, 0, PI * 2, 0, PI * .78); const pa = g.attributes.position; const F = new THREE.Vector3(0, -.3, 1).normalize(), A = .9; const v = new THREE.Vector3(), t = new THREE.Vector3();
+    for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i); const d = v.dot(F); if (d <= Math.cos(A)) continue; t.copy(v).addScaledVector(F, -d); if (t.lengthSq() < 1e-6) t.set(0, 1, 0); t.normalize(); v.copy(F).multiplyScalar(Math.cos(A)).addScaledVector(t, Math.sin(A)); pa.setXYZ(i, v.x, v.y, v.z); } // face opening: pull those points onto one smooth rim
+    g.computeVertexNormals(); const S = [c.rx * 1.1, c.ry * 1.15 + .02, c.rz * 1.12], O = [0, c.crownY - .02, c.zc - .006]; B.add(g, 'a', O, [0, 0, 0], S);
+    const rim = []; for (let k = 0; k <= 48; k++) { const a = k / 48 * PI * 2; t.set(Math.cos(a), 0, 0); const up = new THREE.Vector3().crossVectors(F, new THREE.Vector3(1, 0, 0)).normalize().multiplyScalar(-1); t.multiplyScalar(1).addScaledVector(up, Math.sin(a)).normalize(); if (t.y < -Math.sin(.78 * PI - PI / 2) - .02 && false) continue; v.copy(F).multiplyScalar(Math.cos(A)).addScaledVector(t, Math.sin(A)); if (Math.acos(Math.max(-1, Math.min(1, v.y))) > PI * .78) continue; rim.push([O[0] + v.x * S[0], O[1] + v.y * S[1], O[2] + v.z * S[2]]); }
+    if (rim.length > 3) B.tube(rim, .006, 'b', false, 60, 6); // hem round the face opening
+    B.sphere(c.rx * .7, [0, c.eyeY - .11, c.zc - c.rz * .75], [1.15, 1.1, .7], 'a'); },
   helmet(B, c) { hemi(B, 'a', 0, c.crownY - .04, c.zc, c.rx * 1.12, c.ry * 1.18, c.rz * 1.1, 1.18); B.add(new THREE.CylinderGeometry(c.rz * 1.16, c.rz * 1.16, .05, 24, 1, true, -1.05, 2.1), 'k', [0, c.eyeY + .025, c.zc], [0, 0, 0], [c.rx / c.rz, 1, 1]); },
 };
 // ---------- glasses ----------
@@ -96,15 +102,15 @@ export const GLASSES = {
     if (o.aviator) B.tube([[-ex + w, c.eyeY + h * 1.0, c.faceZ(0, c.eyeY) + .014], [ex - w, c.eyeY + h * 1.0, c.faceZ(0, c.eyeY) + .014]], th * .8, 'a', false, 10, 4); },
   visor(B, c, o) { for (const s of [-1, 1]) { B.add(new THREE.BoxGeometry(c.hw * .7, .004, c.hw * .35), 'g', [0, c.eyeY, c.front * .9 + .02]); } B.add(new THREE.CylinderGeometry(c.rx * 1.02, c.rx * 1.02, .03, 22, 1, true, -1.2, 2.4), 'a', [0, c.eyeY, c.zc]); },
   goggles(B, c, o) { // v1.9.28 scavenger goggles: two rounded lens cups in a chunky frame, a nose bridge and a strap around the back of the head
-    const hs = c.hs, w = .033 * hs, h = .025 * hs, ex = c.hw * .43, y = c.eyeY + .002, sy = y + .006;
+    const hs = c.hs, w = .026 * hs, h = .019 * hs, ex = c.hw * .38, y = c.eyeY - .004, sy = y + .004; // v1.9.28: sized to the eyes, flush to the face
     const rim = (x, z, k) => { const pts = []; for (let i = 0; i < 24; i++) { const a = i / 24 * PI * 2; const px = Math.cos(a), py = Math.sin(a); pts.push([x + Math.sign(px) * Math.pow(Math.abs(px), .6) * w * k, y + Math.sign(py) * Math.pow(Math.abs(py), .6) * h * k, z]); } return pts; };
-    const zs = []; for (const s of [-1, 1]) { const x = s * ex, z = Math.max(c.faceZ(x, y), c.faceZ(x * .7, y + .01)) + .014; zs.push(z);
-      B.add(new THREE.CylinderGeometry(1, 1.15, .024, 24), 'k', [x, y, z - .01], [PI / 2, 0, 0], [w * 1.02, 1, h * 1.02]); // cup (frame body)
+    const zs = []; for (const s of [-1, 1]) { const x = s * ex, z = Math.max(c.faceZ(x, y), c.faceZ(x * .7, y + .01)) + .007; zs.push(z);
+      B.add(new THREE.CylinderGeometry(1, 1.12, .014, 24), 'k', [x, y, z - .006], [PI / 2, 0, 0], [w * 1.02, 1, h * 1.02]); // cup (frame body)
       B.add(new THREE.CylinderGeometry(1, 1, .003, 24), 'g', [x, y, z + .001], [PI / 2, 0, 0], [w * .86, 1, h * .86]); // lens
-      B.tube(rim(x, z + .002, 1.0), .0052 * hs, 'a', true, 40, 6); // front rim
-      B.tube([[x + s * w * 1.05, y, z - .006], [s * c.rx * 1.1 * Math.sin(PI * .38), sy, c.zc + c.rz * 1.1 * Math.cos(PI * .38)]], .01 * hs, 'k', false, 8, 6); } // strap from cup to the temple
+      B.tube(rim(x, z + .001, 1.0), .0042 * hs, 'a', true, 40, 6); // front rim
+      const ez = c.ears[s > 0 ? 0 : 1]; B.tube([[x + s * w * 1.05, y, z - .006], [s * c.hw * .84, sy, (z + ez.z) / 2], [s * c.hw * .86, sy, ez.z]], .007 * hs, 'k', false, 12, 6); } // strap from cup along the temple to the ear
     B.tube([[-ex + w * .9, y + h * .1, zs[0] - .004], [0, y + h * .3, Math.max(zs[0], zs[1]) + .002], [ex - w * .9, y + h * .1, zs[1] - .004]], .006 * hs, 'k', false, 12, 5); // bridge
-    ring(B, 'k', 0, sy, c.zc, c.rx * 1.1, c.rz * 1.1, .01 * hs, PI * 1.24, PI * .38); }, // strap round the back
+    { const e0 = c.ears[0], e1 = c.ears[1], d = c.faceZ(0, y) - e0.z, bz = e0.z - d * .8; B.tube([[c.hw * .86, sy, e0.z], [c.hw * .74, sy, e0.z - d * .45], [0, sy, bz], [-c.hw * .74, sy, e1.z - d * .45], [-c.hw * .86, sy, e1.z]], .007 * hs, 'k', false, 30, 6); } }, // strap round the back
 };
 // ---------- jewellery ----------
 export const EAR = { // each is built for one side (s = +1 / -1); lobe position from the mesh
