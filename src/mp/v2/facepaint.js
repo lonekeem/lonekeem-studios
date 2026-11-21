@@ -125,11 +125,11 @@ function nose(g, o) { // 3D-nose helper shading: bridge side shadows, nostril sh
   grad(nx, ny - w * .35, w * .75, w * .65, '#fff0dd', .2); grad(nx, ny - w * 2.6, w * .35, w * 1.6, '#fff0dd', .1);
   g.restore(); }
 function moles(g, o) { const spots = [[.05, -.075], [-.035, .055], [.065, -.01]]; for (let k = 0; k < (o.moles || 0); k++) { const [px, py] = P(...spots[k]); g.fillStyle = 'rgba(70,40,30,.85)'; g.beginPath(); g.arc(px, py, 3.2, 0, 7); g.fill(); } }
-function beardShade(g, o) { if (!o.beardShade) return; const R = rnd(9); g.save(); // soft stubble halo just past the beard edge: skin -> stubble -> beard
+function beardShade(g, o) { return; /* v1.9.28: smooth underlay in headrig.js instead of a speckled halo */ if (!o.beardShade) return; const R = rnd(9); g.save(); // soft stubble halo just past the beard edge: skin -> stubble -> beard
   for (let k = 0; k < 9000; k++) { const x = (R() - .5) * .22, y = -.16 + R() * .14; const ax = Math.abs(x); const lineY = -.062 + ax * .5; const dy = y - lineY; if (dy > .02 || ax > .105) continue; if (Math.abs(y - o.mouthY) < .011 && ax < o.mW * .5) continue;
     const a = .45 * Math.min(1, Math.max(0, (.02 - dy) / .02)); const [px, py] = P(x, y); g.fillStyle = rgba(o.stubbleCol, a * (.5 + .5 * R())); g.fillRect(px, py, 2, 2); }
   g.restore(); }
-function stubble(g, o) { if (!o.stubble) return; const R = rnd(5); g.save(); g.fillStyle = rgba(o.stubbleCol, .35); // dotted shadow over jaw / upper lip
+function stubble(g, o) { return; /* v1.9.28: stubble is the smooth skin-shader shadow (face.js); the dotted paint read as a rash */ if (!o.stubble) return; const R = rnd(5); g.save(); g.fillStyle = rgba(o.stubbleCol, .35); // dotted shadow over jaw / upper lip
   for (let k = 0; k < 5000; k++) { const x = (R() - .5) * .2, y = -.15 + R() * .13; const ax = Math.abs(x); const inJaw = y < -.055 + ax * .5 && y > -.15 && !(Math.abs(y - o.mouthY) < .012 && ax < o.mW * .55) && ax < .1; const must = Math.abs(y - (o.mouthY + .02)) < .01 && ax < .03; if (!(inJaw || must)) continue; const [px, py] = P(x, y); g.fillRect(px, py, 2, 2); }
   g.restore(); }
 

@@ -13,7 +13,7 @@ const smax = (a, b, k) => -smin(-a, -b, k);
 export function headParams(g, m = {}) {
   const f = g === 'f'; const M = k => m[k] || 0;
   return {
-    f, W: (f ? .117 : .121) * (1 + .07 * M('faceW')), Ht: (f ? .142 : .145) * (1 + .06 * M('forehead')), Hb: (f ? .148 : .155) * (1 + .07 * M('faceLen') + .04 * M('chin')), D: (f ? .123 : .127), yc: .0,
+    f, W: (f ? .117 : .121) * (1 + .07 * M('faceW')), Ht: (f ? .131 : .133) * /* v1.9.28: rounder cranium (was .142/.145 = egg) */ (1 + .06 * M('forehead')), Hb: (f ? .148 : .155) * (1 + .07 * M('faceLen') + .04 * M('chin')), D: (f ? .123 : .127), yc: .0,
     taper: (f ? .34 : .28) - .14 * M('jaw'), chinW: 1 + .3 * M('chinW'), chinFwd: .012 + .006 * M('chin'), cheek: .5 + .45 * M('cheekFull') + .2 * M('cheekbone'),
     noseW: 1 + .3 * M('noseW'), noseLen: 1 + .3 * M('noseLen'), noseBridge: M('noseBridge'), noseTip: M('noseTip'), noseSize: f ? .95 : 1.22,
     earS: 1 + .15 * M('earSize'), earOut: M('earOut'),

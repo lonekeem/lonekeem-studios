@@ -22,7 +22,7 @@ import { hash } from './building.js';
 import { CSS, el, drawGauge } from './ui.js';
 import { AudioSys } from '../../audio.js';
 import { weaponMesh } from '../../game/chars.js';
-import { WEAPONS } from '../../game/data.js';
+import { WEAPONS, writeSave } from '../../game/data.js';
 
 function nameTag(text) { const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#000a'; g.roundRect ? g.roundRect(8, 10, 240, 44, 14) : g.rect(8, 10, 240, 44); g.fill(); g.fillStyle = '#fff'; g.font = '600 28px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text.slice(0, 16), 128, 33); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true })); s.scale.set(.5, .125, 1); s.renderOrder = 20; return s; }
 
@@ -54,6 +54,8 @@ export async function enterTown({ look, onExit, room = 'town' } = {}) {
   const cam = new THREE.PerspectiveCamera(58, 1, .1, 320);
   // ---- world ----
   const W = buildTown(scene, { hooks: [addGas, addLoot] }); const col = W.col; const bag = new Bag(26); bag.add('cash', 60); bag.add('water', 1); bag.add('pistol', 1); bag.add('ammo_light', 24); bag.add('grenade', 1); bag.pref = 'pistol'; // story start: Dad's lockbox pistol (12 loaded + 24 spare)
+  // v1.9.28 shared wallet: town cash IS the story/Survival cash (window.__atq.save), so loot earned anywhere pays for doors, guns and My Character items
+  { const W$ = () => window.__atq && window.__atq.save; if (W$()) { bag.items.cash = Math.max(0, W$().cash | 0); if (!bag.items.cash) delete bag.items.cash; let lc = bag.count('cash'); const wt = setInterval(() => { const sv = W$(), c = bag.count('cash'); if (sv && c !== lc) { lc = c; sv.cash = c; writeSave(localStorage, sv); } try { if (!running) clearInterval(wt); } catch (e) { /* town still loading */ } }, 400); } }
   // containers (fridges, cabinets, dumpsters): no shadow casting (4 shadow-pass draws each for nothing visible)
   for (const c of W.containers) if (c.lid && c.lid.parent) c.lid.parent.traverse(m => { if (m.isMesh) m.castShadow = false; });
   // distance gating of small static props (draw-call budget): leaf objects of the freshly built world, shown within PROP_R of the player
