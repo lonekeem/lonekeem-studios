@@ -84,14 +84,14 @@ export class Game {
     this.zombies = []; this.npcs = {}; this.pickups = []; this.props = [];
     // post
     if (Q.post) { try { const c = this.composer = new EffectComposer(r); c.addPass(new RenderPass(scene, cam)); const ao = new GTAOPass(scene, cam, innerWidth, innerHeight); ao.blendIntensity = 0.8; c.addPass(ao);
-      c.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.45, 0.5, 0.82)); c.addPass(new OutputPass()); } catch (e) { this.composer = null; } }
+      c.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.22, 0.18, 0.93)); c.addPass(new OutputPass()); } catch (e) { this.composer = null; } }
     addEventListener('resize', () => this.resize()); this.resize();
     this.cam = { yaw: Math.PI / 2, pitch: -0.12, dist: 2.9, fp: !!S.fp, shake: V3() };
     this.fpsAcc = 0; this.fpsN = 0; this.fpsT = 0;
     // warm up shaders
     r.compile(scene, cam);
   }
-  resize() { const w = innerWidth, h = innerHeight; this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); if (this.composer) this.composer.setSize(w, h); }
+  resize() { const w = innerWidth, h = innerHeight; this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); if (this.composer) this.composer.setSize(w, h); this._xh = null; }
 
   // ---------- run state ----------
   makePlayer() { const L = playerLook(), old = this.player; this._lookKey = JSON.stringify(L);
@@ -113,8 +113,11 @@ export class Game {
     if (!this._grenG) { this._grenG = new THREE.CylinderGeometry(.05, .05, .2, 8); this._grenM = new THREE.MeshStandardMaterial({ color: '#444' }); const gm = new THREE.Mesh(this._grenG, this._grenM); gm.visible = false; gm.name = 'grenWarm'; this.scene.add(gm); }
     { const gm = new THREE.Mesh(this._gibGeo || (this._gibGeo = new THREE.BoxGeometry(.09, .075, .09)), new THREE.MeshStandardMaterial({ color: '#5a1010', roughness: .4 })); gm.visible = false; this.scene.add(gm); }
     if (this.player && this.player.mat) { const LG = this._limbG || (this._limbG = [new THREE.CapsuleGeometry(.05, .35, 3, 6), new THREE.CapsuleGeometry(.07, .45, 3, 6)]); const lm = new THREE.Mesh(LG[0], this.player.mat); lm.visible = false; this.scene.add(lm); } // severed limbs = body shader without skinning
+    if (!this.faceL) { this.faceL = new THREE.PointLight('#ffe6cc', 0, 4.5, 1.6); this.faceL.castShadow = false; this.scene.add(this.faceL); }
+    this.rFx();
     const R = this.renderer, hid = []; this.scene.traverse(o => { if (!o.visible) { hid.push(o); o.visible = true; } }); const L = this.mLight, li = L ? L.intensity : 0;
-    try { R.compile(this.scene, this.camera); R.render(this.scene, this.camera); } catch (e) { } hid.forEach(o => o.visible = false); if (L) L.intensity = li; }
+    if (L) L.intensity = 6; if (this.muzzle) this.muzzle.visible = true; if (this.tracer) this.tracer.visible = true; if (this.faceL) this.faceL.intensity = 0.7;
+    try { R.compile(this.scene, this.camera); R.render(this.scene, this.camera); } catch (e) { } hid.forEach(o => o.visible = false); if (L) L.intensity = li; if (this.muzzle) this.muzzle.visible = false; if (this.tracer) this.tracer.visible = false; if (this.faceL) this.faceL.intensity = 0; }
   clearActors() { townReset(this); this.zombies.forEach(z => { this.scene.remove(z.root); z.mixer.stopAllAction(); z.mixer.uncacheRoot(z.model); this.disposeTree(z.root); }); this.zombies = []; for (const k in this.npcs) { const n = this.npcs[k]; this.scene.remove(n.root); n.mixer.stopAllAction(); n.mixer.uncacheRoot(n.model); this.disposeTree(n.root); } this.npcs = {};
     this.pickups.forEach(p => this.scene.remove(p.mesh)); this.pickups = []; this.props.forEach(p => { this.scene.remove(p); this.disposeTree(p); }); this.props = []; this.decalN = 0; this.decals.forEach(d => d.visible = false); (this.pools || []).forEach(o => { this.scene.remove(o); o.material.dispose(); }); this.pools = [];
     if (this.truck) this.truck.driving = false; document.body.classList.remove('driving'); $('#drive')?.classList.add('hidden'); this.drv = {}; this.boss = null; $('#boss').classList.add('hidden'); this.dlgQ = []; this.dlgCur = null; $('#dlg').classList.remove('on'); }
@@ -354,7 +357,7 @@ export class Game {
     const bt = bloodTex(); this.decals = []; this.pools = []; this.decalN = 0; const dm = new THREE.MeshStandardMaterial({ map: bt, transparent: true, depthWrite: false, roughness: .15, polygonOffset: true, polygonOffsetFactor: -2 });
     for (let i = 0; i < 180; i++) { const d = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), dm); d.rotation.x = -Math.PI / 2; d.visible = false; d.renderOrder = 1; s.add(d); this.decals.push(d); }
     const fm = new THREE.SpriteMaterial({ color: '#ffd27a', blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, map: (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, '#fff'); gr.addColorStop(.3, 'rgba(255,200,90,.9)'); gr.addColorStop(1, 'rgba(255,120,20,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })() });
-    this.muzzle = new THREE.Sprite(fm); this.muzzle.scale.setScalar(.5); this.muzzle.visible = false; s.add(this.muzzle); this.mLight = new THREE.PointLight('#ffc070', 0, 12, 2); s.add(this.mLight); this._boomL = new THREE.PointLight('#ff9040', 0, 60, 2); s.add(this._boomL); this._ballGeo = new THREE.SphereGeometry(1, 12, 8);
+    this.muzzle = new THREE.Sprite(fm); this.muzzle.scale.setScalar(.5); this.muzzle.visible = false; s.add(this.muzzle); this.mLight = new THREE.PointLight('#ffc070', 0, 7, 2); this.mLight.castShadow = false; s.add(this.mLight); this._boomL = new THREE.PointLight('#ff9040', 0, 60, 2); s.add(this._boomL); this._ballGeo = new THREE.SphereGeometry(1, 12, 8);
     this.tracer = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V3(), V3()]), new THREE.LineBasicMaterial({ color: '#ffe0a0', transparent: true, opacity: .8 })); this.tracer.frustumCulled = false; this.tracer.visible = false; s.add(this.tracer);
     this.booms = []; this.gibs = []; this.grenadesLive = [];
     this.fireSprite = fm; }
@@ -375,8 +378,9 @@ export class Game {
     e.style.transition = 'none'; e.style.background = b.join(','); e.style.opacity = '1'; requestAnimationFrame(() => { e.style.transition = 'opacity 2.2s'; e.style.opacity = '0'; }); }
   gib(pos, n = 5, col = '#5a1010', limb, vel) { const G = this._gibG || (this._gibG = { geo: new THREE.IcosahedronGeometry(.04, 0), mats: {} }); const cap = this.Q && this.Q.shadows === false ? 28 : (this.settings.qual === 'low' ? 28 : 64);
     const mat = G.mats[col] || (G.mats[col] = new THREE.MeshStandardMaterial({ color: col, roughness: .4 }));
-    for (let i = 0; i < n; i++) { let m; if (limb && i === 0) m = limb; else { m = new THREE.Mesh(G.geo, mat); m.scale.set(rnd(.55, 1.35), rnd(.6, 1.3), rnd(.55, 1.35)); m.pooled = 1; }
-      while (this.gibs.length >= cap) { const o = this.gibs.shift(); this.scene.remove(o.m); }
+    const pool = this._gibPool || (this._gibPool = []);
+    for (let i = 0; i < n; i++) { let m; if (limb && i === 0) m = limb; else { m = pool.pop() || new THREE.Mesh(G.geo, mat); m.material = mat; m.scale.set(rnd(.55, 1.35), rnd(.6, 1.3), rnd(.55, 1.35)); m.pooled = 1; }
+      while (this.gibs.length >= cap) { const o = this.gibs.shift(); this.scene.remove(o.m); if (o.m.pooled) pool.push(o.m); }
       m.position.copy(pos); m.castShadow = false; this.scene.add(m); this.gibs.push({ m, v: vel && i === 0 ? vel.clone() : V3(rnd(-3, 3), rnd(2, 6), rnd(-3, 3)), r: V3(rnd(-9, 9), rnd(-9, 9), rnd(-9, 9)), life: limb && i === 0 ? 14 : 8, big: limb && i === 0 }); } }
   // realistic blade gore (katana / longsword): decapitation with a real flying head, or a waist cleave that drops the upper body
   bladeGore(z, dir, kind) { const gore = this.settings.gore; if (!gore) return; const ap = V3(); const s = z.scale || 1;
@@ -386,7 +390,7 @@ export class Game {
       this.gib(ap, 1, '#5a1010', torso, V3(dir.x * 2.5, rnd(2.5, 4), dir.z * 2.5)); const hp = ap.clone(); hp.y += .5 * s; const head = new THREE.Mesh(this._headGeo || (this._headGeo = new THREE.SphereGeometry(.13, 10, 8)), z.mat); head.scale.setScalar(s); this.gib(hp, 1, '#5a1010', head, V3(dir.x * 3.5, 5, dir.z * 3.5));
       this.gib(ap, 8); this.gib(ap, 3, '#a8506a'); this.spurt(z, 'DEF-spine.001', 1.2); this.blood(ap, dir.clone().setY(.5), 70, 5, 1.5); }
     this.decal(ap.x + dir.x, ap.z + dir.z, 2.6); this.decal(ap.x, ap.z, 1.8); this.audio.splat(); setTimeout(() => this.audio.splat(), 90); this.screenSplat(); }
-  shake(a) { if (!this.settings.still) this.trauma = Math.min(1, this.trauma + a); else this.trauma = Math.min(.3, this.trauma + a * .3); }
+  shake(a) { if (!this.settings.still) this.trauma = Math.min(1, this.trauma + a); else this.trauma = Math.min(.3, this.trauma + a * .3); this._kickX = rnd(-.8, .8); this._kickY = rnd(.4, 1); this._kickR = rnd(-.8, .8); }
   flashScreen(cls) { const f = $('#flash'); f.className = ''; void f.offsetWidth; f.className = cls; }
   slowmo(t = 0.7) { this.slowT = t; this.timeScale = 0.22; }
   explode(pos, R = 9, dmg = 400) { this.audio.explode(); this.shake(1); this.flashScreen('white');
@@ -444,10 +448,12 @@ export class Game {
     if (hit) { this.audio.hit(); if (Math.random() < .3) this.audio.shout('keem_melee'); if (WEAPONS[this.save.cur].bonk) { this.audio.bonk(); this.floatText('BONK!', '#ffd35a'); } this.hitstop = 0.07; this.shake(.18); this.state.combo++; this.state.comboT = 2; } else this.audio.swing();
     // tanker can be smashed too? no — only shot
   }
+  // skip hidden chapter-zone walls (Raycaster does not honour parent.visible when given a flat mesh list)
+  shotWalls() { if (this._wallTok === this.stepTok && this._shotWalls) return this._shotWalls; const vis = (o) => { let x = o; while (x) { if (x.visible === false) return false; x = x.parent; } return true; }; this._shotWalls = (this.world.walls || []).filter(vis); this._wallTok = this.stepTok; return this._shotWalls; }
   // v1.9.3: camera ray through the crosshair. Spread is an angle (not NDC, which was stretched 2x sideways on landscape phones); single-bullet guns: dead-on when aiming, small cone hip-fire; pellets keep their cone
-  aimRay(pellets = 1, exact = false) { const r = new THREE.Raycaster(); const ws = this.ws; const sp = exact ? 0 : pellets > 1 ? (this.state.aim ? ws.spread * .3 : ws.spread * (this.cam.fp ? .5 : .6)) * 4 /* v1.9.28: tighter pellet cone now that pellets must hit the visible body (the old fat hitbox hid a 0.25 rad hip cone) */ : (this.state.aim ? 0 : ws.spread * .35 * 4);
-    const xr = $('#xhair').getBoundingClientRect(), cr = this.renderer.domElement.getBoundingClientRect(); const cy = (xr.width && cr.height) ? 1 - 2 * ((xr.top + xr.height / 2 - cr.top) / cr.height) : 0.08, cx = (xr.width && cr.width) ? 2 * ((xr.left + xr.width / 2 - cr.left) / cr.width) - 1 : 0;
-    r.setFromCamera(new THREE.Vector2(cx, cy), this.camera); if (sp > 0) { const th = Math.random() * 6.283, m = Math.sqrt(Math.random()) * sp * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
+  aimRay(pellets = 1, exact = false) { const r = this._aimRc || (this._aimRc = new THREE.Raycaster()); const ws = this.ws; const sp = exact ? 0 : pellets > 1 ? (this.state.aim ? ws.spread * .3 : ws.spread * (this.cam.fp ? .5 : .6)) * 4 /* v1.9.28: tighter pellet cone now that pellets must hit the visible body (the old fat hitbox hid a 0.25 rad hip cone) */ : (this.state.aim ? 0 : ws.spread * .35 * 4);
+    if (!this._xh) { const xr = $('#xhair').getBoundingClientRect(), cr = this.renderer.domElement.getBoundingClientRect(); this._xh = { cy: (xr.width && cr.height) ? 1 - 2 * ((xr.top + xr.height / 2 - cr.top) / cr.height) : 0.08, cx: (xr.width && cr.width) ? 2 * ((xr.left + xr.width / 2 - cr.left) / cr.width) - 1 : 0 }; }
+    const ndc = this._aimNdc || (this._aimNdc = new THREE.Vector2()); ndc.set(this._xh.cx, this._xh.cy); r.setFromCamera(ndc, this.camera); if (sp > 0) { const th = Math.random() * 6.283, m = Math.sqrt(Math.random()) * sp * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
       const up = V3(0, 1, 0).applyQuaternion(this.camera.quaternion), rt = V3(1, 0, 0).applyQuaternion(this.camera.quaternion); r.ray.direction.addScaledVector(rt, Math.cos(th) * m).addScaledVector(up, Math.sin(th) * m).normalize(); }
     // skip geometry between the camera and Keem (over-the-shoulder cam near walls)
     const near = Math.max(0, this.player.root.position.clone().setY(r.ray.origin.y).sub(r.ray.origin).dot(r.ray.direction) - .4); r.ray.near = near; return r.ray; }
@@ -455,16 +461,16 @@ export class Game {
     if ((this.save.mags[id] || 0) <= 0) { this.audio.click(); if ((this.save.ammo[w.ammo] || 0) <= 0) this.audio.shout && this.audio.shout('keem_empty'); s.fireCd = .25; if ((this.save.ammo[w.ammo] || 0) > 0) this.reload(); else this.toast('Out of ammo — loot or buy more'); return; }
     this.save.mags[id]--; s.fireCd = w.rate; this.audio.shot(id); this.shake(id === 'shotgun' || id === 'sniper' ? .28 : .1); this.cam.pitch += (id === 'sniper' ? .05 : .015) * (s.aim ? .5 : 1); this.cam.yaw += rnd(-.006, .006); s.shotT = .5;
     const mz = muzzleWorld(this, V3()); // v1.9.28: re-glued to the barrel tip every frame after the aim pose (placeShotFx)
-    this.muzzle.position.copy(mz); this.muzzle.visible = true; this.muzzle.material.rotation = rnd(0, 6); this.mLight.position.copy(mz); this.mLight.color.set('#ffc070'); this.mLight.intensity = 30; this.mT = 0.05;
+    this.muzzle.position.copy(mz); this.muzzle.visible = true; this.muzzle.material.rotation = rnd(0, 6); this.mLight.position.copy(mz); this.mLight.color.set('#ffc070'); this.mLight.intensity = 6; this.mT = 0.05;
     if (!this.cam.fp && (this.player.curName.startsWith('Pistol') || this.player.curName === 'Idle_Loop')) this.player.play('Pistol_Shoot', { once: true, force: true, speed: 2, cb: () => { this.player.curName = ''; } });
-    if (w.gl) { const ray = this.aimRay(); const nr = ray.near || 0; const rc = new THREE.Raycaster(ray.at(nr, V3()), ray.direction, 0, ws.range); const wh = rc.intersectObjects(this.world.walls, false)[0]; let bd = (wh ? wh.distance : ws.range) + nr;
+    if (w.gl) { const ray = this.aimRay(); const nr = ray.near || 0; const rc = this._wallRc || (this._wallRc = new THREE.Raycaster()); rc.set(ray.at(nr, this._wallFrom || (this._wallFrom = V3())), ray.direction); rc.near = 0; rc.far = ws.range; const wh = rc.intersectObjects(this.shotWalls(), false)[0]; let bd = (wh ? wh.distance : ws.range) + nr;
       this.alive().forEach(z => { const a = z.root.position.clone().setY(.2), b = z.root.position.clone().setY(1.8 * z.scale), pr = V3(); const d2 = ray.distanceSqToSegment(a, b, pr); const t = pr.sub(ray.origin).dot(ray.direction); const rr = .6 * z.scale; if (t > 0 && t < bd && d2 < rr * rr) bd = t; }); this.explode(ray.at(Math.max(nr + 1.5, bd), V3()), 5.5, 220 * (ws.dmg / w.dmg)); return; }
     if (w.flame) { const ray = this.aimRay(); for (let i = 0; i < 2; i++) this.flameAt(mz, 1, ray.direction.clone().multiplyScalar(rnd(9, 13))); this.mLight.color && this.mLight.color.set('#ff8030');
       const nr = ray.near || 0; this.alive().forEach(z => { const a = z.root.position.clone().setY(.2), b = z.root.position.clone().setY(1.8 * z.scale), pr = V3(); const d2 = ray.distanceSqToSegment(a, b, pr); const t = pr.clone().sub(ray.origin).dot(ray.direction) - nr; const rr = .4 + Math.max(0, t) * .12 + .25 * (z.scale - 1); if (t > -1.5 && t < ws.range && d2 < rr * rr) { z.burn = 3.5; this.damageZ(z, ws.dmg * 1.6, ray.direction.clone().setY(0).normalize(), { flame: true }); } }); return; }
     const pellets = w.pellets || 1; let end = null;
     for (let k = 0; k < pellets; k++) { const ray = this.aimRay(pellets); const nr = ray.near || 0; let best = null, bd = ws.range + nr;
       // world walls: cast from Keem's depth (ignore cam-side walls); zombies are tested from the camera so close/tall ones beside Keem still get hit (v1.9.4)
-      const rc = new THREE.Raycaster(ray.at(nr, V3()), ray.direction, 0, ws.range); const wh = rc.intersectObjects(this.world.walls, false)[0]; if (wh) bd = wh.distance + nr;
+      const rc = this._wallRc || (this._wallRc = new THREE.Raycaster()); rc.set(ray.at(nr, this._wallFrom || (this._wallFrom = V3())), ray.direction); rc.near = 0; rc.far = ws.range; const wh = rc.intersectObjects(this.shotWalls(), false)[0]; if (wh) bd = wh.distance + nr;
       // v1.9.28: hit the zombie's VISIBLE body (capsules fitted per bone to its skinned mesh, so any pose / build / lunge counts); the old
       // single vertical capsule + head sphere is only the fallback for a body without a skin
       const hp = V3(), tmp = V3(); this.alive().forEach(z => { const hc = capsOf(z) ? hitChar(ray, z, bd) : undefined; if (hc !== undefined) { if (hc && !(hc.head && z.noHead)) { bd = hc.t; best = { z, head: hc.head }; } return; }
@@ -513,7 +519,8 @@ export class Game {
   // ---------- frame ----------
   frame(now) { if (!this.running) return; requestAnimationFrame((t) => this.frame(t)); let rdt = Math.min(0.05, (now - this.last) / 1000); this.last = now;
     this.fpsAcc += rdt; this.fpsN++; if (this.fpsAcc > 3) { const fps = this.fpsN / this.fpsAcc; this.fps = fps; this.fpsAcc = 0; this.fpsN = 0;
-      if (fps < 27 && this.pr > 0.55) { this.pr = Math.max(0.55, this.pr * 0.82); this.renderer.setPixelRatio(this.pr); this.resize(); } else if (fps > 55 && this.pr < this.basePR) { this.pr = Math.min(this.basePR, this.pr * 1.1); this.renderer.setPixelRatio(this.pr); this.resize(); } }
+      const busy = (this.mT > 0) || (this.state && this.state.shotT > 0) || (this.input && this.input.atk);
+      if (!busy && fps < 24 && this.pr > 0.55) { const n = Math.max(0.55, this.pr * 0.82); if (n < this.pr - 0.05) { this.pr = n; this.renderer.setPixelRatio(this.pr); this.resize(); } } else if (!busy && fps > 55 && this.pr < this.basePR) { const n = Math.min(this.basePR, this.pr * 1.1); if (n > this.pr + 0.05) { this.pr = n; this.renderer.setPixelRatio(this.pr); this.resize(); } } }
     this.input.poll(rdt);
     if (!this.paused) { if (this.hitstop > 0) { this.hitstop -= rdt; } else { if (this.slowT > 0) { this.slowT -= rdt; if (this.slowT <= 0) this.timeScale = 1; } this.update(rdt * this.timeScale, rdt); } }
     this.render(rdt); }
@@ -561,7 +568,7 @@ export class Game {
     const rate = (firing ? 4 + 9 * str : 1.2 + 2 * str) * (1 - ul * .85); const dy = ((best.yd - C.yaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
     C.yaw += dy * Math.min(1, rdt * rate); C.pitch = clamp(C.pitch + (best.pd - C.pitch) * Math.min(1, rdt * rate), -1.1, .9);
     if (auto && best.a < .075 + .02 * str) { // line-of-sight check ~8x/s, then hold the trigger
-      this._losT = (this._losT || 0) - rdt; if (this._losT <= 0) { this._losT = .12; const o = cp.clone(), d = hp.clone().sub(o); const L = d.length(); const rc = new THREE.Raycaster(o, d.normalize(), 0, L); this._los = !rc.intersectObjects(this.world.walls, false)[0]; }
+      this._losT = (this._losT || 0) - rdt; if (this._losT <= 0) { this._losT = .12; const o = cp.clone(), d = hp.clone().sub(o); const L = d.length(); const rc = this._losRc || (this._losRc = new THREE.Raycaster()); rc.set(o, d.normalize()); rc.near = 0; rc.far = L; this._los = !rc.intersectObjects(this.shotWalls(), false)[0]; }
       if (this._los && this.state.reload <= 0 && (this.save.mags[this.save.cur] || 0) > 0) { I.autoAtk = true; I.edge.atk = true; } } }
   moveCollide(p, dx, dz, r) { const C = this.world.colliders; let nx = p.x + dx, nz = p.z + dz;
     const L = Math.hypot(dx, dz); if (L > r) { const n = Math.ceil(L / r); let hw = false; for (let k = 0; k < n; k++) hw = this.moveCollide(p, dx / n, dz / n, r) || hw; return hw; } // sub-step: no tunnelling through thin props
@@ -681,7 +688,7 @@ export class Game {
         M.compose(d.p, T.q, T.s.set(k * .14, k * .14, sp > .15 ? k * (.35 + Math.min(sp * .09, 1.2)) : k * .2)); this.parts.setMatrixAt(i, M); } }
     this.parts.instanceMatrix.needsUpdate = true;
     if (this.spurts) for (let i = this.spurts.length - 1; i >= 0; i--) { const q = this.spurts[i]; q.t -= dt; if (q.t <= 0) { this.spurts.splice(i, 1); continue; } if (Math.random() < dt * 22) { const p = V3(); q.z.worldOf(q.bone, p); this.blood(p, V3(rnd(-.3, .3), 1.4, rnd(-.3, .3)), 3, 3 * q.t, 1); } }
-    for (let i = this.gibs.length - 1; i >= 0; i--) { const g = this.gibs[i]; g.life -= dt; if (g.m.position.y > .04 || g.v.y > 0) { g.v.y -= 14 * dt; if (g.big && g.m.position.y + g.v.y * dt < .08 && g.v.y < -2) { g.v.y *= -.3; g.v.x *= .5; g.v.z *= .5; g.r.multiplyScalar(.4); if (this.settings.gore) this.decal(g.m.position.x, g.m.position.z, .7); } g.m.position.addScaledVector(g.v, dt); g.m.rotation.x += g.r.x * dt; g.m.rotation.y += g.r.y * dt; } else { g.m.position.y = .04; } if (g.life <= 0) { this.scene.remove(g.m); this.gibs.splice(i, 1); } }
+    for (let i = this.gibs.length - 1; i >= 0; i--) { const g = this.gibs[i]; g.life -= dt; if (g.m.position.y > .04 || g.v.y > 0) { g.v.y -= 14 * dt; if (g.big && g.m.position.y + g.v.y * dt < .08 && g.v.y < -2) { g.v.y *= -.3; g.v.x *= .5; g.v.z *= .5; g.r.multiplyScalar(.4); if (this.settings.gore) this.decal(g.m.position.x, g.m.position.z, .7); } g.m.position.addScaledVector(g.v, dt); g.m.rotation.x += g.r.x * dt; g.m.rotation.y += g.r.y * dt; } else { g.m.position.y = .04; } if (g.life <= 0) { this.scene.remove(g.m); if (g.m.pooled) (this._gibPool || (this._gibPool = [])).push(g.m); this.gibs.splice(i, 1); } }
     for (const b of this.booms) if (b.on) { b.t += dt; b.ball.scale.setScalar(1 + b.t * b.R * 1.6); b.ball.material.opacity = Math.max(0, 1 - b.t * 1.4); if (b.t > 1.2) { b.on = false; b.ball.visible = false; } }
     if (this._boomL && this._boomL.intensity > 0) this._boomL.intensity = Math.max(0, this._boomL.intensity - dt * 120);
     for (let i = this.grenadesLive.length - 1; i >= 0; i--) { const g = this.grenadesLive[i]; g.t -= dt; g.v.y -= 14 * dt; g.m.position.addScaledVector(g.v, dt); if (g.m.position.y < .06) { g.m.position.y = .06; g.v.multiplyScalar(.4); g.v.y = Math.abs(g.v.y) * .3; }
@@ -702,20 +709,20 @@ export class Game {
       cam.rotation.set(0, 0, 0, 'YXZ'); cam.rotation.order = 'YXZ'; cam.rotation.y = C.yaw; cam.rotation.x = C.pitch; }
     else { target = P.root.position.clone(); target.y += this.state && this.state.crouch ? 1.05 : 1.5; const dist = aim ? 1.6 : 2.7, sh = aim ? .62 : .5;
       const cp = Math.cos(C.pitch), back = V3(Math.sin(C.yaw) * cp, -Math.sin(C.pitch), Math.cos(C.yaw) * cp); const right = V3(Math.cos(C.yaw), 0, -Math.sin(C.yaw));
-      const pivot = target.clone().addScaledVector(right, sh); let dd = dist; const rc = new THREE.Raycaster(pivot, back, 0, dist + .3); const h = rc.intersectObjects(this.world.walls, false)[0]; if (h) dd = Math.max(.3, h.distance - .25);
+      const pivot = target.clone().addScaledVector(right, sh); let dd = dist; const rc = this._camRc || (this._camRc = new THREE.Raycaster()); rc.set(pivot, back); rc.near = 0; rc.far = dist + .3; const h = rc.intersectObjects(this.shotWalls(), false)[0]; if (h) dd = Math.max(.3, h.distance - .25);
       // side collision for shoulder
-      const rc2 = new THREE.Raycaster(target, right, 0, sh + .2); const h2 = rc2.intersectObjects(this.world.walls, false)[0]; if (h2) { pivot.copy(target).addScaledVector(right, Math.max(0, h2.distance - .25)); }
+      const rc2 = this._camRc2 || (this._camRc2 = new THREE.Raycaster()); rc2.set(target, right); rc2.near = 0; rc2.far = sh + .2; const h2 = rc2.intersectObjects(this.shotWalls(), false)[0]; if (h2) { pivot.copy(target).addScaledVector(right, Math.max(0, h2.distance - .25)); }
       cam.position.copy(pivot).addScaledVector(back, dd); cam.rotation.order = 'YXZ'; cam.rotation.set(C.pitch, C.yaw, 0); }
     // first person (v1.9.17): hide the player's whole body (mannequin, avatar skin, head/hair/hat/face parts, held weapon) and use a tight near plane so nothing of Keem is ever in the view
     const fpOn = !!(C.fp && !this.cut && !this.dying && !(T && T.driving)); this.setFPBody(fpOn); if (!fpOn) this.pushCamOutOfChars();
     const wantNear = fpOn ? .06 : .12; if (cam.near !== wantNear) { cam.near = wantNear; cam.updateProjectionMatrix(); }
     // shake
-    if (this.trauma > 0) { const k = this.trauma * this.trauma * .25; cam.position.x += rnd(-k, k); cam.position.y += rnd(-k, k); cam.rotation.z += rnd(-k, k) * .4; this.trauma = Math.max(0, this.trauma - rdt * 1.6); }
+    if (this.trauma > 0) { const k = this.trauma * this.trauma * .18; cam.position.x += (this._kickX || 0) * k; cam.position.y += (this._kickY || 1) * k; cam.rotation.z += (this._kickR || 0) * k * .35; this.trauma = Math.max(0, this.trauma - rdt * 2.2); }
     // viewmodel
     this._fpWallD = 99; this.vm.visible = !!(C.fp && !(T && T.driving) && !this.cut && !this.dying); if (this.vm.visible) { const s = this.state; const bob = Math.sin(this.t * 9) * .012 * Math.min(1, this.input.move.length()); this.vm.position.set(aim ? 0.0 : .22, (aim ? -.14 : -.2) + bob, -.45);
       const w = WEAPONS[this.save.cur]; this.vm.rotation.set(s.atk > 0 && w.type === 'melee' ? -1.2 + s.atk / this.ws.rate * 2.4 : (s.reload > 0 ? .6 : 0), w.type === 'melee' ? .3 : 0, 0);
       // never let the held weapon poke through a wall: measure how far its tip reaches along the view and pull it back toward the camera when a wall is closer
-      cam.updateMatrixWorld(true); this.vm.updateMatrixWorld(true); const fwd = V3(); cam.getWorldDirection(fwd); const rc = this._fpRay || (this._fpRay = new THREE.Raycaster()); rc.set(cam.position, fwd); rc.near = 0; rc.far = 2.6; const wh = rc.intersectObjects(this.world.walls, false)[0]; this._fpWallD = wh ? wh.distance : 99;
+      cam.updateMatrixWorld(true); this.vm.updateMatrixWorld(true); const fwd = V3(); cam.getWorldDirection(fwd); const rc = this._fpRay || (this._fpRay = new THREE.Raycaster()); rc.set(cam.position, fwd); rc.near = 0; rc.far = 2.6; const wh = rc.intersectObjects(this.shotWalls(), false)[0]; this._fpWallD = wh ? wh.distance : 99;
       let pull = 0; if (wh) { const bx = this._fpBox || (this._fpBox = new THREE.Box3()); bx.setFromObject(this.vm); let tip = 0; for (let i = 0; i < 8; i++) { const c = V3(i & 1 ? bx.max.x : bx.min.x, i & 2 ? bx.max.y : bx.min.y, i & 4 ? bx.max.z : bx.min.z); tip = Math.max(tip, c.sub(cam.position).dot(fwd)); } pull = clamp(tip - (wh.distance - .1), 0, 1.1); }
       this._fpPull = lerp(this._fpPull || 0, pull, Math.min(1, rdt * 14)); this.vm.position.z += this._fpPull; this.vm.position.y -= this._fpPull * .7; this.vm.rotation.x -= this._fpPull * .5; if (this._fpPull > .62) this.vm.visible = false; /* weapon lowered out of view when your face is against a wall */ }
     this.rldSync(); $('#xhair').classList.toggle('hidden', !(WEAPONS[this.save?.cur]?.type === 'gun' || C.fp) || !!(T && T.driving) || !!this.cut || !!this.dying);
@@ -726,7 +733,7 @@ export class Game {
     fl.position.copy(fpos).addScaledVector(fdir, fpT ? 0 : .3); fl.target.position.copy(fpos).addScaledVector(fdir, 10); fl.visible = !this.cut || this.cut.flash;
     // moon shadow follows
     const mp = P.root.position; this.moon.position.set(mp.x - 20, 40, mp.z + 14); this.moon.target.position.copy(mp);
-    if (this.player && this.scene) { if (!this.faceL) { this.faceL = new THREE.PointLight('#ffe6cc', 0.7, 4.5, 1.6); this.faceL.castShadow = false; this.scene.add(this.faceL); } this.faceL.visible = !!this.cut; /* v1.9.10: face fill only in cutscenes (made the player glow white in play) */ const hp = this.cut && this.cut.look ? this.cut.look : this.player.root.position, hy = this.cut && this.cut.look ? hp.y + .25 : hp.y + 1.7, cp = cam.position; this.faceL.position.set(hp.x + (cp.x - hp.x) * .45, hy, hp.z + (cp.z - hp.z) * .45); }
+    if (this.player && this.scene) { if (!this.faceL) { this.faceL = new THREE.PointLight('#ffe6cc', 0, 4.5, 1.6); this.faceL.castShadow = false; this.scene.add(this.faceL); } this.faceL.visible = true; this.faceL.intensity = this.cut ? 0.7 : 0; /* v1.9.10: face fill only in cutscenes (made the player glow white in play); keep the light in the scene so shaders are not recompiled */ const hp = this.cut && this.cut.look ? this.cut.look : this.player.root.position, hy = this.cut && this.cut.look ? hp.y + .25 : hp.y + 1.7, cp = cam.position; this.faceL.position.set(hp.x + (cp.x - hp.x) * .45, hy, hp.z + (cp.z - hp.z) * .45); }
     if (this.audio.listen) { const K = this.world && this.world.KH, c = cam.position; this.audio.listen(cam, !!(K && c.x > K.x0 && c.x < K.x1 && c.z > K.z0 && c.z < K.z1)); }
     try { glowUpdate(this); } catch (e) { if (!this._glowErr) { this._glowErr = 1; console.warn('glow', e); } }
     if (this.composer) this.composer.render(); else this.renderer.render(this.scene, cam);
