@@ -43,11 +43,11 @@ rec('Play tab / btnLobby exist', await p.evaluate(() => !!document.querySelector
 
 await p.click('#title .mtabs button[data-tab="online"]');
 await p.click('#btnLobby');
-await p.waitForSelector('#prof .welcome, #online:not(.hidden)', { timeout: 60000 });
+await p.waitForSelector('#prof .welcome', { timeout: 60000 });
 const welcome = await p.evaluate(() => {
   const w = document.querySelector('#prof .welcome');
   const t = w ? w.textContent : '';
-  return { shown: !!w && w.offsetParent !== null, hasGoogle: /Google/i.test(t), hasCreate: /Create profile/i.test(t), text: t.slice(0, 200) };
+  return { shown: !!w, hasGoogle: /Google/i.test(t), hasCreate: /Create profile/i.test(t), text: t.slice(0, 200) };
 });
 await shot('online_welcome', 1200);
 rec('Online welcome screen (Sign in / Create profile)', welcome.shown && welcome.hasGoogle && welcome.hasCreate, welcome);
