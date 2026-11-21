@@ -17,8 +17,8 @@ export function buildZone(ctx) { API = buildUpper(ctx); const K = API.K; DOORS =
 const sleepers = (g, pts) => pts.map(p => { const z = g.spawnZ(p[0], p[1], { idle: true, still: true, det: 7, hear: true, aggro: 14, runner: false, hp: 70 }); z.root.rotation.y = rnd(0, 6.2); return z; });
 function walk(D, c, x, z, o = {}) { (D.mv = D.mv || []).push({ c, x, z, sp: o.sp || 1.5, anim: o.anim || 'Walk_Loop', end: o.end || 'Idle_Loop', face: o.face, cb: o.cb }); }
 function tickMv(g, D, dt) { if (!D.mv) return; D.mv = D.mv.filter(m => { const p = m.c.root.position, dx = m.x - p.x, dz = m.z - p.z, d = Math.hypot(dx, dz);
-  if (d < .06) { m.c.play(m.end); if (m.face != null) m.c.root.rotation.y = m.face; if (m.c === g.player && g.cut) g.cut.anim = m.end; m.cb && m.cb(g); return false; }
-  const s = Math.min(d, m.sp * dt); p.x += dx / d * s; p.z += dz / d * s; m.c.root.rotation.y = Math.atan2(dx, dz); m.c.play(m.anim); if (m.c === g.player && g.cut) g.cut.anim = m.anim; return true; }); }
+  if (d < .06) { m.c.play(m.end); if (m.face != null) m.c.root.rotation.y = m.face; if (m.c === g.player && g.cut) { g.cut.anim = m.end; g.cut.animSpeed = 1; } m.cb && m.cb(g); return false; }
+  const s = Math.min(d, m.sp * dt); p.x += dx / d * s; p.z += dz / d * s; m.c.root.rotation.y = Math.atan2(dx, dz); const ns = m.c.natSpeed ? m.c.natSpeed(m.anim) : 0, rate = ns ? Math.max(.5, Math.min(2.2, m.sp / ns)) : 1; /* v1.9.26: clip rate matches the walk speed (no sliding) */ m.c.play(m.anim, { speed: rate }); if (m.c === g.player && g.cut) { g.cut.anim = m.anim; g.cut.animSpeed = rate; } return true; }); }
 const cam = (g, c, l) => { g.cut = Object.assign(g.cut || {}, { cam: c, look: l }); };
 const cbq = (g, f) => g.dlgQ.push({ cb: f });
 const snap = (g) => { g.camera.position.copy(g.cut.cam); g._lk = null; };

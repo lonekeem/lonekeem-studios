@@ -522,7 +522,7 @@ export class Game {
     if (s.comboT > 0) { s.comboT -= dt; if (s.comboT <= 0) s.combo = 0; }
     if (this.hp < this.maxHp && this.t - (this.lastHurt || 0) > 5) this.hp = Math.min(this.maxHp, this.hp + dt * 4);
     if (T.driving) this.updateTruck(dt); else if (!this.cut) this.updatePlayer(dt);
-    else { if (P.locoOn) P.endLoco(); P.play(this.cut.anim || 'Idle_Loop'); }
+    else { if (P.locoOn) P.endLoco(); P.play(this.cut.anim || 'Idle_Loop', { speed: this.cut.animSpeed || 1 }); }
     P.mixer.update(dt);
     if (!this.truck.driving) this.stepTrack(this.player, this.player.root.position, 'p'); this.chatter(dt);
     tickPools(this, dt); this.updateZ(dt); for (const k in this.npcs) { const n = this.npcs[k]; n.update && n.update(dt); n.mixer.update(dt); this.victimStruggle(n, dt); this.stepTrack(n, n.root.position, 'n'); if (n.bleed && Math.random() < dt * 3) { const p = n.root.position.clone(); p.y = .3; this.blood(p, V3(0, .6, 0), 3, 1.2); } } tickDialogueFace(this, dt);

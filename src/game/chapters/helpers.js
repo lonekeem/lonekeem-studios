@@ -10,9 +10,14 @@ export function bindStory(s) { STORY = s; }
 export const stepIndex = (id) => STORY.findIndex(s => s.id === id);
 const _ix = (i) => (typeof i === 'string' ? stepIndex(i) : i);
 export const $q = (s) => document.querySelector(s);
+// v1.9.27: Dad / Nia ease their speed and their legs follow the distance they actually cover (Walk<->Jog blend at
+// their own size), instead of a 1 m/s walk clip on a 2.8 m/s glide. They still freeze in a talking idle while dialogue facing holds them.
 export function follow(g, n, off) { n.update = (dt) => { if (g.dlgFace && g.dlgFace.hold && g.dlgFace.hold.has(n)) { if (n.locoOn) n.endLoco(); n.play(g.dlgFace.speaker === n && n.lib && n.lib.clips && n.lib.clips.Idle_Talking_Loop ? 'Idle_Talking_Loop' : 'Idle_Loop'); return; }
   const P = g.player.root.position, p = n.root.position; const tx = P.x + off[0], tz = P.z + off[1]; const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
-  if (d > 1.2) { const sp = Math.min(d, 1) * (d > 4 ? 5 : 2.8); p.x += dx / d * sp * dt; p.z += dz / d * sp * dt; n.root.rotation.y = Math.atan2(dx, dz); n.play(d > 4 ? 'Jog_Fwd_Loop' : 'Walk_Loop'); } else n.play('Idle_Loop'); }; }
+  const want = d > 1.2 ? (d > 4 ? 5 : 2.8) : d > .9 && (n._fsp || 0) > .2 ? 1.2 : 0; n._fsp = (n._fsp || 0) + (want - (n._fsp || 0)) * Math.min(1, dt * (want > (n._fsp || 0) ? 5 : 8));
+  const sp = Math.min(n._fsp, d / Math.max(dt, 1e-3)); if (sp > .05 && d > 1e-3) { p.x += dx / d * sp * dt; p.z += dz / d * sp * dt; n.root.rotation.y = angTo(n.root.rotation.y, Math.atan2(dx, dz), Math.min(1, dt * 10)); }
+  if (n.moveAnim) n.moveAnim(sp > .05 ? sp : 0, dt); else if (sp > .05) n.play(sp > 3.5 ? 'Jog_Fwd_Loop' : 'Walk_Loop'); else n.play('Idle_Loop'); }; }
+const angTo = (a, b, t) => { let d = ((b - a + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; return a + d * t; };
 // v1.9.4: never snap the player to a far checkpoint mid-play — fade to black with the next objective instead
 export function goto(g, i, xp = 100) { i = _ix(i); const tok = g.stepTok; g.addXP(xp); g.audio.pickup(); setTimeout(() => { if (g.stepTok !== tok) return; const cp = STORY[i] && STORY[i].cp, P = g.player.root.position; if (cp && Math.hypot(cp[0] - P.x, cp[1] - P.z) > 4 && g.fadeStep) g.fadeStep(i); else g.loadStep(i); }, 50); }
 // v1.9.7: after a boss (or a big fight) ends, let the death play out (slow-mo + collapse), then give Keem a few seconds of free control

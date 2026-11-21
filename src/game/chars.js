@@ -110,17 +110,25 @@ export class Char {
   }
   // v2.0 locomotion blend tree: Walk <-> Jog <-> Sprint blended by real ground speed, phase-matched, with the cycle advanced by
   // distance travelled (so feet stay planted: no sliding / moonwalking). dir < 0 plays the cycle backwards (backpedalling).
-  locomote(speed, dir = 1, dt = 0.016, max = 6.4) {
-    const N = Char.LOCO; const acts = N.map(n => this.act(n.name)); if (acts.some(a => !a)) return false;
+  // v1.9.26: speeds/strides in LOCO were measured at scale 1, so they scale with the character (Keem 0.9, Nia 0.62): a small character takes
+  // shorter, quicker steps instead of sliding. `wspd` (optional, smoothed) picks the walk/jog/sprint blend; `speed` (real ground speed) drives the cycle.
+  locomote(speed, dir = 1, dt = 0.016, max = 6.4, wspd = speed) {
+    const k = this.scale || 1, N = Char.LOCO.map(n => ({ name: n.name, v: n.v * k, stride: n.stride * k, off: n.off })); const acts = N.map(n => this.act(n.name)); if (acts.some(a => !a)) return false;
     if (!this.locoOn) { this.locoOn = true; this.locoW = 0; this.locoPh = this.locoPh || 0; if (this.cur) { this.cur.fadeOut(0.2); this.cur = null; } this.curName = '__loco';
       acts.forEach(a => { a.enabled = true; a.stopFading(); a.setLoop(THREE.LoopRepeat); a.timeScale = 0; a.paused = false; a.play(); a.setEffectiveWeight(0); }); }
     const sm = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
-    const v = Math.min(speed, max), tj = sm(N[0].v, N[1].v, v), ts = sm(N[1].v, N[2].v, v);
+    const v = Math.min(wspd, max * k), tj = sm(N[0].v, N[1].v, v), ts = sm(N[1].v, N[2].v, v);
     const w = [1 - tj, tj * (1 - ts), tj * ts]; const stride = w[0] * N[0].stride + w[1] * N[1].stride + w[2] * N[2].stride;
     this.locoPh = (this.locoPh + (dir < 0 ? -1 : 1) * (speed / stride) * dt + 1000) % 1; this.locoW = Math.min(1, this.locoW + dt / 0.2);
     acts.forEach((a, i) => { a.time = (((this.locoPh + N[i].off) % 1 + 1) % 1) * a.getClip().duration; a.setEffectiveWeight(w[i] * this.locoW); });
     return true;
   }
+  // natural ground speed (m/s) of a locomotion clip at this character's size, so a scripted mover can play it at the matching rate
+  natSpeed(name) { const n = Char.LOCO.find(l => l.name === name); const k = this.scale || 1; return n ? n.v * k : name === 'Crouch_Fwd_Loop' ? 0.7 * k : 0; }
+  // drive the legs from the distance actually covered this frame (any direction): blend tree when available, rate-matched clip otherwise
+  moveAnim(sp, dt, idle = 'Idle_Loop') { this._aspd = (this._aspd || 0) + (sp - (this._aspd || 0)) * Math.min(1, dt * 12);
+    if (sp > .12 || this._aspd > .3) { if (!this.locomote(Math.max(sp, .3), 1, dt, 6.4, this._aspd)) { const nm = this._aspd > 2.6 * (this.scale || 1) ? 'Jog_Fwd_Loop' : 'Walk_Loop'; this.play(nm, { speed: Math.max(.4, Math.min(2.4, sp / (this.natSpeed(nm) || 1))) }); } return true; }
+    this.play(idle); return false; }
   endLoco(fade = 0.18) { if (!this.locoOn) return; this.locoOn = false; Char.LOCO.forEach(n => { const a = this.actions[n.name]; if (a) a.fadeOut(fade); }); this.cur = null; this.curName = ''; }
   bone(n) { return this.bones[n] || this.bones[n.replace(/[.]/g, '')]; }
   attach(boneName, mesh) { if (this.attachSkin && this.attachSkin(boneName, mesh)) return mesh; const b = this.bone(boneName); if (b) b.add(mesh); return mesh; }

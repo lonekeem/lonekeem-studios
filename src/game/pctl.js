@@ -11,7 +11,7 @@ export function stepMove(C, dt) {
     let spd = s.crouch ? 1.6 : run ? 6.2 * C.runMul : 3.1; if (s.aim) spd = 2.2; if (C.slow) spd *= C.slow; if (s.atk > 0) spd *= .3; if (s.stun > 0) { spd = 0; s.stun -= dt; }
     const yaw = C.yaw; let dx = 0, dz = 0; if (s.shotT > 0) s.shotT -= dt; const faceAim = (gun && (s.aim || s.shotT > 0)) || C.fp; // v1.9.2: face the crosshair only while aiming/firing (or first-person); otherwise turn toward travel
     if (mag > .08) { const a = Math.atan2(mv.x, mv.y) + yaw; dx = Math.sin(a) * spd * mag; dz = Math.cos(a) * spd * mag;
-      if (!faceAim && s.atk <= 0 && s.roll <= 0) P.root.rotation.y = angLerp(P.root.rotation.y, a, Math.min(1, dt * (set.smoothMove ? 16 : 12))); }
+      s.faceTo = a; }
     if (faceAim) P.root.rotation.y = angLerp(P.root.rotation.y, yaw + Math.PI, Math.min(1, dt * 18));
     if (run && mag > .5 && !s.crouch) { s.brT = (s.brT || 0) - dt; s.runT = (s.runT || 0) + dt; if (s.brT <= 0 && s.runT > 2.5) { s.brT = rnd(1.1, 1.5); C.audio.breathe && C.audio.breathe(Math.min(.35, .1 + s.runT * .02)); } } else s.runT = Math.max(0, (s.runT || 0) - dt * 2);
     if (s.roll > 0) { s.roll -= dt; const f = 6.5; dx = Math.sin(P.root.rotation.y) * f; dz = Math.cos(P.root.rotation.y) * f; }
@@ -19,11 +19,22 @@ export function stepMove(C, dt) {
     // v2.0 smooth movement: ease toward the target velocity (same top speeds), roll/stun stay instant; animation speed follows real ground speed
     const MV = s.mv || (s.mv = { x: 0, z: 0 }); if (!set.smoothMove || s.roll > 0 || s.stun > 0 || dt <= 0) { MV.x = dx; MV.z = dz; } else { const ex = dx - MV.x, ez = dz - MV.z, el = Math.hypot(ex, ez), acc = ((dx * dx + dz * dz) > (MV.x * MV.x + MV.z * MV.z) ? 34 : 46) * dt; if (el <= acc) { MV.x = dx; MV.z = dz; } else { MV.x += ex / el * acc; MV.z += ez / el * acc; } }
     const p = P.root.position; const px0 = p.x, pz0 = p.z; C.collide(p, MV.x * dt, MV.z * dt, 0.35); if (dt > 0) s.spd = lerp(s.spd || 0, Math.hypot(p.x - px0, p.z - pz0) / dt, Math.min(1, dt * 14));
+    // turn toward travel. v1.9.26: when a wall deflects the move (sliding along it), face the way he actually goes so the walk cycle matches
+    // the motion instead of stepping into the wall while gliding sideways
+    if (mag > .08 && !faceAim && s.atk <= 0 && s.roll <= 0) { let tgt = s.faceTo; const mx = p.x - px0, mz = p.z - pz0, ml = Math.hypot(mx, mz), want = Math.hypot(MV.x, MV.z) * dt;
+      if (ml > want * .25 && ml < want * .97) { const am = Math.atan2(mx, mz); let df = ((am - tgt + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; if (Math.abs(df) > .3) tgt = am; }
+      P.root.rotation.y = angLerp(P.root.rotation.y, tgt, Math.min(1, dt * (set.smoothMove ? 16 : 12))); }
     // vertical
     if (s.y > 0 || s.vy > 0) { s.vy -= 14 * dt; s.y = Math.max(0, s.y + s.vy * dt); if (s.y === 0) { s.vy = 0; C.audio.land && C.audio.land(); P.play('Jump_Land', { once: true, force: true, speed: 1.6, cb: () => P.curName = '' }); } } p.y = s.y;
-    // locomotion anims
-    if (!P.oneShot) { if (s.y > 0) P.play('Jump_Loop'); else if (!set.smoothMove && mag > .08) { /* v1.9.7 classic locomotion */ if (s.crouch) P.play('Crouch_Fwd_Loop'); else if (run) P.play('Sprint_Loop'); else if (spd * mag > 2.6) P.play('Jog_Fwd_Loop', { speed: .9 }); else P.play('Walk_Loop', { speed: 1.1 }); }
-      else if (set.smoothMove && (mag > .08 || (s.spd || 0) > .35)) { const sp = s.spd || 0; if (s.crouch) P.play('Crouch_Fwd_Loop', { speed: clamp(sp / .64, .4, 2.2) }); else { const fy = P.root.rotation.y, bk = faceAim && sp > .3 && (Math.sin(fy) * MV.x + Math.cos(fy) * MV.z) < -.5 * sp; if (!P.locomote(sp, bk ? -1 : 1, dt)) P.play(run ? 'Sprint_Loop' : 'Jog_Fwd_Loop'); } }
+    // locomotion anims — v1.9.26: the legs are driven by the ground speed actually covered this frame (after collisions), in any direction, for
+    // the classic and the smooth control schemes alike. The old classic path picked Walk/Jog from stick size at a fixed rate, so a half-pushed
+    // stick (up to 2.6 m/s on a 1.1 m/s walk clip) or wall-sliding made Keem glide with barely-moving legs, and short pushes could stay in Idle.
+    const inst = dt > 0 ? Math.hypot(p.x - px0, p.z - pz0) / dt : 0; s.aspd = lerp(s.aspd || 0, inst < 14 ? inst : 0, Math.min(1, dt * 18));
+    const moving = (mag > .08 && !(s.stun > 0)) || inst > .15 || (P.locoOn && s.aspd > .2);
+    if (!P.oneShot) { if (s.y > 0) P.play('Jump_Loop');
+      else if (moving) { const asp = Math.max(inst, mag > .08 ? .3 : 0); // pushing into a wall still steps (slowly) instead of freezing mid-stride
+        if (s.crouch) P.play('Crouch_Fwd_Loop', { speed: clamp(asp / (P.natSpeed ? P.natSpeed('Crouch_Fwd_Loop') : .7), .4, 2.4) });
+        else { const fy = P.root.rotation.y, bk = faceAim && inst > .3 && (Math.sin(fy) * MV.x + Math.cos(fy) * MV.z) < -.5 * Math.hypot(MV.x, MV.z); if (!P.locomote(asp, bk ? -1 : 1, dt, 6.4, Math.max(s.aspd, asp * .5))) P.play(run ? 'Sprint_Loop' : 'Jog_Fwd_Loop'); } }
       else if (s.crouch) P.play('Crouch_Idle_Loop'); else if (gun) P.play(s.aim ? 'Pistol_Aim_Neutral' : 'Pistol_Idle_Loop'); else P.play('Idle_Loop'); }
   return { mag, run, spd, faceAim };
 }
