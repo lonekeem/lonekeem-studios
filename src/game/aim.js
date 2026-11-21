@@ -6,6 +6,7 @@
 //    exact spot the crosshair ray hits; the legs keep their own locomotion (walk / strafe / backpedal) underneath.
 //  * the held gun is turned so its barrel points at that spot, and the muzzle flash + tracer start at the real barrel tip every frame.
 import * as THREE from 'three';
+import { WEAPONS } from './data.js';
 
 const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _pr = new THREE.Vector3(), _ps = new THREE.Vector3(), _v = new THREE.Vector3(), _w = new THREE.Vector3();
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _q3 = new THREE.Quaternion(), _m = new THREE.Matrix4(), _up = new THREE.Vector3(0, 1, 0);
@@ -59,8 +60,10 @@ const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 // where the crosshair ray (no spread) lands: first wall or character body, else 60 m out
 export function aimTarget(g, out) { const ray = g.aimRay(1, true); const nr = ray.near || 0; let bd = 60 + nr;
-  const rc = g._aimRc || (g._aimRc = new THREE.Raycaster()); rc.set(ray.at(nr, _w), ray.direction); rc.near = 0; rc.far = 60; const wh = rc.intersectObjects(g.world.walls, false)[0]; if (wh) bd = wh.distance + nr;
-  for (const z of g.zombies) { if (z.dead) continue; const h = hitChar(ray, z, bd); if (h) bd = h.t; }
+  if (typeof g.wallDist === 'function') { const d = g.wallDist(ray, 60); if (d != null && d < bd) bd = d; }
+  else { const walls = (typeof g.shotWalls === 'function' ? g.shotWalls() : (g.world && g.world.walls) || []); const rc = g._aimRc || (g._aimRc = new THREE.Raycaster()); rc.set(ray.at(nr, _w), ray.direction); rc.near = 0; rc.far = 60; const wh = walls.length ? rc.intersectObjects(walls, false)[0] : null; if (wh) bd = wh.distance + nr; }
+  const zs = (typeof g.alive === 'function' ? g.alive() : g.zombies) || [];
+  for (const z of zs) { if (z.dead) continue; const h = hitChar(ray, z, bd); if (h) bd = h.t; }
   return ray.at(Math.max(bd, nr + 1.2), out); }
 
 const DEF_HAND_Q = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
@@ -103,3 +106,48 @@ export function muzzleWorld(g, out) { const id = g.save.cur; const m = (g.cam.fp
 export function placeShotFx(g) { if (!(g.mT > 0) && !(g.trT > 0)) return; const mz = muzzleWorld(g, _a);
   if (g.mT > 0) { g.muzzle.position.copy(mz); g.mLight.position.copy(mz); }
   if (g.trT > 0 && g._trEnd) { const tp = g.tracer.geometry.attributes.position; tp.setXYZ(0, mz.x, mz.y, mz.z); tp.setXYZ(1, g._trEnd.x, g._trEnd.y, g._trEnd.z); tp.needsUpdate = true; g.tracer.geometry.computeBoundingSphere(); } }
+
+const _clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const _V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+
+// on-screen crosshair in NDC (cy defaults to +0.08, matching #xhair at top: 46%)
+export function xhairNdc(xhairEl, canvasEl, fallback = { cx: 0, cy: .08 }) {
+  if (!xhairEl || !canvasEl) return fallback;
+  const xr = xhairEl.getBoundingClientRect(), cr = canvasEl.getBoundingClientRect();
+  return { cy: (xr.width && cr.height) ? 1 - 2 * ((xr.top + xr.height / 2 - cr.top) / cr.height) : fallback.cy, cx: (xr.width && cr.width) ? 2 * ((xr.left + xr.width / 2 - cr.left) / cr.width) - 1 : fallback.cx };
+}
+
+// camera ray through the crosshair (same math as Game.aimRay). `g` needs camera, optional _xh / renderer / save.cur / state / ws / cam.fp / player.
+export function aimRayFrom(g, pellets = 1, exact = false) {
+  const r = g._aimRc || (g._aimRc = new THREE.Raycaster()); const ws = g.ws || {};
+  const sp = exact ? 0 : pellets > 1 ? (g.state && g.state.aim ? ws.spread * .3 : ws.spread * (g.cam && g.cam.fp ? .5 : .6)) * 4 : (g.state && g.state.aim ? 0 : (ws.spread || 0) * .35 * 4);
+  if (!g._xh) { const xh = g.xhairEl || (typeof document !== 'undefined' && document.getElementById('xhair')); g._xh = xhairNdc(xh, g.renderer && g.renderer.domElement); }
+  const ndc = g._aimNdc || (g._aimNdc = new THREE.Vector2()); ndc.set(g._xh.cx, g._xh.cy); r.setFromCamera(ndc, g.camera);
+  if (sp > 0) { const th = Math.random() * 6.283, m = Math.sqrt(Math.random()) * sp * Math.tan(THREE.MathUtils.degToRad(g.camera.fov) / 2);
+    const up = _V3(0, 1, 0).applyQuaternion(g.camera.quaternion), rt = _V3(1, 0, 0).applyQuaternion(g.camera.quaternion); r.ray.direction.addScaledVector(rt, Math.cos(th) * m).addScaledVector(up, Math.sin(th) * m).normalize(); }
+  const P = g.player && g.player.root && g.player.root.position; if (P) { const near = Math.max(0, P.clone().setY(r.ray.origin.y).sub(r.ray.origin).dot(r.ray.direction) - .4); r.ray.near = near; }
+  return r.ray;
+}
+
+// Gently steers g.cam (yaw/pitch in story convention) toward the best target near the crosshair; optional auto-fire.
+export function stepAimAssist(g, rdt) {
+  const S = g.settings || {}, I = g.input, s = g.state; const str = S.ctl === 'simple' ? Math.max(S.assist || 0, .8) : (S.assist || 0); g._tgt = null; if (I) I.autoAtk = false;
+  if (!(str > 0) || !I || g.paused || g.cut || g.dying || g.dlgCur || (g.truck && g.truck.driving)) return;
+  const w = WEAPONS[g.save && g.save.cur]; if (!w || w.type !== 'gun') return;
+  const C = g.cam, cp = g.camera.position, firing = I.atk || I.tapFire > 0 || (s && s.aim); const auto = !!S.autoFire; if (!firing && !auto) return;
+  g._xhT = (g._xhT || 0) - rdt; if (g._xhT <= 0 || !g._xh) { g._xhT = .5; const xh = g.xhairEl || (typeof document !== 'undefined' && document.getElementById('xhair')); g._xh = xhairNdc(xh, g.renderer && g.renderer.domElement); }
+  const th = Math.tan(THREE.MathUtils.degToRad(g.camera.fov) / 2), yo = Math.atan(g._xh.cx * th * g.camera.aspect), po = Math.atan(g._xh.cy * th);
+  const cone = (firing ? .22 : .12) + .4 * str, hp = _V3(); let best = null, ba = cone;
+  const zs = (typeof g.alive === 'function' ? g.alive() : g.zombies) || [];
+  for (const z of zs) { if (!z || z.dead || !z.worldOf) continue; z.worldOf('DEF-head', hp); hp.y -= .2 * (z.scale || 1); const f = hp.clone().sub(cp), len = f.length(); if (len < 1.5 || len > Math.min(32, (g.ws && g.ws.range) || 30)) continue;
+    const yd = Math.atan2(-f.x, -f.z) + yo, pd = Math.asin(Math.max(-1, Math.min(1, f.y / len))) - po; const ey = Math.abs(((yd - C.yaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI), ep = Math.abs(pd - C.pitch), a = Math.hypot(ey, ep * .8);
+    if (a < ba) { ba = a; best = { z, yd, pd, a, len }; } }
+  if (!best) return; g._tgt = best; const ul = Math.min(1, (I.lastLook || 0) * 45);
+  const rate = (firing ? 4 + 9 * str : 1.2 + 2 * str) * (1 - ul * .85); const dy = ((best.yd - C.yaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+  C.yaw += dy * Math.min(1, rdt * rate); C.pitch = _clamp(C.pitch + (best.pd - C.pitch) * Math.min(1, rdt * rate), -1.1, .9);
+  if (auto && best.a < .075 + .02 * str) {
+    g._losT = (g._losT || 0) - rdt; if (g._losT <= 0) { g._losT = .12; const o = cp.clone(), d = hp.clone().sub(o); const L = d.length();
+      if (typeof g.wallDist === 'function') { const ray = new THREE.Ray(o, d.normalize()); g._los = g.wallDist(ray, L) >= L - .05; }
+      else { const rc = g._losRc || (g._losRc = new THREE.Raycaster()); rc.set(o, d.normalize()); rc.near = 0; rc.far = L; const walls = (typeof g.shotWalls === 'function' ? g.shotWalls() : (g.world && g.world.walls) || []); g._los = !walls.length || !rc.intersectObjects(walls, false)[0]; } }
+    const mags = (g.save && g.save.mags) || {}; if (g._los && !(s && s.reload > 0) && (mags[g.save.cur] || 0) > 0) { I.autoAtk = true; I.edge.atk = true; } }
+}

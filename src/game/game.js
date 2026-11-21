@@ -22,7 +22,7 @@ import { stepMove, startRoll, startJump, stepVehicle } from './pctl.js';
 import { syncWounds, addWound, bloodyMouth, makePool, tickPools, setHandBlood } from './gore.js';
 import { STORY, LOOT, chOf, TOTAL_PAGES, SPEAKER_NAMES } from './story.js';
 import { onDialogueLine, tickDialogueFace, endDialogueFace, resetDialogueFace } from './dialogueFace.js';
-import { hitChar, capsOf, updateAimPose, placeShotFx, muzzleWorld } from './aim.js';
+import { hitChar, capsOf, updateAimPose, placeShotFx, muzzleWorld, stepAimAssist } from './aim.js';
 
 const $ = (s) => document.querySelector(s);
 export const PRESETS = {
@@ -554,22 +554,8 @@ export class Game {
     }
   // v2.0 aim assist (opt-in: "Simple" control scheme or the Aim-assist slider; default off = unchanged gameplay).
   // Gently steers the camera toward the best target near the crosshair while firing/aiming; optional auto-fire when a visible enemy is under it.
-  aimAssist(rdt) { const S = this.settings, I = this.input, s = this.state; const str = S.ctl === 'simple' ? Math.max(S.assist || 0, .8) : (S.assist || 0); this._tgt = null; I.autoAtk = false;
-    if (!(str > 0) || this.paused || this.cut || this.dying || this.dlgCur || (this.truck && this.truck.driving)) return; const w = WEAPONS[this.save.cur]; if (!w || w.type !== 'gun') return;
-    const C = this.cam, cp = this.camera.position, firing = I.atk || I.tapFire > 0 || s.aim; const auto = !!S.autoFire; if (!firing && !auto) return;
-    // where the on-screen crosshair sits relative to the camera axis (the gun ray is cast through it), so the target lands exactly under it
-    this._xhT = (this._xhT || 0) - rdt; if (this._xhT <= 0 || !this._xh) { this._xhT = .5; const xr = $('#xhair').getBoundingClientRect(), cr = this.renderer.domElement.getBoundingClientRect(); this._xh = { cy: (xr.width && cr.height) ? 1 - 2 * ((xr.top + xr.height / 2 - cr.top) / cr.height) : .08, cx: (xr.width && cr.width) ? 2 * ((xr.left + xr.width / 2 - cr.left) / cr.width) - 1 : 0 }; }
-    const th = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2), yo = Math.atan(this._xh.cx * th * this.camera.aspect), po = Math.atan(this._xh.cy * th);
-    const cone = (firing ? .22 : .12) + .4 * str, hp = V3(); let best = null, ba = cone;
-    for (const z of this.alive()) { z.worldOf('DEF-head', hp); hp.y -= .2 * z.scale; const f = hp.clone().sub(cp), len = f.length(); if (len < 1.5 || len > Math.min(32, (this.ws && this.ws.range) || 30)) continue;
-      const yd = Math.atan2(-f.x, -f.z) + yo, pd = Math.asin(f.y / len) - po; const ey = Math.abs(((yd - C.yaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI), ep = Math.abs(pd - C.pitch), a = Math.hypot(ey, ep * .8);
-      if (a < ba) { ba = a; best = { z, yd, pd, a, len }; } }
-    if (!best) return; this._tgt = best; const ul = Math.min(1, I.lastLook * 45);
-    const rate = (firing ? 4 + 9 * str : 1.2 + 2 * str) * (1 - ul * .85); const dy = ((best.yd - C.yaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
-    C.yaw += dy * Math.min(1, rdt * rate); C.pitch = clamp(C.pitch + (best.pd - C.pitch) * Math.min(1, rdt * rate), -1.1, .9);
-    if (auto && best.a < .075 + .02 * str) { // line-of-sight check ~8x/s, then hold the trigger
-      this._losT = (this._losT || 0) - rdt; if (this._losT <= 0) { this._losT = .12; const o = cp.clone(), d = hp.clone().sub(o); const L = d.length(); const rc = this._losRc || (this._losRc = new THREE.Raycaster()); rc.set(o, d.normalize()); rc.near = 0; rc.far = L; this._los = !rc.intersectObjects(this.shotWalls(), false)[0]; }
-      if (this._los && this.state.reload <= 0 && (this.save.mags[this.save.cur] || 0) > 0) { I.autoAtk = true; I.edge.atk = true; } } }
+  aimAssist(rdt) { stepAimAssist(this, rdt); }
+
   moveCollide(p, dx, dz, r) { const C = this.world.colliders; let nx = p.x + dx, nz = p.z + dz;
     const L = Math.hypot(dx, dz); if (L > r) { const n = Math.ceil(L / r); let hw = false; for (let k = 0; k < n; k++) hw = this.moveCollide(p, dx / n, dz / n, r) || hw; return hw; } // sub-step: no tunnelling through thin props
     for (let pass = 0; pass < 2; pass++) for (let i = 0; i < C.length; i++) { const c = C[i]; if (c.skip) continue; if (nx > c.x0 - r && nx < c.x1 + r && nz > c.z0 - r && nz < c.z1 + r) {
