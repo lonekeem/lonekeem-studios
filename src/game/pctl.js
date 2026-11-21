@@ -62,3 +62,49 @@ export function stepVehicle(T, I, D, dt, hooks) {
   T.spin = (T.spin || 0) + T.v * dt / .38;
   return { gas, brk, sp, hit };
 }
+
+// ---- third-person follow (shared by story, Survival and the multiplayer town) ----
+// A fixed, clamped spring-arm distance so the character stays a consistent size. The camera is locked
+// to the player (no trailing rubber-band). Wall hits shorten the arm immediately; it eases back to the
+// target afterwards and never overshoots the max.
+export const CAM = {
+  dist: 2.15, aimDist: 1.42, indoorDist: 1.95, indoorAim: 1.35,
+  minDist: 0.75, maxDist: 3.05,
+  shoulder: 0.48, aimShoulder: 0.58,
+  height: 1.5, crouchHeight: 1.05,
+  fov: 62, aimFov: 62, defaultZoom: 1.35, minFov: 28, maxFov: 70
+};
+export function followTargetDist(aim, indoor, crouch) {
+  let d = indoor ? (aim ? CAM.indoorAim : CAM.indoorDist) : (aim ? CAM.aimDist : CAM.dist);
+  if (crouch && !aim) d = Math.min(d, CAM.dist - 0.12);
+  return clamp(d, CAM.minDist, CAM.maxDist);
+}
+// o: { cam, yaw, pitch, px, py, pz, aim, crouch, indoor, dt, zoom, state, hitDist(origin, dir, max) }
+export function stepFollowCam(o) {
+  const cam = o.cam, yaw = o.yaw, pitch = o.pitch, dt = o.dt || 0, aim = !!o.aim;
+  const targetD = followTargetDist(aim, !!o.indoor, !!o.crouch);
+  const sh0 = aim ? CAM.aimShoulder : CAM.shoulder;
+  const hy = (o.py || 0) + (o.crouch ? CAM.crouchHeight : CAM.height);
+  const fovT = clamp(aim ? CAM.aimFov / (o.zoom || CAM.defaultZoom) : CAM.fov, CAM.minFov, CAM.maxFov);
+  if (Math.abs(cam.fov - fovT) > .05) { cam.fov = lerp(cam.fov, fovT, Math.min(1, dt * 12)); cam.updateProjectionMatrix(); }
+  const cp = Math.cos(pitch), back = V3(Math.sin(yaw) * cp, -Math.sin(pitch), Math.cos(yaw) * cp), right = V3(Math.cos(yaw), 0, -Math.sin(yaw));
+  const target = V3(o.px, hy, o.pz); let sh = sh0;
+  if (o.hitDist) { const hs = o.hitDist(target, right, sh0 + .2); if (hs != null && hs < sh0 + .19) sh = Math.max(0, hs - .25); }
+  const pivot = target.clone().addScaledVector(right, sh);
+  let wallD = targetD;
+  if (o.hitDist) { const h = o.hitDist(pivot, back, targetD + .3); if (h != null && h < targetD + .29) wallD = Math.max(CAM.minDist, h - .25); }
+  wallD = clamp(wallD, CAM.minDist, CAM.maxDist);
+  const st = o.state || (o.state = {});
+  if (st.d == null) st.d = wallD;
+  if (wallD < st.d) st.d = wallD; else st.d = lerp(st.d, wallD, Math.min(1, dt * 8));
+  st.d = clamp(st.d, CAM.minDist, Math.min(targetD, CAM.maxDist));
+  cam.position.copy(pivot).addScaledVector(back, st.d);
+  cam.rotation.order = 'YXZ'; cam.rotation.set(pitch, yaw, 0);
+  return { dist: st.d, target: targetD, fov: cam.fov };
+}
+export function clampCamToPlayer(cam, px, py, pz, crouch) {
+  const hy = py + (crouch ? CAM.crouchHeight : CAM.height);
+  const dx = cam.position.x - px, dy = cam.position.y - hy, dz = cam.position.z - pz, d = Math.hypot(dx, dy, dz);
+  if (d > CAM.maxDist && d > 1e-6) { const k = CAM.maxDist / d; cam.position.set(px + dx * k, hy + dy * k, pz + dz * k); }
+}
+

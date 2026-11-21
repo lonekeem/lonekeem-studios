@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { loadBase, Avatar } from '../avatar.js';
 import { dress } from '../dress.js';
 import { animate } from '../anim.js';
-import { stepMove, startRoll, startJump } from '../../game/pctl.js';
+import { stepMove, startRoll, startJump, stepFollowCam, CAM } from '../../game/pctl.js';
 import { makeMotion, driveRemote, makeKeemChar } from '../motion.js';
 import { Net } from '../net.js';
 import { buildTown, BOUNDS, CAR_SPAWNS, BODIES, SPAWN, CFG, SPECIAL } from './map.js';
@@ -101,7 +101,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false } = 
   const resetPose = P => { try { P.mixer.stopAllAction(); } catch (e) { /* ignore */ } P.oneShot = null; P.cur = null; P.curName = ''; P.locoOn = false; P.locoW = 0; if (P.mixer.setTime) P.mixer.setTime(0); };
   const respawn = () => { const sp = spawnPoint(); me.dead = 0; me.hp = 100; me.prot = PROT_T; me.x = sp.x; me.z = sp.z; me.y = 0; me.ry = SPAWN.ry; me.sp = 0; me.hitCd = 0; me.swing = 0; me.drv = null;
     Object.assign(S, { roll: 0, atk: 0, atkHit: 0, vy: 0, y: 0, crouch: false, aim: false, shotT: 0, stun: 0, combo: 0, spd: 0 }); shim.state.crouch = false; GS.cd = 0; GS.rl = 0; GS.rlId = null; wantHit = wantUse = wantAlt = hitHeld = false; hold.act = null; hold.t = 0;
-    dead.style.display = 'none'; vig.style.opacity = 0; const av = me.av; if (!av.root.parent) scene.add(av.root); av.root.visible = true; av.root.position.set(me.x, 0, me.z); av.root.rotation.y = me.ry; camYaw = me.ry; camInit = false;
+    dead.style.display = 'none'; vig.style.opacity = 0; const av = me.av; if (!av.root.parent) scene.add(av.root); av.root.visible = true; av.root.position.set(me.x, 0, me.z); av.root.rotation.y = me.ry; camYaw = me.ry; camInit = false; followSt.d = null;
     { const P = av.motion; if (P) { resetPose(P); P.play(curGun() ? 'Pistol_Idle_Loop' : 'Idle_Loop', { force: true, fade: 0 }); } } GS.shown = null; try { equipVisual(); } catch (e) { /* ignore */ } toast('Back on your feet', 1.6); };
   // ---- doors ----
   const doorBy = id => W.doors.find(d => d.id === id);
@@ -157,7 +157,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false } = 
   // ---- input ----
   // keyboard extras (story Input already maps E/F use, Space jump, Ctrl roll, C crouch, V view, Q swap, G grenade, R = alt action, J fire); B = bag
   const kd = e => { if (e.repeat) return; if (e.code === 'KeyB') togglePanel('bag'); if (e.code === 'KeyN') togglePanel('shop'); }; addEventListener('keydown', kd);
-  let camYaw = SPAWN.ry, camPitch = .42, camDist = 4.8, drag = null; // desktop: look / fire / aim on the town canvas (#gl is hidden, so the story Input mouse path does not run here)
+  let camYaw = SPAWN.ry, camPitch = .42, camDist = CAM.dist, drag = null, followSt = {}; // desktop: look / fire / aim on the town canvas (#gl is hidden, so the story Input mouse path does not run here)
   canvas.addEventListener('contextmenu', e => e.preventDefault());
   canvas.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; if (matchMedia('(pointer:fine)').matches && !document.pointerLockElement && canvas.requestPointerLock) { try { canvas.requestPointerLock(); } catch (x) { /* ignore */ } } if (e.button === 0) { inp.mAtk = true; inp.edge.atk = true; } if (e.button === 2) inp.mAim = true; drag = [e.clientX, e.clientY]; });
   canvas.addEventListener('pointermove', e => { if (document.pointerLockElement === canvas) { inp.look.x += e.movementX * .0024 * (SET.sens || 1); inp.look.y += e.movementY * .0024 * (SET.sens || 1) * (SET.invertY ? -1 : 1); } else if (drag && e.pointerType === 'mouse') { inp.look.x += (e.clientX - drag[0]) * .005 * (SET.sens || 1); inp.look.y += (e.clientY - drag[1]) * .005 * (SET.sens || 1) * (SET.invertY ? -1 : 1); drag = [e.clientX, e.clientY]; } });
@@ -296,21 +296,19 @@ export async function enterTown({ look, onExit, room = 'town', solo = false } = 
     if (!c && !busy) { inp.lastLook = inp.lastLook || 0; stepAimAssist(AG, dt); lookPitch = fpPitch; }
     if (fp && !c) { const eye = new THREE.Vector3(me.x + Math.sin(camYaw) * .12, me.y + (shim.state.crouch ? 1.28 : 1.58), me.z + Math.cos(camYaw) * .12); camPos.copy(eye); cam.position.copy(eye); cam.lookAt(eye.x + Math.sin(camYaw) * Math.cos(lookPitch), eye.y + Math.sin(lookPitch), eye.z + Math.cos(camYaw) * Math.cos(lookPitch)); }
     else if (c) { const tgt = new THREE.Vector3(me.x, 1.5 + me.y, me.z); camYaw = me.ry; const arm = armSolve(W, cars, me.drv, tgt, camYaw, .36, 8.6), dist = arm.dist; const want = new THREE.Vector3(tgt.x + arm.x * dist, tgt.y + arm.y * dist, tgt.z + arm.z * dist); if (!camInit) { camPos.copy(want); camInit = true; } if (arm.hit) camPos.copy(want); else camPos.lerp(want, Math.min(1, dt * 5)); cam.position.copy(camPos); cam.lookAt(tgt); }
-    else { // story-style over-the-shoulder: camera looks INTO the world through the crosshair (not at the player's back)
-      const aimOn = !!(S.aim && curGun()); const tgt = new THREE.Vector3(me.x, (shim.state.crouch ? 1.05 : 1.5) + me.y, me.z);
-      const dd0 = inb ? (aimOn ? 1.4 : 2.2) : (aimOn ? 1.65 : 2.85); const sh = aimOn ? .62 : .5; const syaw = camYaw + Math.PI; const cp = Math.cos(lookPitch);
-      const back = new THREE.Vector3(Math.sin(syaw) * cp, -Math.sin(lookPitch), Math.cos(syaw) * cp); const right = new THREE.Vector3(Math.cos(syaw), 0, -Math.sin(syaw));
-      const pivot = tgt.clone().addScaledVector(right, sh); let dd = dd0;
-      for (let d = .5; d <= dd0 + .01; d += .25) { const q = pivot.clone().addScaledVector(back, d); if (camBlocked(W, cars, me.drv, q.x, q.y, q.z)) { dd = Math.max(.35, d - .3); break; } }
-      const want = pivot.clone().addScaledVector(back, dd); if (!camInit) { camPos.copy(want); camInit = true; } camPos.lerp(want, Math.min(1, dt * 9)); cam.position.copy(camPos);
-      cam.rotation.order = 'YXZ'; cam.rotation.set(lookPitch, syaw, 0); }
+    else { // shared over-the-shoulder arm (same distance / FOV / no rubber-band as story + Survival)
+      const aimOn = !!(S.aim && curGun()); const syaw = camYaw + Math.PI;
+      const hitDist = (origin, dir, far) => { for (let d = .5; d <= far + .01; d += .25) { if (camBlocked(W, cars, me.drv, origin.x + dir.x * d, origin.y + dir.y * d, origin.z + dir.z * d)) return Math.max(.35, d - .3); } return far; };
+      const gw = curGun() && WEAPONS[curGun()];
+      stepFollowCam({ cam, yaw: syaw, pitch: lookPitch, px: me.x, py: me.y, pz: me.z, aim: aimOn, crouch: !!(shim.state && shim.state.crouch), indoor: !!inb, dt, zoom: gw && gw.zoom, state: followSt, hitDist });
+      camPos.copy(cam.position); camInit = true; camDist = followSt.d; }
     sun.position.set(me.x + 36, 60, me.z + 28); sun.target.position.set(me.x, 0, me.z); sun.target.updateMatrixWorld();
     // HUD
     { const hb = $q('#hpb i'); if (hb) hb.style.width = me.hp + '%'; $q('#hpTxt').textContent = `Health : ${Math.ceil(me.hp)}  ·  $${bag.count('cash')}  ·  ${bag.weight.toFixed(0)}/${bag.cap}kg`; $q('#ammoTxt').textContent = c ? `${c.kind || 'Car'}  ·  ${Math.round(c.fuel)} L` : (curGun() ? `${WEAPONS[curGun()].name}  ·  Ammo : ${GS.mag[curGun()] || 0} / ${ammoCount(curGun())}${GS.rl > 0 ? '  (reloading)' : ''}` : (n => n.charAt(0).toUpperCase() + n.slice(1))(bag.best().name)); { const gc = bag.count('grenade'); const g1 = $q('#grenN'), g2 = $q('#grenN2'); if (g1) g1.textContent = gc; if (g2) g2.textContent = gc; } { const ta = $q('#tAtk'); if (ta) ta.textContent = curGun() ? 'FIRE' : 'HIT'; } const ob = $q('#obj'); ob.innerHTML = `<b>QUIET FALLS</b><span>${online ? 'Online' : 'Solo'} · Players ${net.peers.size + 1}${Z ? ` · Zombies ${Z.stats().alive}` : ''}</span>`;
       document.body.classList.toggle('driving', !!c); driveEl && driveEl.classList.toggle('hidden', !c); gaugeC.style.display = c ? 'block' : 'none'; if (c) drawGauge(gaugeC, c.fuelFrac, Math.abs(c.v) * 3.6, c.fuelFrac < .15, t); const tu = $q('#tUse'); if (tu && !SET.hudv2) tu.textContent = '✋'; }
     minAcc += dt; if (minAcc > .12) { minAcc = 0; drawMini(); }
     if (GR.shake > 0) { cam.position.x += (Math.random() - .5) * .35 * GR.shake; cam.position.y += (Math.random() - .5) * .25 * GR.shake; }
-    { const gw = curGun() && WEAPONS[curGun()]; const aimOn = !!(S.aim && gw); const tf = aimOn ? 62 / (gw.zoom || 1.35) : 58; if (Math.abs(cam.fov - tf) > .05) { cam.fov += (tf - cam.fov) * Math.min(1, dt * 12); cam.updateProjectionMatrix(); } }
+    { const gw = curGun() && WEAPONS[curGun()]; const aimOn = !!(S.aim && gw); const tf = Math.max(CAM.minFov, Math.min(CAM.maxFov, aimOn ? CAM.aimFov / (gw.zoom || CAM.defaultZoom) : CAM.fov)); if (Math.abs(cam.fov - tf) > .05) { cam.fov += (tf - cam.fov) * Math.min(1, dt * 12); cam.updateProjectionMatrix(); } }
     { const xh = document.getElementById('xhair'); if (xh) { const gun = !!curGun(); xh.classList.toggle('hidden', !(gun || fp) || !!c || me.dead > 0); xh.style.display = (gun || fp) && !c && me.dead <= 0 ? '' : 'none'; } }
     renderer.render(scene, cam);
   }
@@ -319,7 +317,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false } = 
   function exit(edit) { townOn = false; running = false; try { offLeave(); offReturn(); } catch (e) { /* ignore */ } try { document.exitPointerLock && document.pointerLockElement && document.exitPointerLock(); } catch (e) { /* ignore */ } try { aud.resumeAll(); aud.engine(false); aud.tires && aud.tires(false); aud.noKeem = false; aud.setMood('menu'); } catch (e) { /* ignore */ } removeEventListener('keydown', kd); shim.onPause = oldPause; shim.state.crouch = false; for (const [e, , up] of drvBind.filter(Boolean)) e.classList.remove('on'); for (const [e, d] of saved) e.style.display = d; glEl && (glEl.style.display = ''); hudr2.remove(); document.body.classList.remove('driving'); driveEl && driveEl.classList.add('hidden'); hudEl.classList.add('hidden'); touchEl.classList.add('hidden'); stage.classList.add('hidden'); net.close(); renderer.dispose(); root.remove(); delete window.__mpTown; delete window.__mpLobby; if (edit === true) { import('../creator.js').then(m => m.openCreator({ onClose: onExit, onPlay: l => enterTown({ look: l, onExit, room }) })).then(c => { window.__mpCreator = c; }); } else onExit && onExit(); }
   W.closed.update(me.x, me.z); renderer.compile(scene, cam);
   const api = { W, me, S, GS, AG, fireGun, startReload, aud, CTX, net, cars, bag, gather, scene, cam, remotes, get Z() { return Z; }, inp, shim, openPause, togglePause, acts: () => acts.map(a => a.label), toast, hurt, die, respawn, spawnPoint,
-    setPos: (x, z) => { me.x = x; me.z = z; camInit = false; }, key: (k, v) => { inp.keys[k] = v; }, camYaw: v => { camYaw = v; }, setCam: (yaw, pitch, dist) => { if (yaw != null) camYaw = yaw; if (pitch != null) { camPitch = pitch; lookPitch = fpPitch = pitch; } if (dist != null) camDist = dist; }, setLook: (yaw, pitch) => { if (yaw != null) camYaw = yaw; if (pitch != null) lookPitch = fpPitch = pitch; }, use: () => { wantUse = true; }, useHold: (v) => { if (v) wantUse = true; }, alt: () => { wantAlt = true; }, hit: () => { wantHit = true; }, enter: car => enterCar(car), exitCar, peers: () => net.peers.size, setDoor, openLoot, closePanel, togglePanel, take, lootOf, buyDoor, noise, brakes: v => { hitHeld = v; }, stats: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, closedShown: W.closed.shown, closedHi: W.closed.shownHi }), renderer };
+    setPos: (x, z) => { me.x = x; me.z = z; camInit = false; followSt.d = null; }, key: (k, v) => { inp.keys[k] = v; }, camYaw: v => { camYaw = v; }, setCam: (yaw, pitch, dist) => { if (yaw != null) camYaw = yaw; if (pitch != null) { camPitch = pitch; lookPitch = fpPitch = pitch; } if (dist != null) camDist = dist; }, setLook: (yaw, pitch) => { if (yaw != null) camYaw = yaw; if (pitch != null) lookPitch = fpPitch = pitch; }, use: () => { wantUse = true; }, useHold: (v) => { if (v) wantUse = true; }, alt: () => { wantAlt = true; }, hit: () => { wantHit = true; }, enter: car => enterCar(car), exitCar, peers: () => net.peers.size, setDoor, openLoot, closePanel, togglePanel, take, lootOf, buyDoor, noise, brakes: v => { hitHeld = v; }, stats: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, closedShown: W.closed.shown, closedHi: W.closed.shownHi }), renderer };
 
   window.__mpTown = api; window.__mpLobby = api; try { aud.setMood('day'); } catch (e) { /* ignore */ } try { window.__atq && window.__atq.hideLoading && window.__atq.hideLoading(); } catch (e) { /* ignore */ } requestAnimationFrame(frame); return api;
 }

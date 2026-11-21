@@ -18,7 +18,7 @@ import { loadRigs } from './avatar.js';
 import { WEAPONS, WEAPON_ORDER, stat, perk, xpFor, PERKS, writeSave } from './data.js';
 import { V3, clamp, lerp, rnd, angLerp, bloodTex } from './util.js';
 import { Input } from './input.js';
-import { stepMove, startRoll, startJump, stepVehicle } from './pctl.js';
+import { stepMove, startRoll, startJump, stepVehicle, stepFollowCam, clampCamToPlayer, CAM } from './pctl.js';
 import { syncWounds, addWound, bloodyMouth, makePool, tickPools, setHandBlood } from './gore.js';
 import { STORY, LOOT, chOf, TOTAL_PAGES, SPEAKER_NAMES } from './story.js';
 import { onDialogueLine, tickDialogueFace, endDialogueFace, resetDialogueFace } from './dialogueFace.js';
@@ -86,7 +86,7 @@ export class Game {
     if (Q.post) { try { const c = this.composer = new EffectComposer(r); c.addPass(new RenderPass(scene, cam)); const ao = new GTAOPass(scene, cam, innerWidth, innerHeight); ao.blendIntensity = 0.8; c.addPass(ao);
       c.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.22, 0.18, 0.93)); c.addPass(new OutputPass()); } catch (e) { this.composer = null; } }
     addEventListener('resize', () => this.resize()); this.resize();
-    this.cam = { yaw: Math.PI / 2, pitch: -0.12, dist: 2.9, fp: !!S.fp, shake: V3() };
+    this.cam = { yaw: Math.PI / 2, pitch: -0.12, dist: CAM.dist, fp: !!S.fp, shake: V3() };
     this.fpsAcc = 0; this.fpsN = 0; this.fpsT = 0;
     // warm up shaders
     r.compile(scene, cam);
@@ -269,16 +269,17 @@ export class Game {
     c.cur = a; c.curName = name; c.mixer.update(0); return true; }
   freezeDeath(c) { return this.freezeClip(c, 'Idle_Loop', 0); }
   holdVictimRoot(n) { if (n._layYaw == null) return; n.root.rotation.order = 'YXZ'; n.root.rotation.y = n._layYaw; n.root.rotation.x = -Math.PI / 2; n.root.rotation.z = n.roll || 0; }
-  // keep the camera from sitting inside a feeder / victim (near-plane clips look like a stretched, smeared body)
-  pushCamOutOfChars() { const cam = this.camera, box = this._camBox || (this._camBox = new THREE.Box3()), mid = this._camMid || (this._camMid = V3()), d = this._camD || (this._camD = V3());
+  // keep the camera from sitting inside a feeder / victim / boss. Use a tight scale-based
+  // capsule, not Box3.setFromObject (attachments like Biscuit, weapons and a 1.5× boss made a
+  // huge AABB that shoved the camera backward with no max, and it never recovered).
+  pushCamOutOfChars() { const cam = this.camera, P = this.player && this.player.root && this.player.root.position;
     const consider = (c) => { if (!c || !c.root || c === this.player || c.root.visible === false) return;
-      box.setFromObject(c.root); box.expandByScalar(.18);
-      if (!box.containsPoint(cam.position) && box.distanceToPoint(cam.position) > .22) return;
-      box.getCenter(mid); d.copy(cam.position).sub(mid); d.y = 0;
-      if (d.lengthSq() < 1e-8) d.set(Math.sin(this.cam.yaw || 0), 0, Math.cos(this.cam.yaw || 0));
-      d.normalize(); const rad = Math.max(box.max.x - mid.x, box.max.z - mid.z, .4) + .32;
-      cam.position.x = mid.x + d.x * rad; cam.position.z = mid.z + d.z * rad; };
-    for (const z of this.zombies) consider(z); for (const k in this.npcs) consider(this.npcs[k]); }
+      const q = c.root.position, sc = c.scale || 1, rad = Math.min(1.05, 0.42 * sc + 0.32);
+      if (cam.position.y < q.y - 0.15 || cam.position.y > q.y + 2.15 * sc + 0.2) return;
+      const dx = cam.position.x - q.x, dz = cam.position.z - q.z, d = Math.hypot(dx, dz); if (d >= rad) return;
+      const k = rad / (d || 1e-6); cam.position.x = q.x + dx * k; cam.position.z = q.z + dz * k; };
+    for (const z of this.zombies) consider(z); for (const k in this.npcs) consider(this.npcs[k]);
+    if (P) clampCamToPlayer(cam, P.x, P.y, P.z, this.state && this.state.crouch); }
   victim(x, z, look, eaters = 3) { const v = this.npc('v' + Math.random(), look, x, z, 0, 'Idle_Loop'); v.play('Idle_Loop', { force: true, speed: 0 }); this.freezeClip(v, 'Idle_Loop', 0); v.mat.userData.u.uBlood.value = this.settings.gore ? 1 : 0.2; v.bleed = true;
     // always lie on the back, broadside to the player, limbs relaxed and on the ground
     v.life = 1; v.isVictim = true; v.struggle = .35; v.jolt = 0; v.screamT = rnd(.5, 2);
@@ -686,19 +687,16 @@ export class Game {
     // camera
     I.lastLook = Math.hypot(I.look.x, I.look.y); C.yaw -= I.look.x; C.pitch = clamp(C.pitch - I.look.y, -1.1, 0.9); I.look.set(0, 0); this.aimAssist(rdt);
     const aim = this.state && this.state.aim; const ws = this.ws || {};
-    let target, desired; const fov = aim ? 62 / (ws.zoom || 1.35) : 62; cam.fov = lerp(cam.fov, fov, Math.min(1, rdt * 12)); cam.updateProjectionMatrix();
+    if (this.cut || this.dying || (T && T.driving) || C.fp) this._camFollow = null;
     if (this.cut && this.cut.snap) { if (cam.fov !== this.cut.fov) { cam.fov = this.cut.fov || 62; cam.updateProjectionMatrix(); } cam.position.copy(this.cut.cam); this._lk = this.cut.look.clone(); cam.lookAt(this._lk); }
     else if (this.cut && this.cut.cam) { cam.position.lerp(this.cut.cam, Math.min(1, rdt * 3)); const lk = this.cut.look; this._lk = this._lk ? this._lk.lerp(lk, Math.min(1, rdt * 3)) : lk.clone(); cam.lookAt(this._lk); }
     else if (this.dying) { const p = P.root.position; const want = V3(p.x + Math.sin(this.t * .3) * 2.4, 1.1, p.z + Math.cos(this.t * .3) * 2.4); cam.position.lerp(want, rdt * 2); cam.lookAt(p.x, .4, p.z); }
-    else if (T && T.driving) { const p = T.g.position; T.ch = T.ch == null ? T.head : angLerp(T.ch, T.head, Math.min(1, rdt * 3)); const dd = 7.5 + Math.abs(T.v) * .12; desired = V3(p.x - Math.sin(T.ch) * dd, 3.3, p.z - Math.cos(T.ch) * dd); cam.position.lerp(desired, Math.min(1, rdt * 4)); cam.lookAt(p.x + Math.sin(T.ch) * 4, 1.2, p.z + Math.cos(T.ch) * 4); C.yaw = T.ch + Math.PI; }
+    else if (T && T.driving) { const p = T.g.position; T.ch = T.ch == null ? T.head : angLerp(T.ch, T.head, Math.min(1, rdt * 3)); const dd = 7.5 + Math.abs(T.v) * .12; const desired = V3(p.x - Math.sin(T.ch) * dd, 3.3, p.z - Math.cos(T.ch) * dd); cam.position.lerp(desired, Math.min(1, rdt * 4)); cam.lookAt(p.x + Math.sin(T.ch) * 4, 1.2, p.z + Math.cos(T.ch) * 4); C.yaw = T.ch + Math.PI; }
     else if (C.fp) { cam.position.copy(P.root.position).setY(P.root.position.y + (this.state.crouch ? 1.04 : 1.52)); const f = V3(-Math.sin(C.yaw), 0, -Math.cos(C.yaw)); cam.position.addScaledVector(f, .14); // eye height, a touch forward of the (hidden) head
       cam.rotation.set(0, 0, 0, 'YXZ'); cam.rotation.order = 'YXZ'; cam.rotation.y = C.yaw; cam.rotation.x = C.pitch; }
-    else { target = P.root.position.clone(); target.y += this.state && this.state.crouch ? 1.05 : 1.5; const dist = aim ? 1.6 : 2.7, sh = aim ? .62 : .5;
-      const cp = Math.cos(C.pitch), back = V3(Math.sin(C.yaw) * cp, -Math.sin(C.pitch), Math.cos(C.yaw) * cp); const right = V3(Math.cos(C.yaw), 0, -Math.sin(C.yaw));
-      const pivot = target.clone().addScaledVector(right, sh); let dd = dist; const rc = this._camRc || (this._camRc = new THREE.Raycaster()); rc.set(pivot, back); rc.near = 0; rc.far = dist + .3; const h = rc.intersectObjects(this.shotWalls(), false)[0]; if (h) dd = Math.max(.3, h.distance - .25);
-      // side collision for shoulder
-      const rc2 = this._camRc2 || (this._camRc2 = new THREE.Raycaster()); rc2.set(target, right); rc2.near = 0; rc2.far = sh + .2; const h2 = rc2.intersectObjects(this.shotWalls(), false)[0]; if (h2) { pivot.copy(target).addScaledVector(right, Math.max(0, h2.distance - .25)); }
-      cam.position.copy(pivot).addScaledVector(back, dd); cam.rotation.order = 'YXZ'; cam.rotation.set(C.pitch, C.yaw, 0); }
+    else { const hitDist = (origin, dir, far) => { const rc = this._camRc || (this._camRc = new THREE.Raycaster()); rc.set(origin, dir); rc.near = 0; rc.far = far; const h = rc.intersectObjects(this.shotWalls(), false)[0]; return h ? h.distance : far; };
+      const st = this._camFollow || (this._camFollow = {});
+      stepFollowCam({ cam, yaw: C.yaw, pitch: C.pitch, px: P.root.position.x, py: P.root.position.y, pz: P.root.position.z, aim, crouch: !!(this.state && this.state.crouch), dt: rdt, zoom: ws.zoom, state: st, hitDist }); }
     // first person (v1.9.17): hide the player's whole body (mannequin, avatar skin, head/hair/hat/face parts, held weapon) and use a tight near plane so nothing of Keem is ever in the view
     const fpOn = !!(C.fp && !this.cut && !this.dying && !(T && T.driving)); this.setFPBody(fpOn); if (!fpOn) this.pushCamOutOfChars();
     const wantNear = fpOn ? .06 : .12; if (cam.near !== wantNear) { cam.near = wantNear; cam.updateProjectionMatrix(); }
