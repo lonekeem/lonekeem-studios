@@ -181,3 +181,10 @@ Based on `feat/mp-town` a091c98. New files: `src/mp/town/camcol.js`, `src/mp/tow
 
 ## v1.9.22 release (mp hair + respawn + zombie heads live)
 - Merged feat/mp-hair (db81db7), feat/mp-respawn (634d159), feat/mp-zombies (1891b2d). feat/mp-aim NOT included.
+
+## v1.9.23 polish (intro, score, loading, cover)
+
+- Replaced the 4.2s text studio card with the shared Lone Keem Studios intro (compressed Dream Jar ident, skippable) and a 10s instrumental sting.
+- Looping menu theme on the title screen and a looping loading cue, both on the Music & ambience slider, started from the first user gesture.
+- Loading overlay matches the approved mockup (chapter title, progress, rotating control tips and quotes) for story chapter loads and multiplayer town loads.
+- Store cover used as the title background, Android splash, and `og:image`.

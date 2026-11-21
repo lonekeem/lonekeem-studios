@@ -21,5 +21,6 @@ Lone Keem Studios · created by Keem
 - New/rewritten lines for Ch10–11 and the dialogue pass, Kokoro stock voices (Dr. Vance: af_nicole).
 
 ## v1.7.1 audio additions
+- Menu theme, intro sting and loading music: original score generated with ElevenLabs Music v2.5 for Lone Keem Studios, instrumental.
 - Procedural SFX (footsteps mud/asphalt, zombie shuffles, breathing, jump/land, roll, squelches, car alarm, wind, tires) synthesized in-repo by `tools/sfx3d.py` — original, CC0.
 - All voices: Kokoro-82M stock voices (Apache-2.0), rendered locally with free tools; no voice cloning, no paid TTS. All voice lines are subtitled.

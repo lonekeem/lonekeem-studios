@@ -29,7 +29,7 @@ export class AudioSys {
     this.windG = ctx.createGain(); this.windG.gain.value = 0.15;
     src.connect(this.windF); this.windF.connect(this.windG); this.windG.connect(this.music); src.start();
     this.padG = ctx.createGain(); this.padG.gain.value = 0; this.padG.connect(this.music); this.padG.connect(this.verb);
-    this.mode = 'menu'; this.applyVolumes();
+    this.mode = this.mode || 'boot'; this.applyVolumes();
     this._tick = setInterval(() => this.ambientTick(), 1000);
     this.chordIdx = 0;
   }
@@ -37,12 +37,69 @@ export class AudioSys {
     if (!this.ctx) return;
     this.master.gain.value = this.s.vol; this.music.gain.value = this.s.music;
   }
-  setMood(mode) { if (!this.ctx) return; this.mode = mode; if (!this.ctx) return;
+  setMood(mode) { if (!this.ctx) return; this.mode = mode;
     const t = this.ctx.currentTime;
-    const wind = { menu: 0.25, day: 0.07, evening: 0.14, night: 0.3, tense: 0.32, sad: 0.12 }[mode] ?? 0.15;
+    const wind = { menu: 0.10, day: 0.07, evening: 0.14, night: 0.3, tense: 0.32, sad: 0.12, loading: 0.08 }[mode] ?? 0.15;
     this.windG.gain.setTargetAtTime(wind, t, 1.5);
     this.windF.frequency.setTargetAtTime(mode === 'day' ? 900 : 380, t, 1.5);
+    if (mode === 'menu') this.playMenuTheme();
+    else if (mode === 'loading') this.playLoadingLoop();
+    else { this._stopTrack('menu', 0.8); this._stopTrack('loading', 0.45); }
   }
+  // ---- v1.9.23 scored tracks (menu theme, intro sting, loading loop). They ride `this.music`, so the Music slider applies.
+  async loadTracks() {
+    if (this._tracksP) return this._tracksP;
+    const base = (import.meta.env && import.meta.env.BASE_URL) || './';
+    const files = { menu: 'music/atq-menu-theme.mp3', sting: 'music/atq-intro-sting.mp3', loading: 'music/atq-loading-loop.mp3' };
+    this._tracksP = Promise.all(Object.entries(files).map(async ([k, rel]) => {
+      try {
+        const r = await fetch(base + rel);
+        if (!r.ok) throw new Error(r.status);
+        const ab = await r.arrayBuffer();
+        this.init();
+        const dec = this.ctx.decodeAudioData(ab.slice(0));
+        const buf = dec && dec.then ? await dec : await new Promise((res, rej) => this.ctx.decodeAudioData(ab.slice(0), res, rej));
+        this._tbuf = this._tbuf || {}; this._tbuf[k] = buf;
+      } catch (e) { console.warn('scored track failed', k, e); }
+    })).then(() => {
+      if (this.mode === 'menu') this.playMenuTheme();
+      else if (this.mode === 'loading') this.playLoadingLoop();
+      return this._tbuf || {};
+    });
+    return this._tracksP;
+  }
+  _fadeGain(g, to, sec) {
+    if (!this.ctx || !g) return;
+    const t = this.ctx.currentTime, d = Math.max(0.02, sec);
+    try { g.gain.cancelScheduledValues(t); } catch (e) { /* ignore */ }
+    g.gain.setValueAtTime(g.gain.value, t);
+    g.gain.linearRampToValueAtTime(to, t + d);
+  }
+  _startTrack(key, { loop = false, fade = 0.6, gain = 1 } = {}) {
+    if (!this.ctx || !this._tbuf || !this._tbuf[key]) return null;
+    this._stopTrack(key, 0.04);
+    const src = this.ctx.createBufferSource();
+    src.buffer = this._tbuf[key]; src.loop = !!loop;
+    const g = this.ctx.createGain(); g.gain.value = 0;
+    src.connect(g); g.connect(this.music);
+    try { src.start(); } catch (e) { return null; }
+    this._fadeGain(g, gain, fade);
+    this._tplay = this._tplay || {};
+    const rec = { src, g };
+    this._tplay[key] = rec;
+    src.onended = () => { if (this._tplay && this._tplay[key] === rec) delete this._tplay[key]; };
+    return rec;
+  }
+  _stopTrack(key, fade = 0.5) {
+    const rec = this._tplay && this._tplay[key]; if (!rec) return;
+    delete this._tplay[key];
+    this._fadeGain(rec.g, 0, fade);
+    try { rec.src.stop(this.ctx.currentTime + Math.max(0.05, fade) + 0.05); } catch (e) { /* already stopped */ }
+  }
+  playSting() { this.init(); if (this._tbuf && this._tbuf.sting) this._startTrack('sting', { loop: false, fade: 0.06, gain: 1 }); else this.sting(); }
+  playMenuTheme() { this.init(); if (this._tplay && this._tplay.menu) return; this._stopTrack('loading', 0.5); this._startTrack('menu', { loop: true, fade: 0.9, gain: 0.9 }); }
+  playLoadingLoop() { this.init(); if (this._tplay && this._tplay.loading) return; this._stopTrack('menu', 0.45); this._startTrack('loading', { loop: true, fade: 0.5, gain: 0.85 }); }
+  stopScored(fade = 0.6) { this._stopTrack('menu', fade); this._stopTrack('loading', fade); this._stopTrack('sting', Math.min(0.35, fade)); }
   tone(freq, dur, type = 'sine', vol = 0.05, dest, attack = 0.8) { if (!this.ctx) return;
     const ctx = this.ctx, t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
     o.type = type; o.frequency.value = freq; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack); g.gain.linearRampToValueAtTime(0, t + dur);
@@ -53,6 +110,8 @@ export class AudioSys {
     const m = this.mode, t = this.ctx.currentTime;
     this.padG.gain.setTargetAtTime(m === 'tense' ? 0.5 : 0.8, t, 1);
     // music pad every 6s
+    if (m === 'menu' && this._tplay && this._tplay.menu) return;
+    if (m === 'loading' && this._tplay && this._tplay.loading) return;
     if ((this._n = (this._n || 0) + 1) % 6 === 0) {
       const sets = {
         day: [[261.6, 329.6, 392, 493.9], [220, 261.6, 329.6, 392], [174.6, 220, 261.6, 329.6], [196, 246.9, 293.7, 392]],
@@ -93,7 +152,7 @@ export class AudioSys {
   crash() { if (!this.ctx) return; this.noise(1.4, 800, 0.9); this.glass(); this.thud(); }
   heartbeat() { if (!this.ctx) return; this.tone(50, 0.15, 'sine', 0.4, this.sfx, 0.01); setTimeout(() => this.tone(45, 0.15, 'sine', 0.3, this.sfx, 0.01), 250); }
   staticBurst(dur = 1.5) { if (!this.ctx) return; this.noise(dur, 2500, 0.08, 'bandpass', 0.5); }
-  sting() { if (!this.ctx) return; this.tone(55, 4, 'sawtooth', 0.08, this.sfx, 0.05); [110, 164.8, 220, 329.6].forEach((f, i) => setTimeout(() => this.tone(f, 3.5, 'triangle', 0.05, this.verb, 0.4), 200 + i * 120)); this.noise(2.5, 6000, 0.05, 'highpass'); }
+  sting() { if (!this.ctx) return; if (this._tbuf && this._tbuf.sting) { this.playSting(); return; } this.tone(55, 4, 'sawtooth', 0.08, this.sfx, 0.05); [110, 164.8, 220, 329.6].forEach((f, i) => setTimeout(() => this.tone(f, 3.5, 'triangle', 0.05, this.verb, 0.4), 200 + i * 120)); this.noise(2.5, 6000, 0.05, 'highpass'); }
   radioJingle() { if (!this.ctx) return; [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, 0.4, 'square', 0.02, this.sfx, 0.01), i * 160)); }
   // narration files
   // trailer score: deep detuned drone + slow swells

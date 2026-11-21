@@ -50,6 +50,9 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### v1.9.23
+- Lone Keem Studios video intro (Dream Jar ident) with original sting, looping menu theme and loading music, a full loading screen with real control tips, and a new store cover on the title screen, Android splash and social image.
+
 ### v1.9.22
 - Multiplayer: new hair for the female and male bases (soft natural hair, no helmet look), respawn fixed (shoot and get hurt again after dying, death countdown screen, short spawn protection), and zombies in the multiplayer town now use all 7 story zombie types with heads.
 

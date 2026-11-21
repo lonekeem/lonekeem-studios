@@ -1,0 +1,37 @@
+{
+  "tips": [
+    "Move with WASD, the left stick, or the left joystick.",
+    "Look around with the mouse (click the game to lock it), the right stick, or by dragging on the right side of the screen.",
+    "Hold Shift, press L3, or tap RUN to sprint. On touch, pushing the stick all the way out also starts a run.",
+    "Press C, R3, or CRCH to crouch and sneak past feeders.",
+    "Attack or fire with left click, J, RT, or the big FIRE button.",
+    "Aim with right click, LT, or AIM. On the new thumb-arc layout, a short tap toggles aim; a long press aims only while you hold it.",
+    "Reload with R, Y, or the ⟳ button.",
+    "Swap weapons with Q, RB, or ⇄.",
+    "Throw a grenade with G, LB, or the bomb button.",
+    "Jump with Space, A, or JUMP.",
+    "Dodge-roll through attacks with Ctrl, B, or ROLL.",
+    "Interact or get in a vehicle with E or F, D-pad up, or USE.",
+    "Toggle first-person with V, Back/View, or the eye button.",
+    "Pause with Esc or P, Start, or the II button.",
+    "Press H on the keyboard to use a med kit.",
+    "Tap the dialogue box or press Enter to skip a line.",
+    "In Simple controls, a short tap on the look side of the screen shoots; hold to keep firing.",
+    "Turn on Auto-fire in Control Settings to shoot when an enemy is under the crosshair.",
+    "Choose a floating joystick (appears where you touch) or a fixed one in Control Settings.",
+    "While driving, use GAS, BRAKE/REV and the arrow buttons, or the left stick and the triggers."
+  ],
+  "quotes": [
+    "The quiet is never empty. Listen.",
+    "Keep Nia close. The street forgets names.",
+    "Dad always walks a step behind, just in case.",
+    "Riverside looks asleep. It isn't.",
+    "Head down. Soft steps. We go together.",
+    "There is still a home at the end of this road.",
+    "Don't waste a shot on the dark. Wait for the face.",
+    "The wind on Route 1 knows every house we left.",
+    "If the lights come back, don't trust them yet.",
+    "We are still a family. That has to be enough tonight."
+  ],
+  "notes": "All 20 tips come from real controls in src/game/input.js, src/game/pctl.js, index.html touch/drive HUD, and the Controls table. Heal (H) is keyboard-only — there is no touch or gamepad heal button. Quotes are original and are not chapter end-quotes from the game."
+}

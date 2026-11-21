@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#06120b">
 <title>After the Quiet — Riverside · Lone Keem Studios</title>
+<meta name="description" content="Mature 18+ horror action game by Lone Keem Studios. Fight out of Riverside, Maine as Keem, with Dad Marcus and Nia.">
+<meta property="og:title" content="After the Quiet">
+<meta property="og:description" content="Mature 18+ horror action game by Lone Keem Studios. Fight out of Riverside, Maine as Keem, with Dad Marcus and Nia.">
+<meta property="og:image" content="./og-cover.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="After the Quiet">
+<meta name="twitter:description" content="Mature 18+ horror action game by Lone Keem Studios.">
+<meta name="twitter:image" content="./og-cover.png">
 <link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./favicon-32.png"><link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="stylesheet" href="./src/style.css">
 <script>
@@ -44,11 +53,28 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
   <div id="dlg"><div><div id="who"></div><div id="line"></div></div></div>
   <div id="toast"></div>
   <div id="card" class="hidden"><div class="c1"></div><div class="c2"></div></div>
-  <div id="loading" class="hidden"><div class="lt">Loading Riverside…</div><div class="lb"><i></i></div><div class="lq"></div></div>
 </div>
 <div id="fade"></div>
 
-<div id="studio" class="hidden"><div class="sp">LONE KEEM STUDIOS</div><div class="sl"></div><div class="ss">presents</div></div>
+<div id="studio" class="hidden">
+  <video id="studioVid" src="./intro/lks-intro.mp4" playsinline muted preload="auto"></video>
+  <div class="skip">Tap or press any key to skip</div>
+</div>
+<div id="loading" class="hidden">
+  <div class="lbg" style="background-image:url('./tex/loading-bg.jpg')"></div>
+  <div class="lvig"></div>
+  <div class="lbrand"><div class="studio">LONE KEEM STUDIOS</div><div class="ltitle">AFTER THE QUIET</div></div>
+  <div class="lcenter">
+    <div class="lkick">CHAPTER 1</div>
+    <div class="lname">The Day Before</div>
+    <div class="lquote"></div>
+  </div>
+  <div class="lbarwrap">
+    <div class="lt">Loading Riverside…</div>
+    <div class="lb"><i></i></div>
+  </div>
+  <div class="ltip"><b>TIP</b><span></span></div>
+</div>
 <div id="warning" class="screen">
   <div class="panel">
     <h2>Mature 18+ · Content Warning</h2>
@@ -58,7 +84,7 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
   </div>
 </div>
 <div id="title" class="screen hidden">
-  <div class="tbg"></div>
+  <div class="tbg" style="background-image:url('./tex/title-cover.jpg')"></div>
   <div class="logo"><div class="studio">LONE KEEM STUDIOS PRESENTS</div><h1>AFTER THE QUIET</h1><div class="tag">Riverside, Maine</div></div>
   <div class="menu">
     <button id="btnContinue" class="primary hidden">Continue</button>
@@ -72,7 +98,7 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
     <button id="btnControls">Controls</button>
     <button id="btnCredits">Credits</button>
   </div>
-  <div class="foot" id="foot">v1.9.22 · Story Mode · Chapters 1–13 · Multiplayer (Beta)</div>
+  <div class="foot" id="foot">v1.9.23 · Story Mode · Chapters 1–13 · Multiplayer (Beta)</div>
 </div>
 <div id="settings" class="screen hidden">
   <div class="panel">
@@ -145,7 +171,7 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
   <div class="panel">
     <h2>Credits</h2>
     <p><b>Lone Keem Studios</b><br>Created by Keem</p>
-    <p>Story, characters and direction: Keem. Characters: Quaternius Universal Animation Library (CC0). Vehicles: Kenney Car Kit (kenney.nl, CC0). Textures &amp; sky: Poly Haven (CC0). Engine: three.js (MIT). Voices: Kokoro TTS stock voices (Apache-2.0), no real person's voice cloned. Sound and music: synthesized in code plus CC0 samples.</p>
+    <p>Story, characters and direction: Keem. Characters: Quaternius Universal Animation Library (CC0). Vehicles: Kenney Car Kit (kenney.nl, CC0). Textures &amp; sky: Poly Haven (CC0). Engine: three.js (MIT). Voices: Kokoro TTS stock voices (Apache-2.0), no real person's voice cloned. Music: original score by Lone Keem Studios (ElevenLabs Music). Sound: synthesized in code plus CC0 samples.</p>
     <p class="small">Full license list in CREDITS.md.</p>
     <button class="back primary">Back</button>
   </div>
