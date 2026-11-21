@@ -445,7 +445,7 @@ export class Game {
     // tanker can be smashed too? no — only shot
   }
   // v1.9.3: camera ray through the crosshair. Spread is an angle (not NDC, which was stretched 2x sideways on landscape phones); single-bullet guns: dead-on when aiming, small cone hip-fire; pellets keep their cone
-  aimRay(pellets = 1, exact = false) { const r = new THREE.Raycaster(); const ws = this.ws; const sp = exact ? 0 : pellets > 1 ? (this.state.aim ? ws.spread * .45 : ws.spread * (this.cam.fp ? .8 : 1.4)) * 4 : (this.state.aim ? 0 : ws.spread * .35 * 4);
+  aimRay(pellets = 1, exact = false) { const r = new THREE.Raycaster(); const ws = this.ws; const sp = exact ? 0 : pellets > 1 ? (this.state.aim ? ws.spread * .3 : ws.spread * (this.cam.fp ? .5 : .6)) * 4 /* v1.9.28: tighter pellet cone now that pellets must hit the visible body (the old fat hitbox hid a 0.25 rad hip cone) */ : (this.state.aim ? 0 : ws.spread * .35 * 4);
     const xr = $('#xhair').getBoundingClientRect(), cr = this.renderer.domElement.getBoundingClientRect(); const cy = (xr.width && cr.height) ? 1 - 2 * ((xr.top + xr.height / 2 - cr.top) / cr.height) : 0.08, cx = (xr.width && cr.width) ? 2 * ((xr.left + xr.width / 2 - cr.left) / cr.width) - 1 : 0;
     r.setFromCamera(new THREE.Vector2(cx, cy), this.camera); if (sp > 0) { const th = Math.random() * 6.283, m = Math.sqrt(Math.random()) * sp * Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
       const up = V3(0, 1, 0).applyQuaternion(this.camera.quaternion), rt = V3(1, 0, 0).applyQuaternion(this.camera.quaternion); r.ray.direction.addScaledVector(rt, Math.cos(th) * m).addScaledVector(up, Math.sin(th) * m).normalize(); }
