@@ -61,6 +61,8 @@ body.still .layer{animation:none!important}
 #cont{position:absolute;right:24px;bottom:calc(max(4vh,50vh - 28.125vw) + 10px);z-index:4;font:12px system-ui;color:#9ab;animation:blink 1.4s infinite}@keyframes blink{50%{opacity:.3}}
 #fade{position:fixed;inset:0;background:#000;pointer-events:none;opacity:1;transition:opacity 1s;z-index:20}
 .screen{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(2,8,4,.88)}
+/* sit above the prologue #cine overlay (z 40) so Resume is tappable after a background pause */
+#pause:not(.hidden){z-index:55}
 .panel{background:rgba(8,22,14,.95);border:1px solid var(--gd);border-radius:12px;padding:26px 30px;max-width:min(520px,92vw);max-height:90vh;overflow:auto;display:flex;flex-direction:column;gap:12px}
 .panel.wide{max-width:min(860px,94vw)}.panel h2{margin:0 0 6px;color:var(--g);letter-spacing:.08em}
 .panel label{display:flex;justify-content:space-between;gap:12px;align-items:center;font:15px system-ui}.panel label.chk{justify-content:flex-start}

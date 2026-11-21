@@ -4,6 +4,7 @@ import { AudioSys } from './audio.js';
 import { initMenu, trackGame } from './ui/menu.js';
 import { SURVIVAL_STEP, chOf, CH_START, CHAPTERS, LAST_CH, LAST_STORY_STEP, TOTAL_PAGES } from './game/story.js';
 import { WEAPONS, WEAPON_ORDER, UPGRADES, upCost, AMMO_SHOP, PERKS, xpFor, defaultSave, loadSave, writeSave, clearSave, stat } from './game/data.js';
+import { installBgListeners, onAppLeave, onAppReturn, leaveApp, returnApp, isAway } from './bgPause.js';
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const DEF = { vol: 0.9, auto: true, music: 0.6, text: 1, subs: true, gore: true, lang: 'on', qteEasy: false, still: false, hints: true, qual: 'auto', sens: 1, fp: false, sfxVol: 1, voiceVol: 1, voices: true,
@@ -16,6 +17,7 @@ if (S.ctlRev !== 2) { Object.assign(S, { ctl: 'twin', autoFire: false, assist: 0
 const audio = new AudioSys(S);
 let save = loadSave(LS) || defaultSave(); let game = null, gamePromise = null; let state = 'boot', back = '#title';
 window.__atq = { get audio() { return audio; }, get game() { return game; }, get state() { return state; }, get save() { return save; }, showLoading, hideLoading, setProgress,
+  leaveApp, returnApp, isAway,
   reloadSave: () => { save = loadSave(LS) || save; if (state === 'title') toTitle(); } }; // profile cloud sync (src/mp/profile.js) calls this after loading a saved profile
 try { audio.loadTracks(); } catch (e) { /* ignore */ }
 
@@ -31,11 +33,11 @@ async function playPrologueToMenu() {
     $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden');
     try { const m = await import('./game/prologue.js'); await Promise.race([m.preloadPrologue(audio), new Promise(r => setTimeout(r, 6000))]); } catch (e) {}
     g.onPrologueEnd = () => { g.cut = null; g._lk = null; g.holdSave = false; g.paused = true; toTitle(); };
-    g.holdSave = true; g.wantPrologue = true; g.start(0);
+    g.holdSave = true; g.wantPrologue = true; g.start(0); if (isAway()) pause();
   } catch (e) { console.error(e); hideLoading(); toTitle(); }
 }
 
-function toTitle() { state = 'title'; if (game) { game.paused = true; } $('#stage').classList.add('hidden'); $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden'); audio.beat && audio.beat(0); audio.setMood('menu'); save = loadSave(LS) || save; { const sv = loadSave(LS), has = !!(sv && (sv.played || sv.step > 0)); const b = $('#btnContinue'); b.classList.toggle('hidden', !has); if (has) b.textContent = 'Continue · Chapter ' + chOf(sv.step || 0) + (CHN[chOf(sv.step || 0)] ? ' · ' + CHN[chOf(sv.step || 0)] : ''); } showScreen('#title'); back = '#title'; }
+function toTitle() { state = 'title'; if (game) { game.paused = true; } $('#stage').classList.add('hidden'); $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden'); try { audio.resumeAll(); } catch (e) {} audio.beat && audio.beat(0); audio.setMood('menu'); save = loadSave(LS) || save; { const sv = loadSave(LS), has = !!(sv && (sv.played || sv.step > 0)); const b = $('#btnContinue'); b.classList.toggle('hidden', !has); if (has) b.textContent = 'Continue · Chapter ' + chOf(sv.step || 0) + (CHN[chOf(sv.step || 0)] ? ' · ' + CHN[chOf(sv.step || 0)] : ''); } showScreen('#title'); back = '#title'; }
 
 async function ensureGame() { if (game) return game; if (gamePromise) return gamePromise;
   const studioOn = $('#studio') && !$('#studio').classList.contains('hidden');
@@ -54,16 +56,40 @@ function goLandscape() { if (document.body.dataset.dev !== 'touch' || window.Cap
 async function play(step, o = {}) { if (o.prologue) import('./game/prologue.js').then(m => m.preloadPrologue(audio)).catch(() => {}); goLandscape(); showScreen(null); $('#stage').classList.remove('hidden'); state = 'loading';
   if (step === SURVIVAL_STEP) showLoading({ message: 'SURVIVAL', title: 'Endless waves' });
   else { const ch = chOf(step || 0); showLoading({ ch, title: (CHAPTERS[ch] && CHAPTERS[ch].title) || 'Riverside' }); }
-  const g = await ensureGame(); g.save = save; g.settings = S; state = 'play'; audio.init(); hideLoading(); $('#hud').classList.remove('hidden'); $('#touch').classList.toggle('hidden', !(matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window)); if (o.prologue) { g.wantPrologue = true; try { const m = await import('./game/prologue.js'); await Promise.race([m.preloadPrologue(audio), new Promise(r => setTimeout(r, 6000))]); } catch (e) { } } g.start(step); }
-function pause() { if (state !== 'play' || !game) return; state = 'paused'; game.paused = true; if (document.pointerLockElement) document.exitPointerLock(); writeSave(LS, save); showScreen('#pause'); back = '#pause'; }
-function resume() { state = 'play'; showScreen(null); if (game) { game.paused = false; game.last = performance.now(); } }
+  const g = await ensureGame(); g.save = save; g.settings = S; state = 'play'; audio.init(); hideLoading(); $('#hud').classList.remove('hidden'); $('#touch').classList.toggle('hidden', !(matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window)); if (o.prologue) { g.wantPrologue = true; try { const m = await import('./game/prologue.js'); await Promise.race([m.preloadPrologue(audio), new Promise(r => setTimeout(r, 6000))]); } catch (e) { } } g.start(step); if (isAway()) pause(); }
+function inGameplay() { if (state === 'play') return true; if (game && game.running && (game.pro || state === 'loading')) return true; return false; }
+function fromPauseMenu() { return state === 'paused' || (['shop', 'inv', 'settings', 'custom'].includes(state) && back === '#pause'); }
+function pause() {
+  if (!game) return;
+  if (state === 'paused' || fromPauseMenu()) { game.paused = true; return; }
+  if (!inGameplay()) return;
+  state = 'paused'; game.paused = true;
+  if (document.pointerLockElement) document.exitPointerLock();
+  try { writeSave(LS, save); } catch (e) {}
+  showScreen('#pause'); back = '#pause';
+}
+function resume() { state = 'play'; showScreen(null); try { audio.resumeAll(); } catch (e) {} if (game) { game.paused = false; game.last = performance.now(); } }
 addEventListener('keydown', e => { audio.init(); if ((e.key === 'Escape' || e.key === 'p' || e.key === 'P') && state !== 'play') { if (state === 'paused') resume(); else if (['shop', 'inv', 'settings'].includes(state) && back === '#pause') { state = 'paused'; showScreen('#pause'); } }
   if ((e.key === 'i' || e.key === 'I' || e.key === 'Tab') && state === 'play') { e.preventDefault(); pause(); openInv(); } });
 addEventListener('pointerdown', () => audio.init());
 // v1.5.1 tap-to-unlock: iOS only unlocks Web Audio from touchend/click, so resume (plus a 1-sample buffer) on each tap until 'running'. Respects the silent switch.
-function unlockAudio() { try { audio.init(); const c = audio.ctx; if (!c || c.state === 'running') return; c.resume().catch(() => {}); const src = c.createBufferSource(); src.buffer = c.createBuffer(1, 1, 22050); src.connect(c.destination); src.start(0); } catch (e) {} }
+function unlockAudio() { if (audio._bgSuspended) return; try { audio.init(); const c = audio.ctx; if (!c || c.state === 'running') return; c.resume().catch(() => {}); const src = c.createBufferSource(); src.buffer = c.createBuffer(1, 1, 22050); src.connect(c.destination); src.start(0); } catch (e) {} }
 ['touchend', 'click', 'keydown'].forEach(ev => addEventListener(ev, unlockAudio, { capture: true, passive: true }));
-document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') pause(); });
+// v1.9.31: pause + mute when the app is backgrounded (visibility, pagehide/blur, Capacitor pause).
+const MENU_STATES = ['title', 'settings', 'credits', 'chapters', 'controls', 'boot', 'ending', 'dead'];
+onAppLeave(() => {
+  try { audio.suspendAll(); } catch (e) {}
+  if (inGameplay()) pause();
+  else if (fromPauseMenu() && game) game.paused = true;
+});
+onAppReturn(() => {
+  if (game && game.paused) game.last = performance.now();
+  const menu = MENU_STATES.includes(state) || (['shop', 'inv', 'custom', 'settings'].includes(state) && back !== '#pause');
+  if (menu) {
+    try { audio.resumeAll(); if (state === 'title' || state === 'settings' || state === 'credits' || state === 'chapters' || state === 'controls' || state === 'boot') audio.setMood('menu'); } catch (e) {}
+  }
+});
+installBgListeners();
 
 // ---------- shop ----------
 let shopTab = 'guns';
@@ -109,7 +135,9 @@ $('#btnWarn').onclick = async () => {
   const onSkip = () => finish();
   st.addEventListener('pointerdown', onSkip, { once: true });
   addEventListener('keydown', onSkip, { once: true });
-  setTimeout(finish, 7000);
+  let left = 7000, then = performance.now();
+  const studioTick = () => { if (done) return; const now = performance.now(); if (!isAway()) left -= now - then; then = now; if (left <= 0) finish(); else requestAnimationFrame(studioTick); };
+  requestAnimationFrame(studioTick);
   ensureGame().catch(e => console.error(e));
   hideLoading(); // preload quietly behind the intro
   await tracks.catch(() => {});

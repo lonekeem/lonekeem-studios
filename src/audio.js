@@ -3,12 +3,12 @@ export class AudioSys {
   constructor(settings) { this.s = settings; this.ctx = null; }
   /** iOS Safari: Web Audio only starts from a touchend/click. Call from those events until it reports 'running' (state can also be 'interrupted' after a call/lock). `playback` = ignore the silent switch (multiplayer asks for it). */
   unlock(playback) {
-    try { this.init(); const c = this.ctx; if (!c) return false; if (playback && navigator.audioSession) navigator.audioSession.type = 'playback';
+    try { this.init(); const c = this.ctx; if (!c) return false; if (this._bgSuspended) return false; if (playback && navigator.audioSession) navigator.audioSession.type = 'playback';
       if (c.state !== 'running') { c.resume().catch(() => {}); const src = c.createBufferSource(); src.buffer = c.createBuffer(1, 1, 22050); src.connect(c.destination); src.start(0); }
       return c.state === 'running'; } catch (e) { return false; }
   }
   init() {
-    if (this.ctx) { this.ctx.resume(); return; }
+    if (this.ctx) { if (!this._bgSuspended) this.ctx.resume(); return; }
     const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
     const ctx = this.ctx = new C();
     this.master = ctx.createGain(); this.master.connect(ctx.destination);
@@ -100,6 +100,25 @@ export class AudioSys {
   playMenuTheme() { this.init(); if (this._tplay && this._tplay.menu) return; this._stopTrack('loading', 0.5); this._startTrack('menu', { loop: true, fade: 0.9, gain: 0.9 }); }
   playLoadingLoop() { this.init(); if (this._tplay && this._tplay.loading) return; this._stopTrack('menu', 0.45); this._startTrack('loading', { loop: true, fade: 0.5, gain: 0.85 }); }
   stopScored(fade = 0.6) { this._stopTrack('menu', fade); this._stopTrack('loading', fade); this._stopTrack('sting', Math.min(0.35, fade)); }
+  // v1.9.31: freeze Web Audio + any <video>/<audio> when the app is sent to the background.
+  suspendAll() {
+    this._bgSuspended = true;
+    try { if (this.ctx && this.ctx.state === 'running') this.ctx.suspend().catch(() => {}); } catch (e) { /* ignore */ }
+    try {
+      document.querySelectorAll('video, audio').forEach(el => {
+        if (!el.paused) { try { el.pause(); el.dataset.atqBg = '1'; } catch (err) { /* ignore */ } }
+      });
+    } catch (e) { /* ignore */ }
+  }
+  resumeAll() {
+    this._bgSuspended = false;
+    try { if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {}); } catch (e) { /* ignore */ }
+    try {
+      document.querySelectorAll('video, audio').forEach(el => {
+        if (el.dataset.atqBg === '1') { delete el.dataset.atqBg; try { const p = el.play(); p && p.catch && p.catch(() => {}); } catch (err) { /* ignore */ } }
+      });
+    } catch (e) { /* ignore */ }
+  }
   tone(freq, dur, type = 'sine', vol = 0.05, dest, attack = 0.8) { if (!this.ctx) return;
     const ctx = this.ctx, t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
     o.type = type; o.frequency.value = freq; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack); g.gain.linearRampToValueAtTime(0, t + dur);
