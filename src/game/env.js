@@ -129,7 +129,7 @@ diffuseColor.rgb *= 1. - .25*smoothstep(.55,.8,vn3(vWP2*5.3)) * paint;`)
 
   // =====================================================================================================
   // finish(): called once at the end of buildWorld, with the final colliders / bark material / extra tree spots
-  api.finish = ({ colliders, bark, extraTrees = [], KH, regions }) => {
+  api.finish = ({ colliders, bark, extraTrees = [], KH, regions, footprints = [], clears = [], treeOk: treeOkExt }) => {
     // ---- merge batched house details
     batch.forEach((geos, mat) => { const g = mergeGeometries(geos, false); if (!g) return; const m = new THREE.Mesh(g, mat); m.receiveShadow = false; scene.add(m); });
 
@@ -139,8 +139,13 @@ diffuseColor.rgb *= 1. - .25*smoothstep(.55,.8,vn3(vWP2*5.3)) * paint;`)
     roads.forEach(([a, b, c, d]) => cutRect(a - .1, b + .1, c, d));
     colliders.forEach(c => { if (c.car) return; if (c.x1 - c.x0 > 150 || c.z1 - c.z0 > 400) return; cutRect(c.x0 - .7, c.x1 + .7, c.z0 - .7, c.z1 + .7); });
     cuts.forEach(([a, b, c, d]) => cutRect(a, b, c, d));
-    cutRect(KH.x0 - 1, KH.x1 + 1, KH.z0 - 1, KH.z1 + 1); cutRect(-9, -4.3, -142, 58); cutRect(4.3, 9, -142, 58);
+    // Keem's house is wall-collider only (the interior is hollow); cut the full footprint so grass/bushes stay outside
+    cutRect(KH.x0 - 2, KH.x1 + 2, KH.z0 - 2, KH.z1 + 2); cutRect(-9, -4.3, -142, 58); cutRect(4.3, 9, -142, 58);
+    footprints.forEach(f => cutRect(f.x0 - 1.5, f.x1 + 1.5, f.z0 - 1.5, f.z1 + 1.5));
     const maskOK = (x, z, m = 0) => { const i = Math.floor(x - X0), j = Math.floor(z - Z0); if (i < 0 || j < 0 || i >= MW || j >= MH) return true; if (!mask[j * MW + i]) return false; if (m) { for (const [dx, dz] of [[m, 0], [-m, 0], [0, m], [0, -m]]) { const ii = Math.floor(x + dx - X0), jj = Math.floor(z + dz - Z0); if (ii >= 0 && jj >= 0 && ii < MW && jj < MH && !mask[jj * MW + ii]) return false; } } return true; };
+    const hitsFoot = (x, z, pad) => footprints.some(f => x > f.x0 - pad && x < f.x1 + pad && z > f.z0 - pad && z < f.z1 + pad);
+    const hitsClear = (x, z, extra = 0) => clears.some(([cx, cz, r]) => (x - cx) ** 2 + (z - cz) ** 2 < (r + extra) ** 2);
+    const treeOk = (x, z, h) => { if (treeOkExt && !treeOkExt(x, z, h)) return false; if (!treeOkExt) { const pad = (h || 12) * .5 + 2; if (hitsFoot(x, z, pad) || hitsClear(x, z, pad * .25)) return false; } return maskOK(x, z, 2); };
     const maskTex = new THREE.DataTexture(mask, MW, MH, THREE.RedFormat); maskTex.minFilter = maskTex.magFilter = THREE.NearestFilter; maskTex.needsUpdate = true;
     api.maskOK = maskOK;
 
@@ -225,12 +230,31 @@ vTint = gc * mix(.55, 1.15, uv.y) * mix(.8, 1.1, fract(aRnd.x*37.));`)
     const leafMat = (hex) => new THREE.MeshStandardMaterial({ map: leafMap, alphaTest: .5, side: THREE.DoubleSide, roughness: 1, color: hex || '#ffffff' });
     const boughMat = new THREE.MeshStandardMaterial({ map: boughMap, alphaTest: .5, side: THREE.DoubleSide, roughness: 1 });
     const barkDark = bark.clone(); barkDark.color = new THREE.Color('#7a6e62');
+    // fade / punch a hole in foliage that sits on the camera → player line so trees never block the view
+    const occU = { uCam: { value: new V3() }, uPl3: { value: new V3() } };
+    const occInject = (mat) => { if (!mat || mat.userData._occ) return mat; mat.userData._occ = 1; const prev = mat.onBeforeCompile; const prevKey = mat.customProgramCacheKey ? mat.customProgramCacheKey.bind(mat) : () => '';
+      mat.onBeforeCompile = (s) => { if (prev) prev(s); Object.assign(s.uniforms, occU);
+        s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nuniform vec3 uCam, uPl3; varying float vOcc;')
+          .replace('#include <project_vertex>', `vec4 _occP = vec4(transformed, 1.0);
+#ifdef USE_INSTANCING
+_occP = instanceMatrix * _occP;
+#endif
+_occP = modelMatrix * _occP;
+vec3 _occA = uCam, _occB = uPl3, _occAB = _occB - _occA;
+float _occT = clamp(dot(_occP.xyz - _occA, _occAB) / max(dot(_occAB, _occAB), 0.01), 0., 1.);
+vOcc = smoothstep(1.15, 2.65, length(_occP.xyz - (_occA + _occT * _occAB)));
+#include <project_vertex>`);
+        s.fragmentShader = s.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vOcc;')
+          .replace('#include <alphamap_fragment>', '#include <alphamap_fragment>\ndiffuseColor.a *= vOcc;\nif (vOcc < 0.08) discard;'); };
+      mat.customProgramCacheKey = () => prevKey() + '|foc'; return mat; };
+    occInject(boughMat); occInject(bark); occInject(barkDark);
+    const leafMatOcc = (hex) => occInject(leafMat(hex));
 
     // ---- tree spots (visual only; no colliders are added here)
     const spots = []; // {x,z,h,kind}
     const kinds = () => { const r = R(); return r < .56 ? 'pine' : r < .88 ? 'dec' : 'dead'; };
-    extraTrees.forEach(([x, z, h]) => spots.push({ x, z, h: h || rr(8, 12), kind: R() < .6 ? 'pine' : 'dec' }));
-    regions.forEach(({ x0, x1, z0, z1, n, inner = 0 }) => { let c = 0, tries = 0; while (c < n && tries++ < n * 40) { const x = rr(x0, x1), z = rr(z0, z1); if (Math.abs(x) < inner) continue; if (!maskOK(x, z, 1.5)) continue; spots.push({ x, z, h: rr(9, 17), kind: kinds() }); c++; } });
+    extraTrees.forEach(([x, z, h]) => { const H = h || rr(8, 12); if (!treeOk(x, z, H)) return; spots.push({ x, z, h: H, kind: R() < .6 ? 'pine' : 'dec' }); });
+    regions.forEach(({ x0, x1, z0, z1, n, inner = 0 }) => { let c = 0, tries = 0; while (c < n && tries++ < n * 40) { const x = rr(x0, x1), z = rr(z0, z1), H = rr(9, 17); if (Math.abs(x) < inner) continue; if (!treeOk(x, z, H)) continue; spots.push({ x, z, h: H, kind: kinds() }); c++; } });
     const by = (k) => spots.filter(s => s.kind === k);
     // v2.1: instances are split into 80 m chunks along z so frustum culling drops everything behind / far away (big saving for phones)
     const BIN = low ? 260 : 100; // low: fewer, larger chunks = fewer draw calls
@@ -244,18 +268,18 @@ vTint = gc * mix(.55, 1.15, uv.y) * mix(.8, 1.1, fract(aRnd.x*37.));`)
     mk(pineCrown, boughMat, pines, s => ({ rot: rr(0, 6), sx: s.h * 1.0, sy: s.h, sz: s.h * 1.0, col: tmpC.setHSL(.33 + rr(-.02, .03), .35 + rr(0, .15), .26 + rr(0, .1)).clone() }), false); // crowns don't cast shadows (perf)
     mk(decWood.wood, bark, decs, s => ({ rot: rr(0, 6), sx: s.h * (.9 + R() * .3), sy: s.h, sz: s.h * (.9 + R() * .3), col: tmpC.setRGB(.72, .66, .6).clone() }), false);
     const decCols = ['#5d7a34', '#6b8a3a', '#7d8a34', '#9a8a30', '#a8742c', '#8a5a2a', '#55702f'];
-    mk(decCrown, leafMat(), decs, s => ({ rot: rr(0, 6), sx: s.h * .95, sy: s.h, sz: s.h * .95, col: tmpC.set(decCols[(R() * decCols.length) | 0]).clone() }), false);
+    mk(decCrown, leafMatOcc(), decs, s => ({ rot: rr(0, 6), sx: s.h * .95, sy: s.h, sz: s.h * .95, col: tmpC.set(decCols[(R() * decCols.length) | 0]).clone() }), false);
     mk(decWood.wood, barkDark, deads, s => ({ rot: rr(0, 6), sx: s.h * .8, sy: s.h * .85, sz: s.h * .8, col: tmpC.setRGB(.55, .52, .5).clone() }), false);
 
     // ---- bushes, dead scrub: along roads, around houses and in the verges (instanced, density by preset)
     const bushes = []; const nB = low ? 420 : high ? 1500 : 900;
-    const bz = (zr, n, xr) => { let c = 0, t = 0; while (c < n && t++ < n * 30) { const side = R() < .5 ? -1 : 1, x = side * rr(xr[0], xr[1]), z = rr(zr[0], zr[1]); if (!maskOK(x, z, 1)) continue; bushes.push({ x, z, sx: rr(.7, 1.7) }); c++; } };
+    const bz = (zr, n, xr) => { let c = 0, t = 0; while (c < n && t++ < n * 30) { const side = R() < .5 ? -1 : 1, x = side * rr(xr[0], xr[1]), z = rr(zr[0], zr[1]); if (!maskOK(x, z, 1.6)) continue; bushes.push({ x, z, sx: rr(.7, 1.7) }); c++; } };
     const segs = [[80, -140, 1], [-140, -330, .8], [-330, -760, 1], [-1000, -1700, 1.1], [-1990, -2690, 1.1]]; const totalLen = segs.reduce((a, s) => a + Math.abs(s[1] - s[0]) * s[2], 0);
     segs.forEach(([a, b, w]) => bz([Math.min(a, b), Math.max(a, b)], Math.round(nB * Math.abs(b - a) * w / totalLen), [8.6, 40]));
     const bushCols = ['#4f6a2e', '#5b7a34', '#6b8036', '#7b6a30', '#4a5e2a', '#6a5a2c'];
-    mk(bushGeo, leafMat(), bushes, s => ({ rot: rr(0, 6), sx: s.sx, sy: s.sx * rr(.7, 1.1), sz: s.sx, col: tmpC.set(bushCols[(R() * bushCols.length) | 0]).clone() }), false);
+    mk(bushGeo, leafMatOcc(), bushes, s => ({ rot: rr(0, 6), sx: s.sx, sy: s.sx * rr(.7, 1.1), sz: s.sx, col: tmpC.set(bushCols[(R() * bushCols.length) | 0]).clone() }), false);
     const scrub = bushes.filter(() => R() < .35).map(s => ({ x: s.x + rr(-2, 2), z: s.z + rr(-2, 2) })).filter(s => maskOK(s.x, s.z, .5));
-    mk(deadBush, new THREE.MeshStandardMaterial({ color: '#5a4a38', roughness: 1, side: THREE.DoubleSide }), scrub, s => ({ rot: rr(0, 6), sx: rr(.7, 1.4), sy: rr(.7, 1.3), sz: rr(.7, 1.4), col: tmpC.setRGB(1, 1, 1).clone() }), false);
+    mk(deadBush, occInject(new THREE.MeshStandardMaterial({ color: '#5a4a38', roughness: 1, side: THREE.DoubleSide })), scrub, s => ({ rot: rr(0, 6), sx: rr(.7, 1.4), sy: rr(.7, 1.3), sz: rr(.7, 1.4), col: tmpC.setRGB(1, 1, 1).clone() }), false);
 
     // ---- trash / debris
     const props = []; const prop = (geo, mat, n, lo, hi, opts = {}) => { const list = []; let c = 0, t = 0; while (c < n && t++ < n * 40) { const seg = segs[(R() * segs.length) | 0]; const z = rr(Math.min(seg[0], seg[1]), Math.max(seg[0], seg[1])); const side = R() < .5 ? -1 : 1, x = side * rr(lo, hi); if (!maskOK(x, z, .3) && !opts.onRoad) continue; list.push({ x, z }); c++; }
@@ -291,9 +315,11 @@ vTint = gc * mix(.55, 1.15, uv.y) * mix(.8, 1.1, fract(aRnd.x*37.));`)
     if (!low) prop(caseG, caseM, Math.round(24 * f), 6, 26, { cols: ['#3a2a28', '#2a3a5a', '#7a2a2a', '#4a4a4a', '#6a5a2a'], s0: .8, s1: 1.2 });
     if (!low) prop(plankG, plankM, Math.round(40 * f), 6, 28, { cols: ['#ffffff', '#d8c8a8', '#b09870'], s0: .8, s1: 1.5, flat: 1 });
 
-    // ---- ferns/leaf litter scatter handled by ground shader; add wind updater for sky time
-    updaters.push((dt, t, cam) => { skyU.uTime.value = t; sky.position.copy(cam); });
+    // ---- ferns/leaf litter scatter handled by ground shader; add wind updater for sky time + foliage occlusion
+    updaters.push((dt, t, cam) => { skyU.uTime.value = t; sky.position.copy(cam);
+      occU.uCam.value.copy(cam); if (api.pl) occU.uPl3.value.set(api.pl.x, (api.pl.y || 0) + 1.45, api.pl.z); else occU.uPl3.value.copy(cam); });
     api.stats = { trees: spots.length, bushes: bushes.length, mask: [MW, MH] };
+    api.treeSpots = spots;
   };
   api.pl = null;
   api.update = (dt, t, cam) => updaters.forEach(u => u(dt, t, cam));

@@ -344,13 +344,23 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
     for (let i = 0; i < 6; i++) { wallBox(3, 2.6, .1, fenceM, -15 + i * 6, 1.3, -1684, false); }
     fire(-8, 0, -1500, 1); fire(10, 0, -1620, .9); Z_pl(0, 4, -1675, '#80ff90', 8, 26); Z_lamp(-7, -1560, '#ff4040'); Z_lamp(7, -1620, '#ff4040');
   });
+  // building footprints (solid floorplans, not just thin wall colliders) so canopies cannot poke into interiors
+  const footprints = [{ x0: KH.x0, x1: KH.x1, z0: KH.z0, z1: KH.z1 }, ...houseList.map(h => ({ x0: h.cx - h.w / 2, x1: h.cx + h.w / 2, z0: h.cz - h.d / 2, z1: h.cz + h.d / 2 }))];
+  colliders.forEach(c => { if (c.car) return; const wx = c.x1 - c.x0, wz = c.z1 - c.z0; if (wx > 3 && wz > 3 && wx < 80 && wz < 80) footprints.push({ x0: c.x0, x1: c.x1, z0: c.z0, z1: c.z1 }); });
+  // spawn, boarded-window peek, front door / street start, Pell-house approach
+  const clears = [[18.1, 42.6, 6], [12.6, 42.5, 5], [10.6, 36.8, 4], [-11, 20, 4]];
+  const hitsFoot = (x, z, pad) => footprints.some(f => x > f.x0 - pad && x < f.x1 + pad && z > f.z0 - pad && z < f.z1 + pad);
+  const hitsClear = (x, z, extra = 0) => clears.some(([cx, cz, r]) => (x - cx) ** 2 + (z - cz) ** 2 < (r + extra) ** 2);
+  const treeOk = (x, z, h) => { const pad = (h || 12) * .5 + 2; if (hitsFoot(x, z, pad) || hitsClear(x, z, pad * .25)) return false;
+    if (Math.abs(x) < 10 && z > -150) return false; if (z < -134 && Math.abs(x) < 44) return false; if (z < -106 && z > -134) return false;
+    if (Math.abs(z - 4) < 7 && Math.abs(x) < 46) return false; if (x > 4 && x < 34 && z > -66 && z < -36) return false;
+    if (colliders.some(c => !c.car && x > c.x0 - 2 && x < c.x1 + 2 && z > c.z0 - 2 && z < c.z1 + 2)) return false; return true; };
   const treeSpots = []; let tries = 0;
-  while (treeSpots.length < Q.trees * 2 && tries++ < 20000) { const x = rnd(-90, 90), z = rnd(-760, 90); if (Math.abs(x) < 10 && z > -150) continue; if (z < -134 && Math.abs(x) < 44) continue; if (z < -106 && z > -134) continue;
-    if (colliders.some(c => x > c.x0 - 2 && x < c.x1 + 2 && z > c.z0 - 2 && z < c.z1 + 2)) continue; if (Math.abs(z - 4) < 7 && Math.abs(x) < 46) continue; if (x > 4 && x < 34 && z > -66 && z < -36) continue; treeSpots.push([x, z, rnd(9, 18)]); }
+  while (treeSpots.length < Q.trees * 2 && tries++ < 20000) { const x = rnd(-90, 90), z = rnd(-760, 90), h = rnd(9, 18); if (!treeOk(x, z, h)) continue; treeSpots.push([x, z, h]); }
   const colTrees = treeSpots.length; treeSpots.forEach(([x, z, h]) => { if (Math.abs(x) < 50 && z > -150) box(x - .3, x + .3, z - .3, z + .3); }); // same collision footprint as before
   [[-210, 210, -132, -108], [-19, 19, -2253, -2211], [-8, 8, -2450, -2328]].forEach(([a, b, c, d]) => env.cut(a, b, c, d)); // water, pond and the harbor tunnel: no vegetation
   { const K = Q.trees / 300; const n = (k) => Math.round(k * K);
-    env.finish({ colliders, bark, KH, extraTrees: treeSpots.map(t => [t[0], t[1], t[2]]).concat(extraTrees2), regions: [
+    env.finish({ colliders, bark, KH, footprints, clears, treeOk, extraTrees: treeSpots.map(t => [t[0], t[1], t[2]]).concat(extraTrees2), regions: [
       { x0: -46, x1: 46, z0: 56, z1: -140, n: n(70), inner: 24 }, { x0: -46, x1: 46, z0: -150, z1: -760, n: n(190), inner: 26 },
       { x0: -46, x1: 46, z0: -1000, z1: -1700, n: n(80), inner: 24 }, { x0: -46, x1: 46, z0: -1990, z1: -2690, n: n(80), inner: 24 },
       { x0: -100, x1: 100, z0: -1000, z1: -1700, n: n(60), inner: 50 }, { x0: -100, x1: 100, z0: -1990, z1: -2700, n: n(60), inner: 50 }] }); }
