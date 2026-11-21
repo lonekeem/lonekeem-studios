@@ -53,6 +53,7 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 ### v1.9.26
 - New opening cutscene "The Night Before" (about 65 s, plays on New Game, skippable: Skip button, tap twice, or Esc/Enter/Space). Filmed in-engine with the real Riverside map and the story models for Keem, Dad, Nia (with Biscuit) and the zombies. Keem, Dad and Nia talk in their in-game ElevenLabs voices, with an ElevenLabs narrator, original score, sound effects and subtitles. It hands straight off into Chapter 1.
 - Zombies now each get their own ElevenLabs voice (idle groans, alerts, attack snarls, hurt and death sounds, feeding), matched to the zombie's gender and body type: men, women, teens, elders, big brutes, gurglers and bosses sound different, with several takes each so they do not repeat.
+- Characters now face each other during conversations: the speaker turns to whoever they are talking to, listeners turn toward the speaker, and Keem stands in a normal idle pose instead of freezing mid-step. The opening cutscene keeps its own staging.
 
 ### v1.9.25
 - Opening/feeding victim screams remade with ElevenLabs Sound Effects v3 so the people being eaten no longer sound like a synth. The last 10 spoken lines that were still on the old Kokoro voice (4 Dad lines, 3 Nia lines, plus Coach Brickman, Ronnie and Mall Santa) remade with ElevenLabs eleven_v3, using the same character voices as the rest of the game.
