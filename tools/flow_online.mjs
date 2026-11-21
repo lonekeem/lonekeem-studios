@@ -6,7 +6,7 @@ const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args
 const rec = (n, ok, d) => console.log(ok ? 'PASS' : 'FAIL', n, d ? JSON.stringify(d) : '');
 async function page(name) {
   const ctx = await b.newContext({ viewport: { width: 844, height: 390 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
-  await ctx.addInitScript(n => { localStorage.setItem('atq3.settings', JSON.stringify({ qual: 'low' })); localStorage.setItem('atq_prologue_seen', '1'); if (n && !localStorage.getItem('atq.guest')) localStorage.setItem('atq.guest', JSON.stringify({ id: crypto.randomUUID(), secret: crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, ''), name: n })); }, name);
+  await ctx.addInitScript(n => { localStorage.setItem('atq3.settings', JSON.stringify({ qual: 'low' })); localStorage.setItem('atq_prologue_seen', '1'); if (n) { localStorage.setItem('atq.profile.v1', JSON.stringify({ v: 1, name: n, uid: null })); } if (n && !localStorage.getItem('atq.guest')) localStorage.setItem('atq.guest', JSON.stringify({ id: crypto.randomUUID(), secret: crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, ''), name: n })); }, name);
   const p = await ctx.newPage(); p.setDefaultTimeout(120000); p.errs = []; p.on('pageerror', e => p.errs.push(e.message.slice(0, 160)));
   await p.goto(URL, { waitUntil: 'domcontentloaded' }); await p.click('#btnWarn'); await p.waitForTimeout(700); await p.click('#studio').catch(() => {}); await p.waitForSelector('#title:not(.hidden)'); return p;
 }

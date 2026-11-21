@@ -4,7 +4,7 @@
 //  - Joining a game = entering the existing multiplayer town (src/mp/town/town.js) with that room id (Realtime broadcast room).
 //  - Leaderboard: public.lb_top / public.lb_submit (supabase/migrations/20261121_world_lobby_leaderboard.sql). Guests need no login.
 import { sb, getUser, signInGoogle, signOut, googleEnabled, installNativeAuth } from './online.js';
-import { getProfile, saveProfile, hasProfile, markCreated, syncOnSignIn, signedOut, onProfileChange, watchTitle } from './profile.js';
+import { profiles, profileScreen, syncOnSignIn, signedOut, onSyncStatus, watchTitle } from './cloud.js';
 const $ = s => document.querySelector(s);
 const LS = (() => { try { localStorage.setItem('__w', 1); localStorage.removeItem('__w'); return localStorage; } catch (e) { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; } })();
 const MAX_PLAYERS = 8;
@@ -21,11 +21,11 @@ export function guest() {
 export const cleanName = n => (String(n || '').replace(/[^\p{L}\p{N} _.\-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 16));
 export async function profile() {
   if (MOCK()) return { kind: 'guest', name: 'Keem', avatar: null, id: 'mock' };
-  const u = await getUser().catch(() => null); const lp = getProfile();
-  if (u && u.id) { const m = u.user_metadata || {}; return { kind: 'google', id: u.id, name: cleanName(lp.name) || cleanName(m.full_name || m.name || (u.email || '').split('@')[0]) || 'Survivor', avatar: lp.avatar || (/^https:\/\//.test(m.avatar_url || m.picture || '') ? (m.avatar_url || m.picture) : null), email: u.email }; }
+  const u = await getUser().catch(() => null); const lp = (await profiles()).getProfile() || {};
+  if (u && u.id) { const m = u.user_metadata || {}; return { kind: 'google', id: u.id, name: cleanName(lp.name) || cleanName(m.full_name || m.name || (u.email || '').split('@')[0]) || 'Survivor', avatar: lp.avatarUrl || (/^https:\/\//.test(m.avatar_url || m.picture || '') ? (m.avatar_url || m.picture) : null), email: u.email }; }
   const g = guest(); return { kind: 'guest', id: g.id, name: cleanName(lp.name || g.name) || '', avatar: null };
 }
-function setName(p, n) { n = cleanName(n); if (!n) return; saveProfile({ name: n }); }
+async function setName(p, n) { n = cleanName(n); if (!n) return; const PR = await profiles(); PR.saveProfile(Object.assign({}, PR.getProfile() || {}, { name: n })); }
 const avatarHTML = (name, url, cls = 'wav') => url ? `<img class="${cls}" src="${esc(url)}" alt="" referrerpolicy="no-referrer">` : `<span class="${cls} wini" style="background:hsl(${[...String(name || '?')].reduce((a, c) => a + c.charCodeAt(0), 0) * 47 % 360} 35% 32%)">${esc((String(name || '?').trim()[0] || '?').toUpperCase())}</span>`;
 
 // ---------- leaderboard ----------
@@ -105,8 +105,8 @@ function buildUI() {
   root.querySelectorAll('.wseg:not(.wsort) button').forEach(b => b.onclick = () => setTab(b.dataset.t));
   root.querySelectorAll('.wsort button').forEach(b => b.onclick = () => { sort = b.dataset.s; loadBoard(); });
   function setTab(t) { tab = t; root.querySelectorAll('.wseg:not(.wsort) button').forEach(b => b.classList.toggle('sel', b.dataset.t === t)); q('#wGames').classList.toggle('hidden', t !== 'games'); q('#wBoard').classList.toggle('hidden', t !== 'board'); if (t === 'board') loadBoard(); }
-  let syncing = false;
-  onProfileChange(w => { const e = q('#wSync'); if (e && w === 'saved') e.textContent = '☁ Signed in with Google · synced'; if (w === 'conflict') flash('Loaded newer progress from your other device'); });
+  let syncing = false, pendingNew = null;
+  onSyncStatus(w => { const e = q('#wSync'); if (e && w === 'saving') e.textContent = '☁ Saving…'; if (e && w === 'saved') e.textContent = '☁ Signed in with Google · synced'; if (w === 'conflict') flash('Loaded newer progress from your other device'); });
   async function refreshProf() {
     prof = await profile(); const el = q('#wProf'); const gOn = MOCK() ? true : await googleEnabled();
     // just came back from Google: load the saved profile, or start a new one for this account
@@ -114,31 +114,37 @@ function buildUI() {
       syncing = true; el.innerHTML = '<div class="wpn"><b>Loading your profile…</b><span class="small">Signed in with Google</span></div>';
       let r = null; try { r = await syncOnSignIn(); } catch (e) { r = { state: 'error', msg: e.message }; } syncing = false;
       prof = await profile();
-      if (r.state === 'new') { welcome('new'); return; }
+      if (r.state === 'new') { pendingNew = r; welcome('new'); return; }
       if (r.state === 'loaded') flash('Profile loaded: ' + (r.name || prof.name));
       if (r.state === 'error') flash('Could not load your cloud profile: ' + r.msg);
     }
-    if (!MOCK() && prof.kind === 'guest' && !hasProfile()) { welcome('first', gOn); return; }
+    if (!MOCK() && !(await profiles()).hasProfile()) { welcome(prof.kind === 'google' ? 'new' : 'first', gOn); return; }
     q('#wWel').classList.add('hidden'); root.classList.remove('wfirst');
     const nm = prof.name || 'Pick a name';
     el.innerHTML = `${avatarHTML(prof.name, prof.avatar)}<div class="wpn"><b>${esc(nm)}</b><span class="small" id="wSync">${prof.kind === 'google' ? '☁ Signed in with Google · synced' : 'Guest · saved on this device'}</span></div>
       <div class="wpb"><button id="wChar">Character</button><button id="wName">Name</button>${prof.kind === 'google' ? '<button id="wOut">Sign out</button>' : (gOn ? '<button id="wGoogle" class="wg"><span class="gdot">G</span> Sign in</button>' : '')}</div>`;
     q('#wName').onclick = () => editName(); q('#wChar').onclick = () => makeCharacter();
     const go = q('#wGoogle'); if (go) go.onclick = () => google(go);
-    const out = q('#wOut'); if (out) out.onclick = async () => { await signOut().catch(() => {}); signedOut(); refreshProf(); };
+    const out = q('#wOut'); if (out) out.onclick = async () => { await signedOut(); await signOut().catch(() => {}); refreshProf(); };
   }
   async function google(btn) { if (btn) { btn.disabled = true; btn.textContent = 'Opening Google…'; } try { await signInGoogle('online'); } catch (e) { if (btn) { btn.disabled = false; btn.textContent = 'Sign in with Google'; } flash('Google sign-in unavailable: ' + (e.message || e)); } }
   function flash(t) { const s = q('#wGamesInfo'); s.textContent = t; s.classList.add('warn'); setTimeout(() => { s.classList.remove('warn'); s.textContent = 'Open games from players anywhere in the world'; }, 5000); }
   // first time in Online: Sign in (load a saved profile) or Create profile; 'new' = signed in but this account has no profile yet
-  function welcome(kind, gOn = true) {
+  async function welcome(kind, gOn = true) {
+    const ps = await profileScreen().catch(() => null);
+    if (ps && ps.openProfile) { // fix/customize's full profile screen (welcome, Google button, step-by-step character)
+      ui.hide(); const p = await ps.openProfile({ mode: kind === 'new' ? 'create' : 'auto', onSignIn: () => signInGoogle('online') });
+      if (p && pendingNew) { const PR = await profiles(); PR.saveProfile(Object.assign({}, p, { uid: pendingNew.uid, email: pendingNew.email, avatarUrl: p.avatarUrl || pendingNew.avatarUrl })); pendingNew = null; }
+      if (p) ui.show(); else { $('#title').classList.remove('hidden'); } return;
+    }
     const w = q('#wWel'); w.classList.remove('hidden'); root.classList.add('wfirst');
     const nameStep = (signedIn) => {
       w.innerHTML = `<h3>${signedIn ? 'Create your profile' : 'Create a profile'}</h3><p class="small">${signedIn ? 'It saves to your Google account, so it loads on any phone or computer.' : 'Guest profile: it saves on this device only. You can sign in with Google later to keep it.'}</p>
-        <form class="wnameform"><input id="wNewName" maxlength="16" placeholder="Nickname" value="${esc(getProfile().name || '')}" autocomplete="off"><button class="primary" type="submit">Next</button></form>
+        <form class="wnameform"><input id="wNewName" maxlength="16" placeholder="Nickname" value="${esc((pendingNew && pendingNew.suggest) || (prof && prof.name) || '')}" autocomplete="off"><button class="primary" type="submit">Next</button></form>
         <button class="wlink" id="wWelBack">‹ Other options</button>`;
       const f = w.querySelector('form'), inp = w.querySelector('input'); setTimeout(() => inp.focus(), 50);
-      f.onsubmit = e => { e.preventDefault(); const n = cleanName(inp.value); if (n.length < 2) { inp.classList.add('bad'); return; } markCreated(n); charStep(); };
-      w.querySelector('#wWelBack').onclick = () => signedIn ? (signOut().catch(() => {}).then(() => { signedOut(); refreshProf(); })) : welcome('first', gOn);
+      f.onsubmit = async e => { e.preventDefault(); const n = cleanName(inp.value); if (n.length < 2) { inp.classList.add('bad'); return; } const PR = await profiles(); PR.saveProfile(Object.assign({ name: n }, pendingNew ? { uid: pendingNew.uid, email: pendingNew.email, avatarUrl: pendingNew.avatarUrl } : {})); pendingNew = null; charStep(); };
+      w.querySelector('#wWelBack').onclick = () => signedIn ? (signOut().catch(() => {}).then(() => { pendingNew = null; refreshProf(); })) : welcome('first', gOn);
     };
     const charStep = () => {
       w.innerHTML = `<h3>Make your character</h3><p class="small">Pick skin, face, hair and outfit for the character you play online. You can change it any time.</p>
@@ -155,8 +161,10 @@ function buildUI() {
   // existing multiplayer character creator; the result becomes the profile's character (and syncs if signed in)
   async function makeCharacter() {
     ui.hide(); $('#title').classList.add('hidden'); const back = () => { $('#title').classList.remove('hidden'); ui.show(); };
+    const ps = await profileScreen().catch(() => null); if (ps && ps.openProfile) { await ps.openProfile({ mode: 'edit', onSignIn: () => signInGoogle('online') }); back(); return; }
+    const PR = await profiles(); const keep = l => { if (l) PR.saveProfile(Object.assign({}, PR.getProfile() || {}, { look: l })); };
     const mod = await import('./creator.js');
-    window.__mpCreator = await mod.openCreator({ onClose: l => { if (l) saveProfile({ look: l }); back(); }, onPlay: l => { saveProfile({ look: l }); back(); } });
+    window.__mpCreator = await mod.openCreator({ onClose: l => { keep(l); back(); }, onPlay: l => { keep(l); back(); } });
   }
   function editName(then) {
     const el = q('#wProf'); el.innerHTML = `<form class="wnameform"><input id="wNameIn" maxlength="16" placeholder="Your nickname" value="${esc(prof && prof.name || '')}" autocomplete="off"><button class="primary" type="submit">Save</button><button type="button" id="wNameX">Cancel</button></form>`;
