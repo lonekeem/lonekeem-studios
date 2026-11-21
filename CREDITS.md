@@ -12,6 +12,8 @@ Lone Keem Studios · created by Keem
 | Victim screams in the opening and feeding scenes (`public/sfx/scream0`–`scream3`) | ElevenLabs Sound Effects v3, original human panic/attack vocals, loudness-matched to about −18 LUFS | © Lone Keem Studios |
 | Music, wind, UI tones, synth fallbacks | Synthesized at runtime with Web Audio (`src/audio.js`) | © Lone Keem Studios |
 | Engine / tools | three.js (MIT), Vite (MIT), Capacitor (MIT) | MIT |
+| Opening cutscene audio (`public/music/atq-prologue.mp3`) | ElevenLabs: narrator voice Jake – Deep, Calm, Dark; Keem = Young Jamal, Nia = Myriam, Dad = Carlton C-Well (their in-game voices); original score ElevenLabs Music v2.5 (instrumental); hammer, radio, zombie groans, door and heartbeat effects ElevenLabs Sound Effects v3. Mixed for Lone Keem Studios. | © Lone Keem Studios |
+| Zombie voices (`public/sfx/zvo_*`) | ElevenLabs Sound Effects, original per-profile zombie vocals (male, female, teen boy/girl, elder, brute, gurgler, male/female boss, feeding), loudness-normalized by `tools/normalize_zvo.py` | © Lone Keem Studios |
 | Voiced dialogue & shouts (`public/sfx/v/`) | In-game spoken lines and barks are ElevenLabs voices (Young Jamal, Myriam, Carlton C-Well, and the library voices listed in the README), loudness-matched to about −18 LUFS. A small number of unused leftover clips from an older Kokoro-82M pass may still sit in the folder but are not played. Subtitles stay on; voices can be turned off in Settings. No real person's voice was cloned. | Audio: © Lone Keem Studios |
 
 

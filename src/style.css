@@ -290,7 +290,7 @@ body:not(.hudv2).driving #tbtns{bottom:150px}
 .glowArrow i{display:block;font-style:normal;font-size:22px;filter:drop-shadow(0 0 5px #ffb000);animation:glowArr 1s ease-in-out infinite}
 .glowArrow b{display:block;font-weight:800}
 @keyframes glowArr{50%{opacity:.55}}
-/* v1.9.25 opening cutscene */
+/* v1.9.26 opening cutscene */
 body.cine #hud,body.cine #touch,body.cine #wp,body.cine #prompt,body.cine #dlg,body.cine #xhair,body.cine #bark,body.cine #toast,body.cine #obj,body.cine #mini{display:none!important}
 body.cine #rotate{display:none!important}
 #cine{position:fixed;inset:0;z-index:40;pointer-events:auto;user-select:none;-webkit-user-select:none;transition:opacity .8s}

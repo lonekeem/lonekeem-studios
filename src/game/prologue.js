@@ -1,4 +1,4 @@
-// v1.9.25 opening cutscene ("Prologue"): plays once on New Game before Chapter 1 takes control.
+// v1.9.26 opening cutscene ("Prologue"): plays once on New Game before Chapter 1 takes control.
 // Everything on screen is the real game: the Riverside map, the story rigs for Keem / Dad / Nia (+ Biscuit in her hoodie)
 // and the in-game zombies, filmed with scripted cameras. Audio is one pre-mixed ElevenLabs track (narrator, character
 // lines in their in-game voices, score, SFX): public/music/atq-prologue.mp3. Timeline + subtitles: src/data/prologue.json.
