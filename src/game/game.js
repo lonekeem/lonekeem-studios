@@ -225,16 +225,51 @@ export class Game {
     const a = base + (slots[((i % n) + n) % n] ?? i * 2.1), r = n === 1 ? .55 : .62, gy = this.groundAt(h.x, h.z);
     z.root.position.set(h.x + Math.sin(a) * r, gy, h.z + Math.cos(a) * r);
     z.root.rotation.y = Math.atan2(h.x - z.root.position.x, h.z - z.root.position.z); }
-  victim(x, z, look, eaters = 3) { const v = this.npc('v' + Math.random(), look, x, z, 0, 'Death01'); v.play('Death01', { once: true }); v.mixer.update(5); v.mat.userData.u.uBlood.value = this.settings.gore ? 1 : 0.2; v.bleed = true;
-    // lie broadside to where the player will come from; roll around the hips (not the feet) so side / face-down poses stay on the ground
-    const pp = this.player ? this.player.root.position : V3(0, 0, 60); const base = Math.atan2(pp.x - x, pp.z - z); v.pose = Math.random(); v.life = 1; v.isVictim = true; v.struggle = 1; v.jolt = 0; v.screamT = rnd(.5, 2);
-    v.root.rotation.order = 'YXZ'; v.root.rotation.y = base + (Math.random() < .5 ? 1 : -1) * Math.PI / 2 + rnd(-.2, .2);
-    const kind = v.pose < .5 ? 'back' : v.pose < .82 ? 'side' : 'front';
-    v.roll = kind === 'back' ? rnd(-.14, .14) : kind === 'side' ? (Math.random() < .5 ? 1 : -1) * rnd(.5, .82) : Math.PI;
-    v.root.updateMatrixWorld(true); const hip0 = V3(); v.worldOf('DEF-hips', hip0);
-    v.root.rotation.x = kind === 'back' ? rnd(.02, .08) : 0; v.root.rotation.z = v.roll; v.root.updateMatrixWorld(true);
-    const hip1 = V3(); v.worldOf('DEF-hips', hip1); v.root.position.x += hip0.x - hip1.x; v.root.position.z += hip0.z - hip1.z;
-    this.seatOnGround(v); v._seatLock = 1;
+  // after Death01, nudge a limb so its end bone drops onto the ground (picks the rotateX sign that actually lowers it)
+  _dropLimb(n, bone, end, gy, step = .35) { if (!bone || !end) return; const W = this._seatW || (this._seatW = V3());
+    const yOf = () => { n.root.updateMatrixWorld(true); end.getWorldPosition(W); return W.y; };
+    const y0 = yOf(); if (y0 <= gy + .08) return;
+    bone.rotateX(step); const y1 = yOf();
+    if (y1 < y0) { if (y1 < gy - .02) bone.rotateX(-step * clamp((gy - .02 - y1) / Math.max(.01, y0 - y1), 0, 1)); return; }
+    bone.rotateX(-2 * step); const y2 = yOf();
+    if (y2 < y0) { if (y2 < gy - .02) bone.rotateX(step * clamp((gy - .02 - y2) / Math.max(.01, y0 - y2), 0, 1)); return; }
+    bone.rotateX(step); }
+  // on-back rest: flatten hands and feet onto the ground so limbs stay attached and relaxed (mixer resets bones, so call every frame)
+  poseVictimRest(n, twitch = 0) { const B = (k) => n.bone(k), t = this.t + (n.id || 0), w = twitch || 0;
+    const gy = this.groundAt(n.root.position.x, n.root.position.z) + .05;
+    ['L', 'R'].forEach((k, i) => { const sg = i ? 1 : -1, ua = B('DEF-upper_arm.' + k), fa = B('DEF-forearm.' + k), th = B('DEF-thigh.' + k), sh = B('DEF-shin.' + k), ft = B('DEF-foot.' + k) || B('DEF-toe.' + k), hd = B('DEF-hand.' + k);
+      if (ua) ua.rotateZ(sg * (.22 + Math.sin(t * 1.6 + i) * .02 * w));
+      this._dropLimb(n, th, ft, gy, .5); this._dropLimb(n, sh, ft, gy, .4);
+      this._dropLimb(n, ua, hd, gy, .3); this._dropLimb(n, fa, hd, gy, .25);
+    });
+    const head = B('DEF-head'), sp = B('DEF-spine.003'); if (head) { head.rotateX(.08); head.rotateY(.08 + Math.sin(t * 1.4) * .03 * w); } if (sp) sp.rotateX(-.04); }
+  // roll the character onto their back around the hips, apply the rest pose, and seat them on the terrain
+  layOnBack(c) { if (!c || !c.root) return; c.pose = .25; c.roll = (c.roll != null && Math.abs(c.roll) < .12) ? c.roll : (Math.random() * .16 - .08);
+    const pp = this.player ? this.player.root.position : c.root.position, base = Math.atan2(pp.x - c.root.position.x, pp.z - c.root.position.z);
+    c.root.rotation.order = 'YXZ'; if (c._layYaw == null) c._layYaw = base + (Math.random() < .5 ? 1 : -1) * Math.PI / 2 + (Math.random() * .24 - .12);
+    c.root.updateMatrixWorld(true); const hip0 = V3(); c.worldOf('DEF-hips', hip0);
+    c.root.rotation.y = c._layYaw; c.root.rotation.x = .04; c.root.rotation.z = c.roll; c.root.updateMatrixWorld(true);
+    const hip1 = V3(); c.worldOf('DEF-hips', hip1); c.root.position.x += hip0.x - hip1.x; c.root.position.z += hip0.z - hip1.z;
+    this.freezeDeath(c); this.poseVictimRest(c); this.seatOnGround(c); c._seatLock = 1; }
+  // pin Death01 at its last lying frame so the fall can never loop (a looping clip tumbles the body through the ground)
+  freezeDeath(c) { const a = c.act && c.act('Death01'); if (!a) return; const d = a.getClip().duration;
+    // timeScale 0 + unpaused: mixer still applies the last lying pose every frame (so limb twitches don't accumulate) but the clip never advances
+    a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.paused = false; a.timeScale = 0; a.enabled = true; a.time = d; a.setEffectiveWeight(1); c.cur = a; c.curName = 'Death01'; c.mixer.update(0); }
+  holdVictimRoot(n) { if (n._layYaw == null) return; n.root.rotation.order = 'YXZ'; n.root.rotation.y = n._layYaw; n.root.rotation.x = .04; n.root.rotation.z = n.roll || 0; }
+  // keep the camera from sitting inside a feeder / victim (near-plane clips look like a stretched, smeared body)
+  pushCamOutOfChars() { const cam = this.camera, box = this._camBox || (this._camBox = new THREE.Box3()), mid = this._camMid || (this._camMid = V3()), d = this._camD || (this._camD = V3());
+    const consider = (c) => { if (!c || !c.root || c === this.player || c.root.visible === false) return;
+      box.setFromObject(c.root); box.expandByScalar(.18);
+      if (!box.containsPoint(cam.position) && box.distanceToPoint(cam.position) > .22) return;
+      box.getCenter(mid); d.copy(cam.position).sub(mid); d.y = 0;
+      if (d.lengthSq() < 1e-8) d.set(Math.sin(this.cam.yaw || 0), 0, Math.cos(this.cam.yaw || 0));
+      d.normalize(); const rad = Math.max(box.max.x - mid.x, box.max.z - mid.z, .4) + .32;
+      cam.position.x = mid.x + d.x * rad; cam.position.z = mid.z + d.z * rad; };
+    for (const z of this.zombies) consider(z); for (const k in this.npcs) consider(this.npcs[k]); }
+  victim(x, z, look, eaters = 3) { const v = this.npc('v' + Math.random(), look, x, z, 0, 'Death01'); v.play('Death01', { once: true, force: true }); this.freezeDeath(v); v.mat.userData.u.uBlood.value = this.settings.gore ? 1 : 0.2; v.bleed = true;
+    // always lie on the back, broadside to the player, limbs relaxed and on the ground
+    v.life = 1; v.isVictim = true; v.struggle = .35; v.jolt = 0; v.screamT = rnd(.5, 2);
+    this.layOnBack(v);
     v.root.updateMatrixWorld(true); const hc = V3(); v.worldOf('DEF-hips', hc); if (Math.hypot(hc.x - x, hc.z - z) < 2.5) { x = hc.x; z = hc.z; }
     const gy = this.groundAt(x, z);
     v.pool = this.settings.gore ? makePool(this, x, z, .7, 2.6) : null; if (v.pool) v.pool.position.y = gy + .025;
@@ -554,6 +589,7 @@ export class Game {
       z.mixer.update(dt); this.zBones(z); this.stepTrack(z, zp, 'z'); } }
   // v1.4 feeding: kneel (Fixing_Kneeling) + procedural head-dip / tear / shake, bite-synced spurts, growing pool, look-up toward Keem
   feedPose(z, dt, d, toP) { const v = z.eat, gore = this.settings.gore, B = (n) => z.bone(n); const near = !this.cut && d < 14;
+    if (!z._feedIdle) { z.play('Idle_Loop', { speed: 0, force: true }); if (z.cur) { z.cur.time = 0; z.cur.timeScale = 0; z.cur.paused = true; } z._feedIdle = 1; }
     z.lk = lerp(z.lk || 0, near ? clamp(1.4 - d / 10, 0, 1) : 0, Math.min(1, dt * 3));
     z.bt = (z.bt ?? rnd(0, 1.6)) - dt; if (z.bt <= 0 && z.lk < .55) { z.bt = rnd(1.1, 2.2); z.bite = .95; z.bitten = false; }
     let dip = 0, shake = 0, pull = 0; if (z.bite > 0) { z.bite -= dt; const k = 1 - z.bite / .95; dip = k < .4 ? k / .4 : Math.max(0, 1 - (k - .4) / .6);
@@ -566,38 +602,34 @@ export class Game {
     const lk = z.lk; let rel = 0; if (lk > .01) { rel = Math.atan2(toP.x, toP.z) - z.root.rotation.y; rel = Math.atan2(Math.sin(rel), Math.cos(rel)); rel = clamp(rel, -1.3, 1.3); if (lk > .7) z.root.rotation.y = angLerp(z.root.rotation.y, z.root.rotation.y + rel, dt * .8); }
     const sp2 = B('DEF-spine.002'), sp3 = B('DEF-spine.003'), nk = B('DEF-neck'), hd = B('DEF-head');
     const bob = Math.sin((this.t + (z.id || 0)) * 5.2) * .07 + Math.sin((this.t + (z.id || 0)) * 9.1) * .03; // continuous feeding bob between bites
-    if (sp2) sp2.rotateX((.85 + dip * .55 - pull * .1 + bob) * (1 - lk * .45)); if (sp3) sp3.rotateX((.5 + dip * .4 + bob * .7) * (1 - lk * .5));
-    if (nk) { nk.rotateX(.35 + (dip * .5 - pull * .25) * (1 - lk) - lk * .25); nk.rotateY(rel * .45 * lk); }
-    if (hd) { hd.rotateX(.25 + (dip * .35 - pull * .35) * (1 - lk) - lk * .2); hd.rotateY(rel * .45 * lk + shake); hd.rotateZ(shake * .5); }
-    ['L', 'R'].forEach((s, i) => { const ua = B('DEF-upper_arm.' + s), fa = B('DEF-forearm.' + s); if (ua) { ua.rotateX(1.05 + dip * .4 + pull * .3); ua.rotateZ((i ? -1 : 1) * -.18); ua.rotateY((i ? 1 : -1) * .15); } if (fa) fa.rotateX(1.15 + pull * .35 + dip * .25); });
+    if (sp2) sp2.rotateX((.45 + dip * .28 - pull * .08 + bob) * (1 - lk * .45)); if (sp3) sp3.rotateX((.28 + dip * .22 + bob * .5) * (1 - lk * .5));
+    if (nk) { nk.rotateX(.18 + (dip * .28 - pull * .15) * (1 - lk) - lk * .2); nk.rotateY(rel * .35 * lk); }
+    if (hd) { hd.rotateX(.12 + (dip * .22 - pull * .2) * (1 - lk) - lk * .15); hd.rotateY(rel * .35 * lk + shake * .5); hd.rotateZ(shake * .3); }
+    ['L', 'R'].forEach((s, i) => { const ua = B('DEF-upper_arm.' + s), fa = B('DEF-forearm.' + s); if (ua) ua.rotateZ((i ? -1 : 1) * -.08); if (fa) fa.rotateX(.25 + dip * .1); });
     { /* kneel: shins fold back, then the hips drop (calibrated once per zombie) until the knees rest on the ground */ const hp = B('DEF-hips');
-      ['L', 'R'].forEach((k) => { const th = B('DEF-thigh.' + k), sh = B('DEF-shin.' + k), ft = B('DEF-foot.' + k); if (th) th.rotateX(-.12); if (sh) sh.rotateX(1.65); if (ft) ft.rotateX(.5); });
+      ['L', 'R'].forEach((k) => { const th = B('DEF-thigh.' + k), sh = B('DEF-shin.' + k), ft = B('DEF-foot.' + k); if (th) th.rotateX(-.18); if (sh) sh.rotateX(1.35); if (ft) ft.rotateX(.35); });
       if (hp) { if (z.hipZ0 === undefined) z.hipZ0 = hp.position.z; z.kneelK = clamp((z.kneelK || 0) + Math.max(0, dt) * 2, 0, 1);
         if (z.hipDrop === undefined) { /* measure the visible body: lowest skinned vertex, two samples, solve for "knees on the ground" */
           const sk = z.skin, W = (z._kw || (z._kw = V3())); const minY = (d) => { hp.position.z = z.hipZ0 - d; z.root.updateMatrixWorld(true);
             if (sk) { sk.skeleton.update(); const n = sk.geometry.attributes.position.count, st = Math.max(1, (n / 400) | 0); let m = 9; for (let i = 0; i < n; i += st) { sk.getVertexPosition(i, W); W.applyMatrix4(sk.matrixWorld); if (W.y < m) m = W.y; } return m; }
             const sl = B('DEF-shin.L'); sl.getWorldPosition(W); return W.y - .08 * z.scale; };
-          const y0 = minY(0), y1 = minY(.2), sl = Math.max(.05, (y0 - y1) / .2); z.hipDrop = clamp((y0 - .01) / sl, 0, 3); z._dbg = [y0, y1, sl]; }
+          const y0 = minY(0), y1 = minY(.2), sl = Math.max(.05, (y0 - y1) / .2); z.hipDrop = clamp((y0 - .01) / sl, 0, .85); z._dbg = [y0, y1, sl]; }
         hp.position.z = z.hipZ0 - (z.hipDrop + (this.kneelAdj || 0)) * z.kneelK; } }
     if (z.noHead && hd) hd.scale.setScalar(.001); }
   // victims: struggle + scream + reach while alive, weaken (dying), then lie limp with the odd death-twitch; every bite jolts the body
-  victimStruggle(n, dt) { if (!n.isVictim) return; const feeding = this.zombies.filter(z => !z.dead && z.st === 'eat' && z.eat === n);
+  victimStruggle(n, dt) { if (!n.isVictim) return; this.holdVictimRoot(n); const a = n.actions && n.actions.Death01; if (a && (a.timeScale || a.time < a.getClip().duration - 1e-3)) this.freezeDeath(n);
+    const feeding = this.zombies.filter(z => !z.dead && z.st === 'eat' && z.eat === n);
     if (n.poolFix > 0) { n.poolFix -= dt; if (n.poolFix <= 0 && n.pool) { const h = V3(); n.root.updateMatrixWorld(true); n.worldOf('DEF-hips', h); if (Math.hypot(h.x - n.root.position.x, h.z - n.root.position.z) < 2.5) n.pool.position.set(h.x, n.pool.position.y, h.z); } }
     feeding.forEach((z, i) => this.placeFeeder(z, n, z.eatOff ?? i, feeding.length));
     const eaters = feeding.length;
     if (n.life === undefined) n.life = 1; if (eaters) n.life = Math.max(0, n.life - dt * eaters / 26); const L = n.life; n.jolt = Math.max(0, (n.jolt || 0) - dt * 2.5);
-    n.struggle = L > .5 ? Math.max(.4, n.struggle - dt * .02) : L > .12 ? .28 : 0; const t = this.t + (n.id || 0), B = (k) => n.bone(k), ps = n.pose || 0;
-    if (L <= .12) { n.tw = (n.tw ?? rnd(1, 3)) - dt; if (n.tw <= 0) { n.tw = rnd(1.8, 4.5); n.jolt = Math.max(n.jolt, .7); } }
-    const s = n.struggle * (.55 + n.jolt * .8), tw = L <= .12 ? n.jolt * .5 : 0, shake = Math.sin(t * 38) * (s * .08 + tw * .5);
-    const reach = clamp((L - .08) / .45, 0, 1), sgn = ps < .5 ? 1 : -1, rest = .35; // small rest so a limp body isn't a stiff T-pose, but legs stay on the ground
-    ['L', 'R'].forEach((k, i) => { const sg = i ? 1 : -1; const ua = B('DEF-upper_arm.' + k), fa = B('DEF-forearm.' + k), th = B('DEF-thigh.' + k), sh = B('DEF-shin.' + k); const rc = (sg === sgn) ? reach : 0;
-      if (ua) { ua.rotateX(-(.18 + (i ? .08 : .28)) * rest - (.5 + .4 * Math.sin(t * 6.3 + i * 2)) * s - rc * (.7 + .1 * Math.sin(t * 1.7))); ua.rotateZ(sg * (.15 * rest + .22 + .25 * Math.sin(t * 4.1 + i) * s + (1 - rc) * .15 * (1 + ps)) + shake); } if (fa) fa.rotateX(-.22 * rest - (.35 + .35 * Math.sin(t * 8 + i)) * s - rc * (.22 + .15 * Math.sin(t * 3 + 1)) + shake);
-      if (th) { th.rotateX((i ? .16 : .04) * rest + Math.sin(t * 9.5 + i * 3.1) * .22 * s + (i === (ps > .3 ? 1 : 0) ? .16 : -.02) + shake * .4); th.rotateZ(sg * .08); } if (sh) sh.rotateX((i ? .2 : .06) * rest + Math.max(0, Math.sin(t * 9.5 + i * 3.1 + 1)) * .28 * s + (i === (ps > .3 ? 1 : 0) ? .2 : .04) + Math.abs(shake)); });
-    const hd = B('DEF-head'), sp = B('DEF-spine.003'); if (hd) { hd.rotateY(Math.sin(t * 5.2) * .3 * s + (ps - .5) * .4); hd.rotateX(.08 * rest + (L < .5 ? .15 : 0)); hd.rotateZ(-(ps - .5) * .35 + shake); } if (sp) sp.rotateX(-Math.abs(Math.sin(t * 3)) * .18 * s + shake * .4);
-    // seat the body, but never chase a dipping hand/foot or the whole victim will hover
+    n.struggle = L > .5 ? Math.max(.15, (n.struggle || .35) - dt * .03) : L > .12 ? .08 : 0;
+    if (L <= .12) { n.tw = (n.tw ?? rnd(1, 3)) - dt; if (n.tw <= 0) { n.tw = rnd(1.8, 4.5); n.jolt = Math.max(n.jolt, .35); } }
+    this.poseVictimRest(n, n.struggle * (.4 + (n.jolt || 0) * .5));
+    // keep the torso on the street; if any skinned vertex is under the ground, lift just enough (once the pose is stable this is a no-op)
     const gy = this.groundAt(n.root.position.x, n.root.position.z);
-    if (!n._seatLock) { this.seatOnGround(n); const a = n.act && n.act('Death01'); if (!a || a.paused || a.time >= (a.getClip().duration * .88)) n._seatLock = 1; }
-    else { const ty = this.torsoMinY(n); if (ty < 8 && ty < gy + .005) { n.root.position.y += (gy + .02) - ty; n.root.updateMatrixWorld(true); } }
+    const ty = this.torsoMinY(n); if (ty < 8 && ty < gy + .02) { n.root.position.y += (gy + .03) - ty; n.root.updateMatrixWorld(true); }
+    const my = this.skinMinY(n); if (my < 8 && my < gy - .005) { n.root.position.y += (gy - my); n.root.updateMatrixWorld(true); }
     n.screamT -= dt; if (n.screamT <= 0 && n.struggle > .35 && L > .5) { n.screamT = rnd(1.8, 3.5); const dd = n.root.position.distanceTo(this.player.root.position); if (dd < 30) { this.audio.at(n.root.position); if (Math.random() < .5) this.audio.shout(Math.random() < .5 ? 'npcf_scream' : 'npcm_scream', true, n.root.position); else this.audio.scream(.15); } } }
   // animation-synced footsteps (two footfalls per walk/jog/sprint cycle), surface by location, positional
   surfaceAt(x, z) { const K = this.world && this.world.KH; if (K && x > K.x0 && x < K.x1 && z > K.z0 && z < K.z1) return 'wood'; if (this.stepData && this.stepData.surface === 'wood') return 'wood';
@@ -668,7 +700,8 @@ export class Game {
       const rc2 = new THREE.Raycaster(target, right, 0, sh + .2); const h2 = rc2.intersectObjects(this.world.walls, false)[0]; if (h2) { pivot.copy(target).addScaledVector(right, Math.max(0, h2.distance - .25)); }
       cam.position.copy(pivot).addScaledVector(back, dd); cam.rotation.order = 'YXZ'; cam.rotation.set(C.pitch, C.yaw, 0); }
     // first person (v1.9.17): hide the player's whole body (mannequin, avatar skin, head/hair/hat/face parts, held weapon) and use a tight near plane so nothing of Keem is ever in the view
-    const fpOn = !!(C.fp && !this.cut && !this.dying && !(T && T.driving)); this.setFPBody(fpOn); const wantNear = fpOn ? .06 : .05; if (cam.near !== wantNear) { cam.near = wantNear; cam.updateProjectionMatrix(); }
+    const fpOn = !!(C.fp && !this.cut && !this.dying && !(T && T.driving)); this.setFPBody(fpOn); if (!fpOn) this.pushCamOutOfChars();
+    const wantNear = fpOn ? .06 : .12; if (cam.near !== wantNear) { cam.near = wantNear; cam.updateProjectionMatrix(); }
     // shake
     if (this.trauma > 0) { const k = this.trauma * this.trauma * .25; cam.position.x += rnd(-k, k); cam.position.y += rnd(-k, k); cam.rotation.z += rnd(-k, k) * .4; this.trauma = Math.max(0, this.trauma - rdt * 1.6); }
     // viewmodel
