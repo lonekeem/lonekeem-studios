@@ -50,6 +50,9 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Heavier gore: bigger sprays, multi-limb dismemberment, gorier finishers.
 - Feeding scenes: kneeling eaters with head dips and tearing, struggling victims, bite-synced spurts, growing pools, chew/tear SFX, eaters look up at Keem.
 
+### feat/voices (not released yet)
+- Opening/feeding victim screams remade with ElevenLabs Sound Effects v3 so the people being eaten no longer sound like a synth. The last 10 spoken lines that were still on the old Kokoro voice (4 Dad lines, 3 Nia lines, plus Coach Brickman, Ronnie and Mall Santa) remade with ElevenLabs eleven_v3, using the same character voices as the rest of the game.
+
 ### v1.9.24
 - New skippable Lone Keem Studios intro: a full-screen animated title card with an original ElevenLabs cinematic ident and a short deep voiceover. The portrait Dream Jar video ident was removed from the game.
 
@@ -83,7 +86,7 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Voices: Dad's 86 lines re-voiced with ElevenLabs "Carlton C-Well" (older Black man); 4 Dad lines (037, 040, 045, 070) still blocked by the provider's filter and keep their old audio. Other speakers now have their own library voices: Reyes (Ashley), Tuck (Julius), Vance (Cecily), the Captain (Reginald), the King, Deacon (Drag Jackson), Sgt. Okafor (Michael Anthony), Mr. Dube (Joseph), broadcasts (Yusuf Hakeem Kiser), male townspeople (Dan), female townspeople (Kelli LaShae). All clips loudness-matched to about -18 LUFS, no pitch-shifting.
 - Keem is now 100% Young Jamal: every Keem line and bark (190 audio files, audited) uses that voice. Lines the filter blocked were reworded to their clean variant (subtitle matches audio) and re-voiced; unused old-voice Keem files were removed.
 - Keem now speaks in the opening chapter too (the Chapter 1 mute is removed). Fixed the overlong pause in "Mom would end me for this. If she… yeah. Later."
-- Remaining old-voice lines: Nia 22, 44, 48 (blocked by the provider's filter).
+- Remaining old-voice lines: Nia 22, 44, 48 (blocked by the provider's filter). Those three, and Dad's four blocked lines, were later remade on `feat/voices` with ElevenLabs eleven_v3.
 
 ### v1.9.14
 - New voices: 272 Keem and Nia lines (185 Keem, 87 Nia, dialogue and combat barks) re-voiced with ElevenLabs "Young Jamal" (Keem) and "Myriam" (Nia), loudness-matched to Dad's existing lines (-18 LUFS). Dad's voice is unchanged. 18 lines the voice provider's content filter refused to speak (strong-language lines) keep their previous voice for now.

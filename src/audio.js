@@ -195,7 +195,7 @@ export class AudioSys {
 }
 
 // ---------- v1.3.2 sample layer ----------
-// Recorded/rendered samples in public/sfx (Kenney CC0, procedurally synthesized, and Kokoro TTS voices — see CREDITS.md).
+// Recorded/rendered samples in public/sfx (Kenney CC0, procedurally synthesized SFX, ElevenLabs screams and voices — see CREDITS.md).
 // Every method falls back to the synthesized version above if its sample has not loaded yet.
 export const vhash = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36); };
 const BASE = (import.meta.env && import.meta.env.BASE_URL || '/') + 'sfx/';
