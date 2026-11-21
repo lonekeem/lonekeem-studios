@@ -57,7 +57,7 @@ export function openProfile({ mode = 'auto', onSignIn } = {}) {
     const touched = new Set(P0 && K.loadLook() ? [] : ALL_PARTS); let step = 0; const done = new Set();
     const wallet = () => { const s = (window.__atq && window.__atq.save) || {}; return s; };
     const root = el('div', { id: 'prof' }); document.body.append(root);
-    let renderer = null, scene, cam, av = null, gen = 0, running = true, rot = .4, drag = null, zoom = 0, t = 0, last = performance.now(), auto = true;
+    let renderer = null, scene, cam, av = null, gen = 0, running = true, rot = 0, swayT = 0, drag = null, zoom = 0, t = 0, last = performance.now(), auto = true;
     const finish = (p) => { running = false; try { renderer && renderer.dispose(); av && av.dispose(); } catch (e) { /* ignore */ } root.remove(); resolve(p); };
 
     function welcome() { root.innerHTML = '';
@@ -88,7 +88,7 @@ export function openProfile({ mode = 'auto', onSignIn } = {}) {
       canvas.addEventListener('pointerdown', e => { drag = e.clientX; auto = false; canvas.setPointerCapture(e.pointerId); }); canvas.addEventListener('pointermove', e => { if (drag != null) { rot += (e.clientX - drag) * .012; drag = e.clientX; } }); canvas.addEventListener('pointerup', () => { drag = null; });
       const frame = (now) => { if (!running) return; requestAnimationFrame(frame); const dt = Math.min(.05, (now - last) / 1000); last = now; t += dt; const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return;
         if (canvas.width !== Math.floor(w * renderer.getPixelRatio())) { renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
-        if (auto) rot += dt * .35; const zf = CLOSE[STEPS[step][0]] ? 1 : 0; zoom += (zf - zoom) * Math.min(1, dt * 5); const s = av ? av.root.scale.y : 1; const fit = Math.max(1, .9 / cam.aspect);
+        if (auto) { swayT += dt; rot = .45 * Math.sin(swayT * .5); } /* gentle sway around the FRONT: never drifts to the back, even after a slow load / Google redirect */ const zf = CLOSE[STEPS[step][0]] ? 1 : 0; zoom += (zf - zoom) * Math.min(1, dt * 5); const s = av ? av.root.scale.y : 1; const fit = Math.max(1, .9 / cam.aspect);
         if (av) { av.root.rotation.y = rot; try { animate(av, t, 0); } catch (e) { /* ignore */ } } cam.position.set(0, (1.0 + zoom * .56) * s, (3.9 - zoom * 2.0) * fit); cam.lookAt(0, (.9 + zoom * .6) * s, 0); renderer.render(scene, cam); };
       requestAnimationFrame(frame);
       const look = () => { const L = applySel(base, sel, [...touched], OUTFIT); L.name = name || 'Survivor'; return L; };
