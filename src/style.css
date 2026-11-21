@@ -78,8 +78,12 @@ h1{font-size:clamp(40px,8vw,92px);margin:.15em 0;letter-spacing:.12em;text-shado
 .tag{font-style:italic;opacity:.8}
 .menu{margin-top:auto;margin-bottom:6vh;display:flex;flex-direction:column;gap:8px;width:min(300px,80vw)}.menu button{text-align:center}
 .foot{position:relative;flex:none;padding:6px 0 10px;font:12px system-ui;opacity:.5;text-align:center}
-#title{overflow-y:auto}#title .menu{margin-bottom:2vh}
-@media (max-height:560px){#title{padding-top:3vh}#title h1{font-size:clamp(30px,6vw,56px)}#title .menu{gap:5px}#title .menu button{padding:7px 10px;font-size:14px}#title .foot{padding:4px 0 6px}}
+#title{overflow-y:auto}
+/* Keep the family on the cover visible: menu sits on the right, footer stays full-width. */
+#title .menu{margin:auto max(16px,3vw) 2vh auto;width:min(280px,38vw);align-self:flex-end}
+#title .foot{width:100%}
+@media (max-width:640px){#title .menu{width:min(300px,86vw);margin-left:auto;margin-right:auto;align-self:center}}
+@media (max-height:560px){#title{padding-top:0}#title h1{font-size:clamp(30px,6vw,56px)}#title .menu{margin-top:20vh;margin-right:8px;gap:3px;width:min(240px,34vw)}#title .menu button{padding:5px 8px;font-size:13px}#title .foot{padding:4px 0 6px}}
 #studio{position:fixed;inset:0;z-index:40;background:#000;display:flex;align-items:center;justify-content:center;animation:fadein .8s}
 #studio video{height:100%;width:auto;max-width:100%;max-height:100%;object-fit:contain;background:#000}
 #studio .skip{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:0;right:0;text-align:center;font:12px system-ui;letter-spacing:.16em;color:#9fb39f;opacity:.7;pointer-events:none}
