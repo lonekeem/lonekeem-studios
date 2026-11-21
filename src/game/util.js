@@ -8,7 +8,9 @@ export function canvasTex(w, h, draw, srgb = true) { const c = document.createEl
 export function signTex(lines, bg = '#1d3b26', fg = '#e8efe4', w = 512, h = 192) {
   return canvasTex(w, h, (g) => { g.fillStyle = bg; g.fillRect(0, 0, w, h); g.strokeStyle = fg; g.lineWidth = 8; g.strokeRect(10, 10, w - 20, h - 20);
     g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle'; const n = lines.length;
-    lines.forEach((l, i) => { g.font = (i === 0 ? 'bold ' : '') + Math.floor(h / (n + 1.4)) + 'px Georgia'; g.fillText(l, w / 2, h * (i + 1) / (n + 1)); });
+    // v1.9.28: shrink each line until it fits inside the border (long names like RIVERSIDE MARKET / HANK'S GAS & GARAGE were cut off at both edges)
+    lines.forEach((l, i) => { let fs = Math.floor(h / (n + 1.4)); const font = () => (i === 0 ? 'bold ' : '') + fs + 'px Georgia'; g.font = font();
+      while (fs > 8 && g.measureText(l).width > w - 52) { fs--; g.font = font(); } g.fillText(l, w / 2, h * (i + 1) / (n + 1)); });
     // grime
     for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(40,30,20,${Math.random() * .25})`; g.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 8, 2 + Math.random() * 8); } });
 }
