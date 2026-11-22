@@ -23,6 +23,7 @@ import { syncWounds, addWound, bloodyMouth, makePool, tickPools, setHandBlood } 
 import { STORY, LOOT, chOf, TOTAL_PAGES, SPEAKER_NAMES } from './story.js';
 import { onDialogueLine, tickDialogueFace, endDialogueFace, resetDialogueFace } from './dialogueFace.js';
 import { hitChar, capsOf, updateAimPose, placeShotFx, muzzleWorld, stepAimAssist } from './aim.js';
+import { attachGameWeaponBar, syncWeaponBar } from '../ui/weaponBar.js';
 
 const $ = (s) => document.querySelector(s);
 export const PRESETS = {
@@ -80,7 +81,7 @@ export class Game {
     this.vm = new THREE.Group(); cam.add(this.vm); this.vm.position.set(0.22, -0.2, -0.45);
     this.weaponMeshes = {}; WEAPON_ORDER.forEach(id => { const m = weaponMesh(id); this.weaponMeshes[id] = m; });
     // FX pools
-    this.initFX(); this.input = new Input(this);
+    this.initFX(); this.input = new Input(this); attachGameWeaponBar(this);
     this.zombies = []; this.npcs = {}; this.pickups = []; this.props = [];
     // post
     if (Q.post) { try { const c = this.composer = new EffectComposer(r); c.addPass(new RenderPass(scene, cam)); const ao = new GTAOPass(scene, cam, innerWidth, innerHeight); ao.blendIntensity = 0.8; c.addPass(ao);
@@ -171,7 +172,7 @@ export class Game {
   equip(id, silent) { if (!this.save.owned.includes(id)) id = 'fists'; this.save.cur = id; const w = WEAPONS[id];
     this.hand.clear(); const m = this.weaponMeshes[id]; this.hand.add(m); this.vm.clear(); const vmm = m.clone(); this.vm.add(vmm); this.vmMesh = vmm;
     if (w.type === 'gun' && this.save.mags[id] == null) this.save.mags[id] = stat(this.save, id).mag;
-    this.ws = stat(this.save, id); if (!silent) { this.toast(w.name); this.audio.click(); } this.state && (this.state.reload = 0); this.rldSync && this.rldSync(); }
+    this.ws = stat(this.save, id); if (!silent) { this.toast(w.name); this.audio.click(); } this.state && (this.state.reload = 0); this.rldSync && this.rldSync(); try { syncWeaponBar(); } catch (e) { /* ignore */ } }
   swap(dir = 1) { const o = WEAPON_ORDER.filter(k => this.save.owned.includes(k)); const i = o.indexOf(this.save.cur); this.equip(o[(i + dir + o.length) % o.length]); this.audio.play('cloth', { vol: .35, flat: true }); this.audio.play('reload_in', { vol: .4, delay: .18, rate: 1.2, flat: true }); }
   give(id) { if (!this.save.owned.includes(id)) this.save.owned.push(id); this.equip(id); }
   addXP(n, why) { const s = this.save; s.xp += n; let up = false; while (s.xp >= xpFor(s.level)) { s.xp -= xpFor(s.level); s.level++; up = true; }
@@ -722,7 +723,7 @@ export class Game {
     try { glowUpdate(this); } catch (e) { if (!this._glowErr) { this._glowErr = 1; console.warn('glow', e); } }
     if (this.composer) this.composer.render(); else this.renderer.render(this.scene, cam);
     if (this.running && !this.paused) this.hud(); }
-  hud() { const s = this.save, w = WEAPONS[s.cur];
+  hud() { const s = this.save, w = WEAPONS[s.cur]; try { syncWeaponBar(); } catch (e) { /* ignore */ }
     $('#hpb i').style.width = (this.hp / this.maxHp * 100) + '%'; $('#hpTxt').textContent = `Health : ${Math.ceil(this.hp)}  ·  Lv ${s.level}  ·  $${s.cash}  ·  Med ${s.meds}${s.pages.length ? `  ·  Pages ${s.pages.length}/${TOTAL_PAGES}` : ''}`;
     this.rldSync();
     $('#ammoTxt').textContent = w.type === 'gun' ? `${w.name}  ·  Ammo : ${s.mags[s.cur] || 0} / ${s.ammo[w.ammo] || 0}${this.state.reload > 0 ? '  (reloading)' : ''}` : w.name;

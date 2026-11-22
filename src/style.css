@@ -424,3 +424,29 @@ body.cine #rotate{display:none!important}
 #online .wlink{background:transparent!important;border-color:transparent!important;color:#a9c4b0;min-height:36px}
 #online .wpb button{padding:6px 9px}
 @media (max-width:700px){#online .wpb button{font-size:13px;padding:5px 7px}}
+
+/* v1.9.34 in-game weapon bar: compact always-on slots, 844x390 first */
+#wbar{position:absolute;left:max(172px,calc(env(safe-area-inset-left) + 172px));right:max(216px,calc(env(safe-area-inset-right) + 216px));top:86px;z-index:8;display:none;flex-direction:row;flex-wrap:nowrap;justify-content:center;align-items:stretch;gap:3px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;pointer-events:auto;padding:2px 0}
+#wbar::-webkit-scrollbar{display:none}
+#wbar.on{display:flex}
+#wbar.boss{top:108px}
+#wbar .wslot{position:relative;flex:0 0 auto;width:48px;height:58px;margin:0;padding:4px 2px 2px;border-radius:8px;border:1px solid rgba(220,235,225,.28);background:rgba(8,16,12,.78);color:#e8f5ec;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;cursor:pointer;box-shadow:0 1px 4px #0008;font:inherit}
+#wbar .wslot .wi{width:28px;height:28px;flex:0 0 28px;display:block;line-height:0}
+#wbar .wslot .wi svg{width:28px;height:28px;display:block;overflow:visible}
+#wbar .wslot .wn{font:700 8px/1.1 system-ui,sans-serif;letter-spacing:.01em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;color:#e8f5ec}
+#wbar .wslot .wa{font:700 8px/1 system-ui,sans-serif;color:#9be37a}
+#wbar .wslot .wk{position:absolute;top:1px;left:3px;font:700 7px/1 system-ui,sans-serif;color:#cfe;opacity:.55}
+#wbar .wslot.eq{border-color:#7fd49a;background:rgba(22,56,36,.92);box-shadow:0 0 0 2px rgba(127,212,154,.6),0 0 12px rgba(127,212,154,.4)}
+#wbar .wslot.empty .wa{color:#f3a0a0}
+#wbar .wslot.off{opacity:.34;filter:grayscale(.35);cursor:default;pointer-events:none}
+@media (max-height:420px){
+  #wbar{top:78px}
+  #wbar.boss{top:100px}
+  #wbar .wslot{width:44px;height:54px}
+  #wbar .wslot .wi,#wbar .wslot .wi svg{width:24px;height:24px}
+  #wbar .wslot .wi{flex-basis:24px}
+}
+/* replace the old ⇄ swap buttons while the bar is up */
+#hud.wbar-on #btnSwap{display:none!important}
+#hud.wbar-on~#touch #tSwap{display:none!important}
+body.driving #wbar{opacity:.92}
