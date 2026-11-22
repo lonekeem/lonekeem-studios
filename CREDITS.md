@@ -8,7 +8,8 @@ Lone Keem Studios · created by Keem
 | PBR textures (asphalt, mud, forest ground, bark, rust, planks) and HDRI sky (`public/tex/`) | Poly Haven (polyhaven.com) | CC0 |
 | Character portraits, title art | Removed in v1.3.1 (no photos ship with the game) | — |
 | Footsteps, melee impacts, reload clicks/latches, shell casings, glass, metal, wood, door, cloth, coins (`public/sfx/step_*`, `punch*`, `bat*`, `flesh*`, `metal*`, `shell*`, `glass*`, `plank*`, `reload_*`, `cloth*`, `door_open`, `creak`, `knife`, `chop`, `coins`) | Kenney — Impact Sounds & RPG Audio (kenney.nl), converted to mp3 | CC0 (see `public/sfx/KENNEY_LICENSE.txt`) |
-| Gunshots, explosion, thunder, rain loop, truck engine, zombie growls/moans/attacks/eating, boss roar (`public/sfx/gun_*`, `explosion`, `thunder*`, `rain_loop`, `truck_loop`, `z_*`, `boss_roar`) | Procedurally synthesized by `tools/make_audio.py` (numpy + ffmpeg) | © Lone Keem Studios |
+| Per-weapon gunshots, reloads and dry-fire clicks (`public/sfx/gun_*`, `reload_pistol`/`revolver`/`smg`/`shotgun`/`rifle`/`lever`/`heavy`/`crossbow`/`flamer`/`launcher`/`harpoon`, `click_pistol`/`revolver`/`shotgun`/`rifle`) | ElevenLabs Sound Effects v3, prompted to match each in-game weapon, trimmed and loudness-matched | © Lone Keem Studios |
+| Explosion, thunder, rain loop, truck engine, zombie growls/moans/attacks/eating, boss roar (`public/sfx/explosion`, `thunder*`, `rain_loop`, `truck_loop`, `z_*`, `boss_roar`) | Procedurally synthesized by `tools/make_audio.py` (numpy + ffmpeg) | © Lone Keem Studios |
 | Victim screams in the opening and feeding scenes (`public/sfx/scream0`–`scream3`) | ElevenLabs Sound Effects v3, original human panic/attack vocals, loudness-matched to about −18 LUFS | © Lone Keem Studios |
 | Music, wind, UI tones, synth fallbacks | Synthesized at runtime with Web Audio (`src/audio.js`) | © Lone Keem Studios |
 | Engine / tools | three.js (MIT), Vite (MIT), Capacitor (MIT) | MIT |
