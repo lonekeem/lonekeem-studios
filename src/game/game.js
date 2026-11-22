@@ -376,9 +376,17 @@ export class Game {
   nextLine() { const d = $('#dlg'); const it = this.dlgQ.shift(); if (!it) { this.dlgCur = null; endDialogueFace(this); this.grace = Math.max(this.grace || 0, 1.5); this.last = performance.now(); d.classList.remove('on'); this.audio.stopVoice && this.audio.stopVoice(); return; } if (it.cb) { it.cb(this); this.nextLine(); return; }
     if (it.raw == null) { it.raw = it.text; const L = langLine(it.raw, this.settings.lang || 'on'); it.text = L.sub; it.vtext = L.voice; it.bleeps = L.bleeps; }
     this.dlgCur = it; const names = { ...SPEAKER_NAMES, vance: 'Dr. Vance', keem: 'Keem', marcus: 'Dad', nia: 'Nia', walt: 'Mr. Walt', ruth: 'Ruth', dube: 'Mr. Dube', radio: 'Radio', note: 'Dad\'s note', gus: 'Big Gus', sgt: 'Sgt. Okafor (radio)', brick: 'Coach Brickman', ronnie: 'Big Rig Ronnie', deacon: 'Deacon', captain: 'The Captain (radio)', reyes: 'Dr. Reyes', tuck: 'Tuck', santa: 'Mall Santa', king: 'The Toll King' };
-    $('#who').textContent = names[it.who] || it.who; const cur = it; this.audio.voice && this.audio.voice(it.who, it.vtext, it.bleeps).then(dd => { if (dd && this.dlgCur === cur) cur.dur = Math.max(cur.dur || 0, dd + .5); });
-    
-    $('#line').textContent = it.text; d.classList.add('on'); it.t = 0; it.dur = (1.6 + it.text.length * 0.045) / (this.settings.text || 1); onDialogueLine(this, it); }
+    $('#who').textContent = names[it.who] || it.who; $('#line').textContent = it.text;
+    // Cutscenes (player can't move) always show the box. During play, hide it unless Settings -> Subtitles during play is on.
+    const locked = !!this.cut; const showBox = locked || !!this.settings.playSubs;
+    d.classList.toggle('on', !!showBox);
+    const cur = it; const beat = !/[A-Za-z0-9]/.test(it.vtext || it.text || '');
+    this.audio.voice && this.audio.voice(it.who, it.vtext, it.bleeps).then(dd => {
+      if (this.dlgCur !== cur) return;
+      if (dd) cur.dur = Math.max(cur.dur || 0, dd + .5);
+      else if (!showBox && !beat) d.classList.add('on'); // missing/failed voice: show text so the line isn't lost
+    });
+    it.t = 0; it.dur = (1.6 + it.text.length * 0.045) / (this.settings.text || 1); onDialogueLine(this, it); }
   skipLine() { if (this.dlgCur) this.nextLine(); }
 
   // ---------- FX ----------

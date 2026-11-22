@@ -22,8 +22,10 @@ await ctx.addInitScript(() => {
 const p = await ctx.newPage();
 p.setDefaultTimeout(180000);
 const errs = [];
+const notFounds = [];
 p.on('pageerror', e => errs.push(String(e.message || e).slice(0, 300)));
-p.on('console', m => { if (m.type() === 'error' && !/404 \(Not Found\)/.test(m.text())) errs.push('CE ' + m.text().slice(0, 240)); });
+p.on('console', m => { if (m.type() === 'error') errs.push('CE ' + m.text().slice(0, 240)); });
+p.on('response', r => { if (r.status() === 404) notFounds.push(r.url()); });
 p.on('dialog', d => d.accept());
 await p.route(/leaderboard|postScore|submitScore|supabase\.co/i, route => route.abort());
 
@@ -177,10 +179,11 @@ const townRes = await sampleKill('town', async () => p.evaluate(() => {
 
 fs.writeFileSync(`${OUT}/town_series.json`, JSON.stringify(townRes.series, null, 2));
 
-const pageErrs = errs.filter(e => !/AbortError|Failed to fetch|ERR_ABORTED|online unavailable/i.test(e));
+const pageErrs = errs.filter(e => !/AbortError|Failed to fetch|ERR_ABORTED|online unavailable|status of 404/i.test(e));
 rec('zero_page_errors', pageErrs.length === 0, pageErrs.slice(0, 8));
+rec('zero_404s', notFounds.length === 0, notFounds.slice(0, 8));
 const fail = recs.some(x => !x);
-console.log(fail ? 'FAIL DEAD-STAY SMOKE' : 'DEAD-STAY SMOKE OK', 'errs', pageErrs.length);
-fs.writeFileSync(`${OUT}/summary.json`, JSON.stringify({ ok: !fail, survival: storyRes, town: townRes, errs: pageErrs }, null, 2));
+console.log(fail ? 'FAIL DEAD-STAY SMOKE' : 'DEAD-STAY SMOKE OK', 'errs', pageErrs.length, '404s', notFounds.length);
+fs.writeFileSync(`${OUT}/summary.json`, JSON.stringify({ ok: !fail, survival: storyRes, town: townRes, errs: pageErrs, notFounds }, null, 2));
 await b.close();
 process.exit(fail ? 1 : 0);

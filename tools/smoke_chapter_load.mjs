@@ -24,8 +24,10 @@ await ctx.addInitScript(() => {
 const p = await ctx.newPage();
 p.setDefaultTimeout(180000);
 const errs = [];
+const notFounds = [];
 p.on('pageerror', e => errs.push(String(e.message || e).slice(0, 300)));
-p.on('console', m => { if (m.type() === 'error' && !/404 \(Not Found\)/.test(m.text())) errs.push('CE ' + m.text().slice(0, 240)); });
+p.on('console', m => { if (m.type() === 'error') errs.push('CE ' + m.text().slice(0, 240)); });
+p.on('response', r => { if (r.status() === 404) notFounds.push(r.url()); });
 p.on('dialog', d => d.accept());
 
 // Never post scores or join a remote lobby
@@ -113,6 +115,28 @@ const sawLoad = !!(await loadWait);
 if (sawLoad) {
   await p.waitForTimeout(80);
   await shot('loading');
+  const layout = await p.evaluate(() => {
+    const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { t: +b.top.toFixed(1), b: +b.bottom.toFixed(1), l: +b.left.toFixed(1), r: +b.right.toFixed(1), w: +b.width.toFixed(1), h: +b.height.toFixed(1) }; };
+    const q = (s) => document.querySelector(s);
+    const ov = (a, b) => !!(a && b && a.t < b.b - 0.5 && b.t < a.b - 0.5 && a.l < b.r - 0.5 && b.l < a.r - 0.5);
+    const brand = r(q('#loading .lbrand')), center = r(q('#loading .lcenter')), status = r(q('#loading .lt')), bar = r(q('#loading .lb')), tipLab = r(q('#loading .ltip b')), tipTxt = r(q('#loading .ltip span'));
+    const gaps = {
+      statusToBar: status && bar ? +(bar.t - status.b).toFixed(1) : null,
+      barToTip: bar && tipLab ? +(tipLab.t - bar.b).toFixed(1) : null,
+      labToTxt: tipLab && tipTxt ? +(tipTxt.t - tipLab.b).toFixed(1) : null,
+      quoteToStatus: r(q('#loading .lquote')) && status ? +(status.t - r(q('#loading .lquote')).b).toFixed(1) : null,
+    };
+    const overlaps = {
+      statusBar: ov(status, bar), statusTipLab: ov(status, tipLab), statusTipTxt: ov(status, tipTxt),
+      barTipLab: ov(bar, tipLab), barTipTxt: ov(bar, tipTxt), tipLabTxt: ov(tipLab, tipTxt),
+      centerFoot: ov(center, status) || ov(center, bar) || ov(center, tipLab) || ov(center, tipTxt),
+      brandCenter: ov(brand, center),
+    };
+    return { vw: innerWidth, vh: innerHeight, brand, center, status, bar, tipLab, tipTxt, gaps, overlaps };
+  });
+  const ovAny = layout.overlaps && Object.values(layout.overlaps).some(Boolean);
+  const tight = layout.gaps && (layout.gaps.statusToBar < 6 || layout.gaps.barToTip < 8 || layout.gaps.labToTxt < 4);
+  rec('loading_layout_clean', !ovAny && !tight, layout);
 }
 
 // wait until play (loading hidden and game running) or timeout
@@ -226,11 +250,12 @@ const audTown2 = await audit();
 console.log('AUDIT_TOWN_AFTER_BG', JSON.stringify(audTown2));
 rec('bg_return_no_story_audio', audTown2 && !audTown2.storyPlaying && audTown2.session !== 'story' && !audTown2.rainOn && !audTown2.beatOn, audTown2);
 
-const pageErrs = errs.filter(e => !/AbortError|Failed to fetch|ERR_ABORTED|online unavailable/i.test(e));
+const pageErrs = errs.filter(e => !/AbortError|Failed to fetch|ERR_ABORTED|online unavailable|status of 404/i.test(e));
 rec('zero_page_errors', pageErrs.length === 0, pageErrs.slice(0, 8));
+rec('zero_404s', notFounds.length === 0, notFounds.slice(0, 8));
 
 const fail = results.some(x => !x);
 console.log(fail ? 'FAIL CHAPTER-LOAD SMOKE' : 'CHAPTER-LOAD SMOKE OK', LABEL, 'errs', pageErrs.length);
-fs.writeFileSync(`${OUT}/${LABEL}_summary.json`, JSON.stringify({ label: LABEL, ok: !fail, metrics, audStory, audMenu, audTown, audTown2, errs: pageErrs }, null, 2));
+fs.writeFileSync(`${OUT}/${LABEL}_summary.json`, JSON.stringify({ label: LABEL, ok: !fail, metrics, audStory, audMenu, audTown, audTown2, errs: pageErrs, notFounds }, null, 2));
 await b.close();
 process.exit(fail ? 1 : 0);

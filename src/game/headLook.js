@@ -12,14 +12,14 @@ export const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 export const angLerp = (a, b, t) => a + wrapA(b - a) * t;
 
-const LOOK_BONE = /(^|[-._])(head|neck)$/i;
+const LOOK_BONE = /(^|[-._])(head|neck|spine)([._-]?\d+)?$/i;
 
 function isCorpse(ch) {
   return !!(ch && (ch._deadHeld || ch._deadPose || ch._seatLock || (ch.dead && ch.st === 'dead')));
 }
 
 // Snapshot the look bones' bind pose and wrap mixer.update so look starts from it.
-// Only head / neck are reset: v1.9.34 reset every bone, which snapped corpses back to the standing bind pose
+// Only head / neck / spine are reset (the bones look actually uses). v1.9.34 reset every bone, which snapped corpses back to the standing bind pose and left arms in the bind T-pose when a clip didn't drive them.
 // whenever Death01 left a bone untracked or the clip had finished.
 export function bindHeadLook(ch) {
   if (!ch || !ch.mixer || ch._headLook) return ch;

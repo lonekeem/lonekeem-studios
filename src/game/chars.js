@@ -127,13 +127,19 @@ export class Char {
   locomote(speed, dir = 1, dt = 0.016, max = 6.4, wspd = speed) {
     if (this._deadHeld || this.dead) return false;
     const k = this.scale || 1, N = Char.LOCO.map(n => ({ name: n.name, v: n.v * k, stride: n.stride * k, off: n.off })); const acts = N.map(n => this.act(n.name)); if (acts.some(a => !a)) return false;
-    if (!this.locoOn) { this.locoOn = true; this.locoW = 0; this.locoPh = this.locoPh || 0; if (this.cur) { this.cur.fadeOut(0.2); this.cur = null; } this.curName = '__loco';
-      acts.forEach(a => { a.enabled = true; a.stopFading(); a.setLoop(THREE.LoopRepeat); a.timeScale = 0; a.paused = false; a.play(); a.setEffectiveWeight(0); }); }
+    if (!this.locoOn) { this.locoOn = true; this.locoW = 0; this.locoPh = this.locoPh || 0;
+      this._locoFrom = this.cur && this.cur.enabled ? this.cur : null;
+      if (this._locoFrom) this._locoFrom.stopFading && this._locoFrom.stopFading();
+      this.cur = null; this.curName = '__loco';
+      acts.forEach(a => { a.enabled = true; a.stopFading(); a.setLoop(THREE.LoopRepeat); a.timeScale = 0; a.paused = false; a.play(); }); }
     const sm = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
     const v = Math.min(wspd, max * k), tj = sm(N[0].v, N[1].v, v), ts = sm(N[1].v, N[2].v, v);
     const w = [1 - tj, tj * (1 - ts), tj * ts]; const stride = w[0] * N[0].stride + w[1] * N[1].stride + w[2] * N[2].stride;
     this.locoPh = (this.locoPh + (dir < 0 ? -1 : 1) * (speed / stride) * dt + 1000) % 1; this.locoW = Math.min(1, this.locoW + dt / 0.2);
-    acts.forEach((a, i) => { a.time = (((this.locoPh + N[i].off) % 1 + 1) % 1) * a.getClip().duration; a.setEffectiveWeight(w[i] * this.locoW); });
+    let sum = 0;
+    acts.forEach((a, i) => { a.time = (((this.locoPh + N[i].off) % 1 + 1) % 1) * a.getClip().duration; const wt = w[i] * this.locoW; a.setEffectiveWeight(wt); sum += wt; });
+    // Keep a clip at weight 1 during the blend-in so untracked/faded bones cannot snap to the bind T-pose.
+    if (this._locoFrom) { const rest = Math.max(0, 1 - sum); this._locoFrom.setEffectiveWeight(rest); if (rest <= 0.001) { try { this._locoFrom.stop(); this._locoFrom.enabled = false; } catch (e) {} this._locoFrom = null; } }
     return true;
   }
   // natural ground speed (m/s) of a locomotion clip at this character's size, so a scripted mover can play it at the matching rate
@@ -142,7 +148,7 @@ export class Char {
   moveAnim(sp, dt, idle = 'Idle_Loop') { if (this._deadHeld || this.dead) return false; this._aspd = (this._aspd || 0) + (sp - (this._aspd || 0)) * Math.min(1, dt * 12);
     if (sp > .12 || this._aspd > .3) { if (!this.locomote(Math.max(sp, .3), 1, dt, 6.4, this._aspd)) { const nm = this._aspd > 2.6 * (this.scale || 1) ? 'Jog_Fwd_Loop' : 'Walk_Loop'; this.play(nm, { speed: Math.max(.4, Math.min(2.4, sp / (this.natSpeed(nm) || 1))) }); } return true; }
     this.play(idle); return false; }
-  endLoco(fade = 0.18) { if (!this.locoOn) return; this.locoOn = false; Char.LOCO.forEach(n => { const a = this.actions[n.name]; if (a) a.fadeOut(fade); }); this.cur = null; this.curName = ''; }
+  endLoco(fade = 0.18) { if (!this.locoOn) return; this.locoOn = false; this._locoFrom = null; Char.LOCO.forEach(n => { const a = this.actions[n.name]; if (a) a.fadeOut(fade); }); this.cur = null; this.curName = ''; }
   // Lock the last death frame and stop other clips so the mixer cannot blend back to idle.
   holdDead() {
     if (this._deadHeld && this._deadPose) return this;

@@ -50,7 +50,8 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     const runner = o.runner ?? rnd() < .15;
     c.zvo = zVoiceAssign(look, { runner });
     Object.assign(c, { z: true, hp: runner ? 50 : 70, maxHp: runner ? 50 : 70, runner, speed: runner ? R(3.4, 4.2) : R(1.1, 1.6), st: 'wander', cd: R(0, 1), dead: false, deadT: 0, id: R(0, 10), vel: new THREE.Vector3(), off: [R(-2.6, 2.6), R(-2.6, 2.6)], node: -1, prev: -1, tgt: null, hitAt: 0, hitCd: 0, tgT: 0, hurtT: 0, noHead: false, hp0: runner ? 50 : 70 });
-    c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.1 : .62 }); const a = c.act('Walk_Loop'); if (a) a.time = R(0, 1);
+    c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.1 : .62 }); const a = c.act(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop') || c.act('Walk_Loop'); if (a) a.time = R(0, a.getClip().duration);
+    try { c.mixer.update(0); zBones(c); } catch (e) { /* first pose */ }
     pickNode(c); zs.push(c); S.spawned++; return c;
   }
   function nearestNode(x, z) { let b = 0, bd = 1e9; graph.forEach((n, i) => { const d = (n.x - x) ** 2 + (n.z - z) ** 2; if (d < bd) { bd = d; b = i; } }); return b; }
@@ -101,8 +102,9 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
         continue; }
       alive++; let near = null, nd = 1e9, ni = 0; P.forEach((p, k) => { const d = Math.hypot(p.x - pp.x, p.z - pp.z); if (d < nd) { nd = d; near = p; ni = k; } });
       z.root.visible = nd < fogFar - (z.root.visible ? 1 : 5); // hysteresis, and only vanish once ~90% fogged (no pop in view)
-      const far = nd > fogFar * .7; // far from everyone: cheap drift only (no animation tick)
-      if (z.hurtT > 0) { z.hurtT -= dt; if (z.oneShot || z.hurtT > 0) { const [nx, nz] = col.push(pp.x + z.vel.x * dt, pp.z + z.vel.z * dt, .3); pp.x = nx; pp.z = nz; z.vel.multiplyScalar(.85); if (!far) { z.mixer.update(dt); zBones(z); } continue; } }
+      const far = nd > fogFar * .7; // far from everyone: cheap AI (no neighbor push / LOS cars)
+      const vis = z.root.visible; // still tick walk clips while on-screen, or mid-fog zombies stay in the bind T-pose
+      if (z.hurtT > 0) { z.hurtT -= dt; if (z.oneShot || z.hurtT > 0) { const [nx, nz] = col.push(pp.x + z.vel.x * dt, pp.z + z.vel.z * dt, .3); pp.x = nx; pp.z = nz; z.vel.multiplyScalar(.85); if (vis) { z.mixer.update(dt); zBones(z); } continue; } }
       // state: notice / lose
       if (!near) continue; const det = near.crouch ? 7 : 14;
       if (z.st === 'look') { if (near && nd < det && (nd < 5 || col.los(pp.x, pp.z, near.x, near.z))) { z.st = 'chase'; z.lose = 0; onEvent && onEvent('notice', z); } else if ((z.lookT -= dt) <= 0 || Math.hypot(z.look[0] - pp.x, z.look[1] - pp.z) < 1.5) { z.st = 'wander'; z.node = -1; } }
@@ -123,9 +125,9 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
         let sx = dx * sp * dt, sz = dz * sp * dt; if (!far) for (let j = 0; j < zs.length; j++) { if (j === i) continue; const o = zs[j]; if (o.dead) continue; const q = o.root.position; const ex = pp.x - q.x, ez = pp.z - q.z, e2 = ex * ex + ez * ez; if (e2 < .5 && e2 > 1e-4) { sx += ex / e2 * dt * .25; sz += ez / e2 * dt * .25; } }
         let nx = pp.x + sx, nz = pp.z + sz; if (!far) { const r = col.push(nx, nz, .3); nx = r[0]; nz = r[1]; if (W.cars) for (const k of W.cars) { if (Math.abs(k.x - nx) > 4 || Math.abs(k.z - nz) > 4) continue; for (const [cx, cz] of k.circles()) { const ddx = nx - cx, ddz = nz - cz, rr = k.rad + .35, d2 = ddx * ddx + ddz * ddz; if (d2 < rr * rr) { const d = Math.sqrt(d2) || .01; nx = cx + ddx / d * rr; nz = cz + ddz / d * rr; } } } } pp.x = nx; pp.z = nz;
         const want = Math.atan2(dx, dz); z.root.rotation.y += angDiff(z.root.rotation.y, want) * Math.min(1, dt * 6);
-        if (!far) z.play(z.st === 'chase' ? (z.runner ? 'Jog_Fwd_Loop' : 'Walk_Loop') : 'Walk_Loop', { speed: z.st === 'chase' ? (z.runner ? 1.1 : .62) : (z.runner ? .5 : .45) });
+        if (vis) z.play(z.st === 'chase' ? (z.runner ? 'Jog_Fwd_Loop' : 'Walk_Loop') : 'Walk_Loop', { speed: z.st === 'chase' ? (z.runner ? 1.1 : .62) : (z.runner ? .5 : .45) });
       }
-      if (!far) { z.mixer.update(dt); zBones(z); }
+      if (vis) { z.mixer.update(dt); zBones(z); }
     }
     S.alive = alive; S.dead = dead;
     // keep the count up: spawn at a road end when nobody can see it
