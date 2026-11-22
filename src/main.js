@@ -21,7 +21,7 @@ const audio = new AudioSys(S);
 let save = loadSave(LS) || defaultSave(); let game = null, gamePromise = null; let state = 'boot', back = '#title';
 window.__atq = { get audio() { return audio; }, get game() { return game; }, get state() { return state; }, get save() { return save; }, showLoading, hideLoading, setProgress,
   leaveApp, returnApp, isAway,
-  reloadSave: () => { save = loadSave(LS) || save; if (state === 'title') toTitle(); } }; // profile cloud sync (src/mp/profile.js) calls this after loading a saved profile
+  reloadSave: () => { save = loadSave(LS) || save; if (state === 'title') refreshTitleProgress(); } }; // cloud sync: refresh in-memory save + Continue. Never call toTitle()/showScreen here — #online is a .screen, so that would hide the lobby and kick a signed-in player back to the menu.
 try { audio.loadTracks(); } catch (e) { /* ignore */ }
 
 function showScreen(id) { $$('.screen').forEach(s => s.classList.add('hidden')); if (id) $(id).classList.remove('hidden'); }
@@ -41,7 +41,8 @@ async function playPrologueToMenu() {
   } catch (e) { console.error(e); hideLoading(); toTitle(); }
 }
 
-function toTitle() { state = 'title'; if (game) { try { game.leave(); } catch (e) {} } $('#stage').classList.add('hidden'); $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden'); try { audio.stopGameplay && audio.stopGameplay(); } catch (e) {} try { audio.resumeAll(); } catch (e) {} audio.beat && audio.beat(0); audio.setMood('menu'); save = loadSave(LS) || save; { const sv = loadSave(LS), has = !!(sv && (sv.played || sv.step > 0)); const b = $('#btnContinue'); b.classList.toggle('hidden', !has); if (has) b.textContent = 'Continue · Chapter ' + chOf(sv.step || 0) + (CHN[chOf(sv.step || 0)] ? ' · ' + CHN[chOf(sv.step || 0)] : ''); } showScreen('#title'); back = '#title'; try { renderDailies(); offerTutorial({ play: () => play(SURVIVAL_STEP, { tutorial: true }), toTitle }); } catch (e) { /* ignore */ } }
+function refreshTitleProgress() { save = loadSave(LS) || save; try { const sv = loadSave(LS), has = !!(sv && (sv.played || sv.step > 0)); const b = $('#btnContinue'); if (b) { b.classList.toggle('hidden', !has); if (has) b.textContent = 'Continue · Chapter ' + chOf(sv.step || 0) + (CHN[chOf(sv.step || 0)] ? ' · ' + CHN[chOf(sv.step || 0)] : ''); } } catch (e) {} try { renderDailies(); } catch (e) {} }
+function toTitle() { state = 'title'; if (game) { try { game.leave(); } catch (e) {} } $('#stage').classList.add('hidden'); $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden'); try { audio.stopGameplay && audio.stopGameplay(); } catch (e) {} try { audio.resumeAll(); } catch (e) {} audio.beat && audio.beat(0); audio.setMood('menu'); refreshTitleProgress(); showScreen('#title'); back = '#title'; try { offerTutorial({ play: () => play(SURVIVAL_STEP, { tutorial: true }), toTitle }); } catch (e) { /* ignore */ } }
 
 async function ensureGame() { if (game) return game; if (gamePromise) return gamePromise;
   const studioOn = $('#studio') && !$('#studio').classList.contains('hidden');
@@ -165,7 +166,7 @@ $('#btnEndNext').onclick = () => { save = loadSave(LS) || save; const nc = Math.
 var CHN = CHAPTERS.map(c => (c ? c.title : '')), CHS = CHAPTERS.map(c => (c ? c.start : 0)); // derived from the chapter registry
 const unlockedCh = (s) => Math.max(s.maxCh || 1, s.done || (s.step || 0) >= 7 ? 2 : 1, s.done2 ? 3 : 1, CHS.findLastIndex(v => (s.step || 0) >= v) || 1);
 // chapter-select buttons are generated from the registry (src/game/chapters), so adding a chapter needs no HTML/menu edits
-{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.41 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
+{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.42 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
 const chList = $('#chList'); for (let c = 1; c <= LAST_CH; c++) { const b = document.createElement('button'); b.id = 'btnCh' + c; b.textContent = 'Chapter ' + c + ' · ' + CHN[c]; chList.appendChild(b); }
 $('#btnChapters').onclick = () => { const s = loadSave(LS) || defaultSave(); const u = unlockedCh(s); for (let c = 2; c <= LAST_CH; c++) { const b = $('#btnCh' + c); b.disabled = c > u; b.textContent = 'Chapter ' + c + ' · ' + CHN[c] + (c > u ? ' (finish Chapter ' + (c - 1) + ')' : ''); } showScreen('#chapters'); };
 $('#btnCh1').onclick = () => { save = loadSave(LS) || defaultSave(); writeSave(LS, save); play(0); };

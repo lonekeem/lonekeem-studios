@@ -38,7 +38,7 @@ export async function goOnline(room = 'town') {
 
 // ---- accounts ----
 const FAKE = () => (typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) ? window.__MP_FAKE_AUTH : null; // dev/test hook (localhost only)
-export async function getUser() { const f = FAKE(); if (f) return f.email ? { email: f.email, user_metadata: { name: f.name } } : null; try { const c = await sb(); const { data } = await c.auth.getSession(); return data.session ? data.session.user : null; } catch (e) { return null; } }
+export async function getUser() { const f = FAKE(); if (f) return f.email ? { id: f.id || 'fake-user', email: f.email, user_metadata: { name: f.name, full_name: f.name, avatar_url: f.avatar || null } } : null; try { const c = await sb(); const { data } = await c.auth.getSession(); return data.session ? data.session.user : null; } catch (e) { return null; } }
 // Google sign-in. Web: normal redirect back to this page. Android app: Google refuses sign-in inside an embedded WebView, so the
 // sign-in page opens in the phone's browser and comes back through the app link com.lonekeemstudios.app://auth-callback?code=...
 // (AndroidManifest intent-filter, launchMode singleTask), handled by installNativeAuth() below. resume: 'mp' (town creator) or 'online' (world lobby).

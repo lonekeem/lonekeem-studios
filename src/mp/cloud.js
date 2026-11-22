@@ -58,7 +58,7 @@ export async function syncOnSignIn() {
   return { state: 'new', suggest: String(m.full_name || m.name || '').replace(/[^\p{L}\p{N} _.\-]/gu, '').trim().slice(0, 16), uid: u.id, email: u.email || null, avatarUrl: gAvatar(u) };
 }
 /** Signing out: this device keeps the profile as a guest copy, but it stops syncing. */
-export async function signedOut() { const PR = await ready; const cur = PR.getProfile(); if (cur && cur.uid) PR.saveProfile(Object.assign({}, cur, { uid: null, email: null, avatarUrl: null }), { silent: true }); }
+export async function signedOut() { try { localStorage.removeItem('atq.profile.owner'); } catch (e) { /* ignore */ } const PR = await ready; const cur = PR.getProfile(); if (cur && cur.uid) PR.saveProfile(Object.assign({}, cur, { uid: null, email: null, avatarUrl: null }), { silent: true }); }
 // push whenever the title screen comes back (after a run, the shop, the character screen) and something changed
 export function watchTitle() {
   const t = document.getElementById('title'); if (!t || t.__pw) return; t.__pw = true; let last = null;

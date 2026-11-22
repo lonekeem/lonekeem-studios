@@ -104,6 +104,7 @@ function buildUI() {
   root.innerHTML = `<div class="panel wpanel">
     <div class="whead"><button class="wback" aria-label="Back">‹ Back</button><h2>ONLINE</h2><span class="wnet" id="wNet">○ connecting…</span></div>
     <div class="wprof" id="wProf"></div>
+    <div class="wflash hidden" id="wFlash" role="status"></div>
     <div class="wwel hidden" id="wWel"></div>
     <div class="wseg" role="tablist"><button data-t="games" role="tab">World Lobby</button><button data-t="board" role="tab">Leaderboard</button></div>
     <div class="wbody" id="wGames">
@@ -128,38 +129,65 @@ function buildUI() {
   q('.wback').onclick = () => { ui.hide(); $('#title').classList.remove('hidden'); };
   root.querySelectorAll('.wseg:not(.wsort) button').forEach(b => b.onclick = () => setTab(b.dataset.t));
   root.querySelectorAll('.wsort button').forEach(b => b.onclick = () => { sort = b.dataset.s; loadBoard(); });
-  function setTab(t) { tab = t; root.querySelectorAll('.wseg:not(.wsort) button').forEach(b => b.classList.toggle('sel', b.dataset.t === t)); q('#wGames').classList.toggle('hidden', t !== 'games'); q('#wBoard').classList.toggle('hidden', t !== 'board'); if (t === 'board') loadBoard(); }
+  function setTab(t) { tab = t === 'board' ? 'board' : 'games'; root.querySelectorAll('.wseg:not(.wsort) button').forEach(b => b.classList.toggle('sel', b.dataset.t === tab)); const games = q('#wGames'), board = q('#wBoard'); if (games) games.classList.toggle('hidden', tab !== 'games'); if (board) board.classList.toggle('hidden', tab !== 'board'); if (tab === 'board') loadBoard(); }
   let syncing = false, pendingNew = null;
   onSyncStatus(w => { const e = q('#wSync'); if (e && w === 'saving') e.textContent = '☁ Saving…'; if (e && w === 'saved') e.textContent = '☁ Signed in with Google · synced'; if (w === 'conflict') flash('Loaded newer progress from your other device'); });
+  function markOwner(id) { if (!id) return; try { localStorage.setItem('atq.profile.owner', id); } catch (e) { /* ignore */ } }
+  function clearOwner() { try { localStorage.removeItem('atq.profile.owner'); } catch (e) { /* ignore */ } }
   async function refreshProf() {
-    prof = await profile(); const el = q('#wProf'); const gOn = MOCK() ? true : await googleEnabled();
-    // just came back from Google: load the saved profile, or start a new one for this account
-    if (prof.kind === 'google' && !MOCK() && !syncing && localStorage.getItem('atq.profile.owner') !== prof.id) {
-      syncing = true; el.innerHTML = '<div class="wpn"><b>Loading your profile…</b><span class="small">Signed in with Google</span></div>';
-      let r = null; try { r = await syncOnSignIn(); } catch (e) { r = { state: 'error', msg: e.message }; } syncing = false;
-      prof = await profile();
-      if (r.state === 'new') { pendingNew = r; welcome('new'); return; }
-      if (r.state === 'loaded') flash('Profile loaded: ' + (r.name || prof.name));
-      if (r.state === 'error') flash('Could not load your cloud profile: ' + r.msg);
-    }
-    if (!MOCK() && !(await profiles()).hasProfile()) {
-      q('#wWel').classList.add('hidden'); root.classList.remove('wfirst');
-      el.innerHTML = `${avatarHTML('?', null)}<div class="wpn"><b>Guest</b><span class="small">Create a profile to join games.</span></div>
-        <div class="wpb">${gOn ? '<button id="wGoogle" class="wg"><span class="gdot">G</span> Sign in</button>' : ''}<button id="wMakeProf" class="primary">Create profile</button></div>`;
+    const el = q('#wProf'); if (!el) return;
+    let gOn = false;
+    try {
+      prof = await profile(); gOn = MOCK() ? true : await googleEnabled();
+      // just came back from Google: load the saved profile, or start a new one for this account
+      if (prof.kind === 'google' && !MOCK() && !syncing && localStorage.getItem('atq.profile.owner') !== prof.id) {
+        syncing = true; el.innerHTML = '<div class="wpn"><b>Loading your profile…</b><span class="small">Signed in with Google</span></div>';
+        let r = null;
+        try {
+          // localhost-only hook so we can test the signed-in load path without a real Google session
+          if (isLocal() && window.__ATQ_TEST_SYNC) {
+            r = window.__ATQ_TEST_SYNC;
+            if (r.applySave) { try { window.__atq && window.__atq.reloadSave && window.__atq.reloadSave(); } catch (e) { /* ignore */ } }
+          } else r = await syncOnSignIn();
+        } catch (e) { r = { state: 'error', msg: e.message }; }
+        syncing = false;
+        prof = await profile();
+        if (r && r.state === 'new') { pendingNew = r; welcome('new'); return; }
+        if (r && (r.state === 'loaded' || r.state === 'uploaded')) markOwner(prof.id);
+        if (r && r.state === 'loaded') flash('Profile loaded: ' + (r.name || prof.name));
+        if (r && r.state === 'error') flash('Could not load your cloud profile: ' + r.msg);
+      }
+      if (!MOCK() && !(await profiles()).hasProfile()) {
+        q('#wWel') && q('#wWel').classList.add('hidden'); root.classList.remove('wfirst');
+        el.innerHTML = `${avatarHTML('?', null)}<div class="wpn"><b>Guest</b><span class="small">Create a profile to join games.</span></div>
+          <div class="wpb">${gOn ? '<button id="wGoogle" class="wg"><span class="gdot">G</span> Sign in</button>' : ''}<button id="wMakeProf" class="primary">Create profile</button></div>`;
+        const go = q('#wGoogle'); if (go) go.onclick = () => google(go);
+        const mk = q('#wMakeProf'); if (mk) mk.onclick = () => welcome(prof.kind === 'google' ? 'new' : 'first', gOn);
+        return;
+      }
+      q('#wWel') && q('#wWel').classList.add('hidden'); root.classList.remove('wfirst');
+      const nm = prof.name || 'Pick a name';
+      el.innerHTML = `${avatarHTML(prof.name, prof.avatar)}<div class="wpn"><b>${esc(nm)}</b><span class="small" id="wSync">${prof.kind === 'google' ? '☁ Signed in with Google · synced' : 'Guest · saved on this device'}</span></div>
+        <div class="wpb"><button id="wChar">Character</button><button id="wName">Name</button>${prof.kind === 'google' ? '<button id="wOut">Sign out</button>' : (gOn ? '<button id="wGoogle" class="wg"><span class="gdot">G</span> Sign in</button>' : '')}</div>`;
+      const nmBtn = q('#wName'); if (nmBtn) nmBtn.onclick = () => editName();
+      const chBtn = q('#wChar'); if (chBtn) chBtn.onclick = () => makeCharacter();
       const go = q('#wGoogle'); if (go) go.onclick = () => google(go);
-      const mk = q('#wMakeProf'); if (mk) mk.onclick = () => welcome(prof.kind === 'google' ? 'new' : 'first', gOn);
-      return;
+      const out = q('#wOut'); if (out) out.onclick = async () => { clearOwner(); await signedOut(); await signOut().catch(() => {}); refreshProf(); };
+    } catch (e) {
+      syncing = false;
+      try {
+        el.innerHTML = `${avatarHTML((prof && prof.name) || '?', prof && prof.avatar)}<div class="wpn"><b>${esc((prof && prof.name) || 'Signed in')}</b><span class="small">Could not finish loading your profile${e && e.message ? ': ' + esc(e.message) : ''}</span></div>
+          <div class="wpb"><button id="wRetryProf" class="primary">Retry</button>${gOn ? '<button id="wGoogle" class="wg"><span class="gdot">G</span> Sign in</button>' : ''}</div>`;
+        const rb = q('#wRetryProf'); if (rb) rb.onclick = () => refreshProf();
+        const go = q('#wGoogle'); if (go) go.onclick = () => google(go);
+      } catch (e2) { /* keep whatever is on screen rather than crash */ }
     }
-    q('#wWel').classList.add('hidden'); root.classList.remove('wfirst');
-    const nm = prof.name || 'Pick a name';
-    el.innerHTML = `${avatarHTML(prof.name, prof.avatar)}<div class="wpn"><b>${esc(nm)}</b><span class="small" id="wSync">${prof.kind === 'google' ? '☁ Signed in with Google · synced' : 'Guest · saved on this device'}</span></div>
-      <div class="wpb"><button id="wChar">Character</button><button id="wName">Name</button>${prof.kind === 'google' ? '<button id="wOut">Sign out</button>' : (gOn ? '<button id="wGoogle" class="wg"><span class="gdot">G</span> Sign in</button>' : '')}</div>`;
-    q('#wName').onclick = () => editName(); q('#wChar').onclick = () => makeCharacter();
-    const go = q('#wGoogle'); if (go) go.onclick = () => google(go);
-    const out = q('#wOut'); if (out) out.onclick = async () => { await signedOut(); await signOut().catch(() => {}); refreshProf(); };
   }
   async function google(btn) { if (btn) { btn.disabled = true; btn.textContent = 'Opening Google…'; } try { await signInGoogle('online'); } catch (e) { if (btn) { btn.disabled = false; btn.textContent = 'Sign in with Google'; } flash('Google sign-in unavailable: ' + (e.message || e)); } }
-  function flash(t) { const s = q('#wGamesInfo'); s.textContent = t; s.classList.add('warn'); setTimeout(() => { s.classList.remove('warn'); s.textContent = 'Open games from players anywhere in the world'; }, 5000); }
+  function flash(t) {
+    const a = q('#wFlash');
+    if (a) { a.textContent = t; a.classList.remove('hidden'); a.classList.add('warn'); clearTimeout(a._t); a._t = setTimeout(() => { a.classList.add('hidden'); a.classList.remove('warn'); a.textContent = ''; }, 5000); }
+  }
   // first time in Online: Sign in (load a saved profile) or Create profile; 'new' = signed in but this account has no profile yet
   async function welcome(kind, gOn = true) {
     { // the profile screen from fix/customize (welcome, Google button, step-by-step creator)
@@ -207,9 +235,20 @@ function buildUI() {
   }
   let rooms = [];
   async function connect() {
-    const net = q('#wNet'); net.textContent = '○ connecting…'; net.classList.remove('on');
+    const net = q('#wNet'); net.textContent = '○ Connecting…'; net.classList.remove('on');
+    const roomsEl = q('#wRooms'); if (roomsEl) roomsEl.innerHTML = '<div class="wempty small">Connecting…</div>';
     if (MOCK()) { rooms = MOCK_ROOMS; net.textContent = '● Online · 23 players'; net.classList.add('on'); renderRooms(rooms); return; }
-    try { const L = await lobbyChannel(); L.onChange = () => { rooms = L.rooms; const n = L.people || 0; net.textContent = n ? ('● Online · ' + n + ' player' + (n === 1 ? '' : 's')) : '● Online · no one else yet'; net.classList.add('on'); renderRooms(rooms); }; await L.ch.track({ name: (prof && prof.name) || 'Survivor', at: Date.now() }); L.onChange(); }
+    try {
+      const L = await lobbyChannel();
+      L.onChange = () => { rooms = L.rooms; const n = L.people || 0; net.textContent = n ? ('● Online · ' + n + ' player' + (n === 1 ? '' : 's')) : '● Online · no one else yet'; net.classList.add('on'); renderRooms(rooms); };
+      try {
+        await Promise.race([
+          L.ch.track({ name: (prof && prof.name) || 'Survivor', at: Date.now() }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('presence timed out')), 8000))
+        ]);
+      } catch (te) { /* subscribed but presence track hung or failed — still show the lobby */ }
+      L.onChange();
+    }
     catch (e) { net.textContent = '○ Offline'; net.classList.remove('on'); q('#wRooms').innerHTML = `<div class="wempty">Can't reach the online lobby.<br><span class="small">${esc(e.message || 'Check your connection and try again.')}</span><br><button id="wRetry">Retry</button></div>`; const rb = q('#wRetry'); if (rb) rb.onclick = connect; }
   }
   q('#btnCreateGame').onclick = async () => { const p = await profile(); joinRoom('w-' + Math.random().toString(36).slice(2, 8), (p.name || 'Survivor') + "'s game", ui); };
