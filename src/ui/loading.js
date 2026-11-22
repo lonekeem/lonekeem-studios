@@ -50,3 +50,8 @@ export function hideLoading() {
   if (el) el.classList.add('hidden');
   clearInterval(rot); rot = 0;
 }
+
+/** Two animation frames so the loading overlay can paint before heavy work. */
+export function yieldPaint() {
+  return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+}

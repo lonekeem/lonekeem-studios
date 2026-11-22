@@ -79,6 +79,8 @@ export async function enterTown({ look, onExit, room = 'town', solo = false } = 
   const aud = (useG && G.audio) ? G.audio : (window.__atq && window.__atq.audio) || new AudioSys({ vol: .9, music: .5, sfxVol: 1, voiceVol: 1, voices: true }); // reuse the title's already-unlocked context when there is one (iOS) try { aud.init(); } catch (e) { /* no audio */ }
   aud.noKeem = !(look && look.exclusive === 'skin.keem_story'); // only the admin's Original Keem has Keem's voice (barks, grunts, breathing); every other character is silent
   window.__mpAud = aud; if (!window.__mpAudHooked) { window.__mpAudHooked = 1; const ul = () => { try { if (window.__mpAud && !window.__mpAud._bgSuspended) window.__mpAud.unlock(true); } catch (e) { /* ignore */ } }; ['touchend', 'click', 'keydown', 'pointerup'].forEach(ev => addEventListener(ev, ul, { capture: true, passive: true })); }
+  try { aud.stopGameplay && aud.stopGameplay(); } catch (e) { /* ignore */ }
+  try { aud.beginSession && aud.beginSession('town'); } catch (e) { /* ignore */ }
   try { aud.rain && aud.rain(false); aud.beat && aud.beat(0); } catch (e) { /* ignore */ }
   // ---- cheap draw-call LOD: container/furniture lids only near the player, cars hidden far away, no shadows from small bits ----
   let perfAcc = 0; for (const c of W.containers) if (c.lid && c.lid.parent) c.lid.parent.traverse(o => { if (o.isMesh) o.castShadow = false; }); for (const c of cars) c.g.traverse(o => { if (o.isMesh && /wheel/.test(o.name)) o.castShadow = false; });

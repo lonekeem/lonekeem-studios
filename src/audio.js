@@ -262,7 +262,7 @@ P.at = function (p) { if (!p) return this; this._at = { x: p.x, y: p.y ?? 1, z: 
 P.listen = function (cam, indoors) { if (!this.ctx) return; const L = this.ctx.listener, e = cam.matrixWorld.elements, t = this.ctx.currentTime; const x = e[12], y = e[13], z = e[14];
   this.lpos = { x, y, z }; if (L.positionX) { L.positionX.setTargetAtTime(x, t, .02); L.positionY.setTargetAtTime(y, t, .02); L.positionZ.setTargetAtTime(z, t, .02); L.forwardX.setTargetAtTime(-e[8], t, .02); L.forwardY.setTargetAtTime(-e[9], t, .02); L.forwardZ.setTargetAtTime(-e[10], t, .02); L.upX.setTargetAtTime(e[4], t, .02); L.upY.setTargetAtTime(e[5], t, .02); L.upZ.setTargetAtTime(e[6], t, .02); }
   else { L.setPosition(x, y, z); L.setOrientation(-e[8], -e[9], -e[10], e[4], e[5], e[6]); }
-  if (indoors !== this.indoors) { this.indoors = indoors; this.rain(this.rainOn !== false, indoors ? .05 : .16); this.wind(true, indoors ? .02 : .1); } };
+  if (indoors !== this.indoors) { this.indoors = indoors; if (this._session === 'story') { this.rain(this.rainOn !== false, indoors ? .05 : .16); this.wind(true, indoors ? .02 : .1); } } };
 P.dist = function (p) { const l = this.lpos; if (!l || !p) return 0; const dx = p.x - l.x, dy = (p.y ?? 1) - l.y, dz = p.z - l.z; return Math.sqrt(dx * dx + dy * dy + dz * dz); };
 P.play = function (name, o = {}) { if (!this.ctx) return null; let n = name; if (FAM[name]) n = name + Math.floor(Math.random() * FAM[name]);
   const pos = o.pos || (o.flat ? null : this._at); const d = pos ? this.dist(pos) : 0; const maxD = o.maxD || 70;
@@ -277,7 +277,9 @@ P.play = function (name, o = {}) { if (!this.ctx) return null; let n = name; if 
     out.connect(p); out = p; s.panner = p; }
   else if (o.pan && this.ctx.createStereoPanner) { const p = this.ctx.createStereoPanner(); p.pan.value = o.pan; g.connect(p); out = p; }
   out.connect(o.bus || this.sfx); if (o.verb || d > 20) g.connect(this.verb); if (!o.loop) { this.nAct++; s.onended = () => { this.nAct--; }; }
-  s.start(this.ctx.currentTime + (o.delay || 0)); s.g = g; return s; };
+  s.start(this.ctx.currentTime + (o.delay || 0)); s.g = g; s._atqName = n; s._atqLoop = !!o.loop;
+  if (o.loop) { this._loops = this._loops || new Set(); this._loops.add(s); const prev = s.onended; s.onended = () => { this._loops && this._loops.delete(s); if (typeof prev === 'function') prev(); }; }
+  return s; };
 P.move = function (src, p) { if (src && src.panner && p) { const q = src.panner; if (q.positionX) { q.positionX.value = p.x; q.positionY.value = p.y ?? 1; q.positionZ.value = p.z; } else q.setPosition(p.x, p.y ?? 1, p.z); } };
 // loop emitter attached to an object (car alarm, burning car, engine of NPC cars)
 P.loopAt = function (name, p, vol = .5, o = {}) { const s = this.play(name, Object.assign({ loop: true, pos: p, vol, jit: 0 }, o)); return s && !s.dummy ? s : null; };
@@ -356,15 +358,17 @@ P.chew = function (vol = .3, z) { this.zVocal('chew', z, vol * .7); if (!this.pl
 P.tear = function (vol = .3) { if (!this.play('z_tear', { vol, jit: .1 })) this.splat(); };
 P.eat = function (vol = .3, z) { this.zVocal('eat', z, vol * .65); this.play('z_eat', { vol, jit: .1 }); };
 P.thunder = function (vol = .7) { if (!this.play('thunder', { vol, verb: true, jit: .1, delay: Math.random() * 1.5 })) this.boom(); };
-P.rain = function (on, vol = .16) { if (!this.ctx) return; this.rainOn = on; const t = this.ctx.currentTime;
-  if (on && !this.rainSrc) { this.rainSrc = this.play('rain_loop', { loop: true, vol: 0, bus: this.amb, jit: 0, flat: true }); this.wind(true, .1); if (!this.rainSrc) { setTimeout(() => this.rain(on, vol), 800); return; } }
+P.rain = function (on, vol = .16) { if (!this.ctx) return;
+  if (on && this._session && this._session !== 'story') return;
+  this.rainOn = !!on; const t = this.ctx.currentTime; const gen = this._gen || 0;
+  if (on && !this.rainSrc) { this.rainSrc = this.play('rain_loop', { loop: true, vol: 0, bus: this.amb, jit: 0, flat: true }); this.wind(true, .1); if (!this.rainSrc) { setTimeout(() => { if ((this._gen || 0) !== gen || this._session !== 'story') return; this.rain(on, vol); }, 800); return; } }
   if (this.rainSrc) this.rainSrc.g.gain.setTargetAtTime(on ? vol : 0, t, 1.2); };
 P.engine = function (on, rpm = 0) { if (!this.ctx) return; const t = this.ctx.currentTime;
   if (on && !this.truckSrc) this.truckSrc = this.play('truck_loop', { loop: true, vol: 0, jit: 0, flat: true });
   if (!this.truckSrc) return O.engine.call(this, on, rpm);
   this.truckSrc.g.gain.setTargetAtTime(on ? .45 + rpm * .35 : 0, t, .15); this.truckSrc.playbackRate.setTargetAtTime(.8 + rpm * .9, t, .2);
   if (!on) { const s = this.truckSrc; this.truckSrc = null; setTimeout(() => { try { s.stop(); } catch {} }, 600); } };
-P.ambientTick = function () { O.ambientTick.call(this); if (!this.ctx || this.ctx.state !== 'running') return; if (this.lpos && Math.random() < .035) { const an = Math.random() * 6.283, d = 45 + Math.random() * 60, p = { x: this.lpos.x + Math.cos(an) * d, y: 2, z: this.lpos.z + Math.sin(an) * d }; if (Math.random() < .5) this.play('scream', { vol: .5, pos: p, maxD: 200 }); else { const n = 1 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) setTimeout(() => this.play(FAM.gun_rifle ? 'gun_rifle' : 'gun_pistol', { vol: .45, pos: p, maxD: 200 }), i * (120 + Math.random() * 200)); } }
+P.ambientTick = function () { O.ambientTick.call(this); if (!this.ctx || this.ctx.state !== 'running') return; if (this._session !== 'story') return; if (this.lpos && Math.random() < .035) { const an = Math.random() * 6.283, d = 45 + Math.random() * 60, p = { x: this.lpos.x + Math.cos(an) * d, y: 2, z: this.lpos.z + Math.sin(an) * d }; if (Math.random() < .5) this.play('scream', { vol: .5, pos: p, maxD: 200 }); else { const n = 1 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) setTimeout(() => { if (this._session !== 'story') return; this.play(FAM.gun_rifle ? 'gun_rifle' : 'gun_pistol', { vol: .45, pos: p, maxD: 200 }); }, i * (120 + Math.random() * 200)); } }
   if ((this.mode === 'night' || this.mode === 'tense') && Math.random() < .035) this.thunder(.5 + Math.random() * .4); };
 // ---- voices ----
 P.voice = function (who, text, bleeps) { this.stopVoice(); if (this.noKeem && /keem/i.test(who)) return Promise.resolve(0); if (!this.ctx || this.s.voices === false || who === 'note') return Promise.resolve(0);
@@ -382,3 +386,66 @@ P.shout = function (key, force, pos) { if (this.noKeem && /^keem/.test(key)) ret
   this.bag = this.bag || {}; let bg = this.bag[key]; if (!bg || !bg.length) { bg = this.bag[key] = [...Array(n).keys()].sort(() => Math.random() - .5); if (bg.length > 1 && bg[bg.length - 1] === this['last_' + key]) bg.unshift(bg.pop()); }
   const idx = bg.pop(); this['last_' + key] = idx; const name = 'v/' + key + idx; const s = this.play(name, { bus: this.voiceBus, jit: .02, vol: key.startsWith('npc') ? .8 : 1, pos: key.startsWith('keem') ? null : at, flat: key.startsWith('keem'), ref: 4, maxD: 60 });
   if (!s) { this.load(name); return; } if (s.dummy) return; const tx = this.man && this.man.texts && this.man.texts[key]; if (tx && this.onBark) { const i = +name.slice(name.lastIndexOf(key) + key.length); this.onBark(tx[0], tx[1][i] || ''); } };
+
+P.holdSrc = function (s) { this._held = this._held || new Set(); if (s) this._held.add(s); return s; };
+P.beginSession = function (kind) { this._session = kind || 'story'; };
+P._stopSrc = function (s) {
+  if (!s || s.dummy) return;
+  try { if (s.g && s.g.gain) { s.g.gain.cancelScheduledValues(this.ctx ? this.ctx.currentTime : 0); s.g.gain.value = 0; } } catch (e) { /* ignore */ }
+  try { s.stop(); } catch (e) { /* already stopped */ }
+  if (this._loops) this._loops.delete(s);
+  if (this._held) this._held.delete(s);
+};
+/** Fully stop story/Survival beds so they cannot leak into the menu or multiplayer. */
+P.stopGameplay = function () {
+  this._gen = (this._gen || 0) + 1;
+  this._session = 'none';
+  this.rainOn = false;
+  this.lpos = null;
+  try { this.stopVoice(); } catch (e) { /* ignore */ }
+  try { this.beat && this.beat(0); } catch (e) { /* ignore */ }
+  try { this.drone && this.drone(false); } catch (e) { /* ignore */ }
+  this._stopSrc(this.rainSrc); this.rainSrc = null;
+  this._stopSrc(this.windSrc); this.windSrc = null;
+  this._stopSrc(this.truckSrc); this.truckSrc = null;
+  this._stopSrc(this.tireSrc); this.tireSrc = null;
+  if (this._en) { try { this._en.o.stop(); } catch (e) { /* ignore */ } this._en = null; }
+  if (this._loops) { for (const s of [...this._loops]) this._stopSrc(s); this._loops.clear(); }
+  if (this._held) { for (const s of [...this._held]) this._stopSrc(s); this._held.clear(); }
+  try {
+    document.querySelectorAll('video, audio').forEach((el) => {
+      try { el.pause(); } catch (err) { /* ignore */ }
+      try { delete el.dataset.atqBg; } catch (err) { /* ignore */ }
+    });
+  } catch (e) { /* ignore */ }
+};
+/** Snapshot of leftover gameplay nodes for smoke tests (no secrets). */
+P.audit = function () {
+  const listed = [];
+  const seen = new Set();
+  const add = (name, s) => {
+    if (!s || s.dummy || seen.has(s)) return;
+    seen.add(s);
+    let gain = 0; try { gain = s.g && s.g.gain ? +s.g.gain.value : 0; } catch (e) { gain = 0; }
+    listed.push({ name: name || s._atqName || 'loop', gain: +gain.toFixed(4), loop: !!(s.loop || s._atqLoop) });
+  };
+  add('rain_loop', this.rainSrc);
+  add('wind_loop', this.windSrc);
+  add('truck_loop', this.truckSrc);
+  add('tire_loop', this.tireSrc);
+  add('voice', this.vSrc);
+  if (this._loops) for (const s of this._loops) add(s._atqName || 'loop', s);
+  if (this._held) for (const s of this._held) add(s._atqName || 'held', s);
+  return {
+    mode: this.mode || null,
+    session: this._session || 'none',
+    rainOn: !!this.rainOn,
+    beatOn: !!this._bt,
+    droneOn: !!this._dr,
+    engineOn: !!(this._en || this.truckSrc),
+    voiceOn: !!this.vSrc,
+    loops: listed,
+    loopCount: listed.length,
+    storyPlaying: !!(this.rainSrc || this._bt || this._dr || this._en || this.truckSrc || this.tireSrc || this.vSrc || (this._loops && this._loops.size) || this.rainOn || (this._held && this._held.size)),
+  };
+};

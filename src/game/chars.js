@@ -100,11 +100,21 @@ export class Char {
       ['DEF-foot.L', 'DEF-foot.R', 'DEF-toe.L', 'DEF-toe.R'].forEach(n => { const b = this.bone(n); if (b) b.scale.set(1.14, 1.14, 1.2); }); }
     if (look.rig && lib.rigs && lib.rigs[look.rig] && !/[?&]rig=0/.test(location.search)) { try { attachRig(this, lib.rigs[look.rig], { tint: /zombie|raider|gen[mf]/.test(look.rig) ? look.tint : null, tintK: /gen[mf]/.test(look.rig) ? .22 : /zombie_/.test(look.rig) ? .3 : undefined, tintMul: look.rig === 'zombie_elder' ? .42 : look.rig === 'zombie_big' ? .86 : look.rig === 'zombie_male' ? .95 : undefined, rough: /zombie_/.test(look.rig) ? .88 : undefined, handColor: look.rig === 'raider' ? '#1c1c1f' : /zombie/.test(look.rig) ? '#8e9677' : null }); } catch (e) { console.warn('rig', e); } }
     this.mixer = new THREE.AnimationMixer(obj); this.actions = {}; this.cur = null; this.curName = ''; this.oneShot = null;
-    this.mixer.addEventListener('finished', (e) => { if (this.oneShot && e.action === this.oneShot.a) { const cb = this.oneShot.cb; this.oneShot = null; cb && cb(); } });
+    this.mixer.addEventListener('finished', (e) => {
+      if (this.oneShot && e.action === this.oneShot.a) {
+        const cb = this.oneShot.cb; this.oneShot = null;
+        if (cb) { cb(); return; } // Hit_Chest may chain into Death01
+      }
+      const clip = e.action && e.action.getClip && e.action.getClip();
+      const nm = (clip && clip.name) || this.curName || '';
+      if (this.dead && /Death/i.test(nm)) this.holdDead();
+    });
     bindHeadLook(this);
   }
   act(name) { let a = this.actions[name]; if (!a) { const c = this.lib.clips[name]; if (!c) return null; a = this.actions[name] = this.mixer.clipAction(c); } return a; }
   play(name, { fade = 0.18, speed = 1, once = false, cb, force = false } = {}) {
+    if (this._deadHeld) return; // frozen corpse — never fade back to idle
+    if (this.dead && !/^(Death|Hit_)/.test(name || '')) return;
     if (!force && this.curName === name && !once) { if (this.cur) this.cur.timeScale = speed; return; }
     const a = this.act(name); if (!a) return; const wasLoco = this.locoOn; if (wasLoco) this.endLoco(fade); a.reset(); a.timeScale = speed; a.enabled = true;
     if (once) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; this.oneShot = { a, cb }; } else a.setLoop(THREE.LoopRepeat);
@@ -115,6 +125,7 @@ export class Char {
   // v1.9.26: speeds/strides in LOCO were measured at scale 1, so they scale with the character (Keem 0.9, Nia 0.62): a small character takes
   // shorter, quicker steps instead of sliding. `wspd` (optional, smoothed) picks the walk/jog/sprint blend; `speed` (real ground speed) drives the cycle.
   locomote(speed, dir = 1, dt = 0.016, max = 6.4, wspd = speed) {
+    if (this._deadHeld || this.dead) return false;
     const k = this.scale || 1, N = Char.LOCO.map(n => ({ name: n.name, v: n.v * k, stride: n.stride * k, off: n.off })); const acts = N.map(n => this.act(n.name)); if (acts.some(a => !a)) return false;
     if (!this.locoOn) { this.locoOn = true; this.locoW = 0; this.locoPh = this.locoPh || 0; if (this.cur) { this.cur.fadeOut(0.2); this.cur = null; } this.curName = '__loco';
       acts.forEach(a => { a.enabled = true; a.stopFading(); a.setLoop(THREE.LoopRepeat); a.timeScale = 0; a.paused = false; a.play(); a.setEffectiveWeight(0); }); }
@@ -128,10 +139,40 @@ export class Char {
   // natural ground speed (m/s) of a locomotion clip at this character's size, so a scripted mover can play it at the matching rate
   natSpeed(name) { const n = Char.LOCO.find(l => l.name === name); const k = this.scale || 1; return n ? n.v * k : name === 'Crouch_Fwd_Loop' ? 0.7 * k : 0; }
   // drive the legs from the distance actually covered this frame (any direction): blend tree when available, rate-matched clip otherwise
-  moveAnim(sp, dt, idle = 'Idle_Loop') { this._aspd = (this._aspd || 0) + (sp - (this._aspd || 0)) * Math.min(1, dt * 12);
+  moveAnim(sp, dt, idle = 'Idle_Loop') { if (this._deadHeld || this.dead) return false; this._aspd = (this._aspd || 0) + (sp - (this._aspd || 0)) * Math.min(1, dt * 12);
     if (sp > .12 || this._aspd > .3) { if (!this.locomote(Math.max(sp, .3), 1, dt, 6.4, this._aspd)) { const nm = this._aspd > 2.6 * (this.scale || 1) ? 'Jog_Fwd_Loop' : 'Walk_Loop'; this.play(nm, { speed: Math.max(.4, Math.min(2.4, sp / (this.natSpeed(nm) || 1))) }); } return true; }
     this.play(idle); return false; }
   endLoco(fade = 0.18) { if (!this.locoOn) return; this.locoOn = false; Char.LOCO.forEach(n => { const a = this.actions[n.name]; if (a) a.fadeOut(fade); }); this.cur = null; this.curName = ''; }
+  // Lock the last death frame and stop other clips so the mixer cannot blend back to idle.
+  holdDead() {
+    if (this._deadHeld && this._deadPose) return this;
+    this.dead = true; this.locoOn = false; this.oneShot = null;
+    try { if (this._headLook) { this._headLook.yaw = 0; this._headLook.pitch = 0; } } catch (e) { /* ignore */ }
+    const a = this.cur;
+    if (a) {
+      try {
+        const d = a.getClip().duration;
+        a.clampWhenFinished = true; a.setLoop(THREE.LoopOnce, 1); a.stopFading && a.stopFading();
+        a.enabled = true; a.paused = true; a.timeScale = 0; a.time = d; a.setEffectiveWeight(1);
+      } catch (e) { /* ignore */ }
+    }
+    for (const k in this.actions) {
+      const x = this.actions[k];
+      if (x && x !== a) { try { x.stop(); x.enabled = false; x.setEffectiveWeight(0); } catch (e) { /* ignore */ } }
+    }
+    try { this.mixer.update(0); } catch (e) { /* ignore */ }
+    const pose = [], seen = new Set();
+    for (const k in this.bones) {
+      const b = this.bones[k]; if (!b || seen.has(b)) continue; seen.add(b);
+      pose.push({ b, q: b.quaternion.clone(), p: b.position.clone(), s: b.scale.clone() });
+    }
+    this._deadPose = pose; this._deadHeld = true; this.curName = this.curName || 'Death01';
+    return this;
+  }
+  restoreDeadPose() {
+    const pose = this._deadPose; if (!pose) return;
+    for (const s of pose) { s.b.quaternion.copy(s.q); s.b.position.copy(s.p); if (s.s) s.b.scale.copy(s.s); }
+  }
   bone(n) { return this.bones[n] || this.bones[n.replace(/[.]/g, '')]; }
   attach(boneName, mesh) { if (this.attachSkin && this.attachSkin(boneName, mesh)) return mesh; const b = this.bone(boneName); if (b) b.add(mesh); return mesh; }
   worldOf(boneName, out) { const b = this.bone(boneName); return b ? b.getWorldPosition(out) : this.root.getWorldPosition(out); }

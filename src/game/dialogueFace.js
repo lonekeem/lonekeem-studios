@@ -148,6 +148,7 @@ function headOf(ch, out) {
 }
 
 function lookHead(ch, target, dt) {
+  if (!ch || ch.dead || ch._deadHeld || ch.isVictim || ch._seatLock) return;
   const head = ch.bone && ch.bone('DEF-head');
   if (!head || !target) return;
   headOf(ch, _hp); headOf(target, _tp);

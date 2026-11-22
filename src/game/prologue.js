@@ -60,9 +60,9 @@ export function runPrologue(g, done) {
   const cut = g.cut = { anim: 'Idle_Loop', cam: V(0, 17, 80), look: V(0, 1, 22), snap: true, fov: 62, flash: false, noFace: true };
   // ---- audio
   let src = null, t0 = 0, t = 0, ended = false;
-  const startAudio = () => { if (!BUF || !A.ctx) return; try { src = A.ctx.createBufferSource(); src.buffer = BUF; const gn = A.ctx.createGain(); gn.gain.value = 1; src.connect(gn); gn.connect(A.master); src.start(); t0 = A.ctx.currentTime; } catch (e) { src = null; } };
+  const startAudio = () => { if (!BUF || !A.ctx) return; try { src = A.ctx.createBufferSource(); src.buffer = BUF; const gn = A.ctx.createGain(); gn.gain.value = 1; src.connect(gn); gn.connect(A.master); src.start(); try { A.holdSrc && A.holdSrc(src); } catch (e2) { } t0 = A.ctx.currentTime; } catch (e) { src = null; } };
   if (A.windG) { A._proWind = A.windG.gain.value; A.windG.gain.setTargetAtTime(0.06, A.ctx.currentTime, .5); }
-  if (A.rain) A.rain(true);
+  try { A.beginSession && A.beginSession('story'); } catch (e) { } if (A.rain) A.rain(true);
   startAudio();
   // ---- skip: Skip button = one tap, anywhere else = tap twice (so a stray tap does not throw the scene away), Esc/Enter/Space = skip
   let armed = 0;

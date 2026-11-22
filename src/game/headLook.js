@@ -12,7 +12,15 @@ export const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 export const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 export const angLerp = (a, b, t) => a + wrapA(b - a) * t;
 
-// Snapshot bind pose and wrap mixer.update so every tick starts from it. Safe to call twice.
+const LOOK_BONE = /(^|[-._])(head|neck)$/i;
+
+function isCorpse(ch) {
+  return !!(ch && (ch._deadHeld || ch._deadPose || ch._seatLock || (ch.dead && ch.st === 'dead')));
+}
+
+// Snapshot the look bones' bind pose and wrap mixer.update so look starts from it.
+// Only head / neck are reset: v1.9.34 reset every bone, which snapped corpses back to the standing bind pose
+// whenever Death01 left a bone untracked or the clip had finished.
 export function bindHeadLook(ch) {
   if (!ch || !ch.mixer || ch._headLook) return ch;
   const bones = {};
@@ -20,13 +28,18 @@ export function bindHeadLook(ch) {
   const src = ch.bones || {};
   for (const k of Object.keys(src)) {
     const b = src[k];
-    if (!b || !b.quaternion || seen.has(b)) continue;
+    const name = (b && b.name) || k;
+    if (!b || !b.quaternion || seen.has(b) || !LOOK_BONE.test(name)) continue;
     seen.add(b);
-    bones[b.name || k] = { b, q: b.quaternion.clone(), p: b.position.clone() };
+    bones[name] = { b, q: b.quaternion.clone(), p: b.position.clone() };
   }
   ch._headLook = { bones, yaw: 0, pitch: 0 };
   const orig = ch.mixer.update.bind(ch.mixer);
   ch.mixer.update = function (dt) {
+    if (ch._deadHeld || ch._deadPose) {
+      if (ch.restoreDeadPose) ch.restoreDeadPose();
+      return this;
+    }
     for (const k in bones) {
       const s = bones[k];
       s.b.quaternion.copy(s.q);
@@ -39,7 +52,7 @@ export function bindHeadLook(ch) {
 
 // After mixer.update: turn the head / neck toward yaw / pitch (character-forward frame, radians).
 export function applyHeadLook(ch, yaw, pitch, dt = 0.016, { yawLim = YAW_LIM, pitchLim = PITCH_LIM, rate = 10 } = {}) {
-  if (!ch) return;
+  if (!ch || isCorpse(ch) || ch.isVictim) return;
   if (!ch._headLook) bindHeadLook(ch);
   const S = ch._headLook;
   yaw = clamp(wrapA(yaw), -yawLim, yawLim);

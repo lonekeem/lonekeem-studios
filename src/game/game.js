@@ -24,6 +24,7 @@ import { STORY, LOOT, chOf, TOTAL_PAGES, SPEAKER_NAMES } from './story.js';
 import { onDialogueLine, tickDialogueFace, endDialogueFace, resetDialogueFace } from './dialogueFace.js';
 import { hitChar, capsOf, updateAimPose, placeShotFx, muzzleWorld, stepAimAssist } from './aim.js';
 import { attachGameWeaponBar, syncWeaponBar } from '../ui/weaponBar.js';
+import { yieldPaint } from '../ui/loading.js';
 
 const $ = (s) => document.querySelector(s);
 export const PRESETS = {
@@ -42,6 +43,14 @@ export function langLine(raw, mode) { const re = /\{([^|}]*)\|([^}]*)\}/g; const
   const bleeps = []; if (mode === 'bleep') { let pos = 0, out = 0; raw.replace(re, (m, a, b, off) => { const st = off - pos + out; bleeps.push([st, st + a.trimEnd().length]); out = st + a.length; pos = off + m.length; return m; });
     const len = voice.length || 1; bleeps.forEach(b => { b[0] /= len; b[1] /= len; }); } return { sub, voice, bleeps }; }
 export function playerLook() { return DEFAULT_LOOK; } // v1.9.28: story Keem always keeps his canon look (customization now dresses the multiplayer character)
+
+const yieldOnce = () => new Promise((r) => requestAnimationFrame(r));
+async function compileScene(r, scene, cam) {
+  try {
+    if (r && r.compileAsync) await r.compileAsync(scene, cam);
+    else { await yieldOnce(); if (r && r.compile) r.compile(scene, cam); }
+  } catch (e) { /* compile can fail on a mid-dispose frame */ }
+}
 
 // v1.9.2: touch wording for objective hints on phones
 const touchHint = (h) => h.replace(/\(WASD \/ left stick\)/g, '(left stick)').replace(/\bE \/ ✋/g, '✋ hand button').replace(/\bPress E\b/g, 'Tap ✋').replace(/GAS\/BRAKE \+ ◀ ▶ \([^)]*\)/g, 'GAS/BRAKE + ◀ ▶').replace(/\bWASD\b/g, 'left stick');
@@ -67,7 +76,9 @@ export class Game {
     const sc = moon.shadow.camera; sc.left = sc.bottom = -26; sc.right = sc.top = 26; sc.near = 1; sc.far = 140; moon.shadow.bias = -0.0005; moon.shadow.normalBias = 0.03; scene.add(moon, moon.target);
     const CK = ['sedan', 'suv', 'truck', 'police', 'van', 'taxi', 'hatchback-sports', 'suv-luxury', 'ambulance', 'debris-tire', 'debris-door', 'debris-bumper']; const CM = {};
     await Promise.all(CK.map(k => new GLTFLoader().loadAsync(base + 'models/cars/' + k + '.glb').then(g => { CM[k] = g.scene; }).catch(() => { })));
+    progress && progress(0.55); await yieldOnce();
     this.world = buildWorld(scene, Q, tl, base, CM); if (this.world.env && !/[?&]sky=0/.test(location.search)) { scene.background = null; scene.fog.color.copy(this.world.env.fogColor); } // v2.1 procedural sky dome + matching fog
+    progress && progress(0.72); await yieldOnce();
     this.lib = new CharLib(gltf); this.lib.rigs = await loadRigs(base);
     await new Promise(res => { if (mgr.itemsLoaded >= mgr.itemsTotal) res(); else { mgr.onLoad = res; setTimeout(res, 15000); } });
     // drive buttons (touch / mouse)
@@ -89,8 +100,10 @@ export class Game {
     addEventListener('resize', () => this.resize()); this.resize();
     this.cam = { yaw: Math.PI / 2, pitch: -0.12, dist: CAM.dist, fp: !!S.fp, shake: V3() };
     this.fpsAcc = 0; this.fpsN = 0; this.fpsT = 0;
-    // warm up shaders
-    r.compile(scene, cam);
+    // warm up shaders without a long main-thread hitch
+    progress && progress(0.92);
+    await compileScene(r, scene, cam);
+    progress && progress(1);
   }
   resize() { const w = innerWidth, h = innerHeight; this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); if (this.composer) this.composer.setSize(w, h); this._xh = null; }
 
@@ -101,13 +114,19 @@ export class Game {
     P.attach('DEF-spine.003', this.pack); this.pack.position.set(0, 0.12, -0.2); this.pack.rotation.set(0.1, 0, 0); if (P.skin) { this.pack.scale.setScalar(.6); this.pack.position.set(0, -0.03, -0.05); } else this.pack.scale.setScalar(1);
     P.attach('DEF-hand.R', this.hand); this.hand.rotation.set(Math.PI / 2, 0, 0); this.hand.position.set(0, 0.08, 0.02);
     this.pack.visible = !!(P.wantsPack || (this.save && this.save.items.includes('backpack'))); return P; }
-  start(step) { if (this._lookKey !== JSON.stringify(playerLook())) this.makePlayer(); step = step || 0; if (!this.holdSave && !(STORY[step] && STORY[step].survival)) this.save.step = step; this.loadStep(step); this.paused = !!(typeof window !== 'undefined' && window.__atq && window.__atq.isAway && window.__atq.isAway()); if (!this.running) { this.running = true; this.last = performance.now(); requestAnimationFrame((t) => this.frame(t)); } }
+  async start(step, opts = {}) { if (this._lookKey !== JSON.stringify(playerLook())) this.makePlayer(); step = step || 0; if (!this.holdSave && !(STORY[step] && STORY[step].survival)) this.save.step = step; await this.loadStep(step, { overlay: opts.overlay !== false }); this.paused = !!(typeof window !== 'undefined' && window.__atq && window.__atq.isAway && window.__atq.isAway()); if (!this.running) { this.running = true; this.last = performance.now(); requestAnimationFrame((t) => this.frame(t)); } await yieldOnce(); }
+  leave() {
+    this.paused = true; this.running = false; this.cut = null;
+    this.stepTok = (this.stepTok || 0) + 1;
+    try { if (this.truck && this.truck.driving) this.exitTruck(); } catch (e) { /* ignore */ }
+    try { this.audio && this.audio.stopGameplay && this.audio.stopGameplay(); } catch (e) { /* ignore */ }
+  }
   // v1.9.1 leak fix: actors removed on retry/step change free their GPU geometry/materials/textures (world + pooled fx are kept)
   keepSet() { const K = this._keep = new WeakSet(); const add = (m) => { if (!m) return; K.add(m); for (const k in m) { const v = m[k]; if (v && v.isTexture) K.add(v); } const u = m.userData && m.userData.u; if (u) for (const k in u) { const v = u[k] && u[k].value; if (v && v.isTexture) K.add(v); } };
     this.scene.traverse(o => { if (o.geometry) K.add(o.geometry); (Array.isArray(o.material) ? o.material : [o.material]).forEach(add); }); this.lib.gltf.scene.traverse(o => { if (o.geometry) K.add(o.geometry); }); }
   disposeTree(root) { if (!root || !this._keep) return; const K = this._keep; root.traverse(o => { if (o.geometry && !K.has(o.geometry)) o.geometry.dispose(); const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
       ms.forEach(m => { if (K.has(m)) return; for (const k in m) { const v = m[k]; if (v && v.isTexture && !K.has(v)) v.dispose(); } const u = m.userData && m.userData.u; if (u) for (const k in u) { const v = u[k] && u[k].value; if (v && v.isTexture && !K.has(v)) v.dispose(); } m.dispose(); }); }); }
-  prewarm() { // create every lazily-built fx up front: a light added mid-fight recompiles every shader (the 0.5–0.8 s grenade/first-shot freezes)
+  async prewarm() { // create every lazily-built fx up front: a light added mid-fight recompiles every shader (the 0.5–0.8 s grenade/first-shot freezes)
     if (!this._boomL) { this._boomL = new THREE.PointLight('#ff9040', 0, 60, 2); this.scene.add(this._boomL); this._ballGeo = new THREE.SphereGeometry(1, 12, 8); }
     while (this.booms.length < 4) { const b = { ball: new THREE.Mesh(this._ballGeo, new THREE.MeshBasicMaterial({ color: '#ffb050', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })) }; b.ball.visible = false; this.scene.add(b.ball); this.booms.push(b); }
     if (!this.flames) { this.flameAt(V3(0, -50, 0), 1); this.flames.forEach(f => { f.life = 0; f.s.visible = false; }); }
@@ -118,7 +137,7 @@ export class Game {
     this.rFx();
     const R = this.renderer, hid = []; this.scene.traverse(o => { if (!o.visible) { hid.push(o); o.visible = true; } }); const L = this.mLight, li = L ? L.intensity : 0;
     if (L) L.intensity = 6; if (this.muzzle) this.muzzle.visible = true; if (this.tracer) this.tracer.visible = true; if (this.faceL) this.faceL.intensity = 0.7;
-    try { R.compile(this.scene, this.camera); R.render(this.scene, this.camera); } catch (e) { } hid.forEach(o => o.visible = false); if (L) L.intensity = li; if (this.muzzle) this.muzzle.visible = false; if (this.tracer) this.tracer.visible = false; if (this.faceL) this.faceL.intensity = 0; }
+    try { await compileScene(R, this.scene, this.camera); R.render(this.scene, this.camera); } catch (e) { } hid.forEach(o => o.visible = false); if (L) L.intensity = li; if (this.muzzle) this.muzzle.visible = false; if (this.tracer) this.tracer.visible = false; if (this.faceL) this.faceL.intensity = 0; }
   clearActors() { townReset(this); this.zombies.forEach(z => { this.scene.remove(z.root); z.mixer.stopAllAction(); z.mixer.uncacheRoot(z.model); this.disposeTree(z.root); }); this.zombies = []; for (const k in this.npcs) { const n = this.npcs[k]; this.scene.remove(n.root); n.mixer.stopAllAction(); n.mixer.uncacheRoot(n.model); this.disposeTree(n.root); } this.npcs = {};
     this.pickups.forEach(p => this.scene.remove(p.mesh)); this.pickups = []; this.props.forEach(p => { this.scene.remove(p); this.disposeTree(p); }); this.props = []; this.decalN = 0; this.decals.forEach(d => d.visible = false); (this.pools || []).forEach(o => { this.scene.remove(o); o.material.dispose(); }); this.pools = [];
     if (this.truck) this.truck.driving = false; document.body.classList.remove('driving'); $('#drive')?.classList.add('hidden'); this.drv = {}; this.boss = null; $('#boss').classList.add('hidden'); this.dlgQ = []; this.dlgCur = null; $('#dlg').classList.remove('on'); }
@@ -129,19 +148,30 @@ export class Game {
     if (mode === 'dark') { this.hemi.intensity = 1.0; this.hemi.color.set('#5a7a78'); this.hemi.groundColor.set('#2a3634'); S.environmentIntensity = .1; S.fog.density = o.fog * .55; S.fog.color.set('#0a1214'); }
     else { this.hemi.intensity = 1.5; this.hemi.color.set('#e8f2f4'); this.hemi.groundColor.set('#a89a86'); S.environmentIntensity = .25; S.fog.density = o.fog * .22; S.fog.color.set('#cdd6d4'); }
     S.background = new THREE.Color(S.fog.color); }
-  loadStep(i) {
-    if (!this._keep) this.keepSet(); this.clearActors(); resetDialogueFace(this); const st = STORY[i]; if (this.step !== i) this._bossRetry = false; this.step = i; this.stuckT = 0; this.stepTok = (this.stepTok || 0) + 1; this.stepData = {}; const P = this.player; this.dead = false; this.dying = null; this.cut = null;
+  async loadStep(i, opts = {}) {
+    const overlay = !!opts.overlay;
+    const setP = (p) => { if (!overlay) return; try { const a = window.__atq; a && a.setProgress && a.setProgress(p); } catch (e) { /* ignore */ } };
+    if (!this._keep) this.keepSet(); this.clearActors(); resetDialogueFace(this); const st = STORY[i]; if (this.step !== i) this._bossRetry = false; this.step = i; this.stuckT = 0; const tok = this.stepTok = (this.stepTok || 0) + 1; this.stepData = {}; const P = this.player; this.dead = false; this.dying = null; this.cut = null;
+    const yn = async (p) => { setP(p); if (overlay) await yieldPaint(); return this.stepTok === tok; };
     this.maxHp = 100 + (perk(this.save, 2) ? 20 : 0) + (perk(this.save, 9) ? 20 : 0) + (this.settings.qteEasy ? 50 : 0); this.hp = this.maxHp;
     this.state = { roll: 0, atk: 0, atkHit: 0, combo: 0, comboT: 0, vy: 0, y: 0, crouch: false, run: false, aim: false, reload: 0, fireCd: 0, stun: 0 };
     P.root.visible = true; P.model.visible = true; for (const k in P.bones) P.bones[k].scale.set(1, 1, 1);
     const cp = st.cp; P.root.position.set(cp[0], 0, cp[1]); P.root.rotation.y = cp[2] || 0; this.cam.yaw = (cp[2] || 0) + Math.PI; this.cam.pitch = -0.1;
     this.pack.visible = this.save.items.includes('backpack') || !!this.player.wantsPack; this.equip(this.save.cur || 'fists', true);
+    if (!(await yn(0.2))) return;
     this.survival = !!st.survival; const ch = chOf(i); const zs = this.world.zones || {}; for (const k in zs) if (zs[k] && zs[k].isObject3D) zs[k].visible = +k === ch; if (ch > (this.save.ch || 1) && !st.survival) this.save.ch = ch;
     if (!st.survival) LOOT.forEach(l => { const lc = chOf(l.minStep || 0); if (!this.save.loot.includes(l.id) && (l.minStep || 0) <= i + 1 && (lc === ch || (ch <= 2 && lc <= 2))) this.addPickup(l); });
     this.world.frontDoor.rotation.y = i >= 3 ? -1.6 : 0; this.setDoor(i >= 3);
     this.setTruck(i);
-    this.slowMul = 1; this.setLight(st.light || null); st.enter(this); this.objective(st.obj, st.hint); this.audio.setMood(st.mood || 'night'); this.audio.rain && this.audio.rain(st.rain !== false && st.mood !== 'day'); this.audio.beat(st.beat || 0);
-    partnerEnter(this); this.checkpoint(); this.grace = 1.5; if (!this._warm) { this._warm = 1; this.prewarm(); } else try { this.renderer.compile(this.scene, this.camera); } catch (e) { }
+    if (!(await yn(0.45))) return;
+    this.slowMul = 1; this.setLight(st.light || null); st.enter(this); this.objective(st.obj, st.hint);
+    try { this.audio.beginSession && this.audio.beginSession('story'); } catch (e) { /* ignore */ }
+    this.audio.setMood(st.mood || 'night'); this.audio.rain && this.audio.rain(st.rain !== false && st.mood !== 'day'); this.audio.beat(st.beat || 0);
+    partnerEnter(this); this.checkpoint(); this.grace = 1.5;
+    if (!(await yn(0.72))) return;
+    if (!this._warm) { this._warm = 1; await this.prewarm(); } else await compileScene(this.renderer, this.scene, this.camera);
+    if (this.stepTok !== tok) return;
+    setP(1);
     this.last = performance.now(); }
   // v1.6.3 failsafes: unstick player/targets, respawn a missing boss, offer an objective skip after 3 min stuck
   inCol(x, z, r = .3) { return this.world.colliders.some(c => !c.skip && x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r); }
@@ -161,7 +191,7 @@ export class Game {
     const A = this.alive(); if (A.length) { A.forEach(z => this.damageZ(z, 1e7, z.root.position.clone().normalize(), {})); return; }
     if (this.wpTarget) { P.x = this.wpTarget[0]; P.z = this.wpTarget[2]; return; }
     if (this.step < STORY.length - 1 && !STORY[this.step].survival && !STORY[this.step + 1].survival) this.loadStep(this.step + 1); }
-  restartCheckpoint() { this.stepTok = (this.stepTok || 0) + 1; this.paused = false; this.last = performance.now(); try { this.loadStep(this.step); } catch (e) { console.error(e); this.clearActors(); this.cut = null; this.dying = null; this.dead = false; const cp = STORY[this.step].cp; this.player.root.position.set(cp[0], 0, cp[1]); } }
+  restartCheckpoint() { this.stepTok = (this.stepTok || 0) + 1; this.paused = false; this.last = performance.now(); Promise.resolve(this.loadStep(this.step)).catch((e) => { console.error(e); this.clearActors(); this.cut = null; this.dying = null; this.dead = false; const cp = STORY[this.step].cp; this.player.root.position.set(cp[0], 0, cp[1]); }); }
   checkpoint() { if (this.holdSave) return; if (!this.survival) { this.save.step = this.step; this.save.played = true; } writeSave(this.LS, this.save); }
   setDoor(open) { const w = this.world; w.doorCol.x0 = open ? 999 : 11.9; w.doorCol.x1 = open ? 999 : 12.1; w.doorBoards.forEach(b => b.visible = !open); w.frontDoor.rotation.y = open ? -1.6 : 0; }
   setTruck(i) { if (!this.truck) { const g = this.world.car(22, -64, 0, '#7a2218', { truck: true, lights: true }); this.truck = { g, v: 0, head: 0, driving: false }; this.truck.col = g.userData.col; }
@@ -575,7 +605,15 @@ export class Game {
     this.rFxTick(dt); for (let i = 0; i < Z.length; i++) { const z = Z[i]; const zp = z.root.position;
       if (z.dead) { z.deadT += dt; if (z.deadT < 2.5) { for (let j = 0; j < Z.length; j++) { const o = Z[j]; if (o === z || !o.dead) continue; const op = o.root.position, ex = zp.x - op.x, ez = zp.z - op.z, e2 = ex * ex + ez * ez; if (e2 < .64) { const e = Math.sqrt(e2) || .01, push = (.8 - e) * Math.min(1, dt * 4); this.moveCollide(zp, (e2 > 1e-4 ? ex / e : Math.cos(z.id)) * push, (e2 > 1e-4 ? ez / e : Math.sin(z.id)) * push, .3); } } }
         if (z.vel.lengthSq() > .01) { const y0 = zp.y; this.moveCollide(zp, z.vel.x * dt, z.vel.z * dt, .3); zp.y = y0 + z.vel.y * dt; z.vel.y -= 14 * dt; if (zp.y < 0) { zp.y = 0; z.vel.y = 0; } z.vel.x *= .9; z.vel.z *= .9; }
-        z.mixer.update(dt); this.zBones(z); if (z.deadT > 90 && Z.length > 70) { this.scene.remove(z.root); Z.splice(i--, 1); } continue; }
+        if (!z._deadHeld) {
+          z.mixer.update(dt);
+          const a = z.cur; const dur = a && a.getClip ? a.getClip().duration : 2;
+          const done = !a || a.paused || (a.timeScale === 0 && a.time >= dur * .96) || z.deadT > Math.max(2.4, dur + .4);
+          if (done && z.holdDead) z.holdDead();
+        } else if (z.restoreDeadPose) z.restoreDeadPose();
+        this.zBones(z);
+        if (z._deadHeld && !z._seated) { z._seated = 1; try { this.seatOnGround(z); } catch (e) { /* ignore */ } }
+        if (z.deadT > 90 && Z.length > 70) { this.scene.remove(z.root); Z.splice(i--, 1); } continue; }
       const toP = V3(pp.x - zp.x, 0, pp.z - zp.z); let d = toP.length();
       if (z.st === 'feast') { z.mixer.update(dt); if (Math.random() < dt * 8 && this.settings.gore) { const b = P.root.position.clone(); b.y = .3; this.blood(b, V3(rnd(-1, 1), .5, rnd(-1, 1)), 4, 2); } continue; }
       if (z.st === 'eat') { const det = this.state.crouch ? 4 : 7.5; if ((d < det && !this.cut) || z.hp < z.maxHp) { z.st = 'chase'; z.lk = 0; this.audio.at(zp).groan(.14, z); if (Math.random() < .5) this.audio.zAttack && this.audio.zAttack(.5, z); }

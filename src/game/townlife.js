@@ -73,7 +73,7 @@ function makeChar(g) { const seed = (Math.random() * 1e6) | 0, look = randomLook
   const c = new Char(g.lib, look, rnd(.95, 1.02)); c.female = look.rig === 'genf' ? true : look.rig === 'genm' ? false : Math.random() < .5;
   // head look-back / forward lean ride on top of the animation mixer (bones the clips drive, so nothing accumulates)
   const mu = c.mixer.update; c.mixer.update = function (dt) { const r = mu.call(this, dt); overlay(c); return r; }; return c; }
-function overlay(c) { const s = c.tn; if (!s || s.frozen) return; const B = (n) => c.bone(n), h = B('DEF-head'), nk = B('DEF-neck'), sp = B('DEF-spine.003'), sp1 = B('DEF-spine.001');
+function overlay(c) { const s = c.tn; if (!s || s.frozen || c.isVictim || c._seatLock || c._deadHeld || c.dead) return; const B = (n) => c.bone(n), h = B('DEF-head'), nk = B('DEF-neck'), sp = B('DEF-spine.003'), sp1 = B('DEF-spine.001');
   if (h) h.rotateY(s.hy * .55); if (nk) nk.rotateY(s.hy * .3); if (sp) sp.rotateY(s.hy * .35); if (sp1) sp1.rotateX(.16 * s.lean);
   if (s.reach > .01) { for (const k of ['L', 'R']) { const ua = B('DEF-upper_arm.' + k), fa = B('DEF-forearm.' + k); if (ua) ua.rotateX(1.3 * s.reach); if (fa) fa.rotateX(.25 * s.reach); } } }
 

@@ -89,7 +89,16 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     if ((navT -= dt) <= 0) { navT = .5; nav && nav.field(p0.x, p0.z); }
     let alive = 0, dead = 0;
     for (let i = 0; i < zs.length; i++) { const z = zs[i], pp = z.root.position; if (z.hp < z.hp0) { { const vl = Math.hypot(z.vel.x, z.vel.z); if (vl > .05) wound(z, { x: z.vel.x / vl, z: z.vel.z / vl }, false); } z.hp0 = z.hp; if (z.hp > 0) z.mat.userData.u.uBlood.value = Math.min(1.3, z.mat.userData.u.uBlood.value + .15); }
-      if (z.dead) { dead++; z.deadT += dt; if (z.deadT >= 3.2 && !z.settled && z.root.visible && nd0(z) < 60) { z.settled = 1; settleCorpse(z); } if (z.deadT < 3.2) { z.mixer.update(dt); if (z.vel.lengthSq() > .01) { const [nx, nz] = col.push(pp.x + z.vel.x * dt, pp.z + z.vel.z * dt, .3); pp.x = nx; pp.z = nz; z.vel.multiplyScalar(.9); } if (z.pool && z.poolGrow && z.pool.scale.x < 1.5) z.pool.scale.setScalar(z.pool.scale.x + dt * .5); } continue; }
+      if (z.dead) { dead++; z.deadT += dt;
+        if (!z._deadHeld) {
+          z.mixer.update(dt);
+          const a = z.cur; const dur = a && a.getClip ? a.getClip().duration : 2;
+          const done = !a || a.paused || (a.timeScale === 0 && a.time >= dur * .96) || z.deadT > Math.max(2.4, dur + .4);
+          if (done && z.holdDead) z.holdDead();
+        } else if (z.restoreDeadPose) z.restoreDeadPose();
+        if (z._deadHeld && !z.settled && z.root.visible && nd0(z) < 60) { z.settled = 1; settleCorpse(z); }
+        if (z.deadT < 3.2) { if (z.vel.lengthSq() > .01) { const [nx, nz] = col.push(pp.x + z.vel.x * dt, pp.z + z.vel.z * dt, .3); pp.x = nx; pp.z = nz; z.vel.multiplyScalar(.9); } if (z.pool && z.poolGrow && z.pool.scale.x < 1.5) z.pool.scale.setScalar(z.pool.scale.x + dt * .5); }
+        continue; }
       alive++; let near = null, nd = 1e9, ni = 0; P.forEach((p, k) => { const d = Math.hypot(p.x - pp.x, p.z - pp.z); if (d < nd) { nd = d; near = p; ni = k; } });
       z.root.visible = nd < fogFar - (z.root.visible ? 1 : 5); // hysteresis, and only vanish once ~90% fogged (no pop in view)
       const far = nd > fogFar * .7; // far from everyone: cheap drift only (no animation tick)

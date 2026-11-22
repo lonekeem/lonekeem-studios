@@ -1,5 +1,5 @@
 import { initLayout } from './game/layout.js';
-import { showLoading, hideLoading, setProgress } from './ui/loading.js';
+import { showLoading, hideLoading, setProgress, yieldPaint } from './ui/loading.js';
 import { AudioSys } from './audio.js';
 import { initMenu, trackGame } from './ui/menu.js';
 import { SURVIVAL_STEP, chOf, CH_START, CHAPTERS, LAST_CH, LAST_STORY_STEP, TOTAL_PAGES } from './game/story.js';
@@ -29,15 +29,16 @@ async function playPrologueToMenu() {
   showLoading({ message: 'THE NIGHT BEFORE', title: 'Riverside' });
   import('./game/prologue.js').then(m => m.preloadPrologue(audio)).catch(() => {});
   try {
-    const g = await ensureGame(); g.save = save; g.settings = S; audio.init(); hideLoading();
+    const g = await ensureGame(); g.save = save; g.settings = S; audio.init();
+    showLoading({ message: 'THE NIGHT BEFORE', title: 'Riverside' }); await yieldPaint();
     $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden');
     try { const m = await import('./game/prologue.js'); await Promise.race([m.preloadPrologue(audio), new Promise(r => setTimeout(r, 6000))]); } catch (e) {}
-    g.onPrologueEnd = () => { g.cut = null; g._lk = null; g.holdSave = false; g.paused = true; toTitle(); };
-    g.holdSave = true; g.wantPrologue = true; g.start(0); if (isAway()) pause();
+    g.onPrologueEnd = () => { g.cut = null; g._lk = null; g.holdSave = false; toTitle(); };
+    g.holdSave = true; g.wantPrologue = true; await g.start(0, { overlay: true }); hideLoading(); if (isAway()) pause();
   } catch (e) { console.error(e); hideLoading(); toTitle(); }
 }
 
-function toTitle() { state = 'title'; if (game) { game.paused = true; } $('#stage').classList.add('hidden'); $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden'); try { audio.resumeAll(); } catch (e) {} audio.beat && audio.beat(0); audio.setMood('menu'); save = loadSave(LS) || save; { const sv = loadSave(LS), has = !!(sv && (sv.played || sv.step > 0)); const b = $('#btnContinue'); b.classList.toggle('hidden', !has); if (has) b.textContent = 'Continue · Chapter ' + chOf(sv.step || 0) + (CHN[chOf(sv.step || 0)] ? ' · ' + CHN[chOf(sv.step || 0)] : ''); } showScreen('#title'); back = '#title'; }
+function toTitle() { state = 'title'; if (game) { try { game.leave(); } catch (e) {} } $('#stage').classList.add('hidden'); $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden'); try { audio.stopGameplay && audio.stopGameplay(); } catch (e) {} try { audio.resumeAll(); } catch (e) {} audio.beat && audio.beat(0); audio.setMood('menu'); save = loadSave(LS) || save; { const sv = loadSave(LS), has = !!(sv && (sv.played || sv.step > 0)); const b = $('#btnContinue'); b.classList.toggle('hidden', !has); if (has) b.textContent = 'Continue · Chapter ' + chOf(sv.step || 0) + (CHN[chOf(sv.step || 0)] ? ' · ' + CHN[chOf(sv.step || 0)] : ''); } showScreen('#title'); back = '#title'; }
 
 async function ensureGame() { if (game) return game; if (gamePromise) return gamePromise;
   const studioOn = $('#studio') && !$('#studio').classList.contains('hidden');
@@ -54,9 +55,17 @@ async function ensureGame() { if (game) return game; if (gamePromise) return gam
   return gamePromise; }
 function goLandscape() { if (document.body.dataset.dev !== 'touch' || window.Capacitor?.isNativePlatform?.()) return; try { const d = document.documentElement, rq = d.requestFullscreen || d.webkitRequestFullscreen; const p = !document.fullscreenElement && rq ? rq.call(d, { navigationUI: 'hide' }) : null; Promise.resolve(p).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape')).catch(() => {}); } catch (e) {} }
 async function play(step, o = {}) { if (o.prologue) import('./game/prologue.js').then(m => m.preloadPrologue(audio)).catch(() => {}); goLandscape(); showScreen(null); $('#stage').classList.remove('hidden'); state = 'loading';
-  if (step === SURVIVAL_STEP) showLoading({ message: 'SURVIVAL', title: 'Endless waves' });
-  else { const ch = chOf(step || 0); showLoading({ ch, title: (CHAPTERS[ch] && CHAPTERS[ch].title) || 'Riverside' }); }
-  const g = await ensureGame(); g.save = save; g.settings = S; state = 'play'; audio.init(); hideLoading(); $('#hud').classList.remove('hidden'); $('#touch').classList.toggle('hidden', !(matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window)); if (o.prologue) { g.wantPrologue = true; try { const m = await import('./game/prologue.js'); await Promise.race([m.preloadPrologue(audio), new Promise(r => setTimeout(r, 6000))]); } catch (e) { } } g.start(step); if (isAway()) pause(); }
+  const showChLoad = () => { if (step === SURVIVAL_STEP) showLoading({ message: 'SURVIVAL', title: 'Endless waves' }); else { const ch = chOf(step || 0); showLoading({ ch, title: (CHAPTERS[ch] && CHAPTERS[ch].title) || 'Riverside' }); } };
+  showChLoad(); await yieldPaint();
+  const g = await ensureGame(); g.save = save; g.settings = S; audio.init();
+  showChLoad(); await yieldPaint();
+  $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden');
+  if (o.prologue) { g.wantPrologue = true; try { const m = await import('./game/prologue.js'); await Promise.race([m.preloadPrologue(audio), new Promise(r => setTimeout(r, 6000))]); } catch (e) { } }
+  try { await g.start(step, { overlay: true }); } catch (e) { console.error(e); }
+  await yieldPaint();
+  hideLoading(); state = 'play';
+  $('#hud').classList.remove('hidden'); $('#touch').classList.toggle('hidden', !(matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window));
+  if (isAway()) pause(); }
 function inGameplay() { if (state === 'play') return true; if (game && game.running && (game.pro || state === 'loading')) return true; return false; }
 function fromPauseMenu() { return state === 'paused' || (['shop', 'inv', 'settings', 'custom'].includes(state) && back === '#pause'); }
 function pause() {
@@ -83,6 +92,8 @@ onAppLeave(() => {
   else if (fromPauseMenu() && game) game.paused = true;
 });
 onAppReturn(() => {
+  // Town owns mute/resume while Free Roam is open (state often stays 'title'). Do not resume story beds here.
+  if (window.__mpTown) return;
   if (game && game.paused) game.last = performance.now();
   const menu = MENU_STATES.includes(state) || (['shop', 'inv', 'custom', 'settings'].includes(state) && back !== '#pause');
   if (menu) {
