@@ -3,6 +3,7 @@ import { showLoading, hideLoading, setProgress, yieldPaint } from './ui/loading.
 import { AudioSys } from './audio.js';
 import { initMenu, trackGame } from './ui/menu.js';
 import { initTutorial, offerTutorial, onGameReady as onTutReady } from './ui/tutorial.js';
+import { installHardwareBack } from './ui/hwBack.js';
 import { initDailies, attachDailies, renderDailies } from './ui/dailies.js';
 import { SURVIVAL_STEP, chOf, CH_START, CHAPTERS, LAST_CH, LAST_STORY_STEP, TOTAL_PAGES } from './game/story.js';
 import { WEAPONS, WEAPON_ORDER, UPGRADES, upCost, AMMO_SHOP, PERKS, xpFor, defaultSave, loadSave, writeSave, clearSave, stat } from './game/data.js';
@@ -164,7 +165,7 @@ $('#btnEndNext').onclick = () => { save = loadSave(LS) || save; const nc = Math.
 var CHN = CHAPTERS.map(c => (c ? c.title : '')), CHS = CHAPTERS.map(c => (c ? c.start : 0)); // derived from the chapter registry
 const unlockedCh = (s) => Math.max(s.maxCh || 1, s.done || (s.step || 0) >= 7 ? 2 : 1, s.done2 ? 3 : 1, CHS.findLastIndex(v => (s.step || 0) >= v) || 1);
 // chapter-select buttons are generated from the registry (src/game/chapters), so adding a chapter needs no HTML/menu edits
-{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.40 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
+{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.41 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
 const chList = $('#chList'); for (let c = 1; c <= LAST_CH; c++) { const b = document.createElement('button'); b.id = 'btnCh' + c; b.textContent = 'Chapter ' + c + ' · ' + CHN[c]; chList.appendChild(b); }
 $('#btnChapters').onclick = () => { const s = loadSave(LS) || defaultSave(); const u = unlockedCh(s); for (let c = 2; c <= LAST_CH; c++) { const b = $('#btnCh' + c); b.disabled = c > u; b.textContent = 'Chapter ' + c + ' · ' + CHN[c] + (c > u ? ' (finish Chapter ' + (c - 1) + ')' : ''); } showScreen('#chapters'); };
 $('#btnCh1').onclick = () => { save = loadSave(LS) || defaultSave(); writeSave(LS, save); play(0); };
@@ -210,6 +211,7 @@ initMenu();
 initDailies();
 initTutorial({ play: () => play(SURVIVAL_STEP, { tutorial: true }), toTitle });
 window.__atqBooted = true;
+installHardwareBack();
 // (title background image removed in v1.3.1)
 
 // Multiplayer (Beta): separate module, adds one title-menu button (see docs/multiplayer.md)
