@@ -143,6 +143,7 @@ body.snap .layer{transition:none!important}
 #mini{position:absolute;left:max(92px,calc(env(safe-area-inset-left) + 92px));top:10px;width:92px;height:92px;border-radius:50%;border:2px solid #cde5d4aa;background:#0007}
 #obj{position:absolute;top:12px;left:50%;transform:translateX(-50%);opacity:1;max-width:46vw;text-align:center;background:rgba(0,0,0,.45);border:none;border-bottom:2px solid var(--g);padding:5px 12px;border-radius:6px;font:13px system-ui;color:#dfe}
 #obj b{display:block;font-size:10px;letter-spacing:.2em;color:var(--g)}#obj small{display:block;opacity:.7;font-size:11px}
+#hud.tuton #obj{opacity:0!important;pointer-events:none}
 #pages{position:absolute;top:110px;left:12px;font:12px system-ui;color:#cfe;text-shadow:0 1px 2px #000}
 #combo{position:absolute;right:16%;top:34%;font:900 28px system-ui;color:#ffd35a;text-shadow:0 2px 0 #7a1a00,0 0 12px #f50;opacity:0;transition:opacity .3s}
 #combo.on{opacity:1}
@@ -343,7 +344,7 @@ body.cine #rotate{display:none!important}
 #title .mpane.on{display:grid}
 #title .mm .mpane button{min-height:44px;font:600 15px/1.15 system-ui,sans-serif;border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 #title .mm .mpane button small{font:500 11.5px system-ui,sans-serif;opacity:.7}
-#title .mpane .wide,#title .mpane #btnMP,#title .mpane #btnCustom{grid-column:1/-1}
+#title .mpane .wide,#title .mpane #btnMP,#title .mpane #btnCustom,#title .mpane #btnDailies{grid-column:1/-1}
 #title .mm .mpane button:disabled{opacity:.45}
 #title .foot{padding:2px 0 6px}
 /* Settings: shortcuts at the top, two columns on short landscape, Done always visible */
@@ -481,3 +482,46 @@ body.cine #rotate{display:none!important}
 #hud.wbar-on #btnSwap{display:none!important}
 #hud.wbar-on~#touch #tSwap{display:none!important}
 body.driving #wbar{display:none!important}
+
+/* ---- Tutorial + daily challenges ---- */
+#btnSurvival{position:relative}
+#title .dbadge{position:absolute;right:8px;top:8px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#c9a227;color:#1a1408;font:800 11px/20px system-ui,sans-serif;letter-spacing:0;text-transform:none;box-shadow:none}
+#title .dbadge.ok{background:var(--g);color:#04120a}
+#title .dbadge[hidden],#title .dbadge:empty{display:none}
+#tutOffer{position:fixed;inset:0;z-index:42;display:flex;align-items:center;justify-content:center;background:rgba(2,8,4,.72);padding:12px}
+#tutOffer.hidden{display:none}
+#tutOffer .tcard,#dailies .panel{width:min(440px,92vw)}
+#tutOffer .tcard{background:rgba(8,22,14,.96);border:1px solid var(--gd);border-radius:14px;padding:22px 22px 18px;color:#dfe;text-align:center;box-shadow:0 0 40px rgba(0,0,0,.65)}
+#tutOffer h2{margin:0 0 8px;color:var(--g);letter-spacing:.08em;font:700 22px system-ui}
+#tutOffer p{margin:0 0 16px;line-height:1.45;font:15px/1.45 system-ui}
+#tutOffer .tbtns{display:flex;gap:8px;justify-content:center}
+#tutOffer .tbtns button{min-width:120px;min-height:42px}
+#tutHud{position:fixed;left:50%;top:max(10px,env(safe-area-inset-top));transform:translateX(-50%);z-index:45;width:min(420px,92vw);pointer-events:none}
+#tutHud.hidden{display:none}
+#tutHud .tbox{pointer-events:auto;background:rgba(8,18,12,.92);border:1px solid var(--g);border-radius:12px;padding:10px 12px 10px;color:#eaf5ee;box-shadow:0 8px 28px rgba(0,0,0,.45)}
+#tutHud .tstep{font:700 10px system-ui;letter-spacing:.16em;text-transform:uppercase;color:var(--g)}
+#tutHud h3{margin:2px 0 4px;font:700 16px system-ui}
+#tutHud p{margin:0 0 8px;font:13px/1.4 system-ui;opacity:.92}
+#tutHud .trow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#tutHud .tskip{min-height:32px;padding:4px 10px;font:600 13px system-ui}
+#tutHud .tprog{font:600 12px system-ui;opacity:.7}
+#dailies .panel{display:flex;flex-direction:column;max-height:calc(100vh - 16px);width:min(460px,92vw);padding:14px 16px 12px;overflow:hidden}
+#dailies h2{margin:0 0 4px}
+#dailies #dailyDay{margin:0 0 8px}
+#dailies .dlist{display:flex;flex-direction:column;gap:7px;overflow-y:auto;flex:1;min-height:0}
+#dailies .drow{padding:7px 9px 6px;border-radius:10px;background:rgba(0,0,0,.28);border:1px solid #1d3a28}
+#dailies .drow.done{border-color:var(--g);background:rgba(47,107,69,.22)}
+#dailies .dtop{display:flex;justify-content:space-between;gap:8px;font:600 14px system-ui}
+#dailies .dbar{height:6px;border-radius:4px;background:#0008;overflow:hidden;margin:4px 0 3px}
+#dailies .dbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2f6b45,#7fd49a);transition:width .3s}
+#dailies .dmeta{font:11px system-ui;opacity:.75}
+#dailies .dwallet{margin:8px 0 6px;text-align:center;font:13px system-ui;opacity:.9}
+#dailies .dwallet b{color:var(--g)}
+#dailies .back{flex-shrink:0}
+@media (min-aspect-ratio:4/3) and (max-height:560px){
+  #tutOffer .tcard{padding:14px 16px}
+  #tutOffer h2{font-size:18px}
+  #tutHud{top:max(6px,env(safe-area-inset-top));width:min(420px,56vw)}
+  #tutHud .tbox{padding:8px 10px}
+  #tutHud p{margin:0 0 4px;font-size:12px}
+}

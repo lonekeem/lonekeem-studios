@@ -102,17 +102,18 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
       <button id="btnNew">New Game</button>
       <button id="btnChapters">Chapter Select</button>
     </div>
-    <button id="btnSurvival" class="mplay wide">Survival<small id="survBestTxt">Endless waves</small></button>
+    <button id="btnSurvival" class="mplay wide">Survival<small id="survBestTxt">Endless waves</small><span class="dbadge" id="survBadge" hidden></span></button>
     <button id="btnOnline" class="mplay">Online</button>
     <div class="mpane" id="paneOnline" data-pane="online">
       <button id="btnLobby">World Lobby</button>
       <button id="btnBoard">Leaderboard</button>
+      <button id="btnDailies" class="wide">Daily Challenges<small id="dailyPaneTxt">3 today</small></button>
       <button id="btnCustom">My Character</button>
     </div>
     <button id="btnSettings" class="mplay">Settings</button>
     <button id="btnPlay" class="mplay hidden" tabindex="-1" aria-hidden="true">Play</button>
   </div>
-  <div class="foot" id="foot">v1.9.39 · Story Mode · Chapters 1–13 · Multiplayer (Beta)</div>
+  <div class="foot" id="foot">v1.9.40 · Story Mode · Chapters 1–13 · Multiplayer (Beta)</div>
 </div>
 <div id="settings" class="screen hidden">
   <div class="panel">
@@ -147,7 +148,17 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
     </div>
     </div>
     <button id="btnCtlSet">Control scheme, layout &amp; sensitivity…</button>
+    <button id="btnReplayTut">Replay tutorial</button>
     <button class="back primary">Done</button>
+  </div>
+</div>
+<div id="dailies" class="screen hidden">
+  <div class="panel">
+    <h2>Daily Challenges</h2>
+    <p class="small" id="dailyDay">Today</p>
+    <div id="dailyList" class="dlist"></div>
+    <p class="dwallet" id="dailyWallet"></p>
+    <button class="back primary">Back</button>
   </div>
 </div>
 <div id="ctlset" class="screen hidden">

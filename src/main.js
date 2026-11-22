@@ -2,6 +2,8 @@ import { initLayout } from './game/layout.js';
 import { showLoading, hideLoading, setProgress, yieldPaint } from './ui/loading.js';
 import { AudioSys } from './audio.js';
 import { initMenu, trackGame } from './ui/menu.js';
+import { initTutorial, offerTutorial, onGameReady as onTutReady } from './ui/tutorial.js';
+import { initDailies, attachDailies, renderDailies } from './ui/dailies.js';
 import { SURVIVAL_STEP, chOf, CH_START, CHAPTERS, LAST_CH, LAST_STORY_STEP, TOTAL_PAGES } from './game/story.js';
 import { WEAPONS, WEAPON_ORDER, UPGRADES, upCost, AMMO_SHOP, PERKS, xpFor, defaultSave, loadSave, writeSave, clearSave, stat } from './game/data.js';
 import { installBgListeners, onAppLeave, onAppReturn, leaveApp, returnApp, isAway } from './bgPause.js';
@@ -38,7 +40,7 @@ async function playPrologueToMenu() {
   } catch (e) { console.error(e); hideLoading(); toTitle(); }
 }
 
-function toTitle() { state = 'title'; if (game) { try { game.leave(); } catch (e) {} } $('#stage').classList.add('hidden'); $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden'); try { audio.stopGameplay && audio.stopGameplay(); } catch (e) {} try { audio.resumeAll(); } catch (e) {} audio.beat && audio.beat(0); audio.setMood('menu'); save = loadSave(LS) || save; { const sv = loadSave(LS), has = !!(sv && (sv.played || sv.step > 0)); const b = $('#btnContinue'); b.classList.toggle('hidden', !has); if (has) b.textContent = 'Continue · Chapter ' + chOf(sv.step || 0) + (CHN[chOf(sv.step || 0)] ? ' · ' + CHN[chOf(sv.step || 0)] : ''); } showScreen('#title'); back = '#title'; }
+function toTitle() { state = 'title'; if (game) { try { game.leave(); } catch (e) {} } $('#stage').classList.add('hidden'); $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden'); try { audio.stopGameplay && audio.stopGameplay(); } catch (e) {} try { audio.resumeAll(); } catch (e) {} audio.beat && audio.beat(0); audio.setMood('menu'); save = loadSave(LS) || save; { const sv = loadSave(LS), has = !!(sv && (sv.played || sv.step > 0)); const b = $('#btnContinue'); b.classList.toggle('hidden', !has); if (has) b.textContent = 'Continue · Chapter ' + chOf(sv.step || 0) + (CHN[chOf(sv.step || 0)] ? ' · ' + CHN[chOf(sv.step || 0)] : ''); } showScreen('#title'); back = '#title'; try { renderDailies(); offerTutorial({ play: () => play(SURVIVAL_STEP, { tutorial: true }), toTitle }); } catch (e) { /* ignore */ } }
 
 async function ensureGame() { if (game) return game; if (gamePromise) return gamePromise;
   const studioOn = $('#studio') && !$('#studio').classList.contains('hidden');
@@ -51,6 +53,8 @@ async function ensureGame() { if (game) return game; if (gamePromise) return gam
       save.done = true; if (ch >= 2) save.done2 = true; save.maxCh = Math.max(save.maxCh || 1, nx); save.ch = nx; save.step = last ? LAST_STORY_STEP : CH_START[nx]; writeSave(LS, save); state = 'ending'; g.paused = true; $('#endStats').innerHTML = `Kills: ${save.kills} · Level ${save.level} · Cash $${save.cash} · Comic pages ${save.pages.length}/${TOTAL_PAGES}`;
       $('#endH').textContent = 'End of Chapter ' + ch + ' · ' + C[ch].title; $('#endQ').textContent = C[ch].endQuote; $('#endNext').textContent = last ? (C[ch].nextTeaser || 'To be continued — Chapter ' + (ch + 1) + ' coming soon.') : 'Chapter ' + (ch + 1) + ' · ' + C[ch + 1].title + ' is unlocked. Your level, cash and weapons carry over.'; $('#btnEndNext').textContent = 'Continue to Chapter ' + nx; $('#btnEndNext').classList.toggle('hidden', last); showScreen('#ending'); audio.setMood('sad'); };
     try { trackGame(g, i => i === SURVIVAL_STEP); } catch (e) { console.warn('leaderboard tracking off', e); }
+    try { attachDailies(g); } catch (e) { console.warn('dailies tracking off', e); }
+    try { onTutReady(g); } catch (e) { /* ignore */ }
     game = g; hideLoading(); return g; })();
   return gamePromise; }
 function goLandscape() { if (document.body.dataset.dev !== 'touch' || window.Capacitor?.isNativePlatform?.()) return; try { const d = document.documentElement, rq = d.requestFullscreen || d.webkitRequestFullscreen; const p = !document.fullscreenElement && rq ? rq.call(d, { navigationUI: 'hide' }) : null; Promise.resolve(p).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape')).catch(() => {}); } catch (e) {} }
@@ -65,6 +69,7 @@ async function play(step, o = {}) { if (o.prologue) import('./game/prologue.js')
   await yieldPaint();
   hideLoading(); state = 'play';
   $('#hud').classList.remove('hidden'); $('#touch').classList.toggle('hidden', !(matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window));
+  try { onTutReady(g); } catch (e) { /* ignore */ }
   if (isAway()) pause(); }
 function inGameplay() { if (state === 'play') return true; if (game && game.running && (game.pro || state === 'loading')) return true; return false; }
 function fromPauseMenu() { return state === 'paused' || (['shop', 'inv', 'settings', 'custom'].includes(state) && back === '#pause'); }
@@ -159,7 +164,7 @@ $('#btnEndNext').onclick = () => { save = loadSave(LS) || save; const nc = Math.
 var CHN = CHAPTERS.map(c => (c ? c.title : '')), CHS = CHAPTERS.map(c => (c ? c.start : 0)); // derived from the chapter registry
 const unlockedCh = (s) => Math.max(s.maxCh || 1, s.done || (s.step || 0) >= 7 ? 2 : 1, s.done2 ? 3 : 1, CHS.findLastIndex(v => (s.step || 0) >= v) || 1);
 // chapter-select buttons are generated from the registry (src/game/chapters), so adding a chapter needs no HTML/menu edits
-{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.39 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
+{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.40 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
 const chList = $('#chList'); for (let c = 1; c <= LAST_CH; c++) { const b = document.createElement('button'); b.id = 'btnCh' + c; b.textContent = 'Chapter ' + c + ' · ' + CHN[c]; chList.appendChild(b); }
 $('#btnChapters').onclick = () => { const s = loadSave(LS) || defaultSave(); const u = unlockedCh(s); for (let c = 2; c <= LAST_CH; c++) { const b = $('#btnCh' + c); b.disabled = c > u; b.textContent = 'Chapter ' + c + ' · ' + CHN[c] + (c > u ? ' (finish Chapter ' + (c - 1) + ')' : ''); } showScreen('#chapters'); };
 $('#btnCh1').onclick = () => { save = loadSave(LS) || defaultSave(); writeSave(LS, save); play(0); };
@@ -202,6 +207,8 @@ const qs = new URLSearchParams(location.search);
 if (qs.has('prologue')) { $('#warning').classList.add('hidden'); save = defaultSave(); play(0, { prologue: true }); }
 else if (qs.has('step')) { $('#warning').classList.add('hidden'); save = defaultSave(); if (qs.has('god')) Object.assign(save, { owned: ['fists', 'bat', 'pistol', 'rifle', 'shotgun'], items: ['backpack'], ammo: { light: 99, shell: 30, rifle: 200 }, grenades: 3, cash: 2000, cur: 'rifle' }); play(+qs.get('step')); }
 initMenu();
+initDailies();
+initTutorial({ play: () => play(SURVIVAL_STEP, { tutorial: true }), toTitle });
 window.__atqBooted = true;
 // (title background image removed in v1.3.1)
 
