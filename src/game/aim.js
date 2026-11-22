@@ -73,6 +73,7 @@ export function updateAimPose(g, dt) {
   const want = gun && !g.cam.fp && !g.cut && !g.dying && !(g.truck && g.truck.driving) && !(s.roll > 0) && !(s.reload > 0) && !(s.stun > 0) && (s.aim || s.shotT > 0 || (I.atk && !g.dlgCur));
   // snap in on the first shot so the very first round already leaves a barrel that points at the crosshair; ease out
   s.aimW = want ? (s.shotT > 0 ? 1 : Math.min(1, (s.aimW || 0) + dt * 14)) : Math.max(0, (s.aimW || 0) - dt * 6);
+  s.aimW = Math.min(1, Math.max(0, s.aimW || 0)); // never let a stale / unclamped weight pretzel the spine or head
   const W = s.aimW; const hand = g.hand;
   if (W <= 0.001) { if (hand && !hand.quaternion.equals(DEF_HAND_Q)) hand.quaternion.copy(DEF_HAND_Q); g._aimP = null; return; }
   const tgt = aimTarget(g, g._aimPt || (g._aimPt = new THREE.Vector3())); g._aimP = tgt;

@@ -56,6 +56,7 @@ body.still .layer{animation:none!important}
 #obj.on{opacity:1}
 #toast{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;background:rgba(5,20,10,.9);border:1px solid var(--g);padding:14px 22px;border-radius:8px;opacity:0;transition:opacity .4s;pointer-events:none;text-align:center;max-width:80vw}
 #toast.on{opacity:1}
+#toast.wep{top:auto;bottom:max(78px,calc(env(safe-area-inset-bottom) + 72px));transform:translate(-50%,0);padding:5px 12px;font:700 13px system-ui,sans-serif;max-width:min(50vw,280px)}
 #hudr{position:absolute;top:calc(max(4vh,50vh - 28.125vw) + 8px);right:12px;z-index:8;display:flex;gap:8px}
 #hudr button{width:44px;height:44px;border-radius:50%;border:1px solid var(--gd);background:rgba(0,0,0,.5);color:var(--g);font:16px system-ui;cursor:pointer}
 #cont{position:absolute;right:24px;bottom:calc(max(4vh,50vh - 28.125vw) + 10px);z-index:4;font:12px system-ui;color:#9ab;animation:blink 1.4s infinite}@keyframes blink{50%{opacity:.3}}
@@ -130,7 +131,7 @@ body.snap .layer{transition:none!important}
 #flash.white{animation:wf .5s}@keyframes wf{0%{opacity:.9;background:#ffe9c0}100%{opacity:0}}
 #lowhp{position:absolute;inset:0;pointer-events:none;z-index:2;opacity:0;transition:opacity .3s;background:radial-gradient(ellipse at center,transparent 40%,rgba(120,0,0,.75) 100%)}
 #xhair{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);z-index:3;color:#fff;font:300 30px system-ui;text-shadow:0 0 4px #000;pointer-events:none}
-#hud{position:absolute;inset:0;z-index:4;pointer-events:none;font-family:system-ui,sans-serif}
+#hud{position:absolute;inset:0;z-index:6;pointer-events:none;font-family:system-ui,sans-serif}
 #hud button,#touch button{pointer-events:auto}
 .rb{width:52px;height:52px;border-radius:50%;border:2px solid rgba(220,235,225,.55);background:rgba(10,20,14,.45);color:#e8f5ec;font:700 12px system-ui;cursor:pointer;backdrop-filter:blur(2px);position:relative;padding:0}
 .rb:active,.rb.on{background:rgba(127,212,154,.45);border-color:var(--g)}
@@ -424,3 +425,34 @@ body.cine #rotate{display:none!important}
 #online .wlink{background:transparent!important;border-color:transparent!important;color:#a9c4b0;min-height:36px}
 #online .wpb button{padding:6px 9px}
 @media (max-width:700px){#online .wpb button{font-size:13px;padding:5px 7px}}
+
+/* v1.9.34 in-game weapon bar: compact, translucent, opens and closes */
+#wbar{position:absolute;left:max(168px,calc(env(safe-area-inset-left) + 168px));right:max(250px,calc(env(safe-area-inset-right) + 250px));top:auto;bottom:max(28px,calc(env(safe-area-inset-bottom) + 24px));z-index:8;display:none;flex-direction:row;flex-wrap:nowrap;justify-content:center;align-items:flex-end;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;pointer-events:auto;padding:2px 0;gap:4px}
+#wbar::-webkit-scrollbar{display:none}
+#wbar.on{display:flex}
+#wbar.open{justify-content:flex-start}
+#wbar .wbar-inner{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:stretch;gap:2px;width:max-content}
+#wbar .wbar-tog{flex:0 0 auto;width:34px;height:40px;margin:0;padding:0;border-radius:9px;border:1px solid rgba(220,235,225,.32);background:rgba(8,16,12,.48);color:#e8f5ec;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 3px #0006}
+#wbar .wbar-tog svg{width:20px;height:20px;display:block}
+#wbar .wbar-tog[aria-expanded="true"],#wbar.open .wbar-tog{border-color:#7fd49a;background:rgba(22,56,36,.55)}
+#wbar .wslot{position:relative;flex:0 0 auto;width:34px;height:40px;margin:0;padding:3px 1px 1px;border-radius:8px;border:1px solid rgba(220,235,225,.22);background:rgba(8,16,12,.48);color:#e8f5ec;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:0;cursor:pointer;box-shadow:0 1px 3px #0006;font:inherit}
+#wbar .wslot .wi{width:18px;height:18px;flex:0 0 18px;display:block;line-height:0}
+#wbar .wslot .wi svg{width:18px;height:18px;display:block;overflow:visible}
+#wbar .wslot .wn{font:700 7px/1 system-ui,sans-serif;letter-spacing:.01em;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;color:#e8f5ec}
+#wbar .wslot .wa{font:700 7px/1 system-ui,sans-serif;color:#9be37a}
+#wbar .wslot .wk{position:absolute;top:1px;left:2px;font:700 6px/1 system-ui,sans-serif;color:#cfe;opacity:.55}
+#wbar .wslot.eq{border-color:#7fd49a;background:rgba(22,56,36,.58);box-shadow:0 0 0 1px rgba(127,212,154,.55)}
+#wbar .wslot.empty .wa{color:#f3a0a0}
+#wbar .wslot.off{opacity:.34;filter:grayscale(.35);cursor:default;pointer-events:none}
+#wbar:not(.open) .wslot:not(.eq){display:none}
+@media (max-height:420px){
+  #wbar{bottom:max(24px,calc(env(safe-area-inset-bottom) + 20px))}
+  #wbar .wbar-tog{width:32px;height:38px}
+  #wbar .wslot{width:32px;height:38px}
+  #wbar .wslot .wi,#wbar .wslot .wi svg{width:17px;height:17px}
+  #wbar .wslot .wi{flex-basis:17px}
+}
+/* replace the old ⇄ swap buttons while the bar is up */
+#hud.wbar-on #btnSwap{display:none!important}
+#hud.wbar-on~#touch #tSwap{display:none!important}
+body.driving #wbar{display:none!important}
