@@ -83,7 +83,7 @@ const warn = p.locator('#btnWarn');
 if (await warn.count()) { await warn.click(); await p.waitForTimeout(300); }
 await p.locator('#studio').click({ timeout: 5000 }).catch(() => {});
 await p.waitForSelector('#title:not(.hidden)', { timeout: 180000 });
-await p.locator('.mtabs [data-tab="story"]').click().catch(() => {});
+await p.locator('#btnStory').click().catch(() => {});
 await p.locator('#btnChapters').click();
 await p.waitForSelector('#chapters:not(.hidden), #chlist', { timeout: 15000 }).catch(() => {});
 // pick chapter 2 if the list is visible, else kick loadStep

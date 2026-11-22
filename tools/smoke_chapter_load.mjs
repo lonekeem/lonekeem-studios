@@ -215,7 +215,7 @@ await p.evaluate(() => {
 const mp = p.locator('#btnMP');
 rec('has_town_button', await mp.count() > 0, { text: await mp.textContent().catch(() => '') });
 if (await mp.count()) {
-  const tab = p.locator('.mtabs [data-tab="online"]');
+  const tab = p.locator('#btnOnline');
   if (await tab.count()) await tab.click();
   await mp.click();
   // wait for town (solo) to appear

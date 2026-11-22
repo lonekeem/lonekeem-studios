@@ -331,42 +331,57 @@ body.cine #rotate{display:none!important}
 @media (orientation:portrait){#cine .skip{top:calc(6vh + 12px)}}
 #cine .hint{position:absolute;left:50%;top:calc(9vh + 18px);transform:translateX(-50%);color:#e6efe9;font:600 13px system-ui,sans-serif;opacity:0;transition:opacity .2s;background:rgba(0,0,0,.45);padding:5px 12px;border-radius:14px}
 #cine .hint.on{opacity:1}
-/* ---- Title menu v2 (v1.9.28): big Play + tabs, mobile-first touch targets ---- */
-#title .menu.mm{gap:8px;width:min(400px,92vw);margin:auto auto max(10px,env(safe-area-inset-bottom)) auto;align-self:center;padding:10px;border-radius:16px;background:rgba(4,12,8,.72);border:1px solid rgba(47,107,69,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+/* ---- Title menu: one vertical list of big buttons over the cover art (phone landscape first) ---- */
+#title .menu.mm{display:flex;flex-direction:column;gap:8px;width:min(360px,86vw);margin:auto auto max(10px,env(safe-area-inset-bottom)) auto;align-self:center;padding:10px;border-radius:16px;background:rgba(4,12,8,.72);border:1px solid rgba(47,107,69,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 #title .mm button{font-family:system-ui,sans-serif;-webkit-user-select:none;user-select:none}
-#title .mm .mplay{min-height:62px;font:700 22px/1.1 system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#eafff0;background:linear-gradient(180deg,rgba(64,140,92,.95),rgba(30,84,52,.95));border:1px solid var(--g);border-radius:12px;box-shadow:0 0 18px rgba(127,212,154,.28),inset 0 1px 0 rgba(255,255,255,.18);padding:10px 14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#title .mm #btnContinue{font-size:clamp(14px,4.2vw,19px);letter-spacing:.06em;text-transform:none}
-#title .mm #btnContinue:not(.hidden)~#btnPlay{display:none}
-#title .mm .mplay:hover,#title .mm .mplay:active{background:linear-gradient(180deg,rgba(80,160,108,.98),rgba(36,96,60,.98))}
-#title .mtabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:rgba(0,0,0,.35);border-radius:12px;padding:4px}
-#title .mm .mtabs button{min-height:58px;padding:6px 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:transparent;border:1px solid transparent;border-radius:9px;color:#a9c4b0;font:600 11.5px system-ui,sans-serif;letter-spacing:.02em}
-#title .mtabs svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round;stroke-linecap:round}
-#title .mm .mtabs button.sel{background:rgba(47,107,69,.55);border-color:var(--g);color:#eafff0}
-#title .mpane{display:none;grid-template-columns:1fr 1fr;gap:8px}
+#title .mm .mplay{min-height:52px;font:700 20px/1.1 system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#eafff0;background:linear-gradient(180deg,rgba(64,140,92,.95),rgba(30,84,52,.95));border:1px solid var(--g);border-radius:12px;box-shadow:0 0 18px rgba(127,212,154,.28),inset 0 1px 0 rgba(255,255,255,.18);padding:10px 14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+#title .mm #btnContinue{font-size:clamp(14px,4.2vw,18px);letter-spacing:.06em;text-transform:none;white-space:normal;line-height:1.2;text-overflow:clip}
+#title .mm #btnPlay.hidden{display:none!important}
+#title .mm .mplay:hover,#title .mm .mplay:active,#title .mm .mplay.open{background:linear-gradient(180deg,rgba(80,160,108,.98),rgba(36,96,60,.98))}
+#title .mm .mplay small{font:600 11px system-ui,sans-serif;letter-spacing:.04em;text-transform:none;opacity:.8}
+#title .mpane{display:none;grid-template-columns:1fr 1fr;gap:6px}
 #title .mpane.on{display:grid}
-#title .mm .mpane button{min-height:54px;font:600 16px/1.15 system-ui,sans-serif;border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+#title .mm .mpane button{min-height:44px;font:600 15px/1.15 system-ui,sans-serif;border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 #title .mm .mpane button small{font:500 11.5px system-ui,sans-serif;opacity:.7}
-#title .mpane .wide,#title .mpane #btnMP{grid-column:1/-1}
+#title .mpane .wide,#title .mpane #btnMP,#title .mpane #btnCustom{grid-column:1/-1}
 #title .mm .mpane button:disabled{opacity:.45}
 #title .foot{padding:2px 0 6px}
-/* landscape (phones play in landscape): a low strip across the bottom - Play + tabs on one row, the tab's buttons below -
-   so the family on the cover keeps their faces visible */
+/* Settings: shortcuts at the top, two columns on short landscape, Done always visible */
+#settings .sMore{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+#settings .sMore button{min-height:40px;padding:6px 8px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#settings .sCols{display:flex;flex-direction:column;gap:12px}
+#settings .sCol{display:flex;flex-direction:column;gap:12px}
+@media (max-width:700px){#settings .sMore{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (min-aspect-ratio:4/3){
-  #title .menu.mm{width:min(820px,94vw);margin:auto auto max(4px,env(safe-area-inset-bottom)) auto;align-self:center;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.55fr);grid-template-rows:auto auto;gap:8px}
-  #title .mm .mplay{grid-column:1;grid-row:1;min-height:0;height:100%}
-  #title .mtabs{grid-column:2;grid-row:1}
-  #title .mpane{grid-column:1/-1;grid-row:2}
-  #title .mpane.on{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);grid-template-columns:none}
-  #title .mpane .wide,#title .mpane #btnMP{grid-column:auto}
-  #title .mm .mtabs button{min-height:52px}
+  #settings .sCols{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;min-height:0}
+  #settings .sCol{gap:8px}
 }
-@media (min-aspect-ratio:4/3) and (max-height:560px){#title .menu.mm{gap:6px;padding:7px}#title .mm .mtabs button{min-height:46px;font-size:11px}#title .mtabs svg{width:19px;height:19px}#title .mm .mpane button{min-height:44px}#title .mm .mplay{font-size:18px}#title .mm #btnContinue{font-size:14px;letter-spacing:.02em}}
-@media (max-aspect-ratio:4/3) and (max-height:560px){#title .menu.mm{gap:6px;padding:8px}#title .mm .mplay{min-height:48px;font-size:19px}#title .mm .mtabs button{min-height:48px}#title .mm .mpane button{min-height:46px}}
-@media (max-height:340px){#title .mm .mtabs svg{display:none}#title .mm .mtabs button{min-height:40px}}
+@media (min-aspect-ratio:4/3) and (max-height:560px){
+  #settings{align-items:stretch;padding:6px 8px}
+  #settings .panel{padding:8px 12px;gap:6px;max-height:100%;width:min(800px,96vw);margin:0 auto;overflow:hidden}
+  #settings .sCols{overflow:auto;flex:1;min-height:0;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+  #settings .sCol{gap:5px}
+  #settings .panel label{font-size:12px}
+  #settings .panel button{min-height:32px;padding:5px 10px;font-size:13px}
+  #settings .sMore{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;flex:none}
+  #settings .sMore button{min-height:30px;font-size:12px}
+  #settings .panel #btnCtlSet,#settings .panel .back{flex:none;background:#08160e}
+}
+
+/* landscape phones: compact stack on the right so the cover art stays visible */
+@media (min-aspect-ratio:4/3){
+  #title .menu.mm{width:min(300px,40vw);margin:auto 14px max(8px,env(safe-area-inset-bottom)) auto;align-self:flex-end;gap:6px;padding:8px}
+  #title .mm .mplay{min-height:42px;font-size:16px;letter-spacing:.08em;padding:8px 12px}
+  #title .mm #btnContinue{font-size:14px;letter-spacing:.03em}
+  #title .mm .mpane button{min-height:38px;font-size:14px}
+}
+@media (min-aspect-ratio:4/3) and (max-height:560px){#title .menu.mm{gap:5px;padding:7px}#title .mm .mplay{min-height:40px;font-size:15px}#title .mm .mpane button{min-height:36px}#title .mm .mplay small{font-size:10px}}
+@media (max-aspect-ratio:4/3) and (max-height:560px){#title .menu.mm{gap:6px;padding:8px}#title .mm .mplay{min-height:48px;font-size:18px}#title .mm .mpane button{min-height:42px}}
+@media (max-height:340px){#title .mm .mplay{min-height:34px;font-size:14px;padding:4px 8px}#title .mm .mpane button{min-height:32px;font-size:13px}}
 
 /* ---- Online: world lobby + leaderboard ---- */
-#online{z-index:35;align-items:stretch;justify-content:center;padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom))}
-#online .wpanel{width:min(640px,100%);max-width:none;max-height:none;height:100%;padding:12px;gap:10px;font-family:system-ui,sans-serif;overflow:hidden}
+#online{z-index:35;background:#050b08;align-items:stretch;justify-content:center;padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom))}
+#online .wpanel{width:min(860px,100%);max-width:none;max-height:none;height:100%;padding:12px;gap:10px;font-family:system-ui,sans-serif;overflow:hidden}
 #online .whead{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px}
 #online .whead h2{margin:0;font:700 18px system-ui;letter-spacing:.18em;text-align:center}
 #online button{font:600 15px system-ui,sans-serif;text-align:center;border-radius:10px;min-height:44px;padding:8px 12px}
@@ -407,7 +422,7 @@ body.cine #rotate{display:none!important}
 #online .wth{font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.7;position:sticky;top:0;background:rgba(8,22,14,.98)}#online .wth .on{color:var(--g);opacity:1}
 #online .wtr.me{background:rgba(47,107,69,.35);border-radius:8px}
 @media (max-height:560px){#online .wpanel{padding:8px;gap:6px}#online .wprof{min-height:48px;padding:4px 8px}#online .wav{width:32px;height:32px}#online .wbig{min-height:44px!important}#online button{min-height:40px}#online .wseg button{min-height:36px}#online .wme .wstat{padding:4px}}
-@media (min-aspect-ratio:4/3) and (max-height:560px){#online .wbody#wBoard{display:grid;grid-template-columns:minmax(0,1fr) 190px;grid-template-rows:auto 1fr auto;gap:6px}#online #wBoard .wsort{grid-column:1/-1}#online #wBoard .wtable{grid-column:1;grid-row:2/4}#online #wBoard .wme{grid-column:2;grid-row:2;grid-template-columns:1fr 1fr;align-content:start}#online #wBoard .wsub{grid-column:2;grid-row:3}#online .wbody#wBoard.hidden{display:none!important}}
+@media (min-aspect-ratio:4/3) and (max-height:560px){#online .wbody#wBoard{display:flex;flex-direction:column;gap:6px;min-height:0;height:100%}#online #wBoard .wme,#online #wBoard .wsort,#online #wBoard .wsub{flex:none}#online #wBoard .wtable{flex:1 1 auto;min-height:0;overflow-y:auto}#online .wbody#wBoard.hidden{display:none!important}}
 /* short landscape (phones): profile shares the header row; lobby actions sit left of the game list */
 @media (min-aspect-ratio:4/3) and (max-height:560px){
   #online .wpanel{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);gap:6px 8px}
@@ -421,8 +436,6 @@ body.cine #rotate{display:none!important}
   #online #wGames .wlist{grid-column:2;grid-row:1/3}
   #online .wbody#wGames.hidden{display:none!important}
 }
-/* Continue carries the chapter name: let it wrap to two lines instead of cutting off */
-#title .mm #btnContinue{white-space:normal;line-height:1.2;text-overflow:clip}
 #online .wpanel{background:#08160e}
 /* profile: first-open welcome (Sign in / Create profile) */
 #online.wfirst .wseg,#online.wfirst .wbody,#online.wfirst .wprof{display:none!important}

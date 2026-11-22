@@ -16,7 +16,7 @@ const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_, rej) => se
 export class SupabaseTransport {
   constructor(client, room) { this.client = client; this.room = room; this.ok = false; this.onstatus = null; this.onmessage = null; }
   /** Resolves true when the realtime channel is joined, false/throws on failure. */
-  connect(timeout = 4500) {
+  connect(timeout = 8000) {
     this.ch = this.client.channel('atq-mp-' + this.room, { config: { broadcast: { self: false, ack: false } } });
     this.ch.on('broadcast', { event: 'm' }, ({ payload }) => this.onmessage && this.onmessage(payload));
     return withTimeout(new Promise((res, rej) => this.ch.subscribe(st => {

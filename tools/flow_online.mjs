@@ -1,3 +1,4 @@
+if (/github\.io/i.test(process.argv[2] || '')) { console.error('Refusing to run flow_online against the live site (it submits scores).'); process.exit(2); }
 // End-to-end: (1) a Survival run is submitted to the real leaderboard on death (kills + headshots counted);
 // (2) Create Game in one browser shows up in another browser's World Lobby, and the second one can join it.
 import { chromium } from 'playwright';
@@ -12,21 +13,21 @@ async function page(name) {
 }
 // (1) survival run -> leaderboard
 const p = await page('ZzTestRun');
-await p.click('#title .mtabs button[data-tab="survival"]'); await p.click('#btnSurvival');
+await p.click('#btnSurvival');
 await p.waitForFunction(() => window.__atq.game && window.__atq.game.survival && window.__atq.state === 'play', null, { timeout: 180000 });
 await p.waitForFunction(() => (window.__atq.game.zombies || []).filter(z => !z.dead).length >= 2, null, { timeout: 120000 }).catch(() => {}); await p.waitForTimeout(16000);
 const sim = await p.evaluate(async () => { const g = window.__atq.game; const zs = (g.zombies || []).filter(z => !z.dead); let hs = 0; for (const z of zs.slice(0, 3)) { g.killZ(z, null, { head: true }); hs++; } g.save.kills += 4; g.stepData.wave = Math.max(1, g.stepData.wave || 0); g.onDeath(); return { killed: hs, zs: zs.length, wave: g.stepData.wave }; });
 await p.waitForTimeout(4000); const last = await p.evaluate(() => localStorage.getItem('atq.lbLast') || localStorage.getItem('atq.lbPending'));
 rec('survival run submitted', !!last && !!JSON.parse(last).rank, { sim, last }); rec('headshot kills counted', JSON.parse(last).hs === sim.killed && sim.killed > 0, { hs: JSON.parse(last).hs, killed: sim.killed });
 await p.screenshot({ path: OUT + '/flow_dead.png' });
-await p.click('#btnDeadQuit'); await p.click('#title .mtabs button[data-tab="online"]'); await p.click('#btnBoard'); await p.waitForTimeout(3500); await p.screenshot({ path: OUT + '/flow_board_after_run.png' });
+await p.click('#btnDeadQuit'); await p.click('#btnOnline'); await p.click('#btnBoard'); await p.waitForTimeout(3500); await p.screenshot({ path: OUT + '/flow_board_after_run.png' });
 rec('my row is on the board', await p.evaluate(() => !!document.querySelector('#wRows .wtr.me') && document.querySelector('#wRows .wtr.me').textContent.includes('ZzTestRun')), await p.evaluate(() => document.querySelector('#wMe').textContent));
 // (2) host creates a game, a second player sees + joins it
 await p.click('#online .wseg button[data-t="games"]'); await p.click('#btnCreateGame');
 await p.waitForFunction(() => !!window.__mpCreator, null, { timeout: 120000 }); await p.waitForTimeout(3000); await p.screenshot({ path: OUT + '/flow_creator.png' });
 await p.evaluate(() => window.__mpCreator.close(true));
 await p.waitForFunction(() => !!window.__mpTown, null, { timeout: 180000 }); await p.waitForTimeout(5000);
-const q = await page('ZzJoiner'); await q.click('#title .mtabs button[data-tab="online"]'); await q.click('#btnLobby'); await q.waitForTimeout(6000); await q.screenshot({ path: OUT + '/flow_lobby_sees_game.png' });
+const q = await page('ZzJoiner'); await q.click('#btnOnline'); await q.click('#btnLobby'); await q.waitForTimeout(6000); await q.screenshot({ path: OUT + '/flow_lobby_sees_game.png' });
 const seen = await q.evaluate(() => [...document.querySelectorAll('#wRooms .wroom')].map(r => r.textContent));
 rec('second player sees the host game', seen.some(t => t.includes("ZzTestRun's game")), seen);
 await q.click('#btnQuickJoin'); await q.waitForFunction(() => !!window.__mpCreator, null, { timeout: 120000 }); await q.waitForTimeout(2000); await q.evaluate(() => window.__mpCreator.close(true));

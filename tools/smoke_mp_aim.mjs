@@ -36,13 +36,13 @@ await p.waitForSelector('#title:not(.hidden)', { timeout: 120000 });
 
 if (process.argv.includes('--menu')) {
   for (const tab of ['story', 'survival', 'online', 'keem', 'settings']) {
-    await p.click(`#title .mtabs button[data-tab="${tab}"]`);
+    await p.click({story:"#btnStory",survival:"#btnSurvival",online:"#btnOnline",keem:"#btnOnline",settings:"#btnSettings"}[tab]);
     await p.waitForTimeout(300);
     await p.screenshot({ path: `${OUT}/menu_${tab}.png` });
   }
   const foot = (await p.textContent('#foot')) || '';
   check('footer reads v1.9.32', foot.includes('v1.9.32'), foot);
-  check('Play tab / btnLobby exist', await p.evaluate(() => !!document.querySelector('#btnLobby') && !!document.querySelector('#title .mtabs button[data-tab="online"]')));
+  check('Play tab / btnLobby exist', await p.evaluate(() => !!document.querySelector('#btnLobby') && !!document.querySelector('#btnOnline')));
 }
 
 const entered = await p.evaluate(async () => {

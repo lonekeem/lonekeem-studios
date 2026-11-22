@@ -42,7 +42,7 @@ await p.locator('#studio').click({ timeout: 5000 }).catch(() => {});
 await p.waitForSelector('#title:not(.hidden)', { timeout: 180000 });
 
 // Settings: checkbox exists and is off by default
-await p.locator('.mtabs [data-tab="settings"]').click();
+await p.locator('#btnSettings').click();
 await p.locator('#btnSettings').click();
 await p.waitForSelector('#settings:not(.hidden)', { timeout: 10000 });
 const set = await p.evaluate(() => {
@@ -57,7 +57,7 @@ await p.locator('#settings .back, #settings button.back, #settings .primary').fi
 await p.evaluate(() => { const b = document.querySelector('#settings button.back'); if (b) b.click(); });
 await p.waitForSelector('#title:not(.hidden)', { timeout: 15000 }).catch(() => {});
 
-await p.locator('.mtabs [data-tab="story"]').click();
+await p.locator('#btnStory').click();
 await p.locator('#btnChapters').click();
 await p.waitForSelector('#chapters:not(.hidden)', { timeout: 15000 });
 await p.locator('#btnCh2').click();

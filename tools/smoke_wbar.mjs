@@ -79,7 +79,7 @@ await p.locator('#studio').click({ timeout: 5000 }).catch(() => {});
 await p.waitForSelector('#title:not(.hidden)', { timeout: 120000 });
 
 // ---------- Survival ----------
-await p.click('#title .mtabs button[data-tab="survival"]');
+await p.click('#btnSurvival');
 await p.click('#btnSurvival');
 await p.waitForFunction(() => window.__atq && window.__atq.game && window.__atq.game.running && window.__atq.game.survival, null, { timeout: 180000 });
 await p.waitForTimeout(1500);

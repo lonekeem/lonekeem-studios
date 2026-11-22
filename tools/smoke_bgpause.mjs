@@ -95,7 +95,7 @@ pS.setDefaultTimeout(180000);
 const errS = []; attach(pS, errS);
 
 await bootToTitle(pS);
-await pS.click('#title .mtabs button[data-tab="survival"]');
+await pS.click('#btnSurvival');
 await pS.click('#btnSurvival');
 await pS.waitForFunction(() => window.__atq && window.__atq.game && window.__atq.game.running && window.__atq.game.survival, null, { timeout: 180000 });
 // let the wave timer start and spawn a couple of zombies if the first wave has not yet

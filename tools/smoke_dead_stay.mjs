@@ -119,7 +119,7 @@ const warn0 = p.locator('#btnWarn');
 if (await warn0.count()) { await warn0.click(); await p.waitForTimeout(300); }
 await p.locator('#studio').click({ timeout: 5000 }).catch(() => {});
 await p.waitForSelector('#title:not(.hidden)', { timeout: 180000 });
-await p.locator('.mtabs [data-tab="survival"]').click();
+await p.locator('#btnSurvival').click();
 await p.locator('#btnSurvival').click();
 await p.waitForFunction(() => window.__atq && window.__atq.game && window.__atq.game.survival && window.__atq.game.running && (!document.getElementById('loading') || document.getElementById('loading').classList.contains('hidden')), { timeout: 180000 });
 await p.evaluate(() => { const g = window.__atq.game; g.god = true; g.hp = g.maxHp = 9999; g.paused = false; });
@@ -155,7 +155,7 @@ if (await warn.count()) { await warn.click(); await p.waitForTimeout(300); }
 await p.locator('#studio').click({ timeout: 5000 }).catch(() => {});
 await p.waitForSelector('#title:not(.hidden)', { timeout: 180000 });
 await p.evaluate(() => { Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false }); });
-await p.locator('.mtabs [data-tab="online"]').click();
+await p.locator('#btnOnline').click();
 await p.locator('#btnMP').click();
 const townOk = await p.waitForFunction(() => !!(window.__mpTown && window.__mpTown.Z && window.__mpTown.Z.zombies), { timeout: 180000 }).then(() => true).catch(() => false);
 rec('town_ready', townOk, {});

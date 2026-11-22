@@ -10,10 +10,10 @@ const res = []; const rec = (n, ok, d) => { res.push(ok); console.log(ok ? 'PASS
 const shot = async (n, w = 1500) => { await p.waitForTimeout(w); await p.screenshot({ path: `${OUT}/${n}.png` }); };
 const clickText = (sel, t) => p.evaluate(([sel, t]) => { const e = [...document.querySelectorAll(sel)].find(b => b.textContent.trim().startsWith(t)); if (!e) return 'missing ' + t; e.click(); return 'ok'; }, [sel, t]);
 await p.goto(URL, { waitUntil: 'domcontentloaded' }); await p.click('#btnWarn'); await p.waitForTimeout(700); await p.click('#studio').catch(() => {}); await p.waitForSelector('#title:not(.hidden)');
-for (const t of ['story', 'survival', 'online', 'keem', 'settings']) { await p.click(`#title .mtabs button[data-tab="${t}"]`); await shot('menu_' + t, 300); }
+for (const t of ['story', 'survival', 'online', 'keem', 'settings']) { await p.click({story:"#btnStory",survival:"#btnSurvival",online:"#btnOnline",keem:"#btnOnline",settings:"#btnSettings"}[t]); await shot('menu_' + t, 300); }
 rec('footer reads v1.9.29', (await p.textContent('#foot')).startsWith('v1.9.29'));
 rec('Keem tab has My Character', (await p.textContent('#btnCustom')).trim() === 'My Character');
-await p.click('#title .mtabs button[data-tab="online"]'); await p.click('#btnLobby');
+await p.click('#btnOnline'); await p.click('#btnLobby');
 await p.waitForSelector('#prof .welcome'); await shot('profile_welcome', 1200); rec('Online first open shows the profile welcome (Sign in / Create profile)', await p.evaluate(() => /Google/.test(document.querySelector('#prof .welcome').textContent) && /Create profile/.test(document.querySelector('#prof .welcome').textContent)));
 rec('create profile: ' + await clickText('#prof .welcome button', 'Create profile'), true); await p.waitForSelector('#prof canvas'); await p.fill('#prof input.name', 'SmokeTest'); await shot('creator_name', 4000);
 for (let i = 0; i < 2; i++) await clickText('#prof .foot button', 'Next'); await shot('creator_face', 3000);

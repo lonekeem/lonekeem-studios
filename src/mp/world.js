@@ -11,6 +11,8 @@ const MAX_PLAYERS = 8;
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = (crypto.getRandomValues(new Uint8Array(1))[0] & 15); return (c === 'x' ? r : (r & 3) | 8).toString(16); }));
 const MOCK = () => /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has('worldmock'); // screenshot hook, localhost only
+const isLocal = () => /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+export const isTestRoom = (room, meta) => !!(meta && meta.test) || /^(w-test-|test-)/i.test(String(room || ''));
 
 // ---------- identity: Google profile or guest (device id + secret + nickname) ----------
 export function guest() {
@@ -38,34 +40,60 @@ export async function submitRun(run) {
 const MOCK_ROWS = [['Nia_Rose', 34, 1611, 402], ['quietfalls', 29, 1380, 515], ['Keem', 27, 1204, 330], ['BigGus77', 22, 990, 120], ['DadMode', 19, 845, 201], ['Survivor4821', 14, 512, 98], ['RiversideRuth', 11, 402, 77], ['MrWalt', 8, 260, 31], ['zed_hunter', 6, 180, 44], ['LongNameSurvivor', 4, 96, 9]];
 export async function topPlayers(sort = 'wave') {
   if (MOCK()) { const rows = MOCK_ROWS.map(([name, w, k, h], i) => ({ name, best_wave: w, total_kills: k, total_hs: h, avatar: null, me: name === 'Keem' })); const key = { wave: 'best_wave', kills: 'total_kills', hs: 'total_hs' }[sort]; rows.sort((a, b) => b[key] - a[key]); rows.forEach((r, i) => r.rank = i + 1); return { rows, me: rows.find(r => r.me), players: rows.length }; }
-  const p = await profile(); const c = await sb(); const { data, error } = await c.rpc('lb_top', { p_sort: sort, p_limit: 50, p_me: p.kind === 'guest' ? p.id : null }); if (error) throw new Error(error.message); return data;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('You are offline. Check your connection and try again.');
+  const p = await profile(); const c = await sb();
+  const me = (p.kind === 'guest' && p.id && /^[0-9a-f-]{36}$/i.test(p.id)) ? p.id : null;
+  const { data, error } = await c.rpc('lb_top', { p_sort: sort, p_limit: 50, p_me: me }); if (error) throw new Error(error.message);
+  let d = data; if (typeof d === 'string') { try { d = JSON.parse(d); } catch (e) { throw new Error('Bad leaderboard response'); } }
+  if (Array.isArray(d)) d = d[0] || {};
+  if (!d || typeof d !== 'object') throw new Error('Bad leaderboard response');
+  if (!Array.isArray(d.rows)) d.rows = [];
+  return d;
 }
 
 // ---------- lobby presence ----------
 let lob = null; // { ch, key, ready, rooms, onChange }
+async function dropLobby() { const L = lob; lob = null; if (!L) return; try { L.ch && L.client && L.client.removeChannel(L.ch); } catch (e) { /* ignore */ } }
 async function lobbyChannel() {
-  if (lob) return lob; const c = await sb(); const key = guest().id.slice(0, 8) + Math.random().toString(36).slice(2, 6);
+  if (lob && lob.ready) return lob; if (lob) await dropLobby();
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('You are offline.');
+  const c = await sb(); const key = guest().id.slice(0, 8) + Math.random().toString(36).slice(2, 6);
   lob = { ch: c.channel('atq-world-lobby', { config: { presence: { key } } }), key, ready: false, rooms: [], viewers: 0, onChange: null, client: c };
   const L = lob;
   L.ch.on('presence', { event: 'sync' }, () => {
     const st = L.ch.presenceState(); const rooms = new Map(); let people = 0;
-    for (const k in st) for (const m of st[k]) { people++; if (!m.room) continue; const r = rooms.get(m.room) || { room: m.room, players: [], at: Infinity, host: '', avatar: null }; r.players.push(m.name || 'Survivor'); if ((m.at || 0) < r.at) { r.at = m.at || 0; r.host = m.name || 'Survivor'; r.avatar = m.avatar || null; r.title = m.title || ''; } rooms.set(m.room, r); }
+    for (const k in st) for (const m of st[k]) {
+      if (isTestRoom(m.room, m)) continue;
+      people++; if (!m.room) continue;
+      const r = rooms.get(m.room) || { room: m.room, players: [], at: Infinity, host: '', avatar: null };
+      r.players.push(m.name || 'Survivor'); if ((m.at || 0) < r.at) { r.at = m.at || 0; r.host = m.name || 'Survivor'; r.avatar = m.avatar || null; r.title = m.title || ''; }
+      rooms.set(m.room, r);
+    }
     L.rooms = [...rooms.values()].sort((a, b) => b.players.length - a.players.length || a.at - b.at); L.people = people; L.onChange && L.onChange();
   });
-  await new Promise((res, rej) => { const t = setTimeout(() => rej(new Error('lobby timed out')), 6000); L.ch.subscribe(s => { if (s === 'SUBSCRIBED') { clearTimeout(t); L.ready = true; res(); } else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') { clearTimeout(t); rej(new Error(s)); } }); }).catch(e => { lob = null; try { c.removeChannel(L.ch); } catch (er) { /* ignore */ } throw e; });
+  try {
+    await new Promise((res, rej) => { const t = setTimeout(() => rej(new Error('lobby timed out')), 10000); L.ch.subscribe(s => { if (s === 'SUBSCRIBED') { clearTimeout(t); L.ready = true; res(); } else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT' || s === 'CLOSED') { clearTimeout(t); rej(new Error(s)); } }); });
+  } catch (e) { await dropLobby(); throw e; }
+  L.ch.on('system', { event: 'close' }, () => { L.ready = false; });
   return L;
 }
 const MOCK_ROOMS = [{ room: 'w-a1', host: 'Nia_Rose', title: "Nia_Rose's game", players: ['a', 'b', 'c', 'd', 'e'], avatar: null }, { room: 'w-b2', host: 'BigGus77', title: "BigGus77's game", players: ['a', 'b'], avatar: null }, { room: 'w-c3', host: 'LongNameSurvivor', title: "LongNameSurvivor's game", players: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], avatar: null }];
 
 // ---------- joining: character creator (existing) -> town in that room ----------
-async function joinRoom(room, title, ui) {
-  const PR = await profiles(); ui.hide(); $('#title').classList.add('hidden');
-  const back = () => { $('#title').classList.remove('hidden'); ui.open('games'); };
-  if (!PR.hasProfile()) { const made = await openProfileScreen('auto'); if (!made) { back(); return; } } // first time: sign in or create (new creator)
-  const p = PR.getProfile(); const look = Object.assign({}, p.look, { name: p.name });
-  const tw = await import('./town/town.js'); let L = null;
-  await tw.enterTown({ look, room, onExit: () => { try { L && L.ch.untrack(); } catch (e) { /* ignore */ } back(); } });
-  try { L = await lobbyChannel(); await L.ch.track({ room, title: title || (p.name + "'s game"), name: p.name, avatar: p.avatarUrl || null, at: Date.now() }); } catch (e) { console.warn('[world] could not list this game in the lobby:', e.message); }
+async function joinRoom(room, title, ui, opts = {}) {
+  const test = !!(opts.test || isTestRoom(room));
+  const PR = await profiles(); if (ui) ui.hide(); $('#title').classList.add('hidden');
+  const back = (msg) => { try { window.__atq && window.__atq.hideLoading && window.__atq.hideLoading(); } catch (e) { /* ignore */ } $('#title').classList.remove('hidden'); if (ui) { ui.open('games'); if (msg) { const s = document.querySelector('#wGamesInfo'); if (s) { s.textContent = msg; s.classList.add('warn'); } } } };
+  try {
+    if (!PR.hasProfile()) { const made = await openProfileScreen('auto'); if (!made) { back(); return; } }
+    const p = PR.getProfile(); const look = Object.assign({}, p.look, { name: p.name });
+    let L = null;
+    if (!test) {
+      try { L = await lobbyChannel(); await L.ch.track({ room, title: title || (p.name + "'s game"), name: p.name, avatar: p.avatarUrl || null, at: Date.now() }); } catch (e) { console.warn('[world] could not list this game in the lobby:', e.message); }
+    }
+    const tw = await import('./town/town.js');
+    await tw.enterTown({ look, room, onExit: () => { try { L && L.ch.untrack(); } catch (e) { /* ignore */ } back(); } });
+  } catch (e) { console.warn('[world] join failed:', e && e.message); back("Couldn't start the game. " + (e && e.message ? e.message : 'Please try again.')); }
 }
 
 // ---------- UI ----------
@@ -79,7 +107,7 @@ function buildUI() {
     <div class="wwel hidden" id="wWel"></div>
     <div class="wseg" role="tablist"><button data-t="games" role="tab">World Lobby</button><button data-t="board" role="tab">Leaderboard</button></div>
     <div class="wbody" id="wGames">
-      <div class="wact"><button class="primary wbig" id="btnQuickJoin">Quick Join</button><button class="wbig" id="btnCreateGame">Create Game</button></div>
+      <div class="wact"><button class="primary wbig" id="btnQuickJoin">Quick Join</button><button class="wbig" id="btnCreateGame">Create Game</button><button class="wbig" id="btnPractice">Practice Alone</button></div>
       <div class="wsub small" id="wGamesInfo">Open games from players anywhere in the world</div>
       <div class="wlist" id="wRooms"></div>
     </div>
@@ -92,7 +120,7 @@ function buildUI() {
   document.body.append(root);
   const q = s => root.querySelector(s); let tab = 'games', sort = 'wave', prof = null;
   const ui = {
-    show: () => { root.classList.remove('hidden'); refreshProf(); if (tab === 'board') loadBoard(); },
+    show: () => { $('#title').classList.add('hidden'); root.classList.remove('hidden'); refreshProf(); if (tab === 'board') loadBoard(); installHook(ui); },
     hide: () => root.classList.add('hidden'),
     open: t => { setTab(t); ui.show(); connect(); },
     askName: then => editName(then),
@@ -114,7 +142,14 @@ function buildUI() {
       if (r.state === 'loaded') flash('Profile loaded: ' + (r.name || prof.name));
       if (r.state === 'error') flash('Could not load your cloud profile: ' + r.msg);
     }
-    if (!MOCK() && !(await profiles()).hasProfile()) { welcome(prof.kind === 'google' ? 'new' : 'first', gOn); return; }
+    if (!MOCK() && !(await profiles()).hasProfile()) {
+      q('#wWel').classList.add('hidden'); root.classList.remove('wfirst');
+      el.innerHTML = `${avatarHTML('?', null)}<div class="wpn"><b>Guest</b><span class="small">Create a profile to join games.</span></div>
+        <div class="wpb">${gOn ? '<button id="wGoogle" class="wg"><span class="gdot">G</span> Sign in</button>' : ''}<button id="wMakeProf" class="primary">Create profile</button></div>`;
+      const go = q('#wGoogle'); if (go) go.onclick = () => google(go);
+      const mk = q('#wMakeProf'); if (mk) mk.onclick = () => welcome(prof.kind === 'google' ? 'new' : 'first', gOn);
+      return;
+    }
     q('#wWel').classList.add('hidden'); root.classList.remove('wfirst');
     const nm = prof.name || 'Pick a name';
     el.innerHTML = `${avatarHTML(prof.name, prof.avatar)}<div class="wpn"><b>${esc(nm)}</b><span class="small" id="wSync">${prof.kind === 'google' ? '☁ Signed in with Google · synced' : 'Guest · saved on this device'}</span></div>
@@ -172,13 +207,19 @@ function buildUI() {
   }
   let rooms = [];
   async function connect() {
-    const net = q('#wNet');
+    const net = q('#wNet'); net.textContent = '○ connecting…'; net.classList.remove('on');
     if (MOCK()) { rooms = MOCK_ROOMS; net.textContent = '● Online · 23 players'; net.classList.add('on'); renderRooms(rooms); return; }
-    try { const L = await lobbyChannel(); L.onChange = () => { rooms = L.rooms; net.textContent = '● Online · ' + Math.max(1, L.people || 0) + ' player' + ((L.people || 0) === 1 ? '' : 's'); net.classList.add('on'); renderRooms(rooms); }; await L.ch.track({ name: (prof && prof.name) || 'Survivor', at: Date.now() }); L.onChange(); }
-    catch (e) { net.textContent = '○ Offline'; net.classList.remove('on'); q('#wRooms').innerHTML = `<div class="wempty">Can't reach the online lobby.<br><span class="small">Check your connection and try again.</span><br><button id="wRetry">Retry</button></div>`; q('#wRetry').onclick = connect; }
+    try { const L = await lobbyChannel(); L.onChange = () => { rooms = L.rooms; const n = L.people || 0; net.textContent = n ? ('● Online · ' + n + ' player' + (n === 1 ? '' : 's')) : '● Online · no one else yet'; net.classList.add('on'); renderRooms(rooms); }; await L.ch.track({ name: (prof && prof.name) || 'Survivor', at: Date.now() }); L.onChange(); }
+    catch (e) { net.textContent = '○ Offline'; net.classList.remove('on'); q('#wRooms').innerHTML = `<div class="wempty">Can't reach the online lobby.<br><span class="small">${esc(e.message || 'Check your connection and try again.')}</span><br><button id="wRetry">Retry</button></div>`; const rb = q('#wRetry'); if (rb) rb.onclick = connect; }
   }
   q('#btnCreateGame').onclick = async () => { const p = await profile(); joinRoom('w-' + Math.random().toString(36).slice(2, 8), (p.name || 'Survivor') + "'s game", ui); };
   q('#btnQuickJoin').onclick = async () => { const open = rooms.filter(r => r.players.length < MAX_PLAYERS); if (open.length) { const r = open[0]; joinRoom(r.room, r.title, ui); } else { const p = await profile(); joinRoom('w-' + Math.random().toString(36).slice(2, 8), (p.name || 'Survivor') + "'s game", ui); } };
+  q('#btnPractice').onclick = async () => {
+    const PR = await profiles(); if (!PR.hasProfile()) { ui.hide(); const made = await openProfileScreen('auto'); if (!made) { $('#title').classList.remove('hidden'); ui.open('games'); return; } ui.show(); }
+    const p = PR.getProfile(); ui.hide(); $('#title').classList.add('hidden');
+    try { const tw = await import('./town/town.js'); await tw.enterTown({ look: Object.assign({}, p.look, { name: p.name }), solo: true, onExit: () => { $('#title').classList.remove('hidden'); ui.open('games'); } }); }
+    catch (e) { $('#title').classList.remove('hidden'); ui.open('games'); const s = q('#wGamesInfo'); if (s) { s.textContent = "Couldn't start practice. " + (e.message || 'Please try again.'); s.classList.add('warn'); } }
+  };
   async function loadBoard() {
     root.querySelectorAll('.wsort button').forEach(b => b.classList.toggle('sel', b.dataset.s === sort));
     const rowsEl = q('#wRows'), meEl = q('#wMe'); rowsEl.innerHTML = '<div class="wempty small">Loading…</div>';
@@ -187,9 +228,18 @@ function buildUI() {
       const head = `<div class="wtr wth"><span class="wrk">#</span><span class="wnm">Player</span><span class="${sort === 'wave' ? 'on' : ''}">Wave</span><span class="${sort === 'kills' ? 'on' : ''}">Kills</span><span class="${sort === 'hs' ? 'on' : ''}">Head</span></div>`;
       rowsEl.innerHTML = rows.length ? head + rows.map(r => `<div class="wtr${r.me ? ' me' : ''}"><span class="wrk">${r.rank <= 3 ? ['🥇', '🥈', '🥉'][r.rank - 1] : r.rank}</span><span class="wnm">${avatarHTML(r.name, r.avatar, 'wav sm')}<b>${esc(r.name)}</b></span><span>${r.best_wave}</span><span>${r.total_kills}</span><span>${r.total_hs}</span></div>`).join('') : '<div class="wempty">No scores yet.<br><span class="small">Finish a Survival run to be the first on the board.</span></div>';
       const m = d.me; meEl.innerHTML = m ? `<div class="wstat"><b>#${m.rank}</b><span>Your rank</span></div><div class="wstat"><b>${m.best_wave}</b><span>Best wave</span></div><div class="wstat"><b>${m.total_kills}</b><span>Kills</span></div><div class="wstat"><b>${m.total_hs}</b><span>Headshots</span></div>` : `<div class="wstat wide"><span>Play Survival and your kills, best wave and headshots show up here.</span></div>`;
-    } catch (e) { rowsEl.innerHTML = `<div class="wempty">Can't load the leaderboard.<br><span class="small">${esc(e.message || e)}</span></div>`; meEl.innerHTML = ''; }
+    } catch (e) { rowsEl.innerHTML = `<div class="wempty">Can't load the leaderboard.<br><span class="small">${esc(e.message || e)}</span><br><button id="wBoardRetry">Retry</button></div>`; meEl.innerHTML = ''; const rb = q('#wBoardRetry'); if (rb) rb.onclick = loadBoard; }
   }
+  installHook(ui);
   return ui;
+}
+
+function installHook(ui) {
+  if (typeof window === 'undefined' || !isLocal()) return;
+  window.__atqWorld = Object.assign(window.__atqWorld || {}, {
+    openOnline, joinRoom, topPlayers, isTestRoom, ui,
+    joinTestRoom: (room, title) => { if (!UI) UI = buildUI(); return joinRoom(room, title || 'Test game', UI, { test: true }); },
+  });
 }
 
 // Called once at boot: Android sign-in return + reopen the Online screen after a Google redirect.
@@ -198,3 +248,6 @@ export function bootOnline() {
   installNativeAuth(() => { try { LS.removeItem('atq.online.resume'); } catch (e) { /* ignore */ } if (UI) UI.show(); else if (!$('#title').classList.contains('hidden')) openOnline(); }).catch(() => {});
   try { const t = +LS.getItem('atq.online.resume'); if (t) { LS.removeItem('atq.online.resume'); if (Date.now() - t < 10 * 60e3) { let n = 0; const iv = setInterval(() => { const ti = $('#title'); if (++n > 120) clearInterval(iv); if (ti && !ti.classList.contains('hidden')) { clearInterval(iv); openOnline(); } }, 500); } } } catch (e) { /* ignore */ }
 }
+
+// localhost-only hook so smokes can join a private test room that is never listed in the public lobby
+if (typeof window !== 'undefined') installHook(null);

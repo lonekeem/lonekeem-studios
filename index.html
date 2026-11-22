@@ -97,58 +97,55 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
   <div class="logo"><div class="studio">LONE KEEM STUDIOS PRESENTS</div><h1>AFTER THE QUIET</h1><div class="tag">Riverside, Maine</div></div>
   <div class="menu mm">
     <button id="btnContinue" class="primary mplay hidden">Continue</button>
-    <button id="btnPlay" class="primary mplay">Play</button>
-    <div class="mtabs" role="tablist">
-      <button data-tab="story" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5C6.5 4.5 9.5 4.5 12 6c2.5-1.5 5.5-1.5 8-.5v13c-2.5-1-5.5-1-8 .5-2.5-1.5-5.5-1.5-8-.5zM12 6v13.5"/></svg><span>Story</span></button>
-      <button data-tab="survival" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c4.4 0 8 3.1 8 7 0 2.3-1.2 4.3-3 5.6V19h-3v-2h-1v2h-2v-2h-1v2H7v-3.4C5.2 14.3 4 12.3 4 10c0-3.9 3.6-7 8-7zM9 9.5a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zm6 0a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2z"/></svg><span>Survival</span></button>
-      <button data-tab="online" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.6 3.7 5.6 3.7 9s-1.2 6.4-3.7 9c-2.5-2.6-3.7-5.6-3.7-9S9.5 5.6 12 3z"/></svg><span>Online</span></button>
-      <button data-tab="keem" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a3.6 3.6 0 1 1 0 7.2A3.6 3.6 0 0 1 12 4zM5 20c.6-4 3.4-6.5 7-6.5s6.4 2.5 7 6.5z"/></svg><span>Keem</span></button>
-      <button data-tab="settings" role="tab"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM12 2.5l1.6 2.6 3-.6.6 3 2.6 1.6-1.4 2.9 1.4 2.9-2.6 1.6-.6 3-3-.6L12 21.5l-1.6-2.6-3 .6-.6-3-2.6-1.6 1.4-2.9-1.4-2.9 2.6-1.6.6-3 3 .6z"/></svg><span>Settings</span></button>
-    </div>
+    <button id="btnStory" class="mplay">Story</button>
     <div class="mpane" id="paneStory" data-pane="story">
       <button id="btnNew">New Game</button>
       <button id="btnChapters">Chapter Select</button>
     </div>
-    <div class="mpane" id="paneSurvival" data-pane="survival">
-      <button id="btnSurvival" class="wide">Start Survival<small id="survBestTxt">Endless waves</small></button>
-    </div>
+    <button id="btnSurvival" class="mplay wide">Survival<small id="survBestTxt">Endless waves</small></button>
+    <button id="btnOnline" class="mplay">Online</button>
     <div class="mpane" id="paneOnline" data-pane="online">
       <button id="btnLobby">World Lobby</button>
       <button id="btnBoard">Leaderboard</button>
-    </div>
-    <div class="mpane" id="paneKeem" data-pane="keem">
-      <button id="btnArmory">Armory</button>
       <button id="btnCustom">My Character</button>
-      <button id="btnInvT" class="wide">Inventory &amp; Stats</button>
     </div>
-    <div class="mpane" id="paneSettings" data-pane="settings">
-      <button id="btnSettings">Settings</button>
-      <button id="btnControls">Controls</button>
-      <button id="btnWatchIntro">Watch Intro</button>
-      <button id="btnCredits">Credits</button>
-    </div>
+    <button id="btnSettings" class="mplay">Settings</button>
+    <button id="btnPlay" class="mplay hidden" tabindex="-1" aria-hidden="true">Play</button>
   </div>
   <div class="foot" id="foot">v1.9.38 · Story Mode · Chapters 1–13 · Multiplayer (Beta)</div>
 </div>
 <div id="settings" class="screen hidden">
   <div class="panel">
     <h2>Settings</h2>
+    <div class="sMore">
+      <button id="btnControls">Controls</button>
+      <button id="btnWatchIntro">Watch Intro</button>
+      <button id="btnCredits">Credits</button>
+      <button id="btnArmory">Armory</button>
+      <button id="btnInvT">Inventory</button>
+    </div>
+    <div class="sCols">
+    <div class="sCol">
     <label>Master volume <input type="range" id="sVol" min="0" max="1" step="0.05"></label>
     <label>Music &amp; ambience <input type="range" id="sMusic" min="0" max="1" step="0.05"></label>
     <label>Sound effects <input type="range" id="sSfx" min="0" max="1" step="0.05"></label>
     <label>Voice volume <input type="range" id="sVoiceVol" min="0" max="1" step="0.05"></label>
+    <label>Text speed <input type="range" id="sText" min="0.5" max="2" step="0.1"></label>
+    <label>Camera sensitivity <input type="range" id="sSens" min="0.3" max="2" step="0.1"></label>
+    <label>Strong language <select id="sLang"><option value="on">On (uncensored)</option><option value="bleep">Bleeped</option><option value="clean">Off (clean words)</option></select></label>
+    </div>
+    <div class="sCol">
     <label class="chk"><input type="checkbox" id="sVoices"> Voiced lines &amp; shouts</label>
     <label class="chk"><input type="checkbox" id="sPlaySubs"> Subtitles during play</label>
-    <label>Text speed <input type="range" id="sText" min="0.5" max="2" step="0.1"></label>
     <label class="chk"><input type="checkbox" id="sAuto"> Auto-advance text</label>
     <label class="chk"><input type="checkbox" id="sGore"> Blood &amp; gore (off = softened)</label>
-    <label>Strong language <select id="sLang"><option value="on">On (uncensored)</option><option value="bleep">Bleeped</option><option value="clean">Off (clean words)</option></select></label>
-    <label>Graphics quality <select id="sQual"><option value="auto">Auto</option><option value="low">Low</option><option value="med">Medium</option><option value="high">High</option></select></label>
-    <label>Camera sensitivity <input type="range" id="sSens" min="0.3" max="2" step="0.1"></label>
     <label class="chk"><input type="checkbox" id="sFP"> First-person camera</label>
     <label class="chk"><input type="checkbox" id="sQte"> Easier fights (more health)</label>
     <label class="chk"><input type="checkbox" id="sHints"> Hints &amp; tutorial</label>
     <label class="chk"><input type="checkbox" id="sMotion"> Reduce camera motion</label>
+    <label>Graphics quality <select id="sQual"><option value="auto">Auto</option><option value="low">Low</option><option value="med">Medium</option><option value="high">High</option></select></label>
+    </div>
+    </div>
     <button id="btnCtlSet">Control scheme, layout &amp; sensitivity…</button>
     <button class="back primary">Done</button>
   </div>
@@ -212,7 +209,7 @@ setTimeout(function(){if(!window.__atqBooted)show('The game did not start. Your 
     <h2>Paused</h2>
     <button id="btnResume" class="primary">Resume</button>
     <button id="btnPShop">Armory (weapon shop)</button>
-    <button id="btnPInv">Inventory &amp; Stats</button>
+    <button id="btnPInv">Inventory</button>
     <button id="btnRestartCp">Restart from checkpoint</button>
     <button id="btnPauseSettings">Settings</button>
     <button id="btnQuit">Quit to title</button>

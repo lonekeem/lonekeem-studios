@@ -34,14 +34,14 @@ await p.locator('#studio').click({ timeout: 5000 }).catch(() => {});
 await p.waitForSelector('#title:not(.hidden)', { timeout: 120000 });
 
 for (const t of ['story', 'survival', 'online', 'keem', 'settings']) {
-  await p.click(`#title .mtabs button[data-tab="${t}"]`);
+  await p.click({story:"#btnStory",survival:"#btnSurvival",online:"#btnOnline",keem:"#btnOnline",settings:"#btnSettings"}[t]);
   await shot('menu_' + t, 350);
 }
 const foot = (await p.textContent('#foot')) || '';
 rec('footer reads v1.9.30', foot.startsWith('v1.9.30'), foot);
-rec('Play tab / btnLobby exist', await p.evaluate(() => !!document.querySelector('#btnLobby') && !!document.querySelector('#title .mtabs button[data-tab="online"]')));
+rec('Play tab / btnLobby exist', await p.evaluate(() => !!document.querySelector('#btnLobby') && !!document.querySelector('#btnOnline')));
 
-await p.click('#title .mtabs button[data-tab="online"]');
+await p.click('#btnOnline');
 await p.click('#btnLobby');
 await p.waitForSelector('#prof .welcome', { timeout: 60000 });
 const welcome = await p.evaluate(() => {
@@ -72,7 +72,7 @@ await p.evaluate(() => {
   const title = document.querySelector('#title');
   if (title) title.classList.remove('hidden');
 });
-await p.click('#title .mtabs button[data-tab="survival"]');
+await p.click('#btnSurvival');
 await p.click('#btnSurvival');
 await p.waitForFunction(() => window.__atq && window.__atq.game && window.__atq.game.running && window.__atq.game.survival, null, { timeout: 180000 });
 await p.waitForTimeout(2000);

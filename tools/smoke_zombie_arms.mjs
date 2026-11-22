@@ -82,7 +82,7 @@ const boot = async () => {
 await boot();
 
 // ---------- Survival ----------
-await p.locator('.mtabs [data-tab="survival"]').click();
+await p.locator('#btnSurvival').click();
 await p.locator('#btnSurvival').click();
 await p.waitForFunction(() => {
   const A = window.__atq || {};
@@ -131,7 +131,7 @@ await p.waitForTimeout(200);
 await p.evaluate(() => { const b = document.getElementById('btnQuit'); if (b) b.click(); });
 await p.waitForSelector('#title:not(.hidden)', { timeout: 30000 });
 await p.evaluate(() => { Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false }); });
-await p.locator('.mtabs [data-tab="online"]').click();
+await p.locator('#btnOnline').click();
 await p.locator('#btnMP').click();
 await p.waitForFunction(() => !!(window.__mpTown), { timeout: 180000 });
 await p.waitForTimeout(600);
