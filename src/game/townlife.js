@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { Char } from './chars.js';
 import { randomLook } from './looks.js';
 import { addWound, bloodyMouth, makePool, setHandBlood } from './gore.js';
+import { YAW_LIM } from './headLook.js';
 const angDiff = (a, b) => ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
 
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -95,8 +96,8 @@ const dist = (a, b) => hyp(a.x - b.x, a.z - b.z);
 
 function panic(g, T, c, dt) { const s = c.tn, th = nearestThreat(g, T, c); s.lean += ((s.sv > 3 ? 1 : 0) - s.lean) * Math.min(1, dt * 4);
   s.gt -= dt; if (s.gt < 0) { s.gt = rnd(1.1, 2.1); s.gd = .8; } if (s.gd > 0) s.gd -= dt;
-  let want = 0; if (th && s.td < 16 && s.gd > 0 && s.sv > 1) { want = clamp(angDiff(c.root.rotation.y, Math.atan2(th.root.position.x - c.root.position.x, th.root.position.z - c.root.position.z)), -1.45, 1.45); }
-  s.hy += (want - s.hy) * Math.min(1, dt * 9);
+  let want = 0; if (th && s.td < 16 && s.gd > 0 && s.sv > 1) { want = clamp(angDiff(c.root.rotation.y, Math.atan2(th.root.position.x - c.root.position.x, th.root.position.z - c.root.position.z)), -YAW_LIM, YAW_LIM); }
+  s.hy += angDiff(s.hy, want) * Math.min(1, dt * 9); s.hy = clamp(s.hy, -YAW_LIM, YAW_LIM);
   s.sc -= dt; if (th && s.td < 18 && s.sc <= 0) { s.sc = rnd(3.2, 5); g.audio.shout && g.audio.shout(c.female ? 'npcf_scream' : 'npcm_scream', false, c.root.position); } }
 
 function tick(g, T, c, dt) { const s = c.tn, ev = T.ev; if (!ev) return; const p = c.root.position;

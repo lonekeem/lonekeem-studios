@@ -4,6 +4,7 @@
 // and scripted runners are left alone.
 import * as THREE from 'three';
 import { angLerp } from './util.js';
+import { applyHeadLook, wrapA } from './headLook.js';
 
 const RANGE = 16;
 const TURN = 0.3;
@@ -146,16 +147,15 @@ function headOf(ch, out) {
   return out;
 }
 
-function lookHead(ch, target) {
-  const head = ch.bone && ch.bone('DEF-head'), neck = ch.bone && ch.bone('DEF-neck');
+function lookHead(ch, target, dt) {
+  const head = ch.bone && ch.bone('DEF-head');
   if (!head || !target) return;
   headOf(ch, _hp); headOf(target, _tp);
   const dx = _tp.x - _hp.x, dy = _tp.y - _hp.y, dz = _tp.z - _hp.z;
   const body = ch.root.rotation.y;
-  let hy = clamp(angDiff(body, Math.atan2(dx, dz)), -0.7, 0.7);
-  let hx = clamp(Math.atan2(dy, Math.hypot(dx, dz) || 1e-3), -0.4, 0.35);
-  if (neck) { neck.rotateY(hy * 0.35); neck.rotateX(hx * 0.25); }
-  head.rotateY(hy * 0.5); head.rotateX(hx * 0.45);
+  const hy = wrapA(angDiff(body, Math.atan2(dx, dz)));
+  const hx = Math.atan2(dy, Math.hypot(dx, dz) || 1e-3);
+  applyHeadLook(ch, hy, hx, dt);
 }
 
 function lookBiscuit(rb, from, target) {
@@ -224,7 +224,7 @@ export function tickDialogueFace(g, dt) {
     const k = 1 - Math.exp(-dt / (TURN / 3));
     ch.root.rotation.set(0, wrapYaw(angLerp(cur, want, k)), 0);
     if (S.hold.has(ch) && !t.isPlayer) poseFor(ch, ch === S.speaker);
-    lookHead(ch, t.target);
+    lookHead(ch, t.target, dt);
   }
   // Biscuit: look at the current speaker (or whoever people are facing)
   const lookAt = S.speaker || (S.turns.size && [...S.turns.values()][0].target);

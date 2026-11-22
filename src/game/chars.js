@@ -3,6 +3,7 @@ import { bodyLook, dressChar } from './looks.js';
 import { canvasTex } from './util.js';
 import { buildWeapon } from './gear.js';
 import { attachRig, EXTRA } from './avatar.js';
+import { bindHeadLook } from './headLook.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 // Body material: one CC0 Quaternius mannequin, "dressed" in the shader by bind-pose regions
@@ -100,6 +101,7 @@ export class Char {
     if (look.rig && lib.rigs && lib.rigs[look.rig] && !/[?&]rig=0/.test(location.search)) { try { attachRig(this, lib.rigs[look.rig], { tint: /zombie|raider|gen[mf]/.test(look.rig) ? look.tint : null, tintK: /gen[mf]/.test(look.rig) ? .22 : /zombie_/.test(look.rig) ? .3 : undefined, tintMul: look.rig === 'zombie_elder' ? .42 : look.rig === 'zombie_big' ? .86 : look.rig === 'zombie_male' ? .95 : undefined, rough: /zombie_/.test(look.rig) ? .88 : undefined, handColor: look.rig === 'raider' ? '#1c1c1f' : /zombie/.test(look.rig) ? '#8e9677' : null }); } catch (e) { console.warn('rig', e); } }
     this.mixer = new THREE.AnimationMixer(obj); this.actions = {}; this.cur = null; this.curName = ''; this.oneShot = null;
     this.mixer.addEventListener('finished', (e) => { if (this.oneShot && e.action === this.oneShot.a) { const cb = this.oneShot.cb; this.oneShot = null; cb && cb(); } });
+    bindHeadLook(this);
   }
   act(name) { let a = this.actions[name]; if (!a) { const c = this.lib.clips[name]; if (!c) return null; a = this.actions[name] = this.mixer.clipAction(c); } return a; }
   play(name, { fade = 0.18, speed = 1, once = false, cb, force = false } = {}) {
