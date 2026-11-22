@@ -47,12 +47,27 @@ const barState = () => p.evaluate(() => {
     ammoTxt: (document.getElementById('ammoTxt') || {}).textContent || '',
     swapHidden: !!(document.getElementById('btnSwap') && getComputedStyle(document.getElementById('btnSwap')).display === 'none'),
     invExists: !!document.getElementById('inv') && !!document.getElementById('btnPInv'),
+    open: !!(bar && bar.classList.contains('open')),
+    toggle: !!document.getElementById('wbarToggle'),
+    vis: [...document.querySelectorAll('#wbar .wslot')].filter(s => {
+      const st = getComputedStyle(s); const b = s.getBoundingClientRect();
+      return st.display !== 'none' && st.visibility !== 'hidden' && b.width > 0;
+    }).map(s => s.dataset.id),
     eqVisible: (() => {
       const eq = document.querySelector('#wbar .wslot.eq');
       const bar = document.getElementById('wbar');
       if (!eq || !bar) return false;
+      const st = getComputedStyle(eq);
+      if (st.display === 'none') return false;
       const a = eq.getBoundingClientRect(), b = bar.getBoundingClientRect();
       return a.left >= b.left - 2 && a.right <= b.right + 2 && a.width > 0;
+    })(),
+    toast: (() => {
+      const e = document.getElementById('toast');
+      if (!e) return null;
+      const r = e.getBoundingClientRect();
+      return { on: e.classList.contains('on'), wep: e.classList.contains('wep'), text: e.textContent,
+        y: Math.round(r.y + r.height / 2), x: Math.round(r.x + r.width / 2), top: Math.round(r.top), bottom: Math.round(r.bottom) };
     })(),
   };
 });
@@ -84,21 +99,26 @@ await p.evaluate(() => {
 await p.waitForTimeout(400);
 await p.evaluate(() => { const g = window.__atq.game; if (g && g.hud) g.hud(); });
 const s0 = await barState();
-rec('survival bar visible', s0.on && s0.owned >= 5, { on: s0.on, n: s0.n, owned: s0.owned, eq: s0.eq, ammo: s0.ammoTxt, swapHidden: s0.swapHidden });
+rec('survival bar visible collapsed', s0.on && s0.toggle && !s0.open && s0.vis.length === 1 && s0.vis[0] === 'pistol', { on: s0.on, open: s0.open, vis: s0.vis, eq: s0.eq, swapHidden: s0.swapHidden });
 rec('survival pistol equipped + ammo label', s0.eq && s0.eq.id === 'pistol' && /9mm|Pistol/i.test(s0.ammoTxt) && /12\s*\/\s*48/.test(s0.ammoTxt), { eq: s0.eq, ammo: s0.ammoTxt, eqVisible: s0.eqVisible });
 rec('survival equipped slot is on screen', s0.eqVisible, s0.rect);
-rec('unowned slots are dimmed', s0.slots.some(s => s.off) && s0.slots.filter(s => s.off).every(s => s.id !== 'pistol'), { off: s0.slots.filter(s => s.off).map(s => s.id).slice(0, 8) });
 rec('pause-menu Inventory still present', s0.invExists);
-await shot('surv_pistol', 500);
+await shot('surv_closed', 500);
 
-// tap the rifle slot
+await p.click('#wbarToggle');
+await p.waitForTimeout(250);
+const sOpen = await barState();
+rec('survival toggle opens the full bar', sOpen.open && sOpen.vis.length >= 6 && sOpen.toggle, { open: sOpen.open, vis: sOpen.vis });
+rec('unowned slots are dimmed', sOpen.slots.some(s => s.off) && sOpen.slots.filter(s => s.off).every(s => s.id !== 'pistol'), { off: sOpen.slots.filter(s => s.off).map(s => s.id).slice(0, 8) });
+await shot('surv_open', 400);
+
 const rifle = p.locator('#wbar .wslot[data-id="rifle"]');
 rec('rifle slot is owned', await rifle.count() > 0);
-await rifle.click({ force: true });
+await rifle.click();
 await p.waitForTimeout(300);
 await p.evaluate(() => { const g = window.__atq.game; if (g && g.hud) g.hud(); });
 const s1 = await barState();
-rec('tap rifle updates equipped + ammoTxt', s1.eq && s1.eq.id === 'rifle' && /Rifle/i.test(s1.ammoTxt) && /30/.test(s1.ammoTxt), { eq: s1.eq, ammo: s1.ammoTxt, cur: await p.evaluate(() => window.__atq.game.save.cur) });
+rec('pick rifle updates ammo and closes the bar', s1.eq && s1.eq.id === 'rifle' && !s1.open && /Rifle/i.test(s1.ammoTxt) && /30/.test(s1.ammoTxt), { eq: s1.eq, ammo: s1.ammoTxt, open: s1.open, cur: await p.evaluate(() => window.__atq.game.save.cur) });
 await shot('surv_rifle', 400);
 
 // key 1 should select the first owned (fists)
@@ -106,7 +126,7 @@ await p.keyboard.press('Digit1');
 await p.waitForTimeout(200);
 await p.evaluate(() => { const g = window.__atq.game; if (g && g.hud) g.hud(); });
 const s2 = await barState();
-rec('key 1 equips first owned (fists)', s2.eq && s2.eq.id === 'fists' && /Fists/i.test(s2.ammoTxt), { eq: s2.eq, ammo: s2.ammoTxt });
+rec('key 1 equips first owned (fists) while closed', s2.eq && s2.eq.id === 'fists' && !s2.open && /Fists/i.test(s2.ammoTxt), { eq: s2.eq, ammo: s2.ammoTxt, open: s2.open });
 await shot('surv_fists_key1', 300);
 
 // key 3 (pan is 2, pistol is 3 if order is fists,pan,bat,pistol? WEAPON_ORDER: fists, pan, bat, ... pistol)
@@ -115,7 +135,7 @@ await p.keyboard.press('Digit4');
 await p.waitForTimeout(200);
 await p.evaluate(() => { const g = window.__atq.game; if (g && g.hud) g.hud(); });
 const s3 = await barState();
-rec('key 4 equips pistol (4th owned)', s3.eq && s3.eq.id === 'pistol', { eq: s3.eq, ammo: s3.ammoTxt, ownedOrder: s3.slots.filter(s => !s.off).map(s => s.id) });
+rec('key 4 equips pistol (4th owned) while closed', s3.eq && s3.eq.id === 'pistol' && !s3.open, { eq: s3.eq, ammo: s3.ammoTxt, open: s3.open, ownedOrder: s3.slots.filter(s => !s.off).map(s => s.id) });
 await shot('surv_pistol_key4', 300);
 
 // wheel down should go to next owned after pistol (shotgun)
@@ -125,8 +145,18 @@ await p.evaluate(() => window.dispatchEvent(new WheelEvent('wheel', { deltaY: 12
 await p.waitForTimeout(250);
 await p.evaluate(() => { const g = window.__atq.game; if (g && g.hud) g.hud(); });
 const s4 = await barState();
-rec('wheel switches to next owned (shotgun)', s4.eq && s4.eq.id === 'shotgun' && /Shotgun|Shotty|Pump/i.test(s4.ammoTxt), { eq: s4.eq, ammo: s4.ammoTxt });
+rec('wheel switches to next owned (shotgun) while closed', s4.eq && s4.eq.id === 'shotgun' && !s4.open && /Shotgun|Shotty|Pump/i.test(s4.ammoTxt), { eq: s4.eq, ammo: s4.ammoTxt, open: s4.open, toast: s4.toast });
+rec('switch toast is not over the crosshair', !s4.toast || !s4.toast.on || (s4.toast.wep && s4.toast.y > 260), s4.toast);
 await shot('surv_shotgun_wheel', 300);
+
+await p.keyboard.press('KeyQ');
+await p.waitForTimeout(250);
+const sQ1 = await barState();
+rec('Q opens the weapon bar', sQ1.open, { open: sQ1.open, vis: sQ1.vis });
+await p.keyboard.press('KeyQ');
+await p.waitForTimeout(250);
+const sQ2 = await barState();
+rec('Q closes the weapon bar', !sQ2.open, { open: sQ2.open });
 
 // pause inventory still works
 await p.click('#btnPause');
@@ -148,7 +178,7 @@ const overlap = await p.evaluate(() => {
   const bar = document.getElementById('wbar');
   if (!bar) return { ok: false };
   const br = bar.getBoundingClientRect();
-  const ids = ['mini', 'stickBase', 'tAtk', 'tRoll', 'tJump', 'tAim', 'pfp'];
+  const ids = ['mini', 'stickBase', 'tAtk', 'tRoll', 'tJump', 'tAim', 'pfp', 'xhair'];
   const hits = [];
   for (const id of ids) {
     const e = document.getElementById(id);
@@ -203,34 +233,40 @@ await p.evaluate(() => {
 });
 await p.waitForTimeout(500);
 const t0 = await barState();
-rec('town bar visible with pistol equipped', t0.on && t0.eq && t0.eq.id === 'pistol' && /9mm|Pistol/i.test(t0.ammoTxt) && /12/.test(t0.ammoTxt), { on: t0.on, eq: t0.eq, ammo: t0.ammoTxt, owned: t0.owned, eqVisible: t0.eqVisible });
+rec('town bar visible collapsed with pistol', t0.on && t0.toggle && !t0.open && t0.eq && t0.eq.id === 'pistol' && /9mm|Pistol/i.test(t0.ammoTxt) && /12/.test(t0.ammoTxt), { on: t0.on, open: t0.open, vis: t0.vis, eq: t0.eq, ammo: t0.ammoTxt, eqVisible: t0.eqVisible });
 rec('town equipped slot is on screen', t0.eqVisible, t0.rect);
-await shot('town_pistol', 500);
+await shot('town_closed', 500);
 
-await p.locator('#wbar .wslot[data-id="smg"]').click({ force: true });
+await p.click('#wbarToggle');
+await p.waitForTimeout(250);
+const tOpen = await barState();
+rec('town toggle opens the full bar', tOpen.open && tOpen.vis.includes('smg'), { open: tOpen.open, vis: tOpen.vis });
+await shot('town_open', 400);
+
+await p.locator('#wbar .wslot[data-id="smg"]').click();
 await p.waitForTimeout(400);
 const t1 = await barState();
-rec('town tap SMG updates equipped + ammoTxt', t1.eq && t1.eq.id === 'smg' && /SMG/i.test(t1.ammoTxt) && await p.evaluate(() => window.__mpTown.bag.pref) === 'smg', { eq: t1.eq, ammo: t1.ammoTxt });
+rec('town pick SMG updates ammo and closes the bar', t1.eq && t1.eq.id === 'smg' && !t1.open && /SMG/i.test(t1.ammoTxt) && await p.evaluate(() => window.__mpTown.bag.pref) === 'smg', { eq: t1.eq, ammo: t1.ammoTxt, open: t1.open });
 await shot('town_smg', 400);
 
 await p.keyboard.press('Digit1');
 await p.waitForTimeout(300);
 const t2 = await barState();
-rec('town key 1 equips fists', t2.eq && t2.eq.id === 'fists' && /Fists/i.test(t2.ammoTxt), { eq: t2.eq, ammo: t2.ammoTxt, pref: await p.evaluate(() => window.__mpTown.bag.pref), eqVisible: t2.eqVisible });
+rec('town key 1 equips fists while closed', t2.eq && t2.eq.id === 'fists' && !t2.open && /Fists/i.test(t2.ammoTxt), { eq: t2.eq, ammo: t2.ammoTxt, open: t2.open, pref: await p.evaluate(() => window.__mpTown.bag.pref), eqVisible: t2.eqVisible });
 await shot('town_fists_key1', 300);
 
 await p.mouse.move(420, 300);
 await p.evaluate(() => window.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, bubbles: true, cancelable: true })));
 await p.waitForTimeout(300);
 const t3 = await barState();
-rec('town wheel switches off fists', t3.eq && t3.eq.id !== 'fists', { eq: t3.eq, ammo: t3.ammoTxt });
+rec('town wheel switches off fists while closed', t3.eq && t3.eq.id !== 'fists' && !t3.open, { eq: t3.eq, ammo: t3.ammoTxt, open: t3.open });
 await shot('town_wheel', 300);
 
 const townOverlap = await p.evaluate(() => {
   const bar = document.getElementById('wbar');
   if (!bar) return { ok: false };
   const br = bar.getBoundingClientRect();
-  const ids = ['mini', 'stickBase', 'tAtk', 'tRoll', 'tJump'];
+  const ids = ['mini', 'stickBase', 'tAtk', 'tRoll', 'tJump', 'xhair'];
   const hits = [];
   for (const id of ids) {
     const e = document.getElementById(id);

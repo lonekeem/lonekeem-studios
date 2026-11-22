@@ -26,7 +26,7 @@ export function initLayout(S, saveS, closeTo) {
     g('hud', { left: '50%', top: '12px', transform: 'translateX(-50%)', width: '30%', height: '40px' }, 'objective');
     g('hud', { right: '10px', top: '10px', width: '100px', height: '44px' }, 'view · pause');
     g('hud', { left: '14px', bottom: '4px', width: '110px', height: '18px' }, 'health'); g('hud', { right: '14px', bottom: '4px', width: '150px', height: '18px' }, 'weapon · ammo');
-    g('hud', { left: '176px', right: '220px', top: '78px', height: '58px' }, 'weapon bar');
+    g('hud', { left: '168px', right: '250px', bottom: '24px', height: '44px' }, 'weapon bar');
     g('hud', { left: '50%', top: '50%', transform: 'translate(-50%,-50%)', width: '36px', height: '36px' }, '+');
     g('look', {}, 'LOOK / AIM: drag anywhere on this side');
     BTNS = {}; for (const id in DEF) { const b = document.createElement('div'); b.className = 'rb' + (id === 'tAtk' ? ' big' : '') + (id === 'stick' ? ' stk' : '') + ' ed_' + id; b.textContent = LABEL[id]; b.dataset.id = id; root.appendChild(b); BTNS[id] = b; }

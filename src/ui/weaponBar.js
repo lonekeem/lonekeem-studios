@@ -49,7 +49,23 @@ const ICONS = {
 export function weaponIcon(id) { return (ICONS[id] || ICONS.pistol)(); }
 export function shortName(id) { return SHORT[id] || (WEAPONS[id] && WEAPONS[id].name) || id; }
 
-let adapter = null, kind = null, lastSig = '', onKey, onWheel;
+const TOG_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true"><path d="M8 30h30c2 0 3 1 3 3v6c0 2-1 3-3 3H26l-2 14c0 2-2 3-4 3h-6c-2 0-3-2-2-4l4-13H8c-2 0-3-1-3-3v-6c0-2 1-3 3-3z" fill="#c9d4cc" stroke="#1a1410" stroke-width="2" stroke-linejoin="round"/><rect x="36" y="28" width="20" height="8" rx="2" fill="#8aa090" stroke="#1a1410" stroke-width="1.6"/></svg>';
+
+let adapter = null, kind = null, lastSig = '', onKey, onWheel, barOpen = false;
+
+export function isWeaponBarOpen() { return !!barOpen; }
+export function setWeaponBarOpen(on) {
+  barOpen = !!on;
+  const el = document.getElementById('wbar');
+  if (!el) return;
+  el.classList.toggle('open', barOpen);
+  el.setAttribute('data-open', barOpen ? '1' : '0');
+  const tog = el.querySelector('.wbar-tog');
+  if (tog) tog.setAttribute('aria-expanded', barOpen ? 'true' : 'false');
+  if (barOpen) el.scrollLeft = 0;
+}
+export function toggleWeaponBar() { setWeaponBarOpen(!barOpen); }
+
 
 function ensureRoot() {
   let el = document.getElementById('wbar');
@@ -87,6 +103,7 @@ function bindInput() {
     if (!playing()) return;
     const t = e.target;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (e.code === 'KeyQ') { e.preventDefault(); toggleWeaponBar(); return; }
     const m = /^Digit([1-9])$/.exec(e.code);
     if (m) {
       const owned = (adapter.slots() || []).filter(s => s.owned);
@@ -132,26 +149,37 @@ function render(force) {
   lastSig = sig;
   el.classList.add('on');
   if (hud) hud.classList.add('wbar-on');
-  el.classList.toggle('boss', !!(document.getElementById('boss') && !document.getElementById('boss').classList.contains('hidden')));
+  el.classList.toggle('open', barOpen);
+  el.setAttribute('data-open', barOpen ? '1' : '0');
   const owned = slots.filter(s => s.owned);
   const ordered = owned.concat(slots.filter(s => !s.owned));
-  el.innerHTML = '<div class="wbar-inner">' + ordered.map((s) => {
+  const tog = `<button type="button" id="wbarToggle" class="wbar-tog" aria-label="Weapons" aria-expanded="${barOpen ? 'true' : 'false'}">${TOG_ICON}</button>`;
+  el.innerHTML = tog + '<div class="wbar-inner">' + ordered.map((s) => {
     const ki = s.owned ? owned.findIndex(o => o.id === s.id) : -1;
     const key = ki >= 0 && ki < 9 ? `<span class="wk">${ki + 1}</span>` : '';
     const cls = `wslot${s.eq ? ' eq' : ''}${s.owned ? '' : ' off'}${s.empty && s.owned ? ' empty' : ''}`;
     return `<button type="button" class="${cls}" data-id="${s.id}" ${s.owned ? '' : 'disabled tabindex="-1"'} aria-label="${s.name || shortName(s.id)}">${key}<span class="wi">${weaponIcon(s.id)}</span><span class="wn">${shortName(s.id)}</span><span class="wa">${s.ammo || (s.owned ? '—' : '')}</span></button>`;
   }).join('') + '</div>';
+  const togBtn = el.querySelector('.wbar-tog');
+  if (togBtn) {
+    const flip = ev => { ev.preventDefault(); ev.stopPropagation(); toggleWeaponBar(); };
+    togBtn.addEventListener('click', flip);
+    togBtn.addEventListener('pointerdown', ev => ev.stopPropagation());
+    togBtn.addEventListener('touchstart', ev => ev.stopPropagation(), { passive: true });
+  }
   el.querySelectorAll('.wslot:not(.off)').forEach(b => {
-    b.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); adapter.equip(b.dataset.id); });
+    b.addEventListener('click', ev => {
+      ev.preventDefault(); ev.stopPropagation();
+      if (!barOpen) { setWeaponBarOpen(true); return; }
+      adapter.equip(b.dataset.id);
+      setWeaponBarOpen(false);
+    });
     b.addEventListener('pointerdown', ev => ev.stopPropagation());
     b.addEventListener('touchstart', ev => ev.stopPropagation(), { passive: true });
   });
   refreshAmmo();
   requestAnimationFrame(() => {
-    const overflowing = el.scrollWidth > el.clientWidth + 2;
-    el.classList.toggle('tight', !overflowing);
-    const eq = el.querySelector('.wslot.eq');
-    if (eq && eq.scrollIntoView) eq.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+    if (barOpen) el.scrollLeft = 0;
   });
 }
 
@@ -169,6 +197,7 @@ export function setWeaponBarAdapter(next, name) {
   adapter = next;
   kind = next ? name : null;
   lastSig = '';
+  barOpen = false;
   if (next) bindInput();
   else unbindInput();
   render(true);
