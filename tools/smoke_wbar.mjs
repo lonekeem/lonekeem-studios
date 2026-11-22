@@ -47,6 +47,13 @@ const barState = () => p.evaluate(() => {
     ammoTxt: (document.getElementById('ammoTxt') || {}).textContent || '',
     swapHidden: !!(document.getElementById('btnSwap') && getComputedStyle(document.getElementById('btnSwap')).display === 'none'),
     invExists: !!document.getElementById('inv') && !!document.getElementById('btnPInv'),
+    eqVisible: (() => {
+      const eq = document.querySelector('#wbar .wslot.eq');
+      const bar = document.getElementById('wbar');
+      if (!eq || !bar) return false;
+      const a = eq.getBoundingClientRect(), b = bar.getBoundingClientRect();
+      return a.left >= b.left - 2 && a.right <= b.right + 2 && a.width > 0;
+    })(),
   };
 });
 
@@ -66,8 +73,8 @@ await p.evaluate(() => {
   for (const id of ['fists', 'pan', 'pistol', 'shotgun', 'rifle', 'bat']) {
     if (!S.owned.includes(id)) S.owned.push(id);
   }
-  S.ammo = Object.assign({ light: 48, shell: 16, rifle: 60 }, S.ammo || {});
-  S.mags = Object.assign({ pistol: 12, shotgun: 6, rifle: 30 }, S.mags || {});
+  S.ammo = Object.assign({}, S.ammo || {}, { light: 48, shell: 16, rifle: 60 });
+  S.mags = Object.assign({}, S.mags || {}, { pistol: 12, shotgun: 6, rifle: 30 });
   S.cur = 'pistol';
   g.equip && g.equip('pistol', true);
   g.paused = false;
@@ -78,7 +85,8 @@ await p.waitForTimeout(400);
 await p.evaluate(() => { const g = window.__atq.game; if (g && g.hud) g.hud(); });
 const s0 = await barState();
 rec('survival bar visible', s0.on && s0.owned >= 5, { on: s0.on, n: s0.n, owned: s0.owned, eq: s0.eq, ammo: s0.ammoTxt, swapHidden: s0.swapHidden });
-rec('survival pistol equipped + ammo label', s0.eq && s0.eq.id === 'pistol' && /9mm|Pistol/i.test(s0.ammoTxt) && /12/.test(s0.ammoTxt), { eq: s0.eq, ammo: s0.ammoTxt });
+rec('survival pistol equipped + ammo label', s0.eq && s0.eq.id === 'pistol' && /9mm|Pistol/i.test(s0.ammoTxt) && /12\s*\/\s*48/.test(s0.ammoTxt), { eq: s0.eq, ammo: s0.ammoTxt, eqVisible: s0.eqVisible });
+rec('survival equipped slot is on screen', s0.eqVisible, s0.rect);
 rec('unowned slots are dimmed', s0.slots.some(s => s.off) && s0.slots.filter(s => s.off).every(s => s.id !== 'pistol'), { off: s0.slots.filter(s => s.off).map(s => s.id).slice(0, 8) });
 rec('pause-menu Inventory still present', s0.invExists);
 await shot('surv_pistol', 500);
@@ -111,8 +119,10 @@ rec('key 4 equips pistol (4th owned)', s3.eq && s3.eq.id === 'pistol', { eq: s3.
 await shot('surv_pistol_key4', 300);
 
 // wheel down should go to next owned after pistol (shotgun)
-await p.mouse.wheel(0, 120);
-await p.waitForTimeout(200);
+await p.mouse.move(420, 300);
+await p.waitForTimeout(50);
+await p.evaluate(() => window.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, bubbles: true, cancelable: true })));
+await p.waitForTimeout(250);
 await p.evaluate(() => { const g = window.__atq.game; if (g && g.hud) g.hud(); });
 const s4 = await barState();
 rec('wheel switches to next owned (shotgun)', s4.eq && s4.eq.id === 'shotgun' && /Shotgun|Shotty|Pump/i.test(s4.ammoTxt), { eq: s4.eq, ammo: s4.ammoTxt });
@@ -189,26 +199,29 @@ await p.evaluate(() => {
   T.GS.mag = Object.assign({}, T.GS.mag, { pistol: 12, shotgun: 6, rifle: 30, smg: 30 });
   T.bag.pref = 'pistol';
   T.equipWeapon && T.equipWeapon('pistol');
+  try { T.scene.traverse(o => { if (o.isSprite) o.visible = false; }); } catch (e) { /* ignore */ }
 });
-await p.waitForTimeout(400);
+await p.waitForTimeout(500);
 const t0 = await barState();
-rec('town bar visible with pistol equipped', t0.on && t0.eq && t0.eq.id === 'pistol' && /9mm|Pistol/i.test(t0.ammoTxt), { on: t0.on, eq: t0.eq, ammo: t0.ammoTxt, owned: t0.owned });
+rec('town bar visible with pistol equipped', t0.on && t0.eq && t0.eq.id === 'pistol' && /9mm|Pistol/i.test(t0.ammoTxt) && /12/.test(t0.ammoTxt), { on: t0.on, eq: t0.eq, ammo: t0.ammoTxt, owned: t0.owned, eqVisible: t0.eqVisible });
+rec('town equipped slot is on screen', t0.eqVisible, t0.rect);
 await shot('town_pistol', 500);
 
 await p.locator('#wbar .wslot[data-id="smg"]').click({ force: true });
-await p.waitForTimeout(300);
+await p.waitForTimeout(400);
 const t1 = await barState();
 rec('town tap SMG updates equipped + ammoTxt', t1.eq && t1.eq.id === 'smg' && /SMG/i.test(t1.ammoTxt) && await p.evaluate(() => window.__mpTown.bag.pref) === 'smg', { eq: t1.eq, ammo: t1.ammoTxt });
 await shot('town_smg', 400);
 
 await p.keyboard.press('Digit1');
-await p.waitForTimeout(200);
+await p.waitForTimeout(300);
 const t2 = await barState();
-rec('town key 1 equips fists', t2.eq && t2.eq.id === 'fists' && /Fists/i.test(t2.ammoTxt), { eq: t2.eq, ammo: t2.ammoTxt, pref: await p.evaluate(() => window.__mpTown.bag.pref) });
+rec('town key 1 equips fists', t2.eq && t2.eq.id === 'fists' && /Fists/i.test(t2.ammoTxt), { eq: t2.eq, ammo: t2.ammoTxt, pref: await p.evaluate(() => window.__mpTown.bag.pref), eqVisible: t2.eqVisible });
 await shot('town_fists_key1', 300);
 
-await p.mouse.wheel(0, 120);
-await p.waitForTimeout(200);
+await p.mouse.move(420, 300);
+await p.evaluate(() => window.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, bubbles: true, cancelable: true })));
+await p.waitForTimeout(300);
 const t3 = await barState();
 rec('town wheel switches off fists', t3.eq && t3.eq.id !== 'fists', { eq: t3.eq, ammo: t3.ammoTxt });
 await shot('town_wheel', 300);

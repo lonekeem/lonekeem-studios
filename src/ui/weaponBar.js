@@ -97,7 +97,6 @@ function bindInput() {
   onWheel = (e) => {
     if (!playing()) return;
     const t = e.target;
-    if (t && (t.closest && t.closest('#wbar'))) return; // let the bar scroll itself
     if (t && (t.closest && (t.closest('.panel') || t.closest('.screen') || t.closest('#mpt .panel') || t.closest('#mpt .pausep')))) return;
     const owned = (adapter.slots() || []).filter(s => s.owned);
     if (owned.length < 2) return;
@@ -135,22 +134,36 @@ function render(force) {
   if (hud) hud.classList.add('wbar-on');
   el.classList.toggle('boss', !!(document.getElementById('boss') && !document.getElementById('boss').classList.contains('hidden')));
   const owned = slots.filter(s => s.owned);
-  el.innerHTML = slots.map((s) => {
+  const ordered = owned.concat(slots.filter(s => !s.owned));
+  el.innerHTML = '<div class="wbar-inner">' + ordered.map((s) => {
     const ki = s.owned ? owned.findIndex(o => o.id === s.id) : -1;
     const key = ki >= 0 && ki < 9 ? `<span class="wk">${ki + 1}</span>` : '';
     const cls = `wslot${s.eq ? ' eq' : ''}${s.owned ? '' : ' off'}${s.empty && s.owned ? ' empty' : ''}`;
     return `<button type="button" class="${cls}" data-id="${s.id}" ${s.owned ? '' : 'disabled tabindex="-1"'} aria-label="${s.name || shortName(s.id)}">${key}<span class="wi">${weaponIcon(s.id)}</span><span class="wn">${shortName(s.id)}</span><span class="wa">${s.ammo || (s.owned ? '—' : '')}</span></button>`;
-  }).join('');
+  }).join('') + '</div>';
   el.querySelectorAll('.wslot:not(.off)').forEach(b => {
     b.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); adapter.equip(b.dataset.id); });
     b.addEventListener('pointerdown', ev => ev.stopPropagation());
     b.addEventListener('touchstart', ev => ev.stopPropagation(), { passive: true });
   });
-  const eq = el.querySelector('.wslot.eq');
-  if (eq && eq.scrollIntoView) eq.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  refreshAmmo();
+  requestAnimationFrame(() => {
+    const overflowing = el.scrollWidth > el.clientWidth + 2;
+    el.classList.toggle('tight', !overflowing);
+    const eq = el.querySelector('.wslot.eq');
+    if (eq && eq.scrollIntoView) eq.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+  });
 }
 
-export function syncWeaponBar(force) { render(!!force); }
+function refreshAmmo() {
+  if (!adapter || !adapter.ammoLabel) return;
+  const node = document.getElementById('ammoTxt');
+  if (!node) return;
+  const txt = adapter.ammoLabel();
+  if (txt != null) node.textContent = txt;
+}
+
+export function syncWeaponBar(force) { render(!!force); refreshAmmo(); }
 
 export function setWeaponBarAdapter(next, name) {
   adapter = next;
@@ -189,6 +202,11 @@ export function attachGameWeaponBar(game) {
     slots: () => gameSlots(game),
     cur: () => game.save && game.save.cur,
     equip: (id) => { if (game.equip) game.equip(id); },
+    ammoLabel: () => {
+      const s = game.save, w = s && WEAPONS[s.cur];
+      if (!w) return '';
+      return w.type === 'gun' ? `${w.name}  ·  Ammo : ${s.mags[s.cur] || 0} / ${s.ammo[w.ammo] || 0}${game.state && game.state.reload > 0 ? '  (reloading)' : ''}` : w.name;
+    },
     blocked: () => !!(game.paused || game.cut || game.dying),
   }, 'game');
 }
@@ -218,6 +236,14 @@ export function attachTownWeaponBar(ctx) {
     }).filter(Boolean),
     cur: () => bag.pref || 'fists',
     equip: (id) => equipWeapon && equipWeapon(id),
+    ammoLabel: () => {
+      const p = bag.pref || 'fists';
+      const gun = p !== 'fists' && ITEMS[p] && ITEMS[p].gun && bag.count(p) ? ITEMS[p].gun : null;
+      if (gun && WPN[gun]) return `${WPN[gun].name}  ·  Ammo : ${(GS.mag && GS.mag[gun]) || 0} / ${ammoCount ? ammoCount(gun) : 0}${GS.rl > 0 ? '  (reloading)' : ''}`;
+      if (p === 'fists') return 'Fists';
+      const it = ITEMS[p];
+      return (it && it.n) || p;
+    },
     blocked: () => !!(pauseOpen && pauseOpen()),
   }, 'town');
 }

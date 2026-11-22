@@ -426,9 +426,11 @@ body.cine #rotate{display:none!important}
 @media (max-width:700px){#online .wpb button{font-size:13px;padding:5px 7px}}
 
 /* v1.9.34 in-game weapon bar: compact always-on slots, 844x390 first */
-#wbar{position:absolute;left:max(172px,calc(env(safe-area-inset-left) + 172px));right:max(216px,calc(env(safe-area-inset-right) + 216px));top:86px;z-index:8;display:none;flex-direction:row;flex-wrap:nowrap;justify-content:center;align-items:stretch;gap:3px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;pointer-events:auto;padding:2px 0}
+#wbar{position:absolute;left:max(172px,calc(env(safe-area-inset-left) + 172px));right:max(216px,calc(env(safe-area-inset-right) + 216px));top:86px;z-index:8;display:none;flex-direction:row;flex-wrap:nowrap;justify-content:flex-start;align-items:stretch;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;pointer-events:auto;padding:2px 0}
 #wbar::-webkit-scrollbar{display:none}
 #wbar.on{display:flex}
+#wbar.tight{justify-content:center}
+#wbar .wbar-inner{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:stretch;gap:3px;width:max-content}
 #wbar.boss{top:108px}
 #wbar .wslot{position:relative;flex:0 0 auto;width:48px;height:58px;margin:0;padding:4px 2px 2px;border-radius:8px;border:1px solid rgba(220,235,225,.28);background:rgba(8,16,12,.78);color:#e8f5ec;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:1px;cursor:pointer;box-shadow:0 1px 4px #0008;font:inherit}
 #wbar .wslot .wi{width:28px;height:28px;flex:0 0 28px;display:block;line-height:0}
