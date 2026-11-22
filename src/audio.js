@@ -214,11 +214,11 @@ export class AudioSys {
 }
 
 // ---------- v1.3.2 sample layer ----------
-// Recorded/rendered samples in public/sfx (Kenney CC0, procedurally synthesized SFX, ElevenLabs screams and voices — see CREDITS.md).
+// Recorded/rendered samples in public/sfx (Kenney CC0, procedurally synthesized SFX, ElevenLabs gunshots / screams / voices — see CREDITS.md).
 // Every method falls back to the synthesized version above if its sample has not loaded yet.
 export const vhash = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36); };
 const BASE = (import.meta.env && import.meta.env.BASE_URL || '/') + 'sfx/';
-const FAM = { gun_pistol: 3, gun_rifle: 3, gun_shotgun: 3, gun_revolver: 3, gun_smg: 3, gun_sniper: 3, thunder: 3, z_growl: 6, z_moan: 4, z_attack: 3, z_eat: 3, z_chew: 4, z_tear: 3, scream: 4,
+const FAM = { thunder: 3, z_growl: 6, z_moan: 4, z_attack: 3, z_eat: 3, z_chew: 4, z_tear: 3, scream: 4,
   step_concrete: 5, step_grass: 5, step_wood: 5, punch: 5, bat: 5, flesh: 5, metal: 5, shell: 5, plank: 5, glass: 5, cloth: 2, step_mud: 5, step_asphalt: 5, z_shuffle: 4, breath: 4, jump: 2, land: 2, squelch: 3 };
 // Per-profile ElevenLabs zombie vocals (public/sfx/zvo_{profile}_{kind}{i}.mp3). Missing files fall back to the old synth banks.
 const ZVO_CIV = { idle: 3, alert: 2, attack: 3, hurt: 2, death: 2 };
@@ -231,11 +231,19 @@ const ZVO_CD = { idle: 3.4, alert: 3.8, attack: 1.15, hurt: .5, death: 0, eat: 2
 const ZVO_MAXD = { idle: 36, alert: 46, attack: 26, hurt: 24, death: 42, eat: 16, chew: 16, roar: 70 };
 const ZVO_CONCUR = { idle: 3, alert: 2, attack: 3, hurt: 3, death: 3, eat: 2, chew: 2, roar: 2 };
 const ZVO_VOL = { idle: 1, alert: 1, attack: 1, hurt: 1, death: 1, eat: 1, chew: 1, roar: 1 };
-const ONE = ['explosion', 'rain_loop', 'truck_loop', 'boss_roar', 'reload_out', 'reload_in', 'door_open', 'creak', 'knife', 'coins', 'chop', 'roll', 'alarm_loop', 'wind_loop', 'tire_loop'];
+const GUN_IDS = ['pistol', 'revolver', 'smg', 'shotgun', 'rifle', 'saw', 'lever', 'auto12', 'handcannon', 'harpoon', 'minigun', 'sniper', 'crossbow', 'flamer', 'launcher'];
+const GUN_VOL = { pistol: .95, revolver: 1, smg: .72, shotgun: 1, rifle: .75, saw: .82, lever: 1, auto12: .85, handcannon: 1, harpoon: .9, minigun: .68, sniper: 1, crossbow: .85, flamer: .8, launcher: .95 };
+const NO_SHELL = { shotgun: 1, auto12: 1, flamer: 1, crossbow: 1, harpoon: 1, launcher: 1, minigun: 1 };
+const RELOAD_OF = { pistol: 'pistol', handcannon: 'pistol', revolver: 'revolver', smg: 'smg', shotgun: 'shotgun', auto12: 'shotgun', rifle: 'rifle', sniper: 'rifle', saw: 'heavy', minigun: 'heavy', lever: 'lever', crossbow: 'crossbow', flamer: 'flamer', launcher: 'launcher', harpoon: 'harpoon' };
+const CLICK_OF = { pistol: 'pistol', smg: 'pistol', handcannon: 'pistol', revolver: 'revolver', shotgun: 'shotgun', auto12: 'shotgun', rifle: 'rifle', saw: 'rifle', minigun: 'rifle', lever: 'rifle', sniper: 'rifle', crossbow: 'pistol', flamer: 'rifle', launcher: 'shotgun', harpoon: 'rifle' };
+const ONE = ['explosion', 'rain_loop', 'truck_loop', 'boss_roar', 'reload_out', 'reload_in', 'door_open', 'creak', 'knife', 'coins', 'chop', 'roll', 'alarm_loop', 'wind_loop', 'tire_loop',
+  ...GUN_IDS.map(id => 'gun_' + id), 'reload_pistol', 'reload_revolver', 'reload_smg', 'reload_shotgun', 'reload_rifle', 'reload_lever', 'reload_heavy', 'reload_crossbow', 'reload_flamer', 'reload_launcher', 'reload_harpoon',
+  'click_pistol', 'click_revolver', 'click_shotgun', 'click_rifle'];
 const P = AudioSys.prototype, O = {};
 ['init', 'applyVolumes', 'setMood', 'ambientTick', 'shot', 'hit', 'swing', 'hurt', 'groan', 'thud', 'crash', 'explode', 'pickup', 'engine', 'scream', 'click', 'splat', 'glass'].forEach(k => O[k] = P[k]);
 P.init = function () { const first = !this.ctx; O.init.call(this); if (!first || !this.ctx) return;
   this.bufs = {}; this.loading = {}; this.voiceBus = this.ctx.createGain(); this.voiceBus.connect(this.master); this.amb = this.ctx.createGain(); this.amb.connect(this.music);
+  this.gunBus = this.ctx.createDynamicsCompressor(); this.gunBus.threshold.value = -10; this.gunBus.knee.value = 10; this.gunBus.ratio.value = 5; this.gunBus.attack.value = 0.002; this.gunBus.release.value = 0.15; this.gunBus.connect(this.sfx);
   this.lastBark = 0; this.applyVolumes();
   const names = ONE.slice(); for (const f in FAM) for (let i = 0; i < FAM[f]; i++) names.push(f + i);
   fetch(BASE + 'manifest.json').then(r => r.json()).then(m => { this.man = m; }).catch(() => {});
@@ -282,9 +290,11 @@ P.land = function (vol = .6) { this.play('land', { vol, flat: true }); this.play
 P.rollS = function () { if (!this.play('roll', { vol: .6, flat: true })) this.swing(); this.play('cloth', { vol: .35, rate: .8, flat: true }); };
 P.squelch = function (vol = .7) { if (!this.play('squelch', { vol, jit: .12 })) this.splat(); };
 P.tires = function (on, amt = 0) { if (!this.ctx) return; if (on && !this.tireSrc) this.tireSrc = this.play('tire_loop', { loop: true, vol: 0, jit: 0, flat: true }); if (this.tireSrc) this.tireSrc.g.gain.setTargetAtTime(on ? Math.min(.5, amt) : 0, this.ctx.currentTime, .08); };
-P.shot = function (kind = 'pistol') { kind = { saw: 'rifle', lever: 'sniper', auto12: 'shotgun', handcannon: 'revolver', crossbow: 'pistol', flamer: 'smg', launcher: 'shotgun', harpoon: 'sniper', minigun: 'rifle' }[kind] || kind; const k = FAM['gun_' + kind] ? kind : 'pistol';
-  if (!this.play('gun_' + k, { vol: kind === 'smg' || kind === 'rifle' ? .75 : 1, verb: true, jit: .04 })) return O.shot.call(this, kind);
-  if (kind !== 'shotgun') this.play('shell', { vol: .35, delay: .35 + Math.random() * .2 }); };
+P.shot = function (kind = 'pistol') { if (this._bgSuspended) return; const id = kind, vol = GUN_VOL[id] ?? 1, verb = id !== 'flamer' && id !== 'crossbow';
+  if (this.play('gun_' + id, { vol, verb, jit: .05, bus: this.gunBus || this.sfx })) { if (!NO_SHELL[id]) this.play('shell', { vol: .35, delay: .35 + Math.random() * .2 }); return; }
+  const fam = { saw: 'rifle', lever: 'sniper', auto12: 'shotgun', handcannon: 'revolver', crossbow: 'pistol', flamer: 'smg', launcher: 'shotgun', harpoon: 'sniper', minigun: 'rifle' }[id] || id;
+  if (!this.play('gun_' + (FAM['gun_' + fam] ? fam : 'pistol'), { vol, verb: true, jit: .04, bus: this.gunBus || this.sfx })) return O.shot.call(this, fam);
+  if (!NO_SHELL[id]) this.play('shell', { vol: .35, delay: .35 + Math.random() * .2 }); };
 P.hit = function () { if (!this.play(Math.random() < .5 ? 'punch' : 'bat', { vol: .9 })) O.hit.call(this); this.play('flesh', { vol: .5 }); };
 P.swing = function () { if (!this.play('cloth', { vol: .5, rate: 1.4 })) O.swing.call(this); };
 P.hurt = function () { O.hurt.call(this); this.play('punch', { vol: .6, rate: .8 }); if (Math.random() < .4) this.shout('keem_hurt'); };
@@ -334,8 +344,8 @@ P.crash = function () { if (!this.play('metal', { vol: 1, rate: .8 })) return O.
 P.glass = function () { if (!this.play('glass', { vol: .9 })) O.glass.call(this); };
 P.explode = function () { if (!this.play('explosion', { vol: 1, verb: true, jit: 0 })) return O.explode.call(this); this.boom(); };
 P.splat = function () { if (!this.play('flesh', { vol: .8, rate: .85 })) O.splat.call(this); };
-P.click = function () { if (!this.play('reload_in', { vol: .7 })) O.click.call(this); };
-P.reload = function () { this.play('reload_out', { vol: .7 }); this.play('cloth', { vol: .3, delay: .2 }); this.play('reload_in', { vol: .8, delay: .55 }); if (Math.random() < .35) this.shout('keem_reload'); };
+P.click = function (kind) { if (this._bgSuspended) return; const cls = CLICK_OF[kind] || 'pistol'; if (!this.play('click_' + cls, { vol: .7, jit: .05 })) { if (!this.play('reload_in', { vol: .7 })) O.click.call(this); } };
+P.reload = function (kind) { if (this._bgSuspended) return; const cls = RELOAD_OF[kind] || 'pistol'; if (!this.play('reload_' + cls, { vol: .85, jit: .03 })) { this.play('reload_out', { vol: .7 }); this.play('cloth', { vol: .3, delay: .2 }); this.play('reload_in', { vol: .8, delay: .55 }); } if (Math.random() < .35) this.shout('keem_reload'); };
 P.step = function (surf = 'grass', vol = .35) { this.play('step_' + surf, { vol, jit: .1 }); };
 P.knife = function () { this.play('knife', { vol: .8 }); };
 P.door = function () { this.play('door_open', { vol: .8 }); };
