@@ -118,7 +118,11 @@ export class Char {
     if (!force && this.curName === name && !once) { if (this.cur) this.cur.timeScale = speed; return; }
     const a = this.act(name); if (!a) return; const wasLoco = this.locoOn; if (wasLoco) this.endLoco(fade); a.reset(); a.timeScale = speed; a.enabled = true;
     if (once) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; this.oneShot = { a, cb }; } else a.setLoop(THREE.LoopRepeat);
-    if (wasLoco) a.fadeIn(fade); else if (this.cur && this.cur !== a) a.crossFadeFrom(this.cur, fade, false); a.play(); this.cur = a; this.curName = name;
+    // Never fade in from weight 0 with no other posing clip: that interpolates through the bind T-pose.
+    if (wasLoco) { a.setEffectiveWeight(1); a.play(); }
+    else if (this.cur && this.cur !== a) a.crossFadeFrom(this.cur, fade, false);
+    else a.setEffectiveWeight(1);
+    a.play(); this.cur = a; this.curName = name;
   }
   // v2.0 locomotion blend tree: Walk <-> Jog <-> Sprint blended by real ground speed, phase-matched, with the cycle advanced by
   // distance travelled (so feet stay planted: no sliding / moonwalking). dir < 0 plays the cycle backwards (backpedalling).
@@ -127,19 +131,22 @@ export class Char {
   locomote(speed, dir = 1, dt = 0.016, max = 6.4, wspd = speed) {
     if (this._deadHeld || this.dead) return false;
     const k = this.scale || 1, N = Char.LOCO.map(n => ({ name: n.name, v: n.v * k, stride: n.stride * k, off: n.off })); const acts = N.map(n => this.act(n.name)); if (acts.some(a => !a)) return false;
-    if (!this.locoOn) { this.locoOn = true; this.locoW = 0; this.locoPh = this.locoPh || 0;
+    if (!this.locoOn) { this.locoOn = true; this.locoPh = this.locoPh || 0;
       this._locoFrom = this.cur && this.cur.enabled ? this.cur : null;
       if (this._locoFrom) this._locoFrom.stopFading && this._locoFrom.stopFading();
+      // If nothing is already posing the body, start at full loco weight so arms cannot dip into the bind T-pose.
+      this.locoW = this._locoFrom ? 0 : 1;
       this.cur = null; this.curName = '__loco';
-      acts.forEach(a => { a.enabled = true; a.stopFading(); a.setLoop(THREE.LoopRepeat); a.timeScale = 0; a.paused = false; a.play(); }); }
+      acts.forEach(a => { a.enabled = true; a.stopFading(); a.setLoop(THREE.LoopRepeat); a.timeScale = 0; a.paused = false; a.play(); a.setEffectiveWeight(0); }); }
     const sm = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
     const v = Math.min(wspd, max * k), tj = sm(N[0].v, N[1].v, v), ts = sm(N[1].v, N[2].v, v);
     const w = [1 - tj, tj * (1 - ts), tj * ts]; const stride = w[0] * N[0].stride + w[1] * N[1].stride + w[2] * N[2].stride;
     this.locoPh = (this.locoPh + (dir < 0 ? -1 : 1) * (speed / stride) * dt + 1000) % 1; this.locoW = Math.min(1, this.locoW + dt / 0.2);
     let sum = 0;
     acts.forEach((a, i) => { a.time = (((this.locoPh + N[i].off) % 1 + 1) % 1) * a.getClip().duration; const wt = w[i] * this.locoW; a.setEffectiveWeight(wt); sum += wt; });
-    // Keep a clip at weight 1 during the blend-in so untracked/faded bones cannot snap to the bind T-pose.
+    // Keep total weight at 1 so untracked/faded bones cannot snap to the bind T-pose.
     if (this._locoFrom) { const rest = Math.max(0, 1 - sum); this._locoFrom.setEffectiveWeight(rest); if (rest <= 0.001) { try { this._locoFrom.stop(); this._locoFrom.enabled = false; } catch (e) {} this._locoFrom = null; } }
+    else if (sum < 0.999) { let i = 0; for (let j = 1; j < w.length; j++) if (w[j] > w[i]) i = j; acts[i].setEffectiveWeight(w[i] * this.locoW + (1 - sum)); }
     return true;
   }
   // natural ground speed (m/s) of a locomotion clip at this character's size, so a scripted mover can play it at the matching rate

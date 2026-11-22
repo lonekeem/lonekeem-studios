@@ -50,8 +50,14 @@ export function hitChar(ray, c, maxT = 1e9) {
 
 // the clip pose the arms take while aiming (both hands up on the weapon), captured once from the clip's first frame
 const POSE_BONES = ['DEF-spine.002', 'DEF-spine.003', 'DEF-neck', 'DEF-shoulder.L', 'DEF-upper_arm.L', 'DEF-forearm.L', 'DEF-hand.L', 'DEF-shoulder.R', 'DEF-upper_arm.R', 'DEF-forearm.R', 'DEF-hand.R'];
+function clipQuat(clip, b) {
+  const cands = new Set([b.name + '.quaternion', b.name.replace(/[.]/g, '') + '.quaternion']);
+  const redot = b.name.replace(/[.]/g, '').replace(/(spine)(\d+)$/i, '$1.$2').replace(/(upper_arm|forearm|hand|shoulder|foot|toe)([LR])$/i, '$1.$2');
+  cands.add(redot + '.quaternion');
+  return clip.tracks.find(t => cands.has(t.name));
+}
 function aimPoseOf(P) { if (P._aimPose !== undefined) return P._aimPose; const clip = P.lib && P.lib.clips && P.lib.clips.Pistol_Aim_Neutral; const out = [];
-  if (clip) for (const n of POSE_BONES) { const b = P.bone(n); if (!b) continue; const tr = clip.tracks.find(t => t.name === b.name + '.quaternion'); if (!tr) continue; out.push({ b, q: new THREE.Quaternion(tr.values[0], tr.values[1], tr.values[2], tr.values[3]) }); }
+  if (clip) for (const n of POSE_BONES) { const b = P.bone(n); if (!b) continue; const tr = clipQuat(clip, b); if (!tr) continue; out.push({ b, q: new THREE.Quaternion(tr.values[0], tr.values[1], tr.values[2], tr.values[3]) }); }
   return (P._aimPose = out.length ? out : null); }
 
 // rotate a bone about a WORLD axis (keeps everything below it attached)
@@ -70,20 +76,23 @@ const DEF_HAND_Q = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI /
 // call right after the player's mixer update
 export function updateAimPose(g, dt) {
   const P = g.player, s = g.state, I = g.input, w = g.save && g.save.cur; const gun = !!(g.ws && g.weaponMeshes[w] && g.weaponMeshes[w].getObjectByName('muzzle'));
-  const want = gun && !g.cam.fp && !g.cut && !g.dying && !(g.truck && g.truck.driving) && !(s.roll > 0) && !(s.reload > 0) && !(s.stun > 0) && (s.aim || s.shotT > 0 || (I.atk && !g.dlgCur));
-  // snap in on the first shot so the very first round already leaves a barrel that points at the crosshair; ease out
-  s.aimW = want ? (s.shotT > 0 ? 1 : Math.min(1, (s.aimW || 0) + dt * 14)) : Math.max(0, (s.aimW || 0) - dt * 6);
+  const holding = gun && !g.cam.fp && !g.cut && !g.dying && !(g.truck && g.truck.driving) && !(s.roll > 0) && !(s.reload > 0) && !(s.stun > 0);
+  const sight = holding && (s.aim || s.shotT > 0 || (I.atk && !g.dlgCur));
+  // Keep a ready hold whenever a gun is in hand (idle included). Only the full sight picture snaps on a shot.
+  // v1.9.36 left aimW at 0 while idle, and the idle clip's arm tracks did not show, so the rifle/pistol stuck out in a T-pose.
+  const want = holding;
+  s.aimW = want ? (sight || s.shotT > 0 ? 1 : Math.min(1, (s.aimW || 0) + dt * 14)) : Math.max(0, (s.aimW || 0) - dt * 6);
   s.aimW = Math.min(1, Math.max(0, s.aimW || 0)); // never let a stale / unclamped weight pretzel the spine or head
   const W = s.aimW; const hand = g.hand;
   if (W <= 0.001) { if (hand && !hand.quaternion.equals(DEF_HAND_Q)) hand.quaternion.copy(DEF_HAND_Q); g._aimP = null; return; }
   const tgt = aimTarget(g, g._aimPt || (g._aimPt = new THREE.Vector3())); g._aimP = tgt;
-  // 1) arms into the aim pose (blend over whatever the legs' animation left on them)
+  // 1) arms into the aim / ready pose (blend over whatever the legs' animation left on them)
   const pose = aimPoseOf(P); if (pose) for (const { b, q } of pose) b.quaternion.slerp(q, W);
   P.root.updateMatrixWorld(true);
-  // 2) twist / pitch the spine so the shoulder -> hand line points at the target (two passes: the arm line is not on the spine axis)
+  // 2) while aiming / firing, twist the spine so the shoulder -> hand line points at the target
   const sh = P.bone('DEF-upper_arm.R'), hd = P.bone('DEF-hand.R'), sp = [P.bone('DEF-spine.001'), P.bone('DEF-spine.002'), P.bone('DEF-spine.003')].filter(Boolean);
   const sl = P.bone('DEF-upper_arm.L');
-  if (sh && hd && sl && sp.length) for (let it = 0; it < 2; it++) {
+  if (sight && sh && hd && sl && sp.length) for (let it = 0; it < 2; it++) {
     // yaw: square the chest (shoulder line) to the target, with the left shoulder ~15 deg forward like a real right-handed stance
     sh.getWorldPosition(_b); sl.getWorldPosition(_a); const ax0 = _b.x - _a.x, az0 = _b.z - _a.z; const chestYaw = Math.atan2(az0, -ax0); // forward = up x (R - L)
     _a.add(_b).multiplyScalar(.5); const goalYaw = Math.atan2(tgt.x - _a.x, tgt.z - _a.z) - .26;

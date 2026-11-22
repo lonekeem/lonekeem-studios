@@ -101,9 +101,11 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
         if (z.deadT < 3.2) { if (z.vel.lengthSq() > .01) { const [nx, nz] = col.push(pp.x + z.vel.x * dt, pp.z + z.vel.z * dt, .3); pp.x = nx; pp.z = nz; z.vel.multiplyScalar(.9); } if (z.pool && z.poolGrow && z.pool.scale.x < 1.5) z.pool.scale.setScalar(z.pool.scale.x + dt * .5); }
         continue; }
       alive++; let near = null, nd = 1e9, ni = 0; P.forEach((p, k) => { const d = Math.hypot(p.x - pp.x, p.z - pp.z); if (d < nd) { nd = d; near = p; ni = k; } });
+      const wasVis = z.root.visible;
       z.root.visible = nd < fogFar - (z.root.visible ? 1 : 5); // hysteresis, and only vanish once ~90% fogged (no pop in view)
       const far = nd > fogFar * .7; // far from everyone: cheap AI (no neighbor push / LOS cars)
       const vis = z.root.visible; // still tick walk clips while on-screen, or mid-fog zombies stay in the bind T-pose
+      const appeared = vis && !wasVis;
       if (z.hurtT > 0) { z.hurtT -= dt; if (z.oneShot || z.hurtT > 0) { const [nx, nz] = col.push(pp.x + z.vel.x * dt, pp.z + z.vel.z * dt, .3); pp.x = nx; pp.z = nz; z.vel.multiplyScalar(.85); if (vis) { z.mixer.update(dt); zBones(z); } continue; } }
       // state: notice / lose
       if (!near) continue; const det = near.crouch ? 7 : 14;
@@ -125,9 +127,9 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
         let sx = dx * sp * dt, sz = dz * sp * dt; if (!far) for (let j = 0; j < zs.length; j++) { if (j === i) continue; const o = zs[j]; if (o.dead) continue; const q = o.root.position; const ex = pp.x - q.x, ez = pp.z - q.z, e2 = ex * ex + ez * ez; if (e2 < .5 && e2 > 1e-4) { sx += ex / e2 * dt * .25; sz += ez / e2 * dt * .25; } }
         let nx = pp.x + sx, nz = pp.z + sz; if (!far) { const r = col.push(nx, nz, .3); nx = r[0]; nz = r[1]; if (W.cars) for (const k of W.cars) { if (Math.abs(k.x - nx) > 4 || Math.abs(k.z - nz) > 4) continue; for (const [cx, cz] of k.circles()) { const ddx = nx - cx, ddz = nz - cz, rr = k.rad + .35, d2 = ddx * ddx + ddz * ddz; if (d2 < rr * rr) { const d = Math.sqrt(d2) || .01; nx = cx + ddx / d * rr; nz = cz + ddz / d * rr; } } } } pp.x = nx; pp.z = nz;
         const want = Math.atan2(dx, dz); z.root.rotation.y += angDiff(z.root.rotation.y, want) * Math.min(1, dt * 6);
-        if (vis) z.play(z.st === 'chase' ? (z.runner ? 'Jog_Fwd_Loop' : 'Walk_Loop') : 'Walk_Loop', { speed: z.st === 'chase' ? (z.runner ? 1.1 : .62) : (z.runner ? .5 : .45) });
+        z.play(z.st === 'chase' ? (z.runner ? 'Jog_Fwd_Loop' : 'Walk_Loop') : 'Walk_Loop', { speed: z.st === 'chase' ? (z.runner ? 1.1 : .62) : (z.runner ? .5 : .45), fade: appeared ? 0 : 0.18 });
       }
-      if (vis) { z.mixer.update(dt); zBones(z); }
+      if (vis) { if (appeared) { try { z.mixer.update(0); } catch (e) { /* seed */ } } z.mixer.update(dt); zBones(z); }
     }
     S.alive = alive; S.dead = dead;
     // keep the count up: spawn at a road end when nobody can see it
@@ -135,7 +137,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     // bodies stay; only draw the nearest `deadVisible`
     if ((deadT -= dt) <= 0) { deadT = 1; const ds = zs.filter(z => z.dead); if (ds.length > deadVisible) { ds.forEach(z => { z._d = Math.hypot(z.root.position.x - p0.x, z.root.position.z - p0.z); }); ds.sort((a, b) => a._d - b._d); ds.forEach((z, k) => { z.root.visible = k < deadVisible; if (z.pool) z.pool.visible = k < deadVisible; }); } S.rendered = Math.min(ds.length, deadVisible); }
   }
-  function zBones(z) { const b = z.bones; if (z.dead || z.oneShot) return; // reaching arms, lolling head (same pose as the story zombies)
+  function zBones(z) { const b = z.bones; if (z.dead) return; // reaching arms, lolling head (same pose as the story zombies; keep during punch/hit)
     ['DEF-upper_arm.L', 'DEF-upper_arm.R'].forEach((n, k) => { const bn = b[n]; if (bn) { bn.rotateX(z.runner ? -.5 : -1.05); bn.rotateZ((k ? -1 : 1) * .12); } }); if (b['DEF-head']) b['DEF-head'].rotateZ(Math.sin(t * 1.3 + z.id) * .25 + .2); if (b['DEF-spine.002']) b['DEF-spine.002'].rotateX(.18); }
   // head hitbox, identical to story's shot test (game.js: z.worldOf('DEF-head') + .08*scale, radius .17 m; skip when z.noHead)
   const _hp = new THREE.Vector3(); out.HEAD_R = .17; out.headPos = (z, v = _hp) => { z.worldOf('DEF-head', v); v.y += .08 * z.scale; return v; };

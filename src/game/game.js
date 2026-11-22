@@ -626,7 +626,7 @@ export class Game {
       if (z.st === 'feast') { z.mixer.update(dt); if (Math.random() < dt * 8 && this.settings.gore) { const b = P.root.position.clone(); b.y = .3; this.blood(b, V3(rnd(-1, 1), .5, rnd(-1, 1)), 4, 2); } continue; }
       if (z.st === 'eat') { const det = this.state.crouch ? 4 : 7.5; if ((d < det && !this.cut) || z.hp < z.maxHp) { z.st = 'chase'; z.lk = 0; this.audio.at(zp).groan(.14, z); if (Math.random() < .5) this.audio.zAttack && this.audio.zAttack(.5, z); }
         z.mixer.update(dt); this.feedPose(z, dt, d, toP); continue; }
-      if (z.st === 'eat' || z.st === 'idle') { const det = z.det ? (this.state.crouch ? z.det * .4 : z.det) : this.state.crouch ? 4 : (z.st === 'eat' ? 7 : 12); if (d < det && !this.cut || z.hp < z.maxHp || (z.hear && this.mT > 0 && d < 26)) { z.st = 'chase'; this.audio.at(zp).groan(.12, z); } z.mixer.update(dt); if (z.st === 'eat' && Math.random() < dt * .3) this.audio.at(zp).groan(.05, z); if (z.st === 'eat' && d < 16 && (z.eatT = (z.eatT ?? rnd(0, 2)) - dt) <= 0) { z.eatT = rnd(2.2, 3.4); this.audio.at(zp).eat(Math.max(.05, .55 * (1 - d / 16)), z); } continue; }
+      if (z.st === 'eat' || z.st === 'idle') { const det = z.det ? (this.state.crouch ? z.det * .4 : z.det) : this.state.crouch ? 4 : (z.st === 'eat' ? 7 : 12); if (d < det && !this.cut || z.hp < z.maxHp || (z.hear && this.mT > 0 && d < 26)) { z.st = 'chase'; this.audio.at(zp).groan(.12, z); } if (z.st === 'idle' && !z.oneShot && !z.curName) z.play('Idle_Loop'); z.mixer.update(dt); if (z.st === 'idle') this.zBones(z); if (z.st === 'eat' && Math.random() < dt * .3) this.audio.at(zp).groan(.05, z); if (z.st === 'eat' && d < 16 && (z.eatT = (z.eatT ?? rnd(0, 2)) - dt) <= 0) { z.eatT = rnd(2.2, 3.4); this.audio.at(zp).eat(Math.max(.05, .55 * (1 - d / 16)), z); } continue; }
       if (z.raider && !z.boss) { this.raiderAI(z, d, toP, dt, zp); z.mixer.update(dt); this.zBones(z); continue; }
       if (z.boss) { this.updateBoss(z, d, toP, dt); z.mixer.update(dt); this.zBones(z); continue; }
       if (z.stun > 0) { z.stun -= dt; this.moveCollide(zp, z.vel.x * dt, z.vel.z * dt, .3); z.vel.multiplyScalar(.85); z.mixer.update(dt); this.zBones(z); continue; }
@@ -634,7 +634,7 @@ export class Game {
       if ((z.tgT = (z.tgT || 0) - dt) <= 0) { z.tgT = rnd(.4, .7); z.tgt = null; if (!this.cut) { let bd = d * .95; for (const o of Z) { if (!o.raider || o.dead || o === z) continue; const q = o.root.position, e = Math.hypot(q.x - zp.x, q.z - zp.z); if (e < bd && e < 24) { bd = e; z.tgt = o; } }
           for (const k in this.npcs) { const n = this.npcs[k]; if (!n || n.isVictim || n.root.visible === false || !n.root.parent) continue; const q = n.root.position, e = Math.hypot(q.x - zp.x, q.z - zp.z); if (e < bd && e < 10) { bd = e; z.tgt = n; } } } }
       const tg = z.tgt && !z.tgt.dead && z.tgt.root.visible !== false ? z.tgt : null; if (tg) { toP.set(tg.root.position.x - zp.x, 0, tg.root.position.z - zp.z); d = toP.length(); }
-      if (d > z.aggro && !this.stepData.hordeAll && !tg) { z.mixer.update(dt); this.zBones(z); continue; }
+      if (d > z.aggro && !this.stepData.hordeAll && !tg) { if (!z.oneShot && !z.locoOn && !z.curName) z.play(z.runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: z.runner ? 1.1 : .62 }); z.mixer.update(dt); this.zBones(z); continue; }
       if (z.cd > 0) z.cd -= dt;
       if (d < 1.05 && (tg || !this.truck.driving)) { if (z.cd <= 0) { z.cd = rnd(1.2, 1.8); z.play('Punch_Jab', { once: true, force: true, speed: .9, cb: () => { z.curName = ''; } }); z.hitAt = .35; } }
       else if (!z.oneShot) { toP.normalize(); let sx = toP.x * z.speed * dt, sz = toP.z * z.speed * dt;
@@ -694,7 +694,7 @@ export class Game {
     if (this.truck.driving) return pick('keem_drive'); if (feeding && !this._scared) { this._scared = 1; return pick('keem_scared'); } if (near >= 2) return pick(Math.random() < .7 ? 'keem_combat' : 'marcus_shout');
     if (N.length) { const n = N[Math.floor(Math.random() * N.length)]; const k = /nia/.test(n.key || n.lookKey || '') ? 'nia_chat' : /marcus|dad/.test(n.key || n.lookKey || '') ? 'marcus_chat' : Math.random() < .5 ? 'npc_chat' : 'npcf_chat'; return this.audio.shout(k, false, n.root.position); }
     if (Math.random() < .3) pick(Math.random() < .5 ? 'npc_chat' : 'npcf_chat'); }
-  zBones(z) { const b = z.bones; if (!z.dead && !z.oneShot) { // zombie posture: arms reaching, head lolled
+  zBones(z) { const b = z.bones; if (!z.dead) { // zombie posture: arms reaching, head lolled (also during punch/hit so a one-shot missing arm tracks cannot leave a T-pose)
       ['DEF-upper_arm.L', 'DEF-upper_arm.R'].forEach((n, k) => { const bn = b[n]; if (bn) { bn.rotateX(z.runner ? -0.5 : -1.05); bn.rotateZ((k ? -1 : 1) * 0.12); } });
       if (b['DEF-head']) b['DEF-head'].rotateZ(Math.sin(this.t * 1.3 + z.id) * .25 + .2); if (b['DEF-spine.002']) b['DEF-spine.002'].rotateX(.18); }
     if (z.noHead && b['DEF-head']) b['DEF-head'].scale.setScalar(0.001); if (z.noArm && b[z.noArm]) b[z.noArm].scale.setScalar(0.001); if (z.noLimbs) for (const n of z.noLimbs) { const bn = z.bone(n); if (bn) bn.scale.setScalar(0.001); } }
