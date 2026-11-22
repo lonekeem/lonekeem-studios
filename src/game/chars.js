@@ -4,6 +4,62 @@ import { canvasTex } from './util.js';
 import { buildWeapon } from './gear.js';
 import { attachRig, EXTRA } from './avatar.js';
 import { bindHeadLook } from './headLook.js';
+
+// A clip "drives the arms" only if it actually has upper-arm quaternion tracks.
+// Three.js blends any missing track toward the bind T-pose when total weight < 1, or when the
+// active clip simply never authored those bones.
+const ARM_L = /(upper_arm|upperarm)[._]?L/i, ARM_R = /(upper_arm|upperarm)[._]?R/i;
+const _vA = new THREE.Vector3(), _vB = new THREE.Vector3(), _inv = new THREE.Matrix4();
+export function clipHasArmTracks(clip) {
+  if (!clip) return false; if (clip._hasArms != null) return clip._hasArms;
+  let L = false, R = false;
+  for (const tr of clip.tracks) {
+    const n = tr.name || ''; if (!/\.quaternion$/.test(n)) continue;
+    if (ARM_L.test(n)) L = true; if (ARM_R.test(n)) R = true;
+  }
+  return (clip._hasArms = !!(L && R));
+}
+function _armBone(ch, side) {
+  return ch.bone('DEF-upper_arm.' + side) || ch.bone('DEF-upper_arm' + side) || ch.bone('DEF-upper_arm.' + side.toLowerCase());
+}
+function _foreBone(ch, side) {
+  return ch.bone('DEF-forearm.' + side) || ch.bone('DEF-forearm' + side);
+}
+// Angle from world-down to the shoulder→elbow vector, radians. 0 = hanging, π/2 = straight out.
+export function armAbduction(ch, side) {
+  const sh = _armBone(ch, side), el = _foreBone(ch, side); if (!sh || !el) return 0;
+  const a = sh.getWorldPosition(_vA), b = el.getWorldPosition(_vB);
+  const dir = b.sub(a); const len = dir.length(); if (len < 1e-5) return 0; dir.multiplyScalar(1 / len);
+  return Math.acos(Math.min(1, Math.max(-1, -dir.y)));
+}
+// True T-pose: BOTH upper arms out to the SIDES (not a forward reach or a one-arm punch).
+export function isTPoseArms(ch, lim = 70 * Math.PI / 180) {
+  if (!ch || ch._deadHeld || ch.dead) return false;
+  const root = ch.root; if (!root) return false;
+  root.updateWorldMatrix(true, false);
+  _inv.copy(root.matrixWorld).invert();
+  const sides = ['L', 'R'].map(side => {
+    const sh = _armBone(ch, side), el = _foreBone(ch, side); if (!sh || !el) return null;
+    sh.getWorldPosition(_vA); el.getWorldPosition(_vB);
+    _vA.applyMatrix4(_inv); _vB.applyMatrix4(_inv);
+    const d = _vB.sub(_vA); const len = d.length(); if (len < 1e-5) return null; d.multiplyScalar(1 / len);
+    const abd = Math.acos(Math.min(1, Math.max(-1, -d.y)));
+    return { abd, lat: Math.abs(d.x), fwd: Math.abs(d.z), down: -d.y };
+  });
+  if (!sides[0] || !sides[1]) return false;
+  return sides.every(s => s.abd > lim && s.lat > s.fwd + 0.12 && s.down < 0.45);
+}
+export function actionWeights(ch) {
+  const out = []; if (!ch || !ch.actions) return out;
+  for (const k in ch.actions) {
+    const a = ch.actions[k]; if (!a || !a.enabled) continue;
+    const w = a.getEffectiveWeight(); if (w <= 0.001) continue;
+    const clip = a.getClip && a.getClip();
+    out.push({ name: k, w: +w.toFixed(3), arms: clipHasArmTracks(clip), time: +((a.time || 0).toFixed(3)) });
+  }
+  return out;
+}
+
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 // Body material: one CC0 Quaternius mannequin, "dressed" in the shader by bind-pose regions
@@ -103,7 +159,9 @@ export class Char {
     this.mixer.addEventListener('finished', (e) => {
       if (this.oneShot && e.action === this.oneShot.a) {
         const cb = this.oneShot.cb; this.oneShot = null;
-        if (cb) { cb(); return; } // Hit_Chest may chain into Death01
+        // Hit_Chest may chain into Death01 — if it starts a new one-shot, leave it alone.
+        if (cb) cb();
+        if (!this.oneShot && !this.dead && !this._deadHeld) this.restoreBaseClip();
       }
       const clip = e.action && e.action.getClip && e.action.getClip();
       const nm = (clip && clip.name) || this.curName || '';
@@ -116,13 +174,21 @@ export class Char {
     if (this._deadHeld) return; // frozen corpse — never fade back to idle
     if (this.dead && !/^(Death|Hit_)/.test(name || '')) return;
     if (!force && this.curName === name && !once) { if (this.cur) this.cur.timeScale = speed; return; }
-    const a = this.act(name); if (!a) return; const wasLoco = this.locoOn; if (wasLoco) this.endLoco(fade); a.reset(); a.timeScale = speed; a.enabled = true;
+    const a = this.act(name); if (!a) return; const wasLoco = this.locoOn; if (wasLoco) this.endLoco(fade); a.reset(); a.timeScale = speed; a.enabled = true; a.paused = false;
     if (once) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; this.oneShot = { a, cb }; } else a.setLoop(THREE.LoopRepeat);
     // Never fade in from weight 0 with no other posing clip: that interpolates through the bind T-pose.
-    if (wasLoco) { a.setEffectiveWeight(1); a.play(); }
-    else if (this.cur && this.cur !== a) a.crossFadeFrom(this.cur, fade, false);
-    else a.setEffectiveWeight(1);
-    a.play(); this.cur = a; this.curName = name;
+    // Also never crossFadeFrom a finished LoopOnce (paused / clampWhenFinished): Three.js fadeIn starts
+    // the new clip at weight 0, and a paused source often drops immediately, leaving every bone at bind.
+    const from = this.cur;
+    const fromLive = !!(from && from !== a && from.enabled && from.getEffectiveWeight() > 0.05
+      && !from.paused && (typeof from.isRunning !== 'function' || from.isRunning()));
+    if (wasLoco || fade <= 0 || !fromLive) {
+      a.stopFading && a.stopFading(); a.setEffectiveWeight(1); a.play();
+      if (from && from !== a) {
+        try { from.stopFading && from.stopFading(); from.setEffectiveWeight(0); from.stop(); from.enabled = false; } catch (e) { /* ignore */ }
+      }
+    } else { a.crossFadeFrom(from, fade, false); a.play(); }
+    this.cur = a; this.curName = name;
   }
   // v2.0 locomotion blend tree: Walk <-> Jog <-> Sprint blended by real ground speed, phase-matched, with the cycle advanced by
   // distance travelled (so feet stay planted: no sliding / moonwalking). dir < 0 plays the cycle backwards (backpedalling).
@@ -132,8 +198,18 @@ export class Char {
     if (this._deadHeld || this.dead) return false;
     const k = this.scale || 1, N = Char.LOCO.map(n => ({ name: n.name, v: n.v * k, stride: n.stride * k, off: n.off })); const acts = N.map(n => this.act(n.name)); if (acts.some(a => !a)) return false;
     if (!this.locoOn) { this.locoOn = true; this.locoPh = this.locoPh || 0;
-      this._locoFrom = this.cur && this.cur.enabled ? this.cur : null;
+      const from = this.cur && this.cur.enabled ? this.cur : null;
+      // Only blend from a live looping pose. A finished/clamped LoopOnce (melee, roll, hit)
+      // must be stopped immediately — fading it leaves swing-arms on top of walk, or a T-pose
+      // if its weight drops before loco ramps up.
+      const fromLive = !!(from && !from.paused && from.getEffectiveWeight() > 0.05
+        && (typeof from.isRunning !== 'function' || from.isRunning())
+        && from.loop === THREE.LoopRepeat);
+      this._locoFrom = fromLive ? from : null;
       if (this._locoFrom) this._locoFrom.stopFading && this._locoFrom.stopFading();
+      else if (from) {
+        try { from.stopFading && from.stopFading(); from.setEffectiveWeight(0); from.stop(); from.enabled = false; } catch (e) { /* ignore */ }
+      }
       // If nothing is already posing the body, start at full loco weight so arms cannot dip into the bind T-pose.
       this.locoW = this._locoFrom ? 0 : 1;
       this.cur = null; this.curName = '__loco';
@@ -186,7 +262,109 @@ export class Char {
     const pose = this._deadPose; if (!pose) return;
     for (const s of pose) { s.b.quaternion.copy(s.q); s.b.position.copy(s.p); if (s.s) s.b.scale.copy(s.s); }
   }
-  bone(n) { return this.bones[n] || this.bones[n.replace(/[.]/g, '')]; }
+
+  // Before mixer.update: keep a full-weight clip that actually drives the arms, so the mixer cannot
+  // blend toward the bind T-pose (weight < 1, or a one-shot / crossfade missing arm tracks).
+  // True only for clips the mixer will actually write this frame. A finished LoopOnce can
+  // report weight 1 while paused and contribute nothing, which is what leaves a T-pose.
+  _actionPosing(a) {
+    if (!a || !a.enabled) return 0;
+    const w = a.getEffectiveWeight(); if (w <= 0.001) return 0;
+    if (a.paused && !a.clampWhenFinished) return 0;
+    if (typeof a.isRunning === 'function' && !a.isRunning() && !(a.paused && a.clampWhenFinished && w >= 0.5)) return 0;
+    return w;
+  }
+  // If the finished event was missed (hitstop skipped mixer.update, timeScale 0, etc.), drop
+  // the stale one-shot so locomotion can resume and run its callback once.
+  _clearStaleOneShot() {
+    const os = this.oneShot; if (!os || !os.a) return;
+    const a = os.a;
+    const clip = a.getClip && a.getClip();
+    const dur = clip ? clip.duration : 0;
+    const atEnd = dur > 0 && a.time >= dur - 1e-3;
+    const dead = !a.enabled || a.getEffectiveWeight() < 0.01;
+    const held = !!(a.paused && atEnd);
+    if (!(held || (dead && atEnd) || (atEnd && typeof a.isRunning === 'function' && !a.isRunning()))) return;
+    this.oneShot = null;
+    if (os.cb) { try { os.cb(); } catch (e) { /* ignore */ } }
+    if (!this.oneShot && !this.dead && !this._deadHeld) this.restoreBaseClip();
+  }
+  // After a LoopOnce (melee swing, punch, reload, roll, hit react) ends, snap a posing
+  // idle/walk back on at full weight. Do not crossfade from the finished clip.
+  restoreBaseClip() {
+    if (this._deadHeld || this.dead || this._seatLock) return;
+    // Don't clobber a live one-shot (swing, jump-start) or a loop its callback just started (Jump_Loop).
+    if (this.oneShot && this._actionPosing(this.oneShot.a) > 0.5) return;
+    if (this.cur) {
+      const a = this.cur;
+      const done = a.paused || !a.enabled || a.getEffectiveWeight() < 0.05
+        || (typeof a.isRunning === 'function' && !a.isRunning());
+      if (done) {
+        try { a.stopFading && a.stopFading(); a.setEffectiveWeight(0); a.stop(); a.enabled = false; } catch (e) { /* ignore */ }
+        this.cur = null; this.curName = '';
+      }
+    }
+    if (this.cur && this._actionPosing(this.cur) > 0.5) return;
+    if (this.locoOn) return; // locomote already owns the mixer
+    const moving = (this._aspd || 0) > 0.3;
+    let name = moving ? 'Walk_Loop' : 'Idle_Loop';
+    if (!moving && this.curName && /Pistol_(Idle_Loop|Aim_Neutral)/.test(this.curName) && this.act(this.curName)) name = this.curName;
+    if (!this.act(name)) name = this.act('Idle_Loop') ? 'Idle_Loop' : (this.act('Walk_Loop') ? 'Walk_Loop' : null);
+    if (name) this.play(name, { fade: 0, force: true });
+  }
+  ensureBodyPose() {
+    if (this._deadHeld || this.dead || this._seatLock) return;
+    this._clearStaleOneShot();
+    // Leave an in-progress one-shot (melee, roll, jump) alone so we don't blend idle over it.
+    if (this.oneShot && this._actionPosing(this.oneShot.a) > 0.5) return;
+    let sum = 0, armW = 0, best = null, bestW = 0;
+    for (const k in this.actions) {
+      const a = this.actions[k]; const w = this._actionPosing(a); if (w <= 0) continue;
+      sum += w; const arms = clipHasArmTracks(a.getClip && a.getClip()); if (arms) { armW += w; if (w > bestW) { bestW = w; best = a; } }
+    }
+    if (sum >= 0.99 && armW >= 0.99) return;
+    if (best && armW >= 0.05 && sum < 0.99) { best.stopFading && best.stopFading(); best.paused = false; best.setEffectiveWeight(best.getEffectiveWeight() + (0.99 - sum)); return; }
+    const moving = !!(this.locoOn || (this._aspd || 0) > 0.3);
+    let name = moving ? 'Walk_Loop' : 'Idle_Loop';
+    if (!moving && this.curName && /Pistol_(Idle_Loop|Aim_Neutral)/.test(this.curName) && this.act(this.curName) && clipHasArmTracks(this.lib.clips[this.curName])) name = this.curName;
+    if (!this.act(name)) name = this.act('Idle_Loop') ? 'Idle_Loop' : (this.act('Walk_Loop') ? 'Walk_Loop' : null);
+    if (!name) return;
+    const a = this.act(name); if (!a) return;
+    a.enabled = true; a.stopFading && a.stopFading(); a.paused = false; a.timeScale = a.timeScale || 1;
+    if (!a.isRunning || !a.isRunning()) { a.setLoop(THREE.LoopRepeat); a.play(); }
+    const need = Math.max(0.99 - armW, armW < 0.05 ? 1 : 0);
+    if (need > 0) a.setEffectiveWeight(Math.max(a.getEffectiveWeight(), need));
+    if (!this.cur || this._actionPosing(this.cur) < 0.05) { this.cur = a; this.curName = name; }
+    this._armBoost = (this._armBoost || 0) + 1;
+  }
+  _armBasePose() {
+    if (this._armBase) return this._armBase;
+    const clip = (this.lib && this.lib.clips && (this.lib.clips.Idle_Loop || this.lib.clips.Walk_Loop || this.lib.clips.Pistol_Idle_Loop));
+    if (!clip) return (this._armBase = []);
+    const names = ['DEF-upper_arm.L', 'DEF-upper_arm.R', 'DEF-forearm.L', 'DEF-forearm.R', 'DEF-hand.L', 'DEF-hand.R',
+      'DEF-upper_armL', 'DEF-upper_armR', 'DEF-forearmL', 'DEF-forearmR', 'DEF-handL', 'DEF-handR'];
+    const out = []; const seen = new Set();
+    for (const n of names) {
+      const b = this.bone(n); if (!b || seen.has(b)) continue;
+      const tr = clip.tracks.find(t => t.name === b.name + '.quaternion' || t.name === n + '.quaternion' || t.name === b.name.replace(/[.]/g, '') + '.quaternion');
+      if (!tr) continue; seen.add(b);
+      out.push({ b, q: new THREE.Quaternion(tr.values[0], tr.values[1], tr.values[2], tr.values[3]) });
+    }
+    return (this._armBase = out);
+  }
+  // After mixer.update: if the arms still landed on the bind T-pose, snap them to the idle/walk arm pose
+  // BEFORE any procedural overlay (aim, zBones, head look) runs.
+  fixBindArms() {
+    if (this._deadHeld || this.dead || this._seatLock) return false;
+    // Don't snap arms mid-swing / mid-roll; only correct a real bind T-pose.
+    if (this.oneShot && this._actionPosing(this.oneShot.a) > 0.5) return false;
+    if (!isTPoseArms(this)) return false;
+    const pose = this._armBasePose(); if (!pose.length) return false;
+    for (const { b, q } of pose) b.quaternion.copy(q);
+    this._armFixed = (this._armFixed || 0) + 1;
+    return true;
+  }
+    bone(n) { return this.bones[n] || this.bones[n.replace(/[.]/g, '')]; }
   attach(boneName, mesh) { if (this.attachSkin && this.attachSkin(boneName, mesh)) return mesh; const b = this.bone(boneName); if (b) b.add(mesh); return mesh; }
   worldOf(boneName, out) { const b = this.bone(boneName); return b ? b.getWorldPosition(out) : this.root.getWorldPosition(out); }
 }
@@ -242,3 +420,5 @@ export function makeRabbit() { if (EXTRA.biscuit) { const g = new THREE.Group(),
     const ear = new THREE.Mesh(new THREE.CapsuleGeometry(0.014, 0.06, 3, 6), fur); ear.geometry.translate(0, 0.045, 0); ear.position.set(s * 0.022, 0.04, -0.01); ear.rotation.z = -s * .25; head.add(ear); (g.ears = g.ears || []).push(ear); });
   const paws = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.02, 0.03), fur); paws.position.set(0, -0.05, 0.04); g.add(paws);
   g.head = head; g.traverse(o => { if (o.isMesh) o.frustumCulled = false; }); return g; }
+
+if (typeof window !== 'undefined') window.__atqArms = { clipHasArmTracks, armAbduction, isTPoseArms, actionWeights };

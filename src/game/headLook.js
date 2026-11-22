@@ -45,7 +45,10 @@ export function bindHeadLook(ch) {
       s.b.quaternion.copy(s.q);
       s.b.position.copy(s.p);
     }
-    return orig(dt);
+    try { if (ch.ensureBodyPose) ch.ensureBodyPose(); } catch (e) { /* ignore */ }
+    const out = orig(dt);
+    try { if (ch.fixBindArms) ch.fixBindArms(); } catch (e) { /* ignore */ }
+    return out;
   };
   return ch;
 }

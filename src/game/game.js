@@ -199,6 +199,18 @@ export class Game {
   updateTruckCol() { const T = this.truck, p = T.g.position, c = T.col; c.x0 = p.x - 1.4; c.x1 = p.x + 1.4; c.z0 = p.z - 1.6; c.z1 = p.z + 1.6; c.skip = T.driving; }
 
   // ---------- inventory / weapons ----------
+  ensureHeldWeapon() {
+    const id = (this.save && this.save.cur) || 'fists';
+    const m = this.weaponMeshes && this.weaponMeshes[id];
+    if (!this.hand) return;
+    this.hand.visible = true;
+    if (m && m.parent !== this.hand) { this.hand.clear(); this.hand.add(m); }
+    if (m) m.visible = true;
+    const P = this.player; if (!P || !P.bone) return;
+    for (const n of ['DEF-hand.R', 'DEF-handR', 'DEF-forearm.R', 'DEF-forearmR']) {
+      const b = P.bone(n); if (b && b.scale && (b.scale.x < 0.5 || b.scale.y < 0.5 || b.scale.z < 0.5)) b.scale.set(1, 1, 1);
+    }
+  }
   equip(id, silent) { if (!this.save.owned.includes(id)) id = 'fists'; this.save.cur = id; const w = WEAPONS[id];
     this.hand.clear(); const m = this.weaponMeshes[id]; this.hand.add(m); this.vm.clear(); const vmm = m.clone(); this.vm.add(vmm); this.vmMesh = vmm;
     if (w.type === 'gun' && this.save.mags[id] == null) this.save.mags[id] = stat(this.save, id).mag;
@@ -331,6 +343,8 @@ export class Game {
     if (c.act('Walk_Loop')) c.act('Walk_Loop').time = rnd(0, 1);
     if (!o.raider) c.zvo = zVoiceAssign(zl, { boss: !!o.boss, fem: zl.fem });
     if (o.raider) { c.raider = true; c.hp = c.maxHp = o.hp || 90; c.speed = 2.6; c.cd = rnd(1, 2.5); const h = new THREE.Group(); h.add(weaponMesh(o.gun || 'rifle')); h.rotation.set(Math.PI / 2, 0, 0); h.position.set(0, .08, .02); c.attach('DEF-hand.R', h); c.gunM = h; c.gunId = o.gun || 'rifle'; c.play('Pistol_Aim_Neutral'); if (c.mat && c.mat.userData.u && c.mat.userData.u.uShirt) if (o.shirt && c.mat.userData.u.uJacket) { c.mat.userData.u.uJacket.value.set(o.shirt); c.mat.userData.u.uShirt.value.set(o.shirt); } }
+    // Pose immediately so a zombie that pops into view (e.g. during a melee-kill hitch / hitstop) is never left in bind T-pose.
+    try { c.mixer.update(0); } catch (e) { /* first pose */ }
     this.zombies.push(c); return c; }
   horde(n, pts, o = {}) { for (let i = 0; i < n; i++) { const p = pts[i % pts.length]; this.spawnZ(p[0] + rnd(-3, 3), p[1] + rnd(-3, 3), o); } }
   alive() { return this.zombies.filter(z => !z.dead); }
@@ -534,9 +548,9 @@ export class Game {
   attack() { const w = WEAPONS[this.save.cur]; if (this.truck.driving || this.cut || this.dying) return; if (w.type === 'gun') return this.fire(); const s = this.state; if (s.atk > 0 || s.roll > 0) return;
     const P = this.player; // soft lock
     let best = null, bd = this.meleeReach() + .9; this.alive().forEach(z => { const d = z.root.position.distanceTo(P.root.position); if (d < bd) { bd = d; best = z; } }); if (best) P.root.rotation.y = Math.atan2(best.root.position.x - P.root.position.x, best.root.position.z - P.root.position.z);
-    const rate = this.ws.rate; s.atk = rate; const anim = this.save.cur === 'fists' ? (s.combo % 2 ? 'Punch_Cross' : 'Punch_Jab') : 'Sword_Attack';
+    const rate = this.ws.rate; s.atk = rate; P._meleeReal = 0; P._meleeT0 = performance.now(); const anim = this.save.cur === 'fists' ? (s.combo % 2 ? 'Punch_Cross' : 'Punch_Jab') : 'Sword_Attack';
     s.atkHit = rate * (this.save.cur === 'fists' ? .34 : .38); // v1.9.11: contact lands when the arm/weapon is at full extension (clip peaks ~30% in; was .45)
-    P.play(anim, { once: true, force: true, speed: (this.lib.clips[anim].duration / rate) * .8, cb: () => { P.curName = ''; } }); this.audio.swing(); }
+    P.play(anim, { once: true, force: true, fade: 0, speed: (this.lib.clips[anim].duration / rate) * .8, cb: () => { P.restoreBaseClip ? P.restoreBaseClip() : (P.curName = ''); } }); this.audio.swing(); }
   roll() { const s = this.state; if (s.roll > 0 || this.truck.driving || this.cut) return; startRoll({ P: this.player, s, I: this.input, yaw: this.cam.yaw, audio: this.audio }); }
   jump() { const s = this.state; if (s.y > 0.01 || this.truck.driving || this.cut) return; startJump({ P: this.player, s, audio: this.audio }); }
   grenade() { if (this.save.grenades <= 0) { this.toast('No grenades'); return; } if (this.truck.driving || this.cut) return; this.save.grenades--; const P = this.player;
@@ -562,7 +576,16 @@ export class Game {
       const busy = (this.mT > 0) || (this.state && this.state.shotT > 0) || (this.input && this.input.atk);
       if (!busy && fps < 24 && this.pr > 0.55) { const n = Math.max(0.55, this.pr * 0.82); if (n < this.pr - 0.05) { this.pr = n; this.renderer.setPixelRatio(this.pr); this.resize(); } } else if (!busy && fps > 55 && this.pr < this.basePR) { const n = Math.min(this.basePR, this.pr * 1.1); if (n > this.pr + 0.05) { this.pr = n; this.renderer.setPixelRatio(this.pr); this.resize(); } } }
     this.input.poll(rdt);
-    if (!this.paused) { if (this.hitstop > 0) { this.hitstop -= rdt; } else { if (this.slowT > 0) { this.slowT -= rdt; if (this.slowT <= 0) this.timeScale = 1; } this.update(rdt * this.timeScale, rdt); } }
+    if (!this.paused) { if (this.hitstop > 0) { this.hitstop -= rdt;
+      // Hitstop must not freeze a melee LoopOnce for a long hitch: keep the swing advancing and
+      // allow the stale-oneShot watchdog to release locomotion.
+      const P = this.player;
+      if (P && P.oneShot && /^(Sword_Attack|Punch_Jab|Punch_Cross)$/.test(P.curName || '')) {
+        this.releaseMelee(rdt);
+        try { P.mixer.update(rdt * 0.7); } catch (e) { /* ignore */ }
+        this.ensureHeldWeapon();
+      }
+    } else { if (this.slowT > 0) { this.slowT -= rdt; if (this.slowT <= 0) this.timeScale = 1; } this.update(rdt * this.timeScale, rdt); } }
     this.render(rdt); }
   update(dt, rdt) { this.t += dt; if (this.grace > 0) this.grace -= rdt; const P = this.player, s = this.state, I = this.input, T = this.truck;
     // dialog
@@ -574,9 +597,14 @@ export class Game {
     if (s.fireCd > 0) s.fireCd -= dt; if (s.reload > 0) { s.reload -= dt; if (s.reload <= 0) this.finishReload(); }
     if (s.comboT > 0) { s.comboT -= dt; if (s.comboT <= 0) s.combo = 0; }
     if (this.hp < this.maxHp && this.t - (this.lastHurt || 0) > 5) this.hp = Math.min(this.maxHp, this.hp + dt * 4);
-    if (T.driving) this.updateTruck(dt); else if (!this.cut) this.updatePlayer(dt);
+    if (T.driving) this.updateTruck(dt); else if (!this.cut) this.updatePlayer(dt, rdt);
     else { if (P.locoOn) P.endLoco(); P.play(this.cut.anim || 'Idle_Loop', { speed: this.cut.animSpeed || 1 }); }
-    P.mixer.update(dt); if (!T.driving) updateAimPose(this, dt); placeShotFx(this); // v1.9.28: upper body + gun on the crosshair, flash on the barrel
+    // Headshot/finisher slow-mo scales world dt to 0.22x. If the player's melee LoopOnce is also
+    // scaled that far, the swing (and oneShot lock) can last many seconds — legs freeze and he slides.
+    // Keep a minimum real-time rate on the melee clip so follow-through ends and loco can resume.
+    const meleeOs = P.oneShot && /^(Sword_Attack|Punch_Jab|Punch_Cross)$/.test(P.curName || '');
+    const pDt = meleeOs ? Math.max(dt, rdt * 0.7) : dt;
+    P.mixer.update(pDt); if (!T.driving) updateAimPose(this, dt); placeShotFx(this); this.ensureHeldWeapon(); // v1.9.28: upper body + gun on the crosshair, flash on the barrel
     if (!this.truck.driving) this.stepTrack(this.player, this.player.root.position, 'p'); this.chatter(dt);
     tickPools(this, dt); this.updateZ(dt); for (const k in this.npcs) { const n = this.npcs[k]; n.update && n.update(dt); n.mixer.update(dt); this.victimStruggle(n, dt); this.stepTrack(n, n.root.position, 'n'); if (n.bleed && Math.random() < dt * 3) { const p = n.root.position.clone(); p.y = .3; this.blood(p, V3(0, .6, 0), 3, 1.2); } } tickDialogueFace(this, dt);
     townUpdate(this, dt);
@@ -586,12 +614,32 @@ export class Game {
     this.updateFX(dt);
     if (this.stepData.tankerBoom && !this.stepData.tankerDone) { this.stepData.tankerDone = true; const tp = this.world.tanker.position.clone(); tp.y = 1.5; this.explode(tp, 12, 500); this.world.tanker.children.forEach(c => c.material && c.material.color && c.material.color.set('#151210')); this.world.tankCol.x0 = 999; this.world.tanker.rotation.z = 0.25; }
     this.world.env.pl = (this.truck && this.truck.driving) ? this.truck.g.position : this.player.root.position; this.world.update(dt, this.t, this.camera.position); }
-  updatePlayer(dt) { const P = this.player, s = this.state, I = this.input, w = WEAPONS[this.save.cur], gun = w.type === 'gun';
+  updatePlayer(dt, rdt = dt) { const P = this.player, s = this.state, I = this.input, w = WEAPONS[this.save.cur], gun = w.type === 'gun';
     if (I.pressed('swap')) this.swap(1); if (I.pressed('reload')) this.reload(); if (I.pressed('gren')) this.grenade(); if (I.pressed('heal')) this.heal(); if (I.pressed('jump')) this.jump(); if (I.pressed('roll')) this.roll(); if (I.pressed('use')) this.use();
     if (I.pressed('crouch')) s.crouch = !s.crouch; if (I.pressed('view')) { this.cam.fp = !this.cam.fp; this.settings.fp = this.cam.fp; }
     s.aim = I.aim && gun; { const tap = I.pressed('atk'); if (tap || (I.atk && (!gun || w.auto)) || (gun && I.atk && tap)) this.attack(); }
     const mvr = stepMove({ P, s, I, set: this.settings, yaw: this.cam.yaw, fp: this.cam.fp, gun, aimTwist: true, slow: this.slowMul, runMul: perk(this.save, 7) ? 1.15 : 1, audio: this.audio, onMeleeHit: () => this.meleeHit(), collide: (p, dx, dz, r) => this.moveCollide(p, dx, dz, r) }, dt);
+    this.releaseMelee(rdt);
     }
+  // If a melee LoopOnce is still locking locomotion after the swing should have ended (missed
+  // finished event, timeScale 0, or a stretched slow-mo clip), drop oneShot and restore idle/walk.
+  releaseMelee(rdt = 0.016) {
+    const P = this.player, s = this.state, os = P && P.oneShot;
+    if (!os || !os.a) { if (P) P._meleeReal = 0; return; }
+    const nm = P.curName || '';
+    if (!/^(Sword_Attack|Punch_Jab|Punch_Cross)$/.test(nm)) return;
+    // Wall clock, not summed/capped rdt: a hitchy frame (rdt clamped to 0.05) would otherwise
+    // leave oneShot locked for many real seconds while Keem slides in the last swing pose.
+    if (!P._meleeT0) P._meleeT0 = performance.now();
+    P._meleeReal = (performance.now() - P._meleeT0) / 1000;
+    const a = os.a; const clip = a.getClip && a.getClip(); const dur = clip ? clip.duration : 0;
+    const atEnd = dur > 0 && a.time >= dur * 0.96;
+    if ((s.atk <= 0 && (atEnd || a.paused || a.timeScale === 0 || P._meleeReal > 1.8)) || P._meleeReal > 2.2) {
+      P.oneShot = null; P._meleeReal = 0; P._meleeT0 = 0;
+      if (os.cb) { try { os.cb(); } catch (e) { /* ignore */ } }
+      if (!P.oneShot) P.restoreBaseClip && P.restoreBaseClip();
+    }
+  }
   // v2.0 aim assist (opt-in: "Simple" control scheme or the Aim-assist slider; default off = unchanged gameplay).
   // Gently steers the camera toward the best target near the crosshair while firing/aiming; optional auto-fire when a visible enemy is under it.
   aimAssist(rdt) { stepAimAssist(this, rdt); }

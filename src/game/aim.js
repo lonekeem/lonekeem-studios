@@ -76,7 +76,7 @@ const DEF_HAND_Q = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI /
 // call right after the player's mixer update
 export function updateAimPose(g, dt) {
   const P = g.player, s = g.state, I = g.input, w = g.save && g.save.cur; const gun = !!(g.ws && g.weaponMeshes[w] && g.weaponMeshes[w].getObjectByName('muzzle'));
-  const holding = gun && !g.cam.fp && !g.cut && !g.dying && !(g.truck && g.truck.driving) && !(s.roll > 0) && !(s.reload > 0) && !(s.stun > 0);
+  const holding = gun && !g.cam.fp && !g.cut && !g.dying && !(g.truck && g.truck.driving) && !(s.roll > 0) && !(s.stun > 0);
   const sight = holding && (s.aim || s.shotT > 0 || (I.atk && !g.dlgCur));
   // Keep a ready hold whenever a gun is in hand (idle included). Only the full sight picture snaps on a shot.
   // v1.9.36 left aimW at 0 while idle, and the idle clip's arm tracks did not show, so the rifle/pistol stuck out in a T-pose.
