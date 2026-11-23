@@ -403,15 +403,15 @@ export function drawNameTag(g, w, h, name, clan, role) {
   const y0 = two ? Math.max(4, (h - 70) / 2) : 10, hh = two ? 70 : 44, rr = 14;
   if (g.roundRect) { g.beginPath(); g.roundRect(8, y0, w - 16, hh, rr); g.fill(); } else g.fillRect(8, y0, w - 16, hh);
   g.textAlign = 'center'; g.textBaseline = 'middle';
-  const shift = staff ? 10 : 0;
+  const shift = staff && !two ? 10 : 0;
   if (two) {
     if (clan.banner) {
       g.save(); g.translate(16, y0 + 10); drawBanner(g, clan.banner, 28, 36); g.restore();
     }
-    if (staff) drawStaffBadge(g, 28, y0 + 22, role);
-    g.fillStyle = '#d9b44a'; g.font = '700 22px system-ui,sans-serif'; g.fillText('[' + tag + ']', w / 2 + 10 + shift, y0 + 24);
+    if (staff) drawStaffBadge(g, w - 26, y0 + hh / 2, role);
+    g.fillStyle = '#d9b44a'; g.font = '700 22px system-ui,sans-serif'; g.fillText('[' + tag + ']', w / 2 + 10, y0 + 24);
     g.fillStyle = role === 'admin' ? '#f6d36a' : (role === 'moderator' ? '#d5e4f2' : '#fff');
-    g.font = '600 26px system-ui,sans-serif'; g.fillText(nm, w / 2 + 10 + shift, y0 + 50);
+    g.font = '600 26px system-ui,sans-serif'; g.fillText(nm, w / 2 + 10, y0 + 50);
   } else {
     if (staff) drawStaffBadge(g, 28, y0 + hh / 2, role);
     g.fillStyle = role === 'admin' ? '#f6d36a' : (role === 'moderator' ? '#d5e4f2' : '#fff');

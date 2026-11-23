@@ -754,6 +754,16 @@ kbd.kk{display:inline-block;min-width:1.5em;padding:1px 6px;margin:0 2px;border-
 #online .stsub{margin:10px 0 0;font:700 13px system-ui;letter-spacing:.06em;color:#a9c4b0}
 #online .stlog{font-size:13px}
 #online #wStaffTab.hidden{display:none}
+
+#online .stviews{grid-template-columns:repeat(2,1fr)}
+#online .stviews:has(#stModsTab:not(.hidden)){grid-template-columns:repeat(4,1fr)}
+#online .stviews button{font-size:13px;min-height:36px;padding:6px 8px}
+@media (min-aspect-ratio:4/3) and (max-height:560px){
+  #online #stBlurb{display:none}
+  #online .sthead h3{font-size:15px}
+  #online .stviews button{min-height:32px;font-size:12px}
+}
+
 @media (min-aspect-ratio:4/3) and (max-height:560px){
   #online .wbody#wStaff{display:flex;flex-direction:column;gap:6px;min-height:0;height:100%}
   #online .wbody#wStaff.hidden{display:none!important}

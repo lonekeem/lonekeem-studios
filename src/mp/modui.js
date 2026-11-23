@@ -7,6 +7,7 @@ import {
 import { getRole } from './online.js';
 
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const preview = () => (typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && window.__MP_FAKE_AUTH && window.__MP_FAKE_AUTH.preview) || null;
 const MUTE_OPTS = [['15 m', 15], ['1 h', 60], ['24 h', 1440], ['7 d', 10080]];
 const BAN_OPTS = [['24 h', 1440], ['7 d', 10080], ['30 d', 43200], ['Permanent', 0]];
 
@@ -107,7 +108,7 @@ export function attachStaff(root, ctx) {
 
   async function renderReports() {
     const main = q('#stMain'); main.innerHTML = '<p class="small">Loading reports…</p>';
-    const rows = await run(() => listReports('open')) || [];
+    const rows = (preview() && preview().reports) || await run(() => listReports('open')) || [];
     if (!rows.length) { main.innerHTML = '<p class="small">No open reports.</p>'; return; }
     main.innerHTML = rows.map(r => {
       const clan = r.clan ? `<div class="small">Clan [${esc(r.clan.tag || '')}] ${esc(r.clan.name || '')}${r.clan.banner_hidden ? ' · hidden' : ''}</div>` : '';
@@ -140,7 +141,7 @@ export function attachStaff(root, ctx) {
       const qv = form.querySelector('input').value.trim();
       if (qv.length < 1) return;
       box.innerHTML = '<p class="small">Searching…</p>';
-      const rows = await run(() => searchPlayers(qv)) || [];
+      const rows = (preview() && preview().players) || await run(() => searchPlayers(qv)) || [];
       if (!rows.length) { box.innerHTML = '<p class="small">No players by that name.</p>'; return; }
       box.innerHTML = rows.map(p => playerRow(p, punishButtons(p))).join('');
       bindActs(box);
@@ -154,7 +155,7 @@ export function attachStaff(root, ctx) {
       <div id="stModFind" class="stlist"></div>
       <h4 class="stsub">Current staff</h4>
       <div id="stStaff" class="stlist"><p class="small">Loading…</p></div>`;
-    const staff = await run(() => listStaff()) || [];
+    const staff = (preview() && preview().staff) || await run(() => listStaff()) || [];
     q('#stStaff').innerHTML = staff.length
       ? staff.map(p => playerRow(p, p.role === 'admin' ? '<span class="small">You · cannot be demoted</span>' : `<button type="button" data-act="demote" data-id="${esc(p.user_id)}">Remove mod</button>`)).join('')
       : '<p class="small">No staff listed.</p>';
@@ -179,7 +180,7 @@ export function attachStaff(root, ctx) {
     const main = q('#stMain');
     if (role !== 'admin') { main.innerHTML = '<p class="small">Only the admin can view the audit log.</p>'; return; }
     main.innerHTML = '<p class="small">Loading log…</p>';
-    const rows = await run(() => auditLog()) || [];
+    const rows = (preview() && preview().audit) || await run(() => auditLog()) || [];
     if (!rows.length) { main.innerHTML = '<p class="small">No staff actions yet.</p>'; return; }
     main.innerHTML = `<div class="stlist">${rows.map(a => `<div class="stlog"><b>${esc(a.action)}</b> · ${esc(a.actor || 'Staff')}
       <span class="small">${esc(a.target_name || a.target_type || '')} · ${esc(a.at ? new Date(a.at).toLocaleString() : '')}</span></div>`).join('')}</div>`;
