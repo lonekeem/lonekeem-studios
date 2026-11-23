@@ -88,7 +88,7 @@ function footBins(av, sd) {
   const g = av.skin.geometry, p = g.attributes.aP0 || g.attributes.position, w2 = g.attributes.aW2, n = p.count;
   let z0 = 9, z1 = -9; const pts = [];
   const ankY = av.tpl.P[(sd > 0 ? 'Left' : 'Right') + 'Foot'].y;
-  for (let i = 0; i < n; i++) { const x = p.getX(i); if (Math.sign(x) !== sd) continue; const y = p.getY(i), z = p.getZ(i); const fw = w2.getZ(i), lw = w2.getY(i); if (!(fw > .25 || (y < ankY + .2 && fw + lw > .25))) continue; pts.push([x, y, z]); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+  for (let i = 0; i < n; i++) { const x = p.getX(i); if (Math.sign(x) !== sd) continue; const y = p.getY(i), z = p.getZ(i); const fw = w2.getZ(i), lw = w2.getY(i); if (!(fw > .3 || (y < ankY + .07 && fw + lw > .3))) continue; pts.push([x, y, z]); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
   const B = []; for (let k = 0; k < NU; k++) B.push({ x0: 9, x1: -9, y0: 9, y1: -9, n: 0 });
   for (const [x, y, z] of pts) { const k = Math.min(NU - 1, Math.floor((z - z0) / (z1 - z0) * NU)); const b = B[k]; b.x0 = Math.min(b.x0, x); b.x1 = Math.max(b.x1, x); b.y0 = Math.min(b.y0, y); b.y1 = Math.max(b.y1, y); b.n++; }
   for (let k = 0; k < NU; k++) if (!B[k].n) Object.assign(B[k], B[k - 1] || B[k + 1]);
@@ -138,9 +138,9 @@ function loft(av, sd, st) {
       // Low, level U-shaped opening around the ankle; rise only over the vamp.
       const cover = b.y1 + pad + instep * .012;
       const collar = Math.max(ground + st.sole + .018, ank.y - 0.022 + Math.min(st.col, 0) * 0.5);
-      const open = 1 - ss(.26, .60, u);
+      const open = 1 - ss(.10, .34, u);
       top = cover * (1 - open) + collar * open;
-      if (open < 0.45) top = Math.max(top, cover);
+      if (open < 0.55) top = Math.max(top, cover);
     }
     // Wedges fill the arch; post heels keep a thin sole so the heel reads as a separate piece.
     const drop = st.wedge ? heelDrop(st, u) : 0;
@@ -148,7 +148,7 @@ function loft(av, sd, st) {
     if (st.col >= 0) {
       top = Math.max(top, ground + st.sole + .025 * (1 - toeK * .6));
       top = Math.max(top, b.y1 + .01);
-    } else if (u > 0.48) {
+    } else if (u > 0.30) {
       top = Math.max(top, b.y1 + .012 + instep * .008);
     }
     if (st.puffy && st.col < .06) { x0 -= .006; x1 += .006; top += .006; }
@@ -207,7 +207,7 @@ function vampAt(av, sd, st, L, u, thick) {
   const k = Math.min(NU - 1, Math.max(0, Math.floor(NU * u)));
   const b = B[k]; const xc = (b.x0 + b.x1) / 2, hw = Math.max(0.02, (b.x1 - b.x0) / 2 + 0.006);
   const z = z0 + len * u;
-  const y0 = ground + st.sole + 0.003, y1 = b.y1 + (st.slide ? 0.016 : 0.014);
+  const y0 = ground + st.sole + 0.003, y1 = Math.min(b.y1 + (st.slide ? 0.016 : 0.012), ground + 0.065);
   const pts = [];
   for (let i = 0; i <= 16; i++) { const a = Math.PI * (i / 16); pts.push(new THREE.Vector3(xc + Math.cos(a) * hw, y0 + Math.pow(Math.sin(a), 1.35) * (y1 - y0), z)); }
   const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, thick, 8, false); return tagTube(g, u, .25, .7);
@@ -218,8 +218,8 @@ function tStrap(av, sd, st, L) {
   const k = Math.min(NU - 1, Math.floor(NU * 0.36));
   const b = B[k]; const xc = (b.x0 + b.x1) / 2;
   const zMid = z0 + len * 0.36, zAnk = ank.z;
-  const y = b.y1 + 0.008;
-  const pts = [new THREE.Vector3(xc, y, zMid), new THREE.Vector3(xc, Math.max(y, ank.y + .01), (zMid + zAnk) / 2), new THREE.Vector3(xc, ank.y + .012, zAnk + .01)];
+  const y = Math.min(b.y1 + 0.008, ground + 0.06);
+  const pts = [new THREE.Vector3(xc, y, zMid), new THREE.Vector3(xc, Math.min(Math.max(y, ank.y + .008), ground + 0.07), (zMid + zAnk) / 2), new THREE.Vector3(xc, Math.min(ank.y + .01, ground + 0.075), zAnk + .01)];
   const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, 0.0035, 6, false); return tagTube(g, .3, .25, .75);
 }
 function thong(av, sd, st, L) {
@@ -228,7 +228,7 @@ function thong(av, sd, st, L) {
   const b = B[k]; const hw = Math.max(0.016, (b.x1 - b.x0) / 2);
   const xc = (b.x0 + b.x1) / 2 + sd * hw * 0.22;
   const z = z0 + len * 0.80;
-  const y0 = ground + st.sole + 0.002, y1 = b.y1 + 0.01;
+  const y0 = ground + st.sole + 0.002, y1 = Math.min(b.y1 + 0.01, ground + 0.055);
   const post = [new THREE.Vector3(xc, y0, z), new THREE.Vector3(xc, y1, z)];
   const g1 = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(post), 6, 0.0032, 6, false);
   const k2 = Math.min(NU - 1, Math.floor(NU * 0.42));
@@ -240,10 +240,10 @@ function thong(av, sd, st, L) {
   return [tagTube(g1, .8, .25, .8), tagTube(g2, .5, .25, .75), tagTube(g3, .5, .25, .75)];
 }
 function ankleRing(av, sd, st, L) {
-  const { ank } = L; const { B } = footBins(av, sd);
+  const { ank, ground } = L; const { B } = footBins(av, sd);
   const hb = B[Math.min(3, NU - 1)];
-  const r = Math.max(0.026, (hb.x1 - hb.x0) / 2 + 0.008);
-  const pts = []; for (let i = 0; i <= 20; i++) { const a = (i / 20) * Math.PI * 2; pts.push(new THREE.Vector3(ank.x + Math.cos(a) * r, ank.y + .006, ank.z + Math.sin(a) * r * 0.7)); }
+  const r = Math.max(0.024, Math.min(0.036, (hb.x1 - hb.x0) / 2 + 0.006));
+  const pts = []; for (let i = 0; i <= 20; i++) { const a = (i / 20) * Math.PI * 2; pts.push(new THREE.Vector3(ank.x + Math.cos(a) * r, Math.min(ank.y + .004, ground + 0.08), ank.z + Math.sin(a) * r * 0.7)); }
   const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.0042, 6, true); return tagTube(g, .15, .25, .7);
 }
 function heelPost(av, sd, st, L) {
