@@ -18,16 +18,25 @@ export const SWATCH = {
   tattoo: ['#1c2a3a', '#101010', '#3a1c1c', '#1c3a2a', '#4a2f6a'],
 };
 // ---- face presets (applied to the face-paint uniforms; sliders then offset them)
-export const EYES = [ // [name, w, h, tilt, droop, round]
+export const EYES = [ // [name, w, h, tilt, droop, round] — names must match EYE_SHAPES
   ['Almond', .19, .15, .1, .3, .5], ['Round', .17, .2, 0, .2, 1], ['Wide', .22, .17, 0, .25, .7], ['Narrow', .2, .1, .05, .35, .3], ['Upturned', .19, .15, .35, .3, .5], ['Downturned', .19, .15, -.3, .3, .5],
   ['Hooded', .19, .12, 0, .55, .4], ['Big', .22, .22, 0, .2, .9], ['Sleepy', .19, .12, -.1, .6, .4], ['Cat', .21, .13, .5, .4, .35], ['Small', .15, .12, 0, .25, .6], ['Deep-set', .18, .14, .05, .45, .5],
+  ['Monolid', .18, .1, .05, .2, .3], ['Droopy', .19, .13, -.25, .5, .5], ['Sharp', .18, .11, .25, .35, .35], ['Innocent', .2, .2, 0, .15, .95], ['Fierce', .21, .12, .4, .4, .3],
+  ['Close-set', .16, .15, .05, .3, .5], ['Far-set', .23, .15, 0, .25, .5], ['Doll', .22, .22, 0, .15, 1], ['Slanted', .19, .12, .45, .35, .4], ['Fox', .21, .11, .4, .35, .35],
 ];
-export const BROWS = [ // [name, arch, tilt, taper, thick, len, density]
+export const BROWS = [ // [name, arch, tilt, taper, thick, len, density] — names must match BROW_SHAPES
   ['Soft', .5, .15, .5, .075, .62, 1], ['Straight', .1, 0, .3, .08, .66, 1], ['Arched', .9, .25, .6, .06, .62, 1], ['Thick', .4, .1, .4, .13, .66, 1], ['Thin', .5, .15, .6, .035, .62, 1], ['Bushy', .3, .1, .2, .17, .7, 1],
   ['Angled', .75, .45, .5, .08, .62, 1], ['Upswept', .4, .55, .6, .07, .64, 1], ['Flat thick', .05, 0, .2, .13, .68, 1], ['Short', .5, .1, .4, .08, .4, 1], ['Sparse', .5, .15, .5, .06, .62, .55], ['Unibrow', .3, .05, .2, .1, .9, 1],
+  ['Rounded', .7, .1, .5, .08, .62, 1], ['High arch', 1.1, .25, .7, .055, .62, 1], ['Feathered', .55, .12, .7, .07, .64, .8], ['Tapered', .6, .18, .85, .055, .62, 1], ['Natural', .45, .1, .45, .085, .63, 1],
+  ['S-shape', .85, -.08, .55, .07, .62, 1], ['Flat thin', .05, 0, .5, .035, .64, 1], ['Curved', .75, .2, .5, .075, .63, 1], ['Dramatic', 1.15, .4, .7, .09, .66, 1],
 ];
-export const NOSES = [['Average', 0, 0, 0, 0], ['Button', -.4, -.5, 0, .5], ['Broad', .6, 0, 0, 0], ['Long', 0, .6, .2, 0], ['Roman', .1, .3, .6, -.1], ['Upturned', -.2, -.2, 0, .6], ['Wide bridge', .4, 0, .4, 0], ['Narrow', -.6, .1, 0, 0]]; // [name, width, length, bridge, tip]
-export const MOUTHS = [['Neutral', .28, .5, 0], ['Full', .3, .8, 0], ['Thin', .27, .15, 0], ['Smile', .3, .5, .6], ['Wide', .35, .55, .1], ['Small', .22, .55, 0], ['Pouty', .24, .9, -.1], ['Smirk', .28, .5, .3], ['Grin', .35, .55, .9]];
+export const BROW_SLITS = [
+  ['none', 'None', 0, 0], ['oneL', '1 cut left', 1, 1], ['oneR', '1 cut right', 1, -1], ['oneBoth', '1 cut both', 1, 0],
+  ['twoL', '2 cuts left', 2, 1], ['twoR', '2 cuts right', 2, -1], ['twoBoth', '2 cuts both', 2, 0],
+];
+export const EARS = ['Standard', 'Round', 'Pointed', 'Wide', 'Small', 'Long', 'Attached', 'Flared', 'Thick', 'Petite'];
+export const NOSES = [['Average', 0, 0, 0, 0], ['Button', -.4, -.5, 0, .5], ['Broad', .6, 0, 0, 0], ['Long', 0, .6, .2, 0], ['Roman', .1, .3, .6, -.1], ['Upturned', -.2, -.2, 0, .6], ['Wide bridge', .4, 0, .4, 0], ['Narrow', -.6, .1, 0, 0], ['Aquiline', .1, .5, .8, -.2], ['Snub', -.5, -.4, -.1, .7], ['Tiny', -.7, -.4, 0, .2], ['Droopy', .15, .3, .1, -.6], ['Hawk', .05, .55, .7, -.35], ['Soft', -.15, -.1, -.1, .3], ['Pointed', -.35, .35, .3, .15], ['Flat', .5, -.3, -.3, -.1], ['Bulbous', .55, .1, -.1, .5], ['Petite', -.5, -.25, 0, .15]]; // [name, width, length, bridge, tip]
+export const MOUTHS = [['Neutral', .28, .5, 0], ['Full', .3, .8, 0], ['Thin', .27, .15, 0], ['Smile', .3, .5, .6], ['Wide', .35, .55, .1], ['Small', .22, .55, 0], ['Pouty', .24, .9, -.1], ['Smirk', .28, .5, .3], ['Grin', .35, .55, .9], ['Heart', .24, .9, .2], ['Downturned', .28, .45, -.4], ['Wide grin', .38, .55, .95], ['Open', .3, .55, .3], ['Soft smile', .27, .45, .4], ['Bow', .25, .8, .15], ['Uneven', .28, .5, .15], ['Big', .36, .7, .2], ['Tight', .2, .15, 0], ['Laugh', .36, .6, .85]];
 export const MAKEUP = {
   shadow: ['None', 'Soft', 'Smoky', 'Bold'], liner: ['None', 'Thin', 'Wing', 'Heavy'], blush: ['None', 'Light', 'Rosy', 'Strong'], lipstick: ['None', 'Tint', 'Matte', 'Dark'],
   freckles: ['None', 'Light', 'Medium', 'Heavy'], moles: ['None', 'One', 'Two', 'Three'], scars: ['None', 'Eyebrow cut', 'Cheek slash', 'Lip scar', 'Brow-to-eye', 'Stitches'], tattoo: ['None', 'Sleeve', 'Bands', 'Dots', 'Tribal'],

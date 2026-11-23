@@ -64,14 +64,61 @@ export function buildHeadGeometry(H, sdf, seg = 112, rings = 84) {
 }
 export const FACE_SPAN = .3, FACE_Y0 = -.03; // face texture covers a 30 cm square centred 3 cm below the head centre
 
-// simple sculpted cartoon ear (C-shaped rim + bowl), built in ear-local space then placed on the head side
-export function buildEarGeometry(side, L, H) {
-  const g = new THREE.SphereGeometry(1, 20, 14); const p = g.attributes.position; const s = H.earS;
-  for (let i = 0; i < p.count; i++) { let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
-    // flattened disc, outer rim thicker, inner bowl pushed in
-    const r = Math.hypot(y, z); const bowl = x > 0 ? Math.max(0, 1 - r * 1.25) * .55 : 0;
-    x = x * .32 - bowl * .28; y *= 1; z *= .72; const tilt = .18; const yy = y * Math.cos(tilt) - z * Math.sin(tilt), zz = y * Math.sin(tilt) + z * Math.cos(tilt);
-    p.setXYZ(i, side * (x * .03 * s), yy * .03 * s, zz * .03 * s); }
-  if (side < 0) { const ix = g.index.array; for (let i = 0; i < ix.length; i += 3) { const t = ix[i]; ix[i] = ix[i + 1]; ix[i + 1] = t; } }
-  g.computeVertexNormals(); const ex = side * (L.sideX - .006 + .004 * H.earOut); g.rotateY(side * (.25 + .15 * H.earOut)); g.translate(ex, L.earY, L.earZ); return g;
+// Cartoon ear presets: [height, width, thickness, point (top), lobe (bottom drop)].
+export const EAR_SHAPES = {
+  Standard: [1, 1, 1, 0, 1], Round: [.88, 1.18, 1.08, 0, .85], Pointed: [1.22, .88, .95, .85, .9],
+  Wide: [.95, 1.28, 1.05, 0, 1], Small: [.78, .82, .95, 0, .85], Long: [1.28, .9, 1, .2, 1.25],
+  Attached: [1, .95, 1, 0, .32], Flared: [1.06, 1.1, 1.05, 0, 1.35], Thick: [1, 1.12, 1.4, 0, 1],
+  Petite: [.7, .75, .9, 0, .8],
+};
+export function earShapeOf(look) {
+  const i = (look && look.ears && look.ears.s) || 0;
+  const n = (typeof i === 'number') ? (globalThis.__ATQ_EAR_NAMES || Object.keys(EAR_SHAPES))[i] : i;
+  return EAR_SHAPES[n] || EAR_SHAPES.Standard;
+}
+// Normal-proportioned ear (~6 cm tall): helix rim, concha bowl, antihelix, lobe.
+// Top lines up with the brow, lobe with the nose; sits close and slightly back on the skull.
+export function earCenter(L) { return (L.browY + L.noseY) * 0.5; }
+export function buildEarGeometry(side, L, H, shape = 'Standard') {
+  const sh = EAR_SHAPES[shape] || EAR_SHAPES.Standard;
+  const [hK, wK, tK, point, lobeK] = sh;
+  const g = new THREE.SphereGeometry(1, 32, 24); const p = g.attributes.position; const s = H.earS || 1;
+  const hy = .0305 * s * hK, hx = .0072 * s * tK, hz = .0155 * s * wK;
+  for (let i = 0; i < p.count; i++) {
+    let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    // pinch just above the lobe so the lobule reads as its own soft pad
+    const pinch = Math.max(0, 1 - Math.abs(y + .22) / .16);
+    if (y < 0) y *= (.68 + .5 * lobeK);
+    else if (point > 0 && y > .2) y += point * Math.pow(y, 1.45) * .22;
+    const ryz = Math.hypot(y, z);
+    const lobe = Math.max(0, -y);
+    const helix = Math.max(0, 1 - Math.abs(ryz - .86) / .14); const helixK = Math.pow(helix, 1.2) * (1 - Math.min(1, lobe * 1.35));
+    const bowlR = Math.hypot((y - .0) * 1.05, (z + .08) * 1.2);
+    const bowl = Math.max(0, 1 - bowlR * 1.25) * Math.max(0, x);
+    const anti = Math.max(0, 1 - Math.abs(ryz - .52) / .13) * (1 - Math.min(1, lobe * 1.6)) * Math.max(0, .5 + y);
+    const tg = Math.max(0, 1 - Math.hypot((z - .4) * 2.7, (y + .04) * 3.5, Math.max(0, x) * 2));
+    let ox = x * (x < 0 ? .16 : .4) - bowl * 1.05 + helixK * .38 + anti * .2 + tg * .16 + pinch * Math.max(0, x) * .08;
+    let oy = y + helixK * y * .05;
+    let oz = z * (.86 + helixK * .1 - pinch * .06) + tg * .05 + (lobe > .3 ? (lobe - .3) * .08 : 0);
+    const tilt = .1; const yy = oy * Math.cos(tilt) - oz * Math.sin(tilt), zz = oy * Math.sin(tilt) + oz * Math.cos(tilt);
+    p.setXYZ(i, side * ox * hx * 1.15, yy * hy, zz * hz);
+  }
+  if (side < 0) { const ix = g.index.array; for (let i = 0; i < ix.length; i += 3) { const tmp = ix[i]; ix[i] = ix[i + 1]; ix[i + 1] = tmp; } }
+  g.computeVertexNormals();
+  const ey = earCenter(L), ez = L.earZ - .008;
+  const ex = side * (L.sideX + .002 + .008 * (H.earOut || 0));
+  g.rotateY(side * (.06 + .1 * (H.earOut || 0))); g.translate(ex, ey, ez); return g;
+}
+export function earLandmarks(L, H, shape = 'Standard') {
+  const sh = EAR_SHAPES[shape] || EAR_SHAPES.Standard;
+  const s = H.earS || 1;
+  const hy = .0305 * s * (sh[0] || 1);
+  const lobeK = sh[4] || 1;
+  const ey = earCenter(L), ez = L.earZ - .008;
+  const out = L.sideX + .006 + .008 * (H.earOut || 0);
+  const lobeDrop = hy * (.7 + .42 * lobeK) * .88;
+  return {
+    ear: (sd) => ({ x: sd * out, y: ey, z: ez + .002 }),
+    lobe: (sd) => ({ x: sd * (out + .001), y: ey - lobeDrop, z: ez + .007 }),
+  };
 }

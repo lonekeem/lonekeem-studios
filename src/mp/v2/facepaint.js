@@ -13,7 +13,9 @@ function rnd(seed) { let s = seed >>> 0 || 1; return () => ((s = (s * 1664525 + 
 
 // eye presets: [w, h, tilt(rad), upperArch(0..1), lowerFlat(0..1)]
 export const EYE_SHAPES = { Almond: [.064, .048, .06, .6, .55], Round: [.06, .054, 0, .8, .3], Wide: [.068, .048, 0, .6, .5], Narrow: [.06, .034, .04, .45, .7], Upturned: [.064, .046, .16, .55, .6], Downturned: [.064, .046, -.12, .55, .55],
-  Hooded: [.056, .034, 0, .4, .6], Big: [.062, .048, 0, .7, .4], Sleepy: [.056, .032, -.05, .35, .6], Cat: [.06, .035, .22, .5, .65], Small: [.048, .034, 0, .6, .5], 'Deep-set': [.054, .036, .03, .5, .6] };
+  Hooded: [.056, .034, 0, .4, .6], Big: [.062, .048, 0, .7, .4], Sleepy: [.056, .032, -.05, .35, .6], Cat: [.06, .035, .22, .5, .65], Small: [.048, .034, 0, .6, .5], 'Deep-set': [.054, .036, .03, .5, .6],
+  Monolid: [.058, .028, .04, .25, .7], Droopy: [.06, .038, -.18, .4, .5], Sharp: [.058, .032, .2, .45, .7], Innocent: [.062, .052, 0, .85, .25], Fierce: [.066, .036, .28, .5, .7],
+  'Close-set': [.05, .042, .04, .6, .5], 'Far-set': [.07, .044, 0, .6, .5], Doll: [.066, .056, 0, .9, .2], Slanted: [.06, .038, .32, .5, .65], Fox: [.064, .034, .26, .55, .7] };
 
 function eyePath(g, cx, cy, w, h, tilt, arch, flat, side) { // in px, side=+1 left eye (screen right)
   const hw = w / 2, inn = [-hw * side, 0], out = [hw * side, 0];
@@ -65,7 +67,9 @@ const bez = (a, b, c, d, t) => { const u = 1 - t; return u * u * u * a + 3 * u *
 
 // brow presets: [arch, tilt, taper, thick(m), len(m)]
 export const BROW_SHAPES = { Soft: [.5, .12, .55, .0062, .05], Straight: [.12, 0, .35, .0065, .052], Arched: [.95, .2, .65, .0052, .05], Thick: [.42, .08, .4, .0095, .053], Thin: [.55, .14, .6, .0034, .048], Bushy: [.3, .05, .25, .011, .055],
-  Angled: [.8, .38, .5, .0062, .05], Upswept: [.4, .45, .6, .006, .05], 'Flat thick': [.05, 0, .25, .0095, .054], Short: [.5, .1, .45, .0062, .036], Sparse: [.5, .12, .55, .0055, .05], Unibrow: [.3, .03, .2, .008, .058] };
+  Angled: [.8, .38, .5, .0062, .05], Upswept: [.4, .45, .6, .006, .05], 'Flat thick': [.05, 0, .25, .0095, .054], Short: [.5, .1, .45, .0062, .036], Sparse: [.5, .12, .55, .0055, .05], Unibrow: [.3, .03, .2, .008, .058],
+  Rounded: [.7, .08, .5, .0068, .05], 'High arch': [1.15, .22, .7, .005, .05], Feathered: [.55, .1, .7, .0058, .052], Tapered: [.6, .16, .85, .005, .05], Natural: [.45, .1, .45, .007, .051],
+  'S-shape': [.85, -.08, .55, .006, .05], 'Flat thin': [.05, 0, .5, .0032, .05], Curved: [.75, .18, .5, .0064, .051], Dramatic: [1.2, .35, .7, .0072, .054] };
 function drawBrow(g, o, side) {
   const [bx, by] = P(side * (o.eyeX + .002), o.browY); const L = o.bLen * K, T = o.bThick * K; const arch = o.bArch, tilt = o.bTilt;
   const x0 = bx - side * L * .5, x1 = bx + side * L * .5; const y0 = by + T * .2 + tilt * L * .12, y1 = by + tilt * L * .1 - tilt * L * .3;
@@ -77,10 +81,24 @@ function drawBrow(g, o, side) {
   g.strokeStyle = rgba(shade(col, 1.25), .45); g.lineWidth = 1.4; g.lineCap = 'round';
   for (let k = 0; k < 70; k++) { const t = R(); const qx = (1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * pk[0] + t * t * x1, qy = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * pk[1] + t * t * y1; const off = (R() - .5) * T * .9 * (1 - t * o.bTaper * .6); const a = -side * (t < .3 ? 1.0 : .35); g.beginPath(); g.moveTo(qx, qy + off); g.lineTo(qx + side * T * .9 * Math.cos(a), qy + off - T * .7 * Math.abs(Math.sin(a))); g.stroke(); }
   if (o.unibrow && side > 0) { g.fillStyle = rgba(col, .5); g.beginPath(); g.ellipse(P(0, o.browY)[0], by + T * .2, L * .2, T * .35, 0, 0, 7); g.fill(); }
+  // eyebrow slits (1 or 2 cuts, left / right / both)
+  const nCut = o.slitN || 0; const sideOk = !o.slitSide || o.slitSide === side;
+  if (nCut > 0 && sideOk) {
+    g.save(); g.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < nCut; i++) {
+      const t = nCut === 1 ? .58 : (.48 + i * .18);
+      const qx = (1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * pk[0] + t * t * x1;
+      const qy = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * pk[1] + t * t * y1;
+      g.fillStyle = '#000'; g.beginPath(); g.ellipse(qx, qy, Math.max(2.2, T * .32), Math.max(5, T * 1.2), side * .35, 0, 7); g.fill();
+    }
+    g.restore();
+  }
   g.restore();
 }
 // mouth presets: [w(m), lip fullness, smile(0..1), open teeth(0/1)]
-export const MOUTH_SHAPES = { Neutral: [.054, .5, .15, 0], Full: [.052, .85, .2, 0], Thin: [.05, .2, .15, 0], Smile: [.058, .5, .7, 1], Wide: [.064, .55, .45, 1], Small: [.04, .55, .1, 0], Pouty: [.045, .95, 0, 0], Smirk: [.052, .5, .45, 0], Grin: [.064, .55, .85, 1] };
+export const MOUTH_SHAPES = { Neutral: [.054, .5, .15, 0], Full: [.052, .85, .2, 0], Thin: [.05, .2, .15, 0], Smile: [.058, .5, .7, 1], Wide: [.064, .55, .45, 1], Small: [.04, .55, .1, 0], Pouty: [.045, .95, 0, 0], Smirk: [.052, .5, .45, 0], Grin: [.064, .55, .85, 1],
+  Heart: [.046, .9, .25, 0], Downturned: [.054, .45, -.35, 0], 'Wide grin': [.07, .55, .9, 1], Open: [.056, .55, .3, 1], 'Soft smile': [.052, .45, .45, 0],
+  Bow: [.048, .75, .2, 0], Uneven: [.054, .5, .2, 0], Big: [.068, .7, .25, 0], Tight: [.042, .15, 0, 0], Laugh: [.066, .6, .8, 1] };
 function drawMouth(g, o) {
   const [mx, my] = P(0, o.mouthY); const w = o.mW * K, full = o.mFull, sm = o.mSmile; const lip = o.lipCol;
   g.save(); g.lineCap = 'round'; g.lineJoin = 'round';

@@ -31,7 +31,7 @@ export const LINES = {
 const S = (o) => Object.assign({ line: 'std', T: .007, top: .006, side: .8, front: 0, frontLift: 0, locks: 0, lockAmp: 0, tips: 0, curl: 0, tilt: 14, drop: null, ex: [], ears: true, part: 0, sweep: 0 }, o);
 export const STYLES = {
   bald: null,
-  buzz: S({ soft: 1, T: .0022, top: .0006, side: 1, locks: 0, line: 'std' }),
+  buzz: S({ soft: 1, T: .0026, top: .0005, side: 1, locks: 0, line: 'std', hlFade: .05, fade: .35 }),
   crew: S({ T: .006, top: .008, side: .55, locks: 20, lockAmp: 0.0018, tips: .2 }),
   caesar: S({ T: .006, top: .005, side: .6, locks: 20, lockAmp: 0.0016, tips: .5, line: 'low' }),
   lowfade: S({ soft: 1, T: .007, top: .012, side: .35, locks: 24, lockAmp: .002, tips: .25, line: 'std', fade: .5 }),
@@ -109,6 +109,7 @@ export function buildCap(head, st, opt = {}) {
     if (st.cornrow) { const k = st.cornrow * 2; const v = Math.abs(Math.sin(Math.atan2(d.x, .35) * k * 1.2)); t += .0048 * (Math.pow(v, .5) - .5); }
     if (st.waves) { const v = Math.sin(Math.hypot(d.x * 3, d.z + .3, d.y - .9) * 70); t += .0012 * v; }
     if (st.part) { const px = st.part === 1 ? .045 : st.part === 3 ? 0 : 0; const pd = Math.abs(d.x - (st.part === 2 ? 0 : px)); if (d.y > .4 && d.z > -.3) t -= .004 * ss(.012, .0, pd) * ss(.4, .7, d.y); }
+    if (st.ears === false) { const [aa] = azEl(d); const earAz = ss(55, 80, Math.abs(aa)) * ss(120, 95, Math.abs(aa)) * ss(.08, -0.06, d.y) * ss(-0.12, -0.02, d.y); t += 0.014 * earAz; }
     return Math.max(st.minT || .0012, t); };
   // rows: u in [0, 1] crown -> hairline, then a tuck ring just under the skin
   const cols = [];
@@ -151,6 +152,14 @@ function buildDrop(head, st, fr, cols, thB, NPH, NR) {
       let x = r * sn, z = r * cs;
       if (dr.wave) { const ww = dr.wave * Math.sin(t * (dr.waveN || 9) + j * .31) * t * w; x += sn * ww; z += cs * ww; x += cs * ww * .6; z -= sn * ww * .6; }
       if (dr.ring) { const rr = dr.ring * Math.sin(t * 38 + hash(j * .7) * 6.28 + j * .9) * Math.sin(t * Math.PI) * w; x += sn * rr + cs * rr * .8; z += cs * rr - sn * rr * .8; }
+      // covering styles: lift the sheet out over the ear so the lobe never pokes through
+      if (st.ears === false) {
+        const ey = (head.L && ((head.L.browY + head.L.noseY) * 0.5)) || -0.02;
+        const earBand = Math.exp(-Math.pow((y - ey) / 0.06, 2)) * Math.max(0, Math.abs(sn) - 0.25);
+        const out = 0.022 * earBand * Math.max(w, 0.4);
+        x += Math.sign(sn || 1) * out;
+        z += out * 0.15;
+      }
       // body keep-out (head-local metres, from the base body): the hair mass hangs behind the back, and in front of the collarbones at the sides / front
       const bb = ss(-.15, -.22, y); if (bb > 0) { const wbk = ss(-.05, -.35, cs), wfr = ss(-.12, .12, cs);
         if (wbk > 0) { const bz = -.125 - .035 * ss(-.2, -.42, y); z += (Math.min(z, bz) - z) * bb * wbk; }
@@ -237,7 +246,7 @@ export function buildExtras(head, st) {
 const _mats = new Map();
 export function hairMaterial(c1, c2, hl = .35, skin = null) { // skin: blend the sparse edges toward the skin tone (soft hairline / beard line)
   const key = c1 + c2 + hl.toFixed(2) + (skin || ''); if (_mats.has(key)) return _mats.get(key);
-  const m = new THREE.MeshStandardMaterial({ color: c1, roughness: .55, metalness: 0, side: THREE.FrontSide });
+  const m = new THREE.MeshStandardMaterial({ color: c1, roughness: .74, metalness: 0, side: THREE.FrontSide });
   const U = { uC2: { value: new THREE.Color(c2) }, uHl: { value: hl }, uSk: { value: new THREE.Color(skin || '#000') }, uSkF: { value: skin ? 1 : 0 } };
   m.onBeforeCompile = sh => { Object.assign(sh.uniforms, U);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 aT; attribute vec4 aH; attribute float aE; varying vec3 vT; varying vec4 vH; varying vec3 vObjP; varying float vE;')
@@ -247,7 +256,7 @@ export function hairMaterial(c1, c2, hl = .35, skin = null) { // skin: blend the
         float g = vH.x; float sx = vH.z * 240.0; float s0 = floor(sx); float sf = fract(sx); sf = sf * sf * (3.0 - 2.0 * sf);
         float h0 = fract(sin(s0 * 12.9898) * 43758.5453), h1 = fract(sin((s0 + 1.0) * 12.9898) * 43758.5453); gStr = mix(h0, h1, sf);
         float lenv = 0.5 + 0.5 * sin(vH.y * 9.0 + h0 * 6.0); gStr = gStr * (0.65 + 0.35 * lenv);
-        vec3 c = diffuseColor.rgb * (0.91 + (vH.w > 0.06 && vH.w < 0.09 ? 0.2 : 0.09) * g - (vH.w > 0.06 && vH.w < 0.09 ? 0.1 : 0.0)) * (0.93 + 0.08 * gStr);
+        vec3 c = diffuseColor.rgb * (0.94 + (vH.w > 0.06 && vH.w < 0.09 ? 0.12 : 0.05) * g) * (0.97 + 0.035 * gStr);
         if (vH.w < 0.03) c *= 1.0 - 0.3 * smoothstep(0.9, 1.0, vH.y);
         c = mix(c, uC2, uHl * 0.25 * smoothstep(0.4, 1.0, g));
         if (vH.w > 5.5) { // mustache: wispy short-strand edge
@@ -271,10 +280,10 @@ export function hairMaterial(c1, c2, hl = .35, skin = null) { // skin: blend the
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         { vec3 V = normalize(vViewPosition); vec3 N = normalize(vNormal); vec3 T = normalize(vT - N * dot(vT, N));
           vec3 L = normalize(vec3(0.35, 0.8, 0.5)); vec3 Hh = normalize(L + V); float th = dot(T, Hh); float sinTH = sqrt(max(0.0, 1.0 - th * th));
-          float spec = (pow(sinTH, 28.0) * 0.34 + pow(sinTH, 8.0) * 0.11) * (0.75 + 0.5 * gStr); float rimF = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 2.4);
-          totalEmissiveRadiance += mix(diffuseColor.rgb, vec3(1.0), 0.42) * spec * (0.55 + 0.5 * vH.x) + diffuseColor.rgb * (0.12 + rimF * 0.24); }`);
+          float spec = (pow(sinTH, 36.0) * 0.12 + pow(sinTH, 10.0) * 0.05) * (0.7 + 0.3 * gStr); float rimF = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.0);
+          totalEmissiveRadiance += mix(diffuseColor.rgb, vec3(1.0), 0.22) * spec * (0.4 + 0.35 * vH.x) + diffuseColor.rgb * (0.06 + rimF * 0.1); }`);
   };
-  m.customProgramCacheKey = () => 'v2hair10'; _mats.set(key, m); return m;
+  m.customProgramCacheKey = () => 'v2hair11'; _mats.set(key, m); return m;
 }
 
 // ---------- facial hair: polar band around the mouth. Inner edge = first entry into the mask, outer edge = exit; both edges tuck under

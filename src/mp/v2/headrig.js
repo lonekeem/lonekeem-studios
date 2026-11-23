@@ -2,7 +2,7 @@
 // Everything is skinned to the base body's own skeleton (Head / neck bones), so the story animation retarget drives it unchanged.
 import * as THREE from 'three';
 import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { headParams, makeSDF, landmarks, buildHeadGeometry, buildEarGeometry, sdfNormal, rayR } from './head.js';
+import { headParams, makeSDF, landmarks, buildHeadGeometry, buildEarGeometry, earLandmarks, EAR_SHAPES, sdfNormal, rayR } from './head.js';
 import { paintFace } from './facepaint.js';
 
 export const HEAD_BIG = { m: 1.48, f: 1.46 };
@@ -21,8 +21,15 @@ export function neckProfile(av) { // body neck cross-section (ellipse) per heigh
   return T._nprof = y => { const k0 = Math.round(y / .005); const r = { x: 0, zf: -9, zb: 9 }; let ok = false; for (let d = -3; d <= 3; d++) { const b = B.get(k0 + d); if (!b) continue; ok = true; r.x = Math.max(r.x, b.x); r.zf = Math.max(r.zf, b.zf); r.zb = Math.min(r.zb, b.zb); } if (typeof window !== 'undefined') (window.nprof = window.nprof || []).push([y, ok, r.x, r.zf, r.zb]); return ok ? r : null; }; }
 export function stripHead(av) {
   if (av._stripped) return; const T = av.tpl, g = av.skin.geometry, ix = g.index, hw = T.headW, pos = g.attributes.position; const keep = [];
-  const cutY = T.P.Head.y - .005;
-  for (let i = 0; i < ix.count; i += 3) { const a = ix.getX(i), b = ix.getX(i + 1), c = ix.getX(i + 2); const head = hw[a] > .4 && hw[b] > .4 && hw[c] > .4; const nk = j => pos.getY(j) > neckCut(T) && (T.aW[j * 8] + T.aW[j * 8 + 1]) > .5; if (!head && !(nk(a) && nk(b) && nk(c))) keep.push(a, b, c); }
+  const cut = neckCut(T);
+  const headish = j => hw[j] > .22 || (pos.getY(j) > cut && (T.aW[j * 8] + T.aW[j * 8 + 1]) > .32);
+  for (let i = 0; i < ix.count; i += 3) {
+    const a = ix.getX(i), b = ix.getX(i + 1), c = ix.getX(i + 2);
+    const nHead = (hw[a] > .4) + (hw[b] > .4) + (hw[c] > .4);
+    if (nHead >= 2) continue;
+    if (headish(a) && headish(b) && headish(c)) continue;
+    keep.push(a, b, c);
+  }
   g.setIndex(keep); av._stripped = true;
 }
 export function skinTo(av, geo, weights) { // weights(i, x, y, z) -> [[boneName, w], ...]
@@ -40,7 +47,7 @@ float beardMask(vec3 p){ float ax = abs(p.x); float cy = -.08 + .068 * smoothste
   float mx = p.x / .048, my = (p.y + .084) / .0208; float mh = smoothstep(.85, 1.15, mx * mx + my * my); return up * fl * fr * mh; }
 `.replace(/\n/g, ' ');
 export function skinMaterial(U, faceTex, plain = false) { // plain: the neck tube — lit exactly like the body skin (no extra self-light) so there is no tone step where it meets the chest
-  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .48, metalness: 0 });
+  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .58, metalness: 0 });
   m.userData.face = { value: faceTex || null }; m.userData.beard = { value: new THREE.Vector4(0, 0, 0, 0) }; m.userData.beardCol = { value: new THREE.Color('#6b4e36') };
   m.onBeforeCompile = sh => {
     sh.uniforms.uBeard = m.userData.beard; sh.uniforms.uBeardCol = m.userData.beardCol; sh.uniforms.uSkin = U.uSkin; sh.uniforms.uFace = m.userData.face; sh.uniforms.uHasFace = { value: faceTex ? 1 : 0 }; sh.uniforms.uJawY = { value: -0.102 }; sh.uniforms.uPlain = { value: plain ? 1 : 0 };
@@ -56,9 +63,10 @@ export function skinMaterial(U, faceTex, plain = false) { // plain: the neck tub
           float fade = uPlain > .5 ? vF : smoothstep(uJawY - 0.06, uJawY + 0.03, vL.y);
           float k = uPlain > .5 ? 0.92 : 1.0;
           /* wrap/rim fade out at the jaw so the neck tube meets the face with no tone step */
-          totalEmissiveRadiance += fade * k * (diffuseColor.rgb * (0.06 + wrap * 0.18) + vec3(0.22, 0.08, 0.05) * wrap * 0.55 + vec3(0.55, 0.74, 0.95) * rimF * 0.32); }`);
+          /* soft wrapped light, less plastic rim, a little warmth in the shade */
+          totalEmissiveRadiance += fade * k * (diffuseColor.rgb * (0.05 + wrap * 0.12) + vec3(0.28, 0.12, 0.08) * wrap * 0.32 + vec3(0.62, 0.72, 0.88) * rimF * 0.14); }`);
   };
-  m.customProgramCacheKey = () => 'v2skin5' + (faceTex ? 'f' : '') + (plain ? 'p' : ''); return m;
+  m.customProgramCacheKey = () => 'v2skin6' + (faceTex ? 'f' : '') + (plain ? 'p' : ''); return m;
 }
 
 
@@ -126,14 +134,15 @@ function mountLips(av, look) {
 export function buildHead(av, look) {
   const g = look.base.startsWith('mp_f') ? 'f' : 'm'; stripHead(av);
   const mo = { ...(look.morph || {}) }; const H = headParams(g, mo); const sdf = makeSDF(H); const L = landmarks(H, sdf);
-  const { C, s, s0 } = headFrame(av, g); av.head2 = { H, sdf, L, C, s, s0, g };
-  const key = JSON.stringify([g, mo, s]);
+  const earName = Object.keys(EAR_SHAPES)[(look.ears && look.ears.s) | 0] || 'Standard';
+  const { C, s, s0 } = headFrame(av, g); av.head2 = { H, sdf, L, C, s, s0, g, earName };
+  const key = JSON.stringify([g, mo, s, earName]);
   if (!av._headMesh || av._headKey !== key) {
     const geo = buildHeadGeometry(H, sdf); const p = geo.attributes.position, nr = geo.attributes.normal, n = p.count; const aF = new Float32Array(n);
     for (let i = 0; i < n; i++) { const z = p.getZ(i), y = p.getY(i); aF[i] = Math.min(1, Math.max(0, (z - .02) / .04)) * Math.min(1, Math.max(0, (y + .17) / .03)); }
     geo.setAttribute('aF', new THREE.BufferAttribute(aF, 1)); geo.setAttribute('aL', geo.attributes.position.clone()); geo.scale(s, s, s); geo.translate(C.x, C.y, C.z);
     skinTo(av, geo, headWeights(av, C.y, s));
-    const ears = [1, -1].map(sd => { const e = buildEarGeometry(sd, L, H); e.scale(s, s, s); e.translate(C.x, C.y, C.z); e.setAttribute('aF', new THREE.BufferAttribute(new Float32Array(e.attributes.position.count), 1)); if (!e.attributes.uv) e.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(e.attributes.position.count * 2), 2)); skinTo(av, e, () => [['Head', 1]]); return e; });
+    const ears = [1, -1].map(sd => { const e = buildEarGeometry(sd, L, H, earName); e.scale(s, s, s); e.translate(C.x, C.y, C.z); e.setAttribute('aF', new THREE.BufferAttribute(new Float32Array(e.attributes.position.count), 1)); if (!e.attributes.uv) e.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(e.attributes.position.count * 2), 2)); skinTo(av, e, () => [['Head', 1]]); return e; });
     { // neck tube: from inside the head down into the chest (top -> Head, middle -> neck, bottom -> Spine)
       const P = av.tpl.P; const y0 = C.y - .06 * s, y1 = P.neck.y - .045, r0 = (g === 'f' ? .043 : .05) * s0, r1 = r0 * 1.12; let ng = new THREE.CylinderGeometry(1, 1, 1, 28, 10, true, Math.PI); const np = ng.attributes.position;
       const prof = neckProfile(av), cut = neckCut(av.tpl);
@@ -150,7 +159,7 @@ export function buildHead(av, look) {
     else { av._faceTex = paintFace(faceOpts(look, g, L, H)); const mat = skinMaterial(av.U, av._faceTex); av._headMesh = bindMesh(av, new THREE.SkinnedMesh(geo, mat), 1); const em = skinMaterial(av.U, null), nm = skinMaterial(av.U, null, true); av._ears = ears.map((e, k) => bindMesh(av, new THREE.SkinnedMesh(e, k === 2 ? nm : em), 1)); }
     av._headKey = key;
   }
-  const fk = JSON.stringify([look.eyes, look.brows, look.mouth, look.makeup, look.skinx, look.beard && look.beard.id, look.beard && look.beard.c, look.hair && look.hair.c, look.skin, look.nose]);
+  const fk = JSON.stringify([look.eyes, look.brows, look.mouth, look.makeup, look.skinx, look.beard && look.beard.id, look.beard && look.beard.c, look.hair && look.hair.c, look.skin, look.nose, look.ears]);
   if (av._faceKey !== fk) { paintFace(faceOpts(look, g, L, H), av._faceTex); av._faceKey = fk; }
   const lk = JSON.stringify([look.mouth, look.makeup && look.makeup.lip, look.makeup && look.makeup.lipCol, g, s]);
   if (av._lipKey !== lk) { mountLips(av, look); av._lipKey = lk; }
@@ -174,7 +183,8 @@ export function faceOpts(look, g, L, H) {
     mW: ms[0] * (1 + .2 * (look.mouth.width || 0)), mFull: Math.min(1, ms[1] + .3 * (look.mouth.full || 0)), mSmile: ms[2], mOpen: !!ms[3], mSmirk: mn === 'Smirk', lipCol,
     freckles: (look.skinx && look.skinx.freckles) || 0, freckleCol: '#' + sk.clone().multiplyScalar(.6).lerp(new THREE.Color('#6a3a20'), .4).getHexString(), moles: (look.skinx && look.skinx.moles) || 0, blush: mk.blush || 0,
     stubble: look.beard && look.beard.id === 'stubble', stubbleCol: (look.beard && look.beard.c) || hairC, skinDark,
-    beardShade: look.beard && ['full', 'boxed', 'lumber', 'strap', 'curtain', 'mutton', 'circle'].includes(look.beard.id) ? 1 : 0 };
+    beardShade: look.beard && ['full', 'boxed', 'lumber', 'strap', 'curtain', 'mutton', 'circle'].includes(look.beard.id) ? 1 : 0,
+    slitN: (look.brows && look.brows.slit) || 0, slitSide: (look.brows && look.brows.slitSide) || 0 };
 }
 
 // ---------- hair
@@ -182,7 +192,11 @@ import { styleOf, buildCap, buildExtras, hairMaterial } from './hair.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 export function buildHairMesh(av, look, opt = {}) {
   const h = av.head2; const id = look.hair && look.hair.id || 'bald'; const st0 = styleOf(id); const key = JSON.stringify([id, av._headKey, opt.hatCut || 0, !!opt.hide]);
-  const ears = av._ears; if (ears) { const show = !st0 || st0.ears !== false; ears[0].visible = ears[1].visible = show; }
+  const ears = av._ears; if (ears) {
+    const hatId = (look.acc && look.acc.hat && look.acc.hat.id) || '';
+    const cover = /hijab|helmet|wrap/.test(hatId) || opt.hide || (st0 && st0.ears === false);
+    ears[0].visible = ears[1].visible = !cover;
+  }
   if (av._hairKey === key) { if (av._hair) av._hair.material = hairMaterial(look.hair.c, look.hair.c2 || look.hair.c, look.hair.hl ?? .35, skinHex(av)); return av._hair; }
   if (av._hair) { av._hair.parent && av._hair.parent.remove(av._hair); av._hair.geometry.dispose(); av._hair = null; }
   av._hairKey = key; if (!st0 || opt.hide) return null;
@@ -221,7 +235,9 @@ function beardMaterial(col) { if (_bm.has(col)) return _bm.get(col); const m = n
 export function headCtx(av, base) {
   const h = av.head2, L = h.L, C = h.C, s = h.s; const st = styleOf(av.look && av.look.hair ? av.look.hair.id : 'bald'); const hairT = st ? Math.min(.012, st.T + .003) : 0;
   const B = y => C.y + y * s; const hw = L.sideX * s;
-  const ear = sd => new THREE.Vector3(sd * (L.sideX + .006) * s, B(L.earY), C.z + L.earZ * s); const lobe = sd => new THREE.Vector3(sd * (L.sideX + .004) * s, B(L.earY - .024), C.z + (L.earZ + .004) * s);
+  const lm = earLandmarks(L, h.H, h.earName || 'Standard');
+  const ear = sd => { const p = lm.ear(sd); return new THREE.Vector3(p.x * s, C.y + p.y * s, C.z + p.z * s); };
+  const lobe = sd => { const p = lm.lobe(sd); return new THREE.Vector3(p.x * s, C.y + p.y * s, C.z + p.z * s); };
   const faceZ = (x, y) => C.z + s * L.surfZ(x / s, (y - C.y) / s);
   const crownY = B(.03); const top = B(L.top) + hairT * s;
   return Object.assign({}, base, { hw, hs: s, eyeY: B(L.eyeY), mouthY: B(L.mouthY), noseY: B(L.noseY), zc: C.z + .0 * s, top, chinY: B(L.chin), front: C.z + L.front * s, back: C.z + L.back * s - hairT,

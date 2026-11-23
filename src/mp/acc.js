@@ -93,14 +93,14 @@ export const HAT = {
   hijab(B, c) {
     // Head covering with a full-face oval, a U-wrap under the chin (always in front of the neck,
     // so there is no gap from the front), and a modest shoulder drape at the sides and back.
-    const NU = 96, NV = 58, pos = [], inside = [];
+    const NU = 128, NV = 72, pos = [], inside = [];
     const zc = c.zc, hw = c.hw || c.rx;
     const faceZ = (x, y) => (c.faceZ ? c.faceZ(x, y) : (c.front || (zc + c.rz)));
     const torsoZ = (y) => (c.torsoZ ? c.torsoZ(y) : zc);
     const browY = c.eyeY + 0.034;
     const lipY = (c.mouthY || (c.chinY + 0.04)) - 0.012;
     const openCy = (browY + lipY) * 0.5;
-    const openH = (browY - lipY) * 0.5 * 1.04;
+    const openH = (browY - lipY) * 0.5 * 1.14;
     const openW = hw * 0.82;
     const hcy = c.crownY - c.ry * 0.08;
     const neckY = (c.P && c.P.neck ? c.P.neck.y : c.chinY - 0.08);
@@ -147,11 +147,12 @@ export const HAT = {
         const nx = x / Math.max(openW, 1e-4), nyv = (y - openCy) / Math.max(openH, 1e-4);
         const ell = nx * nx + nyv * nyv;
         const isFront = z > zc + c.rz * 0.02;
-        const inHole = isFront && ell < 1 && y < openCy + openH * 1.06 && y > openCy - openH * 1.06 && v <= 0.62;
-        if (inHole) {
-          const len = Math.sqrt(ell) || 1e-4, k = 1 / len;
+        if (isFront && ell > 0.7 && ell < 1.22) {
+          const k = 1 / (Math.sqrt(ell) || 1e-4);
           x *= k; y = openCy + (y - openCy) * k;
+          z = faceZ(x, y) + 0.01;
         }
+        const inHole = isFront && ell < 0.9;
         inside.push(inHole ? 1 : 0);
         pos.push(x, y, z);
       }
@@ -166,6 +167,26 @@ export const HAT = {
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setIndex(idx); g.computeVertexNormals();
     B.add(g, 'a');
+    // Smooth fabric frame around the face: a flat ribbon on an exact ellipse,
+    // wide enough to hide any leftover jagged cut at the jaw.
+    const NR = 128, NW = 5, rPos = [], rIdx = [];
+    for (let w = 0; w <= NW; w++) {
+      const sc = 0.9 + 0.2 * (w / NW);
+      for (let k = 0; k <= NR; k++) {
+        const ang = k / NR * Math.PI * 2;
+        const rx = Math.sin(ang) * openW * sc, ry = openCy + Math.cos(ang) * openH * sc;
+        const rz = faceZ(rx, ry) + 0.011 - 0.003 * (w / NW);
+        rPos.push(rx, ry, rz);
+      }
+    }
+    for (let w = 0; w < NW; w++) for (let k = 0; k < NR; k++) {
+      const a = w * (NR + 1) + k, b = a + NR + 1;
+      rIdx.push(a, a + 1, b, b, a + 1, b + 1);
+    }
+    const rim = new THREE.BufferGeometry();
+    rim.setAttribute('position', new THREE.Float32BufferAttribute(rPos, 3));
+    rim.setIndex(rIdx); rim.computeVertexNormals();
+    B.add(rim, 'a');
   },
   // Original head wrap / turban: stacked cloth bands on the crown with a side fold. Covers the hair.
   wrap(B, c) {
@@ -201,16 +222,16 @@ export const GLASSES = {
 };
 // ---------- jewellery ----------
 export const EAR = { // each is built for one side (s = +1 / -1); lobe position from the mesh
-  stud(B, c, s, o) { const l = c.lobes[s > 0 ? 0 : 1]; B.sphere((o.r ?? .006), [l.x + s * .002, l.y + .012, l.z + .004], null, o.gem ? 'g' : 'm'); },
-  hoop(B, c, s, o) { const l = c.lobes[s > 0 ? 0 : 1]; const R = o.R ?? .018; B.torus(R, o.t ?? .0028, [l.x + s * .002, l.y + .012 - R + .004, l.z + .004], 'm', [0, PI / 2, 0]); },
-  drop(B, c, s, o) { const l = c.lobes[s > 0 ? 0 : 1]; B.sphere(.005, [l.x + s * .002, l.y + .012, l.z + .004], null, 'm'); B.tube([[l.x + s * .003, l.y + .01, l.z + .004], [l.x + s * .003, l.y - (o.len ?? .03), l.z + .004]], .0014, 'm', false, 6, 4); B.sphere(.007, [l.x + s * .003, l.y - (o.len ?? .03) - .006, l.z + .004], [1, 1.3, 1], 'g'); },
+  stud(B, c, s, o) { const l = c.lobes[s > 0 ? 0 : 1]; const r = o.r ?? .006; B.sphere(r, [l.x + s * .002, l.y, l.z + r * .55], null, o.gem ? 'g' : 'm'); },
+  hoop(B, c, s, o) { const l = c.lobes[s > 0 ? 0 : 1]; const R = o.R ?? .018; B.torus(R, o.t ?? .0028, [l.x + s * .001, l.y - R, l.z], 'm', [0, PI / 2, 0]); },
+  drop(B, c, s, o) { const l = c.lobes[s > 0 ? 0 : 1]; B.sphere(.004, [l.x + s * .002, l.y, l.z + .003], null, 'm'); B.tube([[l.x + s * .002, l.y, l.z + .003], [l.x + s * .002, l.y - (o.len ?? .03), l.z + .003]], .0014, 'm', false, 6, 4); B.sphere(.007, [l.x + s * .002, l.y - (o.len ?? .03) - .006, l.z + .003], [1, 1.3, 1], 'g'); },
   cuff(B, c, s, o) { const e = c.ears[s > 0 ? 0 : 1]; B.torus(.016, .003, [e.x + s * .004, e.y + .015, e.z + .002], 'm', [0, PI / 2, 0], PI * 1.6); },
   cross(B, c, s, o) { const l = c.lobes[s > 0 ? 0 : 1]; const y = l.y - .02; B.tube([[l.x + s * .003, l.y + .01, l.z + .004], [l.x + s * .003, y + .01, l.z + .004]], .0014, 'm', false, 6, 4); B.box(.003, .02, .003, [l.x + s * .003, y, l.z + .004], 'm'); B.box(.003, .003, .012, [l.x + s * .003, y + .005, l.z + .004], 'm'); },
   chain(B, c, s, o) { const l = c.lobes[s > 0 ? 0 : 1], e = c.ears[s > 0 ? 0 : 1]; B.tube([[l.x + s * .003, l.y + .01, l.z + .004], [l.x + s * .008, (l.y + e.y) / 2 - .02, l.z - .005], [e.x + s * .004, e.y + .015, e.z + .002]], .0016, 'm', false, 12, 4); B.sphere(.005, [l.x + s * .003, l.y + .01, l.z + .004], null, 'g'); },
 };
 export const PIERCE = {
-  nose(B, c, o) { const s = o.side || 1; const x = s * c.hw * .115, y = c.noseY + .004; B.sphere(.004, [x, y, c.faceZ(x, y) + .001], null, o.gem ? 'g' : 'm'); },
-  noseRing(B, c, o) { const s = o.side || 1; const x = s * c.hw * .115, y = c.noseY + .0; B.torus(.007, .0017, [x * 1.1, y - .004, c.faceZ(x, y) - .002], 'm', [0, PI / 2, 0]); },
+  nose(B, c, o) { const s = o.side || 1; const x = s * c.hw * .12, y = c.noseY + .002; B.sphere(.004, [x, y, c.faceZ(x, y) + .005], null, o.gem ? 'g' : 'm'); },
+  noseRing(B, c, o) { const s = o.side || 1; const x = s * c.hw * .12, y = c.noseY - .002; B.torus(.007, .0017, [x, y, c.faceZ(x, y) + .003], 'm', [0, PI / 2, 0]); },
   septum(B, c) { B.torus(.008, .0018, [0, c.noseY - .012, c.faceZ(0, c.noseY - .012) + .004], 'm', [PI / 2, 0, 0], PI * 1.5); },
   brow(B, c, o) { const s = o.side || 1; const x = s * c.hw * .55, y = c.eyeY + .045; B.sphere(.0035, [x, y, c.faceZ(x, y) + .001], null, 'm'); B.sphere(.0035, [x + s * .006, y + .01, c.faceZ(x, y + .01) + .001], null, 'm'); },
   lip(B, c, o) { const s = o.side || 1; const x = s * c.hw * .14, y = c.mouthY - .019; B.torus(.006, .0016, [x, y, c.faceZ(x, y) + .001], 'm', [0, 0, 0], PI * 1.6); },

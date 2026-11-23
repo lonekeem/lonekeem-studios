@@ -8,6 +8,7 @@ import * as K from './look.js';
 import { MORPHS } from './morph.js';
 import { getRole, getUser, signInGoogle, signOut } from './online.js';
 import { googleAllowed } from '../ui/gate.js';
+import * as COS from './cosmetics.js';
 
 const CSS = `
 #mpc{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:radial-gradient(120% 90% at 50% 30%,#3b4252 0%,#1c2029 70%);color:#eef0f4;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;touch-action:none;user-select:none}
@@ -29,6 +30,9 @@ const CSS = `
 #mpc .sw input[type=color]{width:34px;height:34px;padding:0;border:0;background:none;border-radius:50%}
 #mpc .search{width:100%;background:#0f1218;border:1px solid #3a4352;color:#fff;border-radius:8px;padding:8px;font-size:14px;margin:4px 0}#mpc .chips{display:flex;gap:5px;flex-wrap:wrap;margin:4px 0}#mpc .chips button{padding:4px 9px;font-size:12px;border-radius:14px}
 #mpc .cnt{font-size:11px;color:#8c96a8;margin:2px 0 4px}#mpc .note{font-size:12px;color:#8c96a8;margin:6px 0}
+#mpc .grid button .pr{display:block;font-size:10px;color:#ffd24a;margin-top:2px}#mpc .grid button.try{box-shadow:inset 0 0 0 2px #49b97c}
+#mpc .buybar{position:absolute;right:8px;top:8px;z-index:4;display:none;gap:6px;align-items:center;background:#12151ce6;border:1px solid #3a4352;border-radius:8px;padding:5px 8px;font-size:12px;max-width:62%}
+#mpc .buybar.on{display:flex}#mpc .buybar b{font-weight:600}
 @media (orientation:landscape) and (min-width:700px){#mpc{flex-direction:row}#mpc .hd{position:absolute;left:0;right:0;top:0;background:none}#mpc .stage{flex:1 1 55%}#mpc .pn{flex:0 0 45%;border-top:0;border-left:1px solid #2c3441;padding-top:44px}}
 `;
 const el = (t, p = {}, ...kids) => { const e = document.createElement(t); for (const k in p) { if (k === 'cls') e.className = p[k]; else if (k === 'on') for (const ev in p.on) e.addEventListener(ev, p.on[ev]); else if (k === 'html') e.innerHTML = p[k]; else e.setAttribute(k, p[k]); } for (const c of kids.flat()) if (c != null) e.append(c.nodeType ? c : document.createTextNode(c)); return e; };
@@ -40,6 +44,7 @@ export async function openCreator({ onClose, onPlay } = {}) {
   const root = el('div', { id: 'mpc' }); const hd = el('div', { cls: 'hd' }); const stage = el('div', { cls: 'stage' }); const pn = el('div', { cls: 'pn' }); const tabsEl = el('div', { cls: 'tabs' }); const body = el('div', { cls: 'body' });
   pn.append(tabsEl, body); root.append(hd, stage, pn); document.body.append(root);
   const canvas = el('canvas'); stage.append(canvas);
+  // buybar is created after helpers; attached below once defined
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' }); renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
   const scene = new THREE.Scene(); scene.add(new THREE.HemisphereLight('#dfe6ff', '#5a5448', 1.15)); const key = new THREE.DirectionalLight('#fff4e6', 2.3); key.position.set(1.6, 2.6, 3); scene.add(key); const rim = new THREE.DirectionalLight('#9bb4ff', .9); rim.position.set(-2, 2, -2.5); scene.add(rim);
   const floor = new THREE.Mesh(new THREE.CircleGeometry(.9, 48), new THREE.MeshStandardMaterial({ color: '#2a303c', roughness: 1 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -.002; scene.add(floor);
@@ -47,9 +52,56 @@ export async function openCreator({ onClose, onPlay } = {}) {
   const VIEWS = { full: () => [.92, 4.0], head: () => [av.head2 ? av.head2.C.y - .015 : av.tpl.lm.chinY + av.tpl.lm.hh * .5, 1.5], upper: () => [1.25, 2.9], hands: () => [.85, 1.9], feet: () => [.25, 2.2] };
   function setView(v) { view = v; const [y, d] = VIEWS[v](); targetY = y * (av.root.scale.y); targetD = d * Math.max(.9, av.root.scale.y); }
   async function rebuild(base) { if (av) { scene.remove(av.root); av.dispose(); av = null; } const tpl = await loadBase(base); av = new Avatar(tpl); scene.add(av.root); apply(); setView(view); }
-  let dirty = false; function apply() { if (!av) return; try { dress(av, look); } catch (e) { console.error('dress failed', e); } K.saveLook(look); }
+  const wallet = () => (window.__atq && window.__atq.save) || {};
+  const pieceId = (v) => (!v || v === 'none') ? null : (typeof v === 'string' ? v : v.id);
+  const isUnpaid = (id) => !!(id && COS.priceOf(id) > 0 && !COS.ownedCosmetic(wallet(), id));
+  function collectIds(L) {
+    const ids = []; const w = L.worn || {}, a = L.acc || {};
+    for (const k of Object.keys(w)) { const id = pieceId(w[k]); if (id) ids.push(id); }
+    for (const k of Object.keys(a)) {
+      const v = a[k];
+      if (Array.isArray(v)) v.forEach(x => { const id = typeof x === 'string' ? x : pieceId(x); if (id) ids.push(id); });
+      else { const id = pieceId(v); if (id) ids.push(id); }
+    }
+    return ids;
+  }
+  function stripUnpaid(L, base) {
+    const o = clone(L), B = base || K.defaultLook(L.base);
+    const revert = (group, slot) => {
+      const id = pieceId(o[group] && o[group][slot]);
+      if (!isUnpaid(id)) return;
+      const prev = B[group] && B[group][slot];
+      o[group][slot] = isUnpaid(pieceId(prev)) ? (slot === 'top' || slot === 'pants' || slot === 'shoes' ? (K.defaultLook(L.base)[group] || {})[slot] : null) : (prev == null ? null : clone(prev));
+    };
+    if (o.worn) for (const k of Object.keys(o.worn)) revert('worn', k);
+    if (o.acc) {
+      if (Array.isArray(o.acc.pierce)) o.acc.pierce = o.acc.pierce.filter(x => !isUnpaid(typeof x === 'string' ? x : pieceId(x)));
+      for (const k of Object.keys(o.acc)) if (k !== 'pierce') revert('acc', k);
+    }
+    return o;
+  }
+  let ownedSnap = clone(look);
+  let lastPreviewId = null;
+  function currentPreview() { const ids = collectIds(look).filter(isUnpaid); return ids.length ? (ids.includes(lastPreviewId) ? lastPreviewId : ids[ids.length - 1]) : null; }
+  const buybar = el('div', { cls: 'buybar' }); stage.append(buybar);
+  function refreshBuyBar() {
+    const id = currentPreview(); buybar.classList.toggle('on', !!id); buybar.innerHTML = '';
+    if (!id) return;
+    const p = COS.priceOf(id);
+    buybar.append(el('span', {}, 'Trying on '), el('b', {}, COS.itemName(id)), el('span', {}, ' · $' + p),
+      el('button', { cls: 'pri', on: { click: buyCurrent } }, 'Buy $' + p));
+  }
+  function buyCurrent() {
+    const id = currentPreview(); if (!id) return;
+    const W = wallet(), p = COS.priceOf(id);
+    if ((W.cash | 0) < p) { alert('You need $' + p + '. Earn cash in Story, Survival or Online.'); return; }
+    if (!COS.buyCosmetic(W, id)) return;
+    try { if (window.__atq) { window.__atq.save = W; if (typeof window.__atq.persist === 'function') window.__atq.persist(); } } catch (e) { /* ignore */ }
+    lastPreviewId = null; ownedSnap = stripUnpaid(clone(look), ownedSnap); K.saveLook(look); refreshBuyBar(); renderBody(true);
+  }
+  let dirty = false; function apply() { if (!av) return; try { dress(av, look); } catch (e) { console.error('dress failed', e); } if (!collectIds(look).some(isUnpaid)) { K.saveLook(look); ownedSnap = clone(look); } refreshBuyBar(); }
   const sched = () => { dirty = true; }; const push = () => { undo.push(clone(look)); if (undo.length > 40) undo.shift(); };
-  const change = (fn, skipUndo) => { if (!skipUndo) push(); fn(); sched(); refreshHead(); };
+  const change = (fn, skipUndo) => { if (!skipUndo) push(); fn(); const ids = collectIds(look).filter(isUnpaid); if (ids.length) lastPreviewId = ids[ids.length - 1]; sched(); refreshHead(); };
   // ---- interaction
   // full 360° drag/swipe spin (no clamp, with a little inertia), two-finger pinch to zoom, double-tap = face close-up / back to full body
   const ptr = new Map(); let pinch0 = 0, spinV = 0, lastTap = 0, moved = 0;
@@ -77,7 +129,9 @@ export async function openCreator({ onClose, onPlay } = {}) {
     const fb = mk('★ Favourites', b => { onlyFav = !onlyFav; b.classList.toggle('on', onlyFav); }, false);
     function draw() { grid.innerHTML = ''; let n = 0; for (const it of list) { const id = it[0], nm = it[1], gd = it[2]; if (o.gender !== false && gf !== 'all' && typeof gd === 'string' && gd.length === 1 && gd !== 'u' && gd !== gf) continue; const fk = (o.fav || 'x') + ':' + id; if (onlyFav && !favs.has(fk)) continue; if (q && !(nm.toLowerCase().includes(q) || id.includes(q))) continue; n++;
         const star = el('span', { cls: 'st' + (favs.has(fk) ? ' f' : ''), on: { click: e => { e.stopPropagation(); favs.has(fk) ? favs.delete(fk) : favs.add(fk); K.saveFavs(favs); star.className = 'st' + (favs.has(fk) ? ' f' : ''); star.textContent = favs.has(fk) ? '★' : '☆'; } } }, favs.has(fk) ? '★' : '☆');
-        grid.append(el('button', { cls: curId === id ? 'on' : '', on: { click: () => { pick(id); curId = id; [...grid.children].forEach(b => b.classList.toggle('on', b.dataset.id === id)); } }, 'data-id': id }, nm, star)); } cnt.textContent = n + ' of ' + list.length + ' shown'; }
+        const price = COS.priceOf(id), unpaid = isUnpaid(id), trying = curId === id && unpaid;
+        const tag = price && unpaid ? el('span', { cls: 'pr' }, trying ? 'Trying on · $' + price : '$' + price) : (price && !unpaid ? el('span', { cls: 'pr', style: 'color:#9ad' }, 'Owned') : null);
+        grid.append(el('button', { cls: (curId === id ? 'on' : '') + (trying ? ' try' : ''), on: { click: () => { lastPreviewId = id; pick(id); curId = id; [...grid.children].forEach(b => { const on = b.dataset.id === id; b.classList.toggle('on', on); }); } }, 'data-id': id }, nm, star, tag)); } cnt.textContent = n + ' of ' + list.length + ' shown'; }
     draw(); wrap.append(search, chips, cnt, grid); return wrap;
   }
   const worn = (slot, tbl, o = {}) => { // clothing slot panel: style grid + pattern + colours
@@ -101,9 +155,9 @@ export async function openCreator({ onClose, onPlay } = {}) {
     ['Skin', () => [el('h4', {}, 'Skin tone (' + C.SKIN_PRESETS.length + ' presets + slider)'), el('div', { cls: 'sw' }, C.SKIN_PRESETS.map(t => el('i', { style: 'background:#' + skinHex(t), cls: Math.abs(look.skin.t - t) < .01 ? 'on' : '', on: { click: () => { change(() => look.skin.t = t); renderBody(true); } } }))), slider('Tone (fine)', () => look.skin.t, v => look.skin.t = v, 0, 1), slider('Undertone', () => look.skin.u, v => look.skin.u = v), el('h4', {}, 'Details'),
       slider('Freckles', () => look.skinx.freckles, v => look.skinx.freckles = Math.round(v), 0, 3, 1), slider('Moles', () => look.skinx.moles, v => look.skinx.moles = Math.round(v), 0, 3, 1), slider('Age lines', () => look.skinx.age, v => look.skinx.age = v, 0, 1),
       el('h4', {}, 'Scars'), choices(C.MAKEUP.scars, look.skinx.scar, i => change(() => look.skinx.scar = i)), el('div', { cls: 'row' }, el('label', {}, 'Scar side'), el('button', { on: { click: () => change(() => look.skinx.scarSide *= -1) } }, 'Flip')), el('h4', {}, 'Tattoos'), choices(C.MAKEUP.tattoo, look.skinx.tattoo, i => change(() => look.skinx.tattoo = i)), ...colorRow('Ink colour', C.SWATCH.tattoo, () => look.skinx.tattooCol, c => look.skinx.tattooCol = c)]],
-    ['Face', () => [el('h4', {}, 'Face shape'), ...ms('head'), el('h4', {}, 'Ears'), ...ms('ears')]],
+    ['Face', () => [el('h4', {}, 'Face shape'), ...ms('head'), el('h4', {}, 'Ear shape (' + C.EARS.length + ')'), choices(C.EARS, (look.ears && look.ears.s) || 0, i => change(() => { look.ears = look.ears || { s: 0 }; look.ears.s = i; })), ...ms('ears')]],
     ['Eyes', () => [el('h4', {}, 'Eye shape (' + C.EYES.length + ')'), choices(C.EYES.map(e => e[0]), look.eyes.s, i => change(() => look.eyes.s = i)), slider('Size', () => look.eyes.size, v => look.eyes.size = v), slider('Spacing', () => look.eyes.space, v => look.eyes.space = v), slider('Tilt', () => look.eyes.tilt, v => look.eyes.tilt = v), slider('Lashes', () => look.eyes.lash, v => look.eyes.lash = v, 0, 1), ...colorRow('Eye colour', C.SWATCH.eye, () => look.eyes.col, c => look.eyes.col = c)]],
-    ['Brows', () => [el('h4', {}, 'Brow shape (' + C.BROWS.length + ')'), choices(C.BROWS.map(e => e[0]), look.brows.s, i => change(() => look.brows.s = i)), slider('Thickness', () => look.brows.thick, v => look.brows.thick = v), slider('Arch', () => look.brows.arch, v => look.brows.arch = v), ...colorRow('Brow colour (auto = hair)', C.SWATCH.hair, () => look.brows.col, c => look.brows.col = c), el('div', { cls: 'row' }, el('button', { on: { click: () => change(() => look.brows.col = null) } }, 'Match hair'))]],
+    ['Brows', () => [el('h4', {}, 'Brow shape (' + C.BROWS.length + ')'), choices(C.BROWS.map(e => e[0]), look.brows.s, i => change(() => look.brows.s = i)), slider('Thickness', () => look.brows.thick, v => look.brows.thick = v), slider('Arch', () => look.brows.arch, v => look.brows.arch = v), el('h4', {}, 'Eyebrow slits'), choices(C.BROW_SLITS.map(s => s[1]), Math.max(0, C.BROW_SLITS.findIndex(s => s[2] === (look.brows.slit || 0) && s[3] === (look.brows.slitSide || 0))), i => change(() => { const s = C.BROW_SLITS[i]; look.brows.slit = s[2]; look.brows.slitSide = s[3]; })), ...colorRow('Brow colour (auto = hair)', C.SWATCH.hair, () => look.brows.col, c => look.brows.col = c), el('div', { cls: 'row' }, el('button', { on: { click: () => change(() => look.brows.col = null) } }, 'Match hair'))]],
     ['Nose & mouth', () => [el('h4', {}, 'Nose type (' + C.NOSES.length + ')'), choices(C.NOSES.map(e => e[0]), look.nose.s, i => change(() => look.nose.s = i)), ...ms('nose'), el('h4', {}, 'Mouth type (' + C.MOUTHS.length + ')'), choices(C.MOUTHS.map(e => e[0]), look.mouth.s, i => change(() => look.mouth.s = i)), slider('Lip fullness', () => look.mouth.full, v => look.mouth.full = v), slider('Mouth width', () => look.mouth.width, v => look.mouth.width = v), ...ms('mouth'), ...colorRow('Lip colour', C.SWATCH.lip, () => look.mouth.col, c => look.mouth.col = c), el('div', { cls: 'row' }, el('button', { on: { click: () => change(() => look.mouth.col = null) } }, 'Natural lips'))]],
     ['Makeup', () => [el('h4', {}, 'Eyeshadow'), choices(C.MAKEUP.shadow, look.makeup.shadow, i => change(() => look.makeup.shadow = i)), ...colorRow('Shadow colour', C.SWATCH.shadow, () => look.makeup.shadowCol, c => look.makeup.shadowCol = c), el('h4', {}, 'Eyeliner'), choices(C.MAKEUP.liner, look.makeup.liner, i => change(() => look.makeup.liner = i)), el('h4', {}, 'Blush'), choices(C.MAKEUP.blush, look.makeup.blush, i => change(() => look.makeup.blush = i)), el('h4', {}, 'Lipstick'), choices(C.MAKEUP.lipstick, look.makeup.lip, i => change(() => look.makeup.lip = i)), ...colorRow('Lipstick colour', C.SWATCH.lip, () => look.makeup.lipCol, c => look.makeup.lipCol = c)]],
     ['Hair', () => [catalogGrid(C.HAIR, look.hair.id, id => { change(() => look.hair.id = id); }, { fav: 'hair' }), ...colorRow('Hair colour (' + C.SWATCH.hair.length + ' presets + picker)', C.SWATCH.hair, () => look.hair.c, c => look.hair.c = c), ...colorRow('Highlight / tips colour', C.SWATCH.hair, () => look.hair.c2, c => look.hair.c2 = c)]],
@@ -134,20 +188,20 @@ export async function openCreator({ onClose, onPlay } = {}) {
   function renderBody(keep) { const sc = keep ? body.scrollTop : 0; body.innerHTML = ''; body.append(...TABS[tab][1]().flat().filter(Boolean)); body.scrollTop = sc; }
   function refreshHead() { /* name field etc. */ }
   // header
-  const nameIn = el('input', { value: look.name, on: { input: e => { look.name = e.target.value; K.saveLook(look); } }, style: 'background:#12151bcc;border:1px solid #3a4352;color:#fff;border-radius:8px;padding:6px 8px;width:30%;min-width:90px;font-size:13px' });
+  const nameIn = el('input', { value: look.name, on: { input: e => { look.name = e.target.value; if (!collectIds(look).some(isUnpaid)) K.saveLook(look); } }, style: 'background:#12151bcc;border:1px solid #3a4352;color:#fff;border-radius:8px;padding:6px 8px;width:30%;min-width:90px;font-size:13px' });
   hd.append(el('button', { on: { click: close } }, '‹ Back'), el('b', {}, 'Character · Multiplayer (Beta)'), nameIn,
     el('button', { on: { click: () => { push(); look = K.randomLook(look.base.startsWith('mp_f') === (Math.random() < .5) ? look.base : undefined); rebuild(look.base).then(() => { renderBody(); nameIn.value = look.name; }); } } }, '🎲'), el('button', { on: { click: () => { const u = undo.pop(); if (u) { look = u; rebuild(look.base).then(() => renderBody()); } } } }, '↶'),
-    el('button', { on: { click: () => { push(); look = K.defaultLook(look.base); rebuild(look.base).then(() => { renderBody(); nameIn.value = look.name; }); } } }, 'Reset'), el('button', { cls: 'pri', on: { click: () => { K.saveLook(look); close(true); } } }, 'Save & enter'));
+    el('button', { on: { click: () => { push(); look = K.defaultLook(look.base); rebuild(look.base).then(() => { renderBody(); nameIn.value = look.name; }); } } }, 'Reset'), el('button', { cls: 'pri', on: { click: () => { look = stripUnpaid(look, ownedSnap); K.saveLook(look); close(true); } } }, 'Save & enter'));
   stage.append(el('div', { cls: 'cam' }, ['full', 'upper', 'head', 'hands', 'feet'].map(v => el('button', { on: { click: () => setView(v) } }, v[0].toUpperCase() + v.slice(1))), el('button', { on: { click: e => { animMode.v = animMode.v === 'walk' ? 'idle' : 'walk'; e.target.classList.toggle('on'); } } }, 'Walk')));
   // account (Google sign-in; guests can still play) + admin-only 'Play as Keem' (his story voice, look and animations), shown only for the admin role
-  const kb = el('button', { cls: 'pri', style: 'display:none;background:#b8741c;border-color:#e0a050', on: { click: () => { K.saveLook(look); look = Object.assign({}, clone(look), { exclusive: 'skin.keem_story', name: 'Keem' }); close(true); } } }, 'Play as Keem'); hd.append(kb); window.__mpKeemBtn = kb;
+  const kb = el('button', { cls: 'pri', style: 'display:none;background:#b8741c;border-color:#e0a050', on: { click: () => { look = stripUnpaid(look, ownedSnap); K.saveLook(look); look = Object.assign({}, clone(look), { exclusive: 'skin.keem_story', name: 'Keem' }); close(true); } } }, 'Play as Keem'); hd.append(kb); window.__mpKeemBtn = kb;
   const acct = el('div', { cls: 'acct' }); stage.append(acct); window.__mpAcct = acct;
   const refreshAcct = async () => { const u = await getUser().catch(() => null); const r = u ? await getRole().catch(() => null) : null; const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
     kb.style.display = (r === 'admin' || (local && window.__MP_FORCE_ADMIN)) ? '' : 'none'; acct.innerHTML = '';
     if (u) acct.append(el('span', {}, '● ' + ((u.user_metadata && u.user_metadata.name) || u.email || 'Signed in') + (r === 'admin' ? ' · admin' : '')), el('button', { on: { click: async () => { await signOut().catch(() => {}); refreshAcct(); } } }, 'Sign out'));
     else { acct.append(el('span', {}, 'Guest')); if (googleAllowed()) acct.append(el('button', { cls: 'gsi', on: { click: async e => { e.target.disabled = true; e.target.textContent = 'Opening Google…'; try { await signInGoogle(); } catch (err) { e.target.disabled = false; e.target.textContent = 'Sign in with Google'; acct.append(el('span', { style: 'color:#f88' }, 'Sign-in unavailable: ' + (err.message || err))); } } } }, 'Sign in with Google')); } };
   window.__mpRefreshAcct = refreshAcct; refreshAcct();
-  function close(play) { running = false; renderer.dispose(); av && av.dispose(); root.remove(); (play === true ? onPlay : onClose)?.(look); }
+  function close(play) { const out = play === true ? look : ownedSnap; running = false; renderer.dispose(); av && av.dispose(); root.remove(); (play === true ? onPlay : onClose)?.(out); }
   renderTabs(); await rebuild(look.base); renderBody(); setView('full'); requestAnimationFrame(frame);
   return { get look() { return look; }, root, close, setLook: l => { look = K.normalize(l); return rebuild(look.base).then(() => renderBody()); }, setTab: i => { tab = i; renderTabs(); renderBody(); setView(viewFor(TABS[i][0])); }, tabs: TABS.map(t => t[0]), av: () => av, setView, spinTo: a => { spin = a; } };
 }

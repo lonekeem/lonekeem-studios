@@ -15,6 +15,7 @@ import { makeCtx, HAT, GLASSES, EAR, PIERCE, NECK, WRIST, RING, BAG, BELT } from
 import { mountChair, clearChair } from './chair.js';
 import { buildHair } from './hairx.js';
 import { buildHead, buildHairMesh, buildFacialHair, headCtx, buildMask } from './v2/headrig.js';
+import { styleOf } from './v2/hair.js';
 import * as C from './catalog.js';
 import { tintHands } from '../game/hands.js';
 import { MORPH_KEYS } from './look.js';
@@ -84,6 +85,11 @@ const metalOf = it => ({ c: C.SWATCH.metal[it.m ?? 0], mt: .35, r: .38 });
 function jewel(av, ctx, name, fn, item, bone = 'Head', extra = {}) { if (!item) { clearAcc(av, name); return; } const B = new Builder(); fn(B, ctx, item);
   mount(av, name, B, { a: { c: item.c || '#888' }, b: { c: item.c2 || '#ccc' }, m: metalOf(item), g: { c: C.SWATCH.gem[item.g ?? 0], r: .25 }, k: { c: '#16171a' }, ...extra }, bone); }
 
+function earsHidden(look, hatFam) {
+  if (hatFam && /hijab|helmet|wrap/.test(hatFam)) return true;
+  const st = styleOf((look.hair && look.hair.id) || 'bald');
+  return !!(st && st.ears === false);
+}
 export function dress(av, look) {
   const f = look.base.startsWith('mp_f'); const T = av.tpl, L = T.lm; av.look = look;
   // ---- body + head morphs
@@ -114,8 +120,9 @@ export function dress(av, look) {
   // ---- rigid accessories
   if (hat) { const B = new Builder(); HAT[hat[2]](B, ctx, hat[3]); mount(av, 'hat', B, { a: { c: A.hat.c, r: .8, side: true }, b: { c: A.hat.c2 || '#222', r: .8, side: true }, m: metalOf(A.hat), g: { c: C.SWATCH.gem[A.hat.g ?? 0], r: .25 }, k: { c: '#16171a' } }, 'Head'); } else clearAcc(av, 'hat');
   const gl = A.glasses && C.GLASSES_LIST.find(h => h[0] === A.glasses.id); if (gl) { const B = new Builder(); const o = { ...gl[3] }; GLASSES[gl[2]](B, ctx, o); const dark = o.dark; mount(av, 'glasses', B, { a: { c: C.SWATCH.metal[A.glasses.m ?? 3], mt: .3, r: .4 }, g: dark ? { c: '#0c0d10', op: .9 } : { c: C.SWATCH.gem[A.glasses.g === undefined || A.glasses.g === 0 ? 6 : A.glasses.g], op: gl[2] === 'goggles' ? .6 : .22 }, k: { c: '#0c0d10', op: .9 } }, 'Head'); const mm = av.acc.glasses; mm.forEach(m => { if (m.material.transparent) m.renderOrder = 6; }); } else clearAcc(av, 'glasses');
-  for (const [nm, s] of [['earL', 1], ['earR', -1]]) { const it = A[nm], d = it && C.EARRINGS.find(e => e[0] === it.id); if (d) { const B = new Builder(); EAR[d[2]](B, ctx, s, d[3]); mount(av, nm, B, { a: { c: '#888' }, m: metalOf(it), g: { c: C.SWATCH.gem[it.g ?? 0], r: .2 }, k: { c: '#16171a' } }, 'Head'); } else clearAcc(av, nm); }
-  if (A.pierce && A.pierce.length) { const B = new Builder(); for (const id of A.pierce) { const d = C.PIERCINGS.find(e => e[0] === id); if (d) PIERCE[d[2]](B, ctx, d[3]); } mount(av, 'pierce', B, { a: { c: '#888' }, m: { c: C.SWATCH.metal[look.pm ?? 1], mt: .35, r: .38 }, g: { c: C.SWATCH.gem[0], r: .2 } }, 'Head'); } else clearAcc(av, 'pierce');
+  const hideEarJewelry = earsHidden(look, hatFam);
+  for (const [nm, s] of [['earL', 1], ['earR', -1]]) { const it = A[nm], d = !hideEarJewelry && it && C.EARRINGS.find(e => e[0] === it.id); if (d) { const B = new Builder(); EAR[d[2]](B, ctx, s, d[3]); mount(av, nm, B, { a: { c: '#888' }, m: metalOf(it), g: { c: C.SWATCH.gem[it.g ?? 0], r: .2 }, k: { c: '#16171a' } }, 'Head'); } else clearAcc(av, nm); }
+  if (A.pierce && A.pierce.length) { const B = new Builder(); let nP = 0; for (const id of A.pierce) { const d = C.PIERCINGS.find(e => e[0] === id); if (!d) continue; if (hideEarJewelry && d[2] === 'tragus') continue; PIERCE[d[2]](B, ctx, d[3]); nP++; } if (nP) mount(av, 'pierce', B, { a: { c: '#888' }, m: { c: C.SWATCH.metal[look.pm ?? 1], mt: .35, r: .38 }, g: { c: C.SWATCH.gem[0], r: .2 } }, 'Head'); else clearAcc(av, 'pierce'); } else clearAcc(av, 'pierce');
   const nk = A.neck && C.NECKLACES.find(e => e[0] === A.neck.id); if (nk) { const B = new Builder(); NECK[nk[2]](B, ctx, { ...nk[3] }); mount(av, 'neck', B, { a: { c: A.neck.c || '#c0392b', r: .85, side: true }, m: metalOf(A.neck), g: { c: C.SWATCH.gem[A.neck.g ?? 9], r: .25 }, k: { c: '#16171a' }, b: { c: A.neck.c2 || '#fff' } }, 'Spine02'); } else clearAcc(av, 'neck');
   for (const [nm, s] of [['wristL', 1], ['wristR', -1]]) { const it = A[nm], d = it && C.WRISTS.find(e => e[0] === it.id); if (d) { const B = new Builder(); WRIST[d[2]](B, ctx, { ...d[3], sides: [s] }); mount(av, nm, B, { a: { c: it.c || '#222', r: .8, side: true }, m: metalOf(it), g: { c: C.SWATCH.gem[it.g ?? 9], r: .2 }, k: { c: '#16171a' } }, s > 0 ? 'LeftForeArm' : 'RightForeArm'); } else clearAcc(av, nm); }
   for (const [nm, s] of [['ringL', 1], ['ringR', -1]]) { const it = A[nm], d = it && C.RINGS.find(e => e[0] === it.id); if (d) { const B = new Builder(); RING[d[2]](B, ctx, { ...d[3], sides: [s] }); mount(av, nm, B, { m: metalOf(it), g: { c: C.SWATCH.gem[it.g ?? 1], r: .2 }, a: { c: '#888' } }, s > 0 ? 'LeftHand' : 'RightHand'); } else clearAcc(av, nm); }

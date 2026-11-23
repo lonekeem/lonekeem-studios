@@ -108,15 +108,17 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
       sel.parts = sel.parts || {};
       let clothSub = 'top', accSub = 'hat', faceSub = 'shape';
       const buyPiece = (id) => { const W = wallet(); if (COS.ownedCosmetic(W, id)) return true; const p = COS.priceOf(id); if ((W.cash | 0) < p) { toast(`You need $${p}. Earn cash in Story, Survival or Online.`); return false; } if (!confirm(`Buy ${COS.itemName(id)} for $${p} (in-game cash)?`)) return false; COS.buyCosmetic(W, id); saveProfile({ cash: W.cash, cosmetics: W.cosmetics }, { silent: true }); try { window.__atq.audio.pickup(); } catch (e) { /* ignore */ } return true; };
+      let previewId = null;
+      const isUnpaid = (id) => !!(id && id !== 'none' && COS.priceOf(id) > 0 && !COS.ownedCosmetic(wallet(), id));
       const wearId = (slot) => { const v = sel.parts[slot]; if (v == null) return null; return typeof v === 'string' ? v : v.id; };
-      const pickPiece = (slot, id, extra) => set('clothes', () => { if (id && id !== 'none' && !buyPiece(id)) return false; sel.parts = sel.parts || {}; sel.parts[slot] = (id == null || id === 'none') ? 'none' : id; if (extra && extra.mirror) sel.parts[extra.mirror] = sel.parts[slot]; if (slot === 'glasses') sel.glasses = id !== 'none'; if (slot === 'chair' && id === 'chair') { /* mobility aid */ } });
+      const pickPiece = (slot, id, extra) => set('clothes', () => { sel.parts = sel.parts || {}; sel.parts[slot] = (id == null || id === 'none') ? 'none' : id; if (extra && extra.mirror) sel.parts[extra.mirror] = sel.parts[slot]; if (slot === 'glasses') sel.glasses = id !== 'none'; if (isUnpaid(id)) previewId = id; });
       const pieceCards = (list, slot, { none = true, current, extra } = {}) => {
         const W = wallet(); const cur = current != null ? current : wearId(slot); const items = [];
         if (none) items.push(['none', 'None']);
         for (const row of list) items.push([row[0], row[1]]);
         return el('div', { cls: 'grid' }, items.map(([id, label]) => { const p = COS.priceOf(id), own = COS.ownedCosmetic(W, id), on = (id === 'none' ? (cur == null || cur === 'none') : cur === id);
-          const tag = on ? 'Wearing' : own || !p ? (id === 'none' ? '' : 'Free') : '$' + p;
-          return card(label, { on, lock: !own && p, tag: tag || undefined, tagCls: on ? 'wear' : (!own && p ? 'price' : 'own'), click: () => pickPiece(slot, id, extra) }); }));
+          const trying = on && !own && p; const tag = trying ? 'Trying on · $' + p : (on ? 'Wearing' : own || !p ? (id === 'none' ? '' : 'Free') : '$' + p);
+          return card(label, { on, lock: false, tag: tag || undefined, tagCls: trying ? 'price' : (on ? 'wear' : (!own && p ? 'price' : 'own')), click: () => pickPiece(slot, id, extra) }); }));
       };
       const PAGES = {
         name: () => { const inp = el('input', { cls: 'name', value: name, maxLength: 18, placeholder: 'Your name', on: { input: e => { name = e.target.value; nm.textContent = name; } } }); setTimeout(() => { try { inp.focus(); } catch (e) { /* ignore */ } }, 50);
@@ -150,8 +152,7 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
         outfit: () => { const W = wallet(); const sorted = [...OUTFITS].sort((a, b) => (owned(b) - owned(a)) || ((a.price || 0) - (b.price || 0)));
           return [el('div', { cls: 'grid' }, sorted.map(o => { const own = owned(o), lockLv = !own && o.lvl && (W.level || 1) < o.lvl, wear = sel.outfit === o.id && !Object.keys(sel.parts || {}).length;
             return card(o.name, { on: wear, lock: !own, chips: [o.jacket || o.shirt, o.shirt, o.pants, o.shoes], tag: wear ? 'Wearing' : own ? 'Owned' : lockLv ? '🔒 Level ' + o.lvl : '$' + o.price, tagCls: wear ? 'wear' : own ? 'own' : lockLv ? 'lockt' : 'price',
-              click: () => set('outfit', () => { if (!own) { if (lockLv) { toast(`Reach level ${o.lvl} to unlock ${o.name}.`); return false; } if ((W.cash | 0) < o.price) { toast(`You need $${o.price}. Earn cash in Story, Survival or Online.`); return false; } if (!confirm(`Buy ${o.name} for $${o.price} (in-game cash)?`)) return false;
-                W.cash -= o.price; W.outfits = [...new Set([...(W.outfits || ['classic']), o.id])]; saveProfile({ cash: W.cash, owned: W.outfits }, { silent: true }); try { window.__atq.audio.pickup(); } catch (e) { /* ignore */ } } sel.outfit = o.id; sel.parts = {}; }) }); }))]; },
+              click: () => set('outfit', () => { if (lockLv && !own) { toast(`You can try it on. Reach level ${o.lvl} to keep it.`); } if (!own && o.price) previewId = o.id; sel.outfit = o.id; sel.parts = {}; }) }); }))]; },
         clothes: () => { const tabs = [['top', 'Shirts'], ['jacket', 'Jackets'], ['pants', 'Pants'], ['shoes', 'Shoes']];
           const lists = { top: COS.catalogEntries('TOPS'), jacket: COS.catalogEntries('JACKETS'), pants: COS.catalogEntries('PANTS'), shoes: COS.catalogEntries('SHOES') };
           return [el('div', { cls: 'subs' }, tabs.map(([k, n]) => el('button', { cls: clothSub === k ? 'on' : '', on: { click: () => { clothSub = k; render(); } } }, n))), pieceCards(lists[clothSub], clothSub, { none: clothSub === 'jacket' })]; },
@@ -171,8 +172,19 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
           ]; },
       };
       let toastT = 0; const toast = (m) => { sub.textContent = m; sub.style.color = '#ffb0a8'; clearTimeout(toastT); toastT = setTimeout(() => { sub.style.color = ''; sub.textContent = SUB[STEPS[step][0]]; }, 2600); };
+      const dropUnpaid = (L) => {
+        const parts = (sel.parts && { ...sel.parts }) || {};
+        for (const k of Object.keys(parts)) {
+          if (k === 'pierce') { parts.pierce = (Array.isArray(parts.pierce) ? parts.pierce : []).filter(id => !isUnpaid(id)); continue; }
+          const id = typeof parts[k] === 'string' ? parts[k] : parts[k] && parts[k].id;
+          if (isUnpaid(id)) delete parts[k];
+        }
+        sel.parts = parts;
+        if (sel.outfit) { const o = (typeof OUTFITS !== 'undefined' ? OUTFITS : []).find(x => x.id === sel.outfit); if (o && o.price && !owned(o)) sel.outfit = 'classic'; }
+        const clean = look(); clean.name = name || 'Survivor'; return clean;
+      };
       const save = () => {
-        const L = look(); L.name = name || 'Survivor';
+        const L = dropUnpaid(); L.name = name || 'Survivor';
         const slot = upsertChar({ id: (slotId && slotId !== KEEM_ID) ? slotId : undefined, name: L.name, sel, look: L });
         if (slot) setActiveId(slot.id);
         // Editing a slot should not rename the account when they already have a profile name
@@ -182,6 +194,8 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
       function render() { const [key, label] = STEPS[step]; const W = wallet(); document.getElementById('profCash').textContent = '$' + (W.cash | 0); nm.textContent = name;
         stepsEl.innerHTML = ''; STEPS.forEach(([k, n], i) => stepsEl.append(el('button', { cls: (i === step ? 'on' : '') + (done.has(i) ? ' done' : ''), on: { click: () => { if (mode === 'create' && i > step && !name.trim()) return; step = i; render(); } } }, (mode === 'create' ? (i + 1) + '. ' : '') + n)));
         h3.textContent = (mode === 'create' ? `Step ${step + 1} of ${STEPS.length} · ` : '') + label; sub.textContent = SUB[key]; const sc = body.scrollTop; body.innerHTML = ''; body.append(...PAGES[key]()); body.scrollTop = sc; foot.innerHTML = '';
+        const pid = previewId && isUnpaid(previewId) ? previewId : null;
+        if (pid) foot.append(el('button', { cls: 'pri', on: { click: () => { if (buyPiece(pid)) { previewId = null; render(); } } } }, 'Buy ' + COS.itemName(pid) + ' · $' + COS.priceOf(pid)));
         if (mode === 'create') { foot.append(el('button', { on: { click: () => { if (step) { step--; body.scrollTop = 0; render(); } else finish(null); } } }, step ? '‹ Back' : 'Cancel'),
             el('button', { cls: 'pri', on: { click: () => { if (key === 'name' && !name.trim()) { toast('Type a name first (or tap an idea).'); return; } done.add(step); if (step < STEPS.length - 1) { step++; body.scrollTop = 0; render(); } else save(); } } }, step < STEPS.length - 1 ? 'Next ›' : 'Finish ✓')); }
         else foot.append(el('button', { on: { click: () => finish(null) } }, 'Cancel'), el('button', { cls: 'pri', on: { click: save } }, 'Save'));
