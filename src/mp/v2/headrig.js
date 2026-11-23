@@ -87,30 +87,21 @@ function lipRibbon(w, y, z, thick, depth, smile, lift, dir, nu = 28, nv = 8) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setIndex(idx); g.computeVertexNormals(); return g;
 }
-// Teeth are a shared mesh that used to be mounted on every mouth, which left a white
-// strip between closed lips. Only build them for styles flagged open (ms[3]).
-function teethGeo(w, y, zFront) {
-  const h = 0.0036, d = 0.0042;
-  const g = new THREE.BoxGeometry(w * 0.7, h, d, 8, 1, 1);
-  // Front face stays behind the lip leading edge so it sits in the opening, not on top of it.
-  g.translate(0, y, zFront - d / 2);
-  return g;
-}
+// No 3D teeth mesh. A shared teeth box used to mount on every mouth and showed up as a
+// white strip between closed lips (and a flat rectangle over painted teeth on open ones).
+// Open/smiling styles open the lip ribbons; teeth come from the painted face (drawMouth).
 export function buildMouthGeos(L, H, look, g) {
   const mn = (C.MOUTHS[look.mouth && look.mouth.s || 0] || C.MOUTHS[0])[0];
   const ms = MOUTH_SHAPES[mn] || MOUTH_SHAPES.Neutral; // [w, full, smile, open]
   const w0 = (g === 'f' ? 0.026 : 0.028) * (1 + 0.25 * ((ms[0] || .054) / .054 - 1));
   const full = ms[1] || .5, smile = (ms[2] || 0) * 0.007;
   const showTeeth = !!(ms[3]);
-  // Closed mouths keep the lips together. Open/smiling styles get a real gap so teeth can sit inside.
   const open = showTeeth ? 0.0058 : 0;
   const my = L.mouthY, mz = L.surfZ(0, my) + 0.0006;
   const thick = 0.0036 + full * 0.0028, depth = 0.0032 + full * 0.0024;
   const upper = lipRibbon(w0, my + 0.0016 + open * 0.35, mz, thick, depth, smile, 0.0008, 1);
   const lower = lipRibbon(w0 * 0.96, my - 0.0024 - open, mz - 0.0002, thick * 1.06, depth * 1.02, smile * 0.7, -0.0004, -1);
-  const midY = (my + 0.0016 + open * 0.35 + 0.0008 + (my - 0.0024 - open - 0.0004)) / 2;
-  const teeth = showTeeth ? teethGeo(w0, midY, mz - 0.0012) : null;
-  return { upper, lower, teeth };
+  return { upper, lower, teeth: null };
 }
 const _lipMats = new Map();
 function lipMat(col, kind) {
