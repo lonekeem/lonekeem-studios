@@ -334,7 +334,8 @@ P.play = function (name, o = {}) { if (!this.ctx) return null; let n = name; if 
     if (d > 14) { const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = Math.max(700, 16000 / (1 + (d - 14) * .25)); out.connect(f); out = f; }
     out.connect(p); out = p; s.panner = p; }
   else if (o.pan && this.ctx.createStereoPanner) { const p = this.ctx.createStereoPanner(); p.pan.value = o.pan; g.connect(p); out = p; }
-  out.connect(o.bus || this.sfx); if (o.verb || d > 20) g.connect(this.verb); else if (this.indoors && !o.loop && !o.flat && o.bus !== this.voiceBus && this.verb) { if (!this._roomSend) { this._roomSend = this.ctx.createGain(); this._roomSend.gain.value = .45; this._roomSend.connect(this.verb); } g.connect(this._roomSend); } // v1.9.52: interiors get a room reverb send if (!o.loop) { this.nAct++; s.onended = () => { this.nAct--; }; }
+  out.connect(o.bus || this.sfx); if (o.verb || d > 20) g.connect(this.verb); else if (this.indoors && !o.loop && !o.flat && o.bus !== this.voiceBus && this.verb) { if (!this._roomSend) { this._roomSend = this.ctx.createGain(); this._roomSend.gain.value = .45; this._roomSend.connect(this.verb); } g.connect(this._roomSend); } // v1.9.52: interiors get a room reverb send
+  if (!o.loop) { this.nAct++; s.onended = () => { this.nAct--; }; }
   s.start(this.ctx.currentTime + (o.delay || 0)); s.g = g; s._atqName = n; s._atqLoop = !!o.loop;
   if (o.loop) { this._loops = this._loops || new Set(); this._loops.add(s); const prev = s.onended; s.onended = () => { this._loops && this._loops.delete(s); if (typeof prev === 'function') prev(); }; }
   return s; };
