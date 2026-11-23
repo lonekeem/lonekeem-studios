@@ -38,7 +38,7 @@ export class Input {
     toggle('#tAim', 'aim', b => { if (this.g.settings.hudv2) return; this.tAim = !this.tAim; b.classList.toggle('on', this.tAim); }); // v1.9.7 classic: tap toggles aim
     toggle('#tSwap', 'swap'); toggle('#tGren', 'gren');
     document.querySelectorAll('#touch .rb, #hudr .rb').forEach(b => { const d = () => { b.classList.add('down'); try { navigator.vibrate && navigator.vibrate(7); } catch (e) { } }, u = () => b.classList.remove('down'); b.addEventListener('touchstart', d, { passive: true }); b.addEventListener('touchend', u); b.addEventListener('touchcancel', u); b.addEventListener('mousedown', d); b.addEventListener('mouseup', u); b.addEventListener('mouseleave', u); });
-    toggle('#btnGren', 'gren'); toggle('#btnSwap', 'swap'); toggle('#btnView', 'view');
+    toggle('#btnGren', 'gren'); toggle('#pfp', 'heal'); /* v1.9.90: tap your portrait to use a med kit (touch had no heal) */ toggle('#btnSwap', 'swap'); toggle('#btnView', 'view');
     $('#dlg').addEventListener('click', () => g.skipLine());
   }
   ringOn(x, y) { const r = document.getElementById('lookRing'); if (!r) return; r.style.left = x + 'px'; r.style.top = y + 'px'; r.firstChild.style.transform = ''; r.classList.add('on'); }

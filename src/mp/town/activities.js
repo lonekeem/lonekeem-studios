@@ -2,6 +2,7 @@
 // drives, scavenges, a hold-out), a claimable safe house with doorway barricades + traps, a horde night that ends with a boss,
 // and a first-visit tutorial. Local to each player (no lobby traffic). Cash goes into the shared wallet (bag 'cash' -> save).
 import * as THREE from 'three';
+import { device } from '../../ui/controls.js';
 import { el } from './ui.js';
 
 const DAY = () => new Date().toISOString().slice(0, 10); // UTC date: everyone gets the same three challenges
@@ -159,13 +160,13 @@ export function townActivities({ scene, W, Z, me, cars, bag, toast, aud, dn, col
       const preDawn = p > .17 && p < .25; if (preDawn && !H.boss && !H.bossDone && H.nightT > 90) { /* only after you've lived through some of the night: no boss in your face when joining at 5 am */ const a = Math.random() * 6.283; const f = freeSpot(me.x + Math.cos(a) * 34, me.z + Math.sin(a) * 34, .9); const c = Z.spawnAt(f[0], f[1], { kind: 'tank', hp: 1600, scale: 2.05, speed: 1.55 }); if (c) { c.boss = true; c.mission = true; c.st = 'chase'; H.boss = c; bossBar.style.display = ''; toast('THE BUTCHER is coming. Bring it down before sunrise!', 3.6); try { aud.play && aud.play('boss_roar', { vol: 1, pos: { x: f[0], y: 2, z: f[1] } }); } catch (e) { /* sfx */ } } }
       if (H.boss) { bossFill.style.width = Math.max(0, 100 * H.boss.hp / H.boss.maxHp) + '%'; if (H.boss.dead) { H.bossDone = true; H.boss = null; bossBar.style.display = 'none'; pay(500, 'Horde boss down'); bump('kill', 0); } } } }
   // ---------- tutorial ----------
-  const TUT = (() => { const STEPS = [
-      { t: 'Welcome to Quiet Falls! Move with the left stick (WASD on a keyboard).', ev: 'move' },
-      { t: 'Search things for supplies. Walk up to a car or crate and tap the ✋ hand button (E).', ev: 'loot' },
-      { t: 'Fight back with HIT (left click). Zombies show as red dots on the map.', ev: 'kill' },
-      { t: 'Tap “Jobs” at the top right. Daily challenges and town jobs pay cash.', ev: 'panel' },
-      { t: 'Orange light beams mark jobs. Walk into one and tap ✋ to start it.', ev: 'job' },
-      { t: 'Get in a car: walk up to it and tap ✋. Some are locked, so find an unlocked one.', ev: 'drive' },
+  const TUT = (() => { const D = () => device(), U = () => ({ touch: 'tap the ✋ hand button', pad: 'press Ⓧ', kbd: 'press E' })[D()]; const STEPS = [
+      { t: () => 'Welcome to Quiet Falls! ' + ({ touch: 'Move with the left joystick and drag the right side to look.', pad: 'Move with the left stick and look with the right stick.', kbd: 'Move with WASD and look with the mouse.' })[D()], ev: 'move' },
+      { t: () => 'Search things for supplies. Walk up to a car or crate and ' + U() + '.', ev: 'loot' },
+      { t: () => ({ touch: 'Fight back with HIT.', pad: 'Fight back with RT (aim with LT).', kbd: 'Fight back with left click.' })[D()] + ' Zombies show as red dots on the map.', ev: 'kill' },
+      { t: () => ({ touch: 'Tap “Jobs” at the top right.', pad: 'Press Start, then pick “Jobs”.', kbd: 'Click “Jobs” at the top right.' })[D()] + ' Daily challenges and town jobs pay cash.', ev: 'panel' },
+      { t: () => 'Orange light beams mark jobs. Walk into one and ' + U() + ' to start it.', ev: 'job' },
+      { t: () => 'Get in a car: walk up to it and ' + U() + '. Some are locked, so find an unlocked one.', ev: 'drive' },
       { t: 'Before night, make a house your safe house, barricade its doors and set traps. Each night ends with a boss. Good luck!', ev: 'end' }];
     // v1.9.72: the box lives on <body> above the touch HUD (it used to sit inside #mpt under #stickZone, which ate every tap on Next/Skip),
     // top-centre between the left and right button columns. Taps are handled on touchend (iOS), clicks for mouse. Progress + skip are saved,
@@ -176,9 +177,10 @@ export function townActivities({ scene, W, Z, me, cars, bag, toast, aud, dn, col
     xb.style.cssText = 'position:absolute;top:0;right:0;width:32px;height:32px;background:none;border:0;color:#f5ecd8;font:700 15px system-ui,sans-serif;pointer-events:auto;touch-action:manipulation;opacity:.85';
     const col2 = el('div', {}, step, txt); col2.style.flex = '1'; box.append(col2, next, skip, xb); document.body.append(box); ['touchstart', 'touchmove', 'pointerdown', 'mousedown'].forEach(t => box.addEventListener(t, e => e.stopPropagation(), { passive: true }));
     const tapped = (q, fn) => { let tt = 0; q.addEventListener('touchend', e => { e.preventDefault(); e.stopPropagation(); tt = performance.now(); fn(); }, { passive: false }); q.addEventListener('click', e => { e.stopPropagation(); if (performance.now() - tt < 700) return; fn(); }); };
-    let i = -1, on = false, t0 = 0, mv = 0, last = null; const AUTO = 40; const show = () => { const s = STEPS[i]; step.textContent = `TUTORIAL · ${i + 1} / ${STEPS.length}`; txt.textContent = s.t; next.textContent = i === STEPS.length - 1 ? 'Done' : 'Next'; };
+    let i = -1, on = false, t0 = 0, mv = 0, last = null; const AUTO = 40; const show = () => { const s = STEPS[i]; step.textContent = `TUTORIAL · ${i + 1} / ${STEPS.length}`; txt.textContent = typeof s.t === 'function' ? s.t() : s.t; next.textContent = i === STEPS.length - 1 ? 'Done' : 'Next'; };
     const go = (k) => { i = k; t0 = 0; mv = 0; last = null; if (i >= STEPS.length) { stop(); return; } LS.set('atq.town.tutStep', i); show(); };
     const stop = () => { on = false; box.style.display = 'none'; LS.set('atq.town.tut', 1); };
+    addEventListener('atq:device', () => { if (on && STEPS[i]) show(); });
     tapped(next, () => { if (on) go(i + 1); }); const close = () => { if (!on) return; stop(); toast('Tutorial closed. Replay it from Jobs.', 2); }; tapped(skip, close); tapped(xb, close);
     return { box, start(force) { if (!force && LS.get('atq.town.tut', 0)) return; on = true; box.style.display = 'flex'; const k = force ? 0 : Math.max(0, Math.min(STEPS.length - 1, LS.get('atq.town.tutStep', 0) | 0)); go(k); },
       ev(k) { if (!on) return; if (STEPS[i] && STEPS[i].ev === k) setTimeout(() => { if (on && STEPS[i] && STEPS[i].ev === k) go(i + 1); }, 900); },
