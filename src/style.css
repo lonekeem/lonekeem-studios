@@ -183,10 +183,9 @@ body.snap .layer{transition:none!important}
 #loading .lb i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3f7a4c,var(--g));border-radius:3px;box-shadow:0 0 12px rgba(127,212,154,.45);transition:width .2s}
 #loading .ltip{width:100%;max-width:100%;font:15px system-ui;color:#cfe5d4;opacity:.85;line-height:1.45}
 #loading .ltip b{display:block;color:var(--g);font-weight:700;letter-spacing:.12em;font-size:11px;margin-bottom:6px}
-#loading .lstuck{margin-top:8px;display:flex;flex-direction:column;align-items:center;gap:8px}
+#loading .lstuck{margin-top:10px;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:3}
 #loading .lstuck.hidden{display:none!important}
-#loading .lstuck p{margin:0;font:14px system-ui;color:#d7e8dc;opacity:.9}
-#loading #btnLoadRetry{font:15px system-ui;padding:8px 18px;background:#0d2a18;color:#dfe;border:1px solid #7fd49a;border-radius:8px}
+#loading #btnLoadRetry{font:15px system-ui;padding:8px 18px;background:#0d2a18;color:#dfe;border:1px solid #7fd49a;border-radius:8px;pointer-events:auto}
 
 @media (max-height:420px){
   #loading .lbrand .studio{margin-bottom:4px;font-size:11px}

@@ -4,7 +4,7 @@ let rot = 0, hangT = 0, lastP = 0, retryBound = false;
 
 function hideStuck() {
   const s = document.getElementById('loadStuck');
-  if (s) s.classList.add('hidden');
+  if (s) { s.classList.add('hidden'); s.hidden = true; }
 }
 
 function showStuck() {
@@ -13,7 +13,7 @@ function showStuck() {
   const lt = el.querySelector('.lt');
   if (lt && !/taking longer/i.test(lt.textContent || '')) lt.textContent = 'This is taking longer than usual…';
   const s = document.getElementById('loadStuck');
-  if (s) s.classList.remove('hidden');
+  if (s) { s.classList.remove('hidden'); s.hidden = false; }
 }
 
 function bindRetry() {
