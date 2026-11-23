@@ -221,7 +221,7 @@ function startPoll(g) {
     if (id !== 'look') yaw0 = null;
     if (id === 'move' && I && I.move && I.move.lengthSq() > 0.08) { if (++moved >= 3) complete('move'); }
     if (id === 'look' && g.cam) { if (yaw0 == null) yaw0 = g.cam.yaw; else if (Math.abs(g.cam.yaw - yaw0) > 0.6) complete('look'); }
-    if (id === 'aim' && S.aim) complete('aim');
+    if (id === 'aim' && (S.aim || (I && I.aim))) complete('aim');
     if (id === 'run' && (S.run || (I && I.run)) && I && I.move && I.move.lengthSq() > 0.08) complete('run');
     if (id === 'crouch' && S.crouch) complete('crouch');
     if (id === 'reload' && S.reload > 0) complete('reload');

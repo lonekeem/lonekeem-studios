@@ -55,7 +55,7 @@ const overlaps = () => q(() => { const box = document.querySelector('#tutHud .tb
   document.querySelectorAll('#touch button, #touch .rb, #hudr button, #pfp, #mini, #stickBase, #wbar, #btnPause').forEach(e => { const r = e.getBoundingClientRect(); if (r.width < 2 || getComputedStyle(e).visibility === 'hidden' || +getComputedStyle(e).opacity === 0) return; if (r.left < box.right && r.right > box.left && r.top < box.bottom && r.bottom > box.top) hit.push(e.id || e.className); });
   return { card: [Math.round(box.left), Math.round(box.top), Math.round(box.width), Math.round(box.height)], hit }; });
 
-await start(); if (MODE === 'pad') { await q(() => window.__padConnect()); await P.press('LEFT'); }
+await start(); if (MODE === 'pad') { await q(() => window.__padConnect()); await P.axis(3, .7); await p.waitForTimeout(300); await P.axis(3, 0); }
 log('0 card', await card()); log('0 layout', await overlaps()); await shot('00-start');
 const ids = await q(() => window.__atqTut.steps); const res = {};
 for (const id of ids) {

@@ -11,7 +11,7 @@ export const BTN = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, VIEW: 8
 export function padOf(p) {
   const raf = n => p.evaluate(n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); setTimeout(r, 4000); }), n);
   // hold for at least 3 rendered frames (slow SwiftShader frames would otherwise miss a short press)
-  const press = async (b, ms = 120, after = 120) => { const i = typeof b === 'number' ? b : BTN[b]; await p.evaluate(i => window.__padSet(i, 1), i); await raf(3); await p.waitForTimeout(ms); await p.evaluate(i => window.__padSet(i, 0), i); await raf(3); await p.waitForTimeout(after); };
+  const press = async (b, ms = 120, after = 120) => { const i = typeof b === 'number' ? b : BTN[b]; await p.evaluate(i => window.__padSet(i, 1), i); await raf(2); await p.waitForTimeout(Math.min(ms, 40)); await p.evaluate(i => window.__padSet(i, 0), i); await raf(3); await p.waitForTimeout(after); };
   const hold = async (b, v) => { const i = typeof b === 'number' ? b : BTN[b]; await p.evaluate(([i, v]) => window.__padSet(i, v), [i, v]); };
   const axis = (i, v) => p.evaluate(([i, v]) => window.__padAx(i, v), [i, v]);
   const focus = () => p.evaluate(() => { const f = window.__padNav && window.__padNav.focus; return f ? (f.id ? '#' + f.id : (f.textContent || f.tagName).trim().slice(0, 30)) : null; });
