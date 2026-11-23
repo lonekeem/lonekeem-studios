@@ -54,6 +54,7 @@ function ring() {
   const lab = r.querySelector('b'); lab.textContent = box.area ? 'drag here' : touchName(c);
   // label sits on whichever side has room (never under the finger, never off-screen)
   const above = box.top > 40; lab.style.top = above ? '-24px' : 'auto'; lab.style.bottom = above ? 'auto' : '-24px';
+  const lw = lab.offsetWidth || 80, cx = box.left + box.width / 2; let dx = 0; if (cx - lw / 2 < 4) dx = 4 - (cx - lw / 2); else if (cx + lw / 2 > innerWidth - 4) dx = innerWidth - 4 - (cx + lw / 2); lab.style.transform = `translateX(calc(-50% + ${dx}px))`;
 }
 function paint() {
   const el = ensureHud();

@@ -34,7 +34,7 @@ export const CONTROLS = [
   { id: 'swap', title: 'Switch weapon', what: 'Cycle to your next weapon.', touch: { sel: '#tSwap, #btnSwap, #wbar', name: '⇄ Swap', how: 'Tap ⇄.', alt: { wbar: { name: 'Weapon bar', how: 'Tap another weapon in the weapon bar.' } } }, pad: pg('RB') + or + pg('D-pad ◀ ▶'), kbd: kk('1') + '–' + kk('9') + or + 'mouse wheel' + or + kk('Q') + ' for the weapon bar' },
   { id: 'gren', title: 'Grenade', what: 'Throw a grenade at a crowd.', touch: { sel: '#tGren, #btnGren', name: '💣', how: 'Tap 💣.' }, pad: pg('LB'), kbd: kk('G') },
   { id: 'use', title: 'Use / talk', what: 'Open doors, pick things up, get in vehicles and talk. Also skips a dialogue line.', touch: { sel: '#tUse', name: '✋ Hand', how: 'Tap the ✋ hand button.' }, pad: pg('X') + or + pg('D-pad ▲'), kbd: kk('E') + or + kk('F') },
-  { id: 'heal', title: 'Heal', what: 'Use a med kit for +50 health.', touch: { sel: '#pfp', name: 'Your portrait', how: 'Tap your portrait (top left).' }, pad: pg('D-pad ▼'), kbd: kk('H') },
+  { id: 'heal', title: 'Heal', what: 'Use a med kit for +50 health.', touch: { sel: '#pfp', name: 'Health bar', how: 'Tap your health bar (top left).' }, pad: pg('D-pad ▼'), kbd: kk('H') },
   { id: 'camera', title: 'Camera view', what: 'Switch between first and third person.', touch: { sel: '#btnView', name: '👁', how: 'Tap 👁.' }, pad: pg('View'), kbd: kk('V') },
   { id: 'pause', title: 'Pause', what: 'Open the pause menu (shop, settings, controls).', touch: { sel: '#btnPause', name: 'II', how: 'Tap II (top right).' }, pad: pg('Start'), kbd: kk('Esc') + or + kk('P') },
 ];
