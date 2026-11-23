@@ -23,7 +23,7 @@ export async function makeMotion(av) {
 export function driveRemote(P, dt, s) {
   if (!P) return; const f = s.f | 0; // bit0 crouch, bit1 rolling, bit2 airborne, bit3 attacking, bit6 down (dead / downed in a co-op mission)
   if (f & 64) { if (!P._down) { P._down = 1; P.play('Death01', { once: true, force: true, speed: 1.1, cb: () => { /* stay down */ } }); } P.mixer.update(dt); return; }
-  if (P._down) { P._down = 0; P.oneShot = null; P.curName = ''; try { P.mixer.stopAllAction(); } catch (e) { /* ignore */ } P.locoOn = false; P.locoW = 0; P.cur = null; P.play('Idle_Loop', { force: true, fade: 0 }); }
+  if (P._down) { P._down = 0; P._deadHeld = false; P._deadPose = null; P.dead = false; P._seated = false; P.oneShot = null; P.curName = ''; try { P.mixer.stopAllAction(); } catch (e) { /* ignore */ } P.locoOn = false; P.locoW = 0; P.cur = null; P.play('Idle_Loop', { force: true, fade: 0 }); }
   if (!P.oneShot) { if (f & 32 && !(f & 6)) P.play('Hit_Chest', { once: true, force: true, speed: 1.6, cb: () => { P.curName = ''; } }); else if (f & 4) P.play('Jump_Loop'); else if (f & 2) P.play('Roll', { once: true, force: true, speed: 1.35, cb: () => { P.curName = ''; } });
     else if (f & 8) P.play(f & 16 ? 'Sword_Attack' : 'Punch_Jab', { once: true, force: true, speed: f & 16 ? .9 : 1.1, cb: () => { P.curName = ''; } });
     else if (f & 1) { if ((s.spd || 0) > .3) P.play('Crouch_Fwd_Loop', { speed: Math.max(.4, Math.min(2.2, s.spd / .64)) }); else P.play('Crouch_Idle_Loop'); }

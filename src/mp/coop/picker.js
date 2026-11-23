@@ -7,7 +7,7 @@ const CSS = `#coopPick{position:fixed;inset:0;z-index:90;background:#050b08ee;di
 #coopPick .cl{overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;padding:2px}
 #coopPick .co{display:flex;gap:10px;align-items:center;text-align:left;font:inherit;color:#fff;background:#ffffff10;border:1px solid #ffffff2a;border-radius:14px;padding:10px 12px;min-height:64px}
 #coopPick .co:active,#coopPick .co:focus-visible{border-color:#ffd34a;background:#ffd34a22}#coopPick .co .ci{font-size:26px;width:38px;text-align:center}
-#coopPick .co b{display:block;font-size:14px}#coopPick .co span{display:block;font-size:11.5px;opacity:.78;line-height:1.3}#coopPick .co.sv{border-color:#7cf29a66}#coopPick .co .cr{color:#ffd34a;font-weight:700}
+#coopPick .co b{display:block;font-size:14px}#coopPick .co span{display:block;font-size:11.5px;opacity:.78;line-height:1.3}#coopPick .co.sv{border-color:#7cf29a66}#coopPick .co .cr{display:inline;color:#ffd34a;font-weight:700}
 #coopPick .sub{font-size:11.5px;opacity:.7;margin:2px 2px 8px}
 @media (max-height:420px){#coopPick .cph{margin-bottom:4px}#coopPick .cph h2{font-size:15px;color:#ffd34a}#coopPick .cph button{min-height:36px;padding:4px 12px}#coopPick .sub{margin:0 2px 6px}#coopPick .co{min-height:52px;padding:8px 10px}#coopPick .cl{gap:6px}}`;
 /** Shows the picker. Resolves { mission: null } for Survival, { mission: id } for a co-op mission, or null when cancelled. */
