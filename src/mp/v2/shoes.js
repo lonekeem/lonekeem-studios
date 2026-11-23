@@ -11,6 +11,14 @@ export const SHOE_STYLE = {
   flat: { sole: .006, toe: .6, bulk: .003, col: -.012, d: 6 }, loafer: { sole: .01, toe: .7, bulk: .005, col: -.006, d: 5 }, dress: { sole: .01, toe: .55, bulk: .005, col: -.004, d: 6 },
   chunky: { sole: .036, toe: 1, bulk: .016, col: .014, d: 1, line: 1 }, work: { sole: .022, toe: 1, bulk: .013, col: .16, d: 1 }, rain: { sole: .014, toe: .9, bulk: .01, col: .14, d: 6 },
   clog: { sole: .03, toe: 1, bulk: .02, col: -.01, d: 2, strap: 1 },
+  platform: { sole: .05, toe: .95, bulk: .014, col: .012, d: 1, line: 1 },
+  midtop: { sole: .016, toe: .95, bulk: .008, col: .028, d: 3, line: 1 },
+  chelsea: { sole: .016, toe: .72, bulk: .009, col: .13, d: 6, elastic: 1 },
+  hiking: { sole: .028, toe: .9, bulk: .016, col: .15, d: 1, line: 1 },
+  slides: { sole: .024, toe: 1, bulk: .008, col: -.02, d: 7, slide: 1, vampStrap: 1 },
+  mule: { sole: .016, toe: .85, bulk: .008, col: -.014, d: 6, openHeel: 1 },
+  desert: { sole: .014, toe: .8, bulk: .01, col: .12, d: 6 },
+  maryjane: { sole: .008, toe: .95, bulk: .004, col: -.01, d: 6, vampStrap: 1 },
 };
 const NU = 30, NV = 28;
 function footBins(av, sd) {
@@ -38,13 +46,23 @@ function loft(av, sd, st) {
     if (st.col > .06) { const shaft = ank.y + .02 + st.col; const heel = 1 - ss(.08, .4, u); top = Math.max(top, shaft * heel + top * (1 - heel)); const widen = .006 * heel * Math.min(1, st.col / .16); x0 -= widen; x1 += widen; }
     else if (st.col >= 0) top = Math.min(top, ank.y + .03 + st.col + .045 * ss(.22, .42, u) * (1 - ss(.55, .8, u)));
     else { const lo = ank.y + st.col; top = u < .5 ? Math.min(top, lo + (top - lo) * ss(.25, .6, u)) : top; }
-    top = Math.max(top, ground + st.sole + .025 * (1 - toeK * .6)); return { x0, x1, y0: ground - .003, y1: top, z: z0 + u * len }; };
+    top = Math.max(top, ground + st.sole + .025 * (1 - toeK * .6));
+    const soleLip = ground + st.sole + .006;
+    if (st.slide) {
+      const band = Math.exp(-Math.pow((u - 0.40) / 0.10, 2));
+      top = soleLip + (Math.min(top, ank.y + .01) - soleLip) * band;
+    } else {
+      if (st.openToe) { const cut = ss(.52, .74, u); top = soleLip + (top - soleLip) * (1 - cut); }
+      if (st.openHeel) { const cut = 1 - ss(.16, .40, u); top = soleLip + (top - soleLip) * (1 - cut * .96); }
+    }
+    return { x0, x1, y0: ground - .003, y1: top, z: z0 + u * len }; };
   for (let k = 0; k < NU; k++) rings.push(sect(k)); if (st.col >= 0) for (let k = 1; k < NU; k++) { const r = rings[k], pr = rings[k - 1]; const drop = (st.col > .06 ? .9 : 1.3) * (r.z - pr.z); r.y1 = Math.max(r.y1, Math.min(pr.y1, pr.y1 - drop)); }
   // rounded heel and toe caps
   const heel = rings[0], toe = rings[NU - 1]; const out = [];
-  for (let c = capN; c >= 1; c--) { const a = c / capN * Math.PI / 2; const f = Math.cos(a); const r = { ...heel }; const hw = (heel.x1 - heel.x0) / 2, xc = (heel.x1 + heel.x0) / 2; r.x0 = xc - hw * Math.max(.15, f); r.x1 = xc + hw * Math.max(.15, f); r.y1 = heel.y0 + (heel.y1 - heel.y0) * Math.max(.3, .3 + .7 * f); r.z = heel.z - .028 * Math.sin(a) - m * .3; r.u = 0; out.push(r); }
+  const soleLip = ground + st.sole + .008;
+  for (let c = capN; c >= 1; c--) { const a = c / capN * Math.PI / 2; const f = Math.cos(a); const r = { ...heel }; const hw = (heel.x1 - heel.x0) / 2, xc = (heel.x1 + heel.x0) / 2; r.x0 = xc - hw * Math.max(.15, f); r.x1 = xc + hw * Math.max(.15, f); r.y1 = heel.y0 + (heel.y1 - heel.y0) * Math.max(.3, .3 + .7 * f); if (st.openHeel || st.slide) r.y1 = soleLip + Math.max(0, f) * .006; r.z = heel.z - .028 * Math.sin(a) - m * .3; r.u = 0; out.push(r); }
   rings.forEach((r, k) => { r.u = (k + .5) / NU; out.push(r); });
-  const tr = st.toe; for (let c = 1; c <= capN; c++) { const a = c / capN * Math.PI / 2; const f = Math.cos(a); const r = { ...toe }; const hw = (toe.x1 - toe.x0) / 2, xc = (toe.x1 + toe.x0) / 2; const wf = Math.max(.12, Math.pow(f, .6 + (1 - tr) * .8)); r.x0 = xc - hw * wf; r.x1 = xc + hw * wf; r.y1 = toe.y0 + (toe.y1 - toe.y0) * Math.max(.25, Math.pow(f, .5)); r.z = toe.z + (.012 + st.bulk * .8 + (1 - tr) * .02) * Math.sin(a); r.u = 1; out.push(r); }
+  const tr = st.toe; for (let c = 1; c <= capN; c++) { const a = c / capN * Math.PI / 2; const f = Math.cos(a); const r = { ...toe }; const hw = (toe.x1 - toe.x0) / 2, xc = (toe.x1 + toe.x0) / 2; const wf = Math.max(.12, Math.pow(f, .6 + (1 - tr) * .8)); r.x0 = xc - hw * wf; r.x1 = xc + hw * wf; r.y1 = toe.y0 + (toe.y1 - toe.y0) * Math.max(.25, Math.pow(f, .5)); if (st.openToe || st.slide) r.y1 = soleLip + Math.max(0, f) * .008; r.z = toe.z + (.012 + st.bulk * .8 + (1 - tr) * .02) * Math.sin(a); r.u = 1; out.push(r); }
   const N = out.length;
   for (let k = 0; k < N; k++) { const r = out[k]; const xc = (r.x0 + r.x1) / 2, hw = (r.x1 - r.x0) / 2, yc = (r.y0 + r.y1) / 2, hh = (r.y1 - r.y0) / 2;
     for (let j = 0; j <= NV; j++) { const th = j / NV * Math.PI * 2; const c = Math.cos(th), s = Math.sin(th); const e = s < 0 ? 4 : 2.6; const x = xc + hw * Math.sign(c) * Math.pow(Math.abs(c), 2 / e), y = yc + hh * Math.sign(s) * Math.pow(Math.abs(s), 2 / (s < 0 ? 6 : 2.4));
@@ -61,11 +79,24 @@ const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
 function strap(av, sd, st, L) { // clog heel strap: half ring behind the ankle
   const { ank } = L; const pts = []; for (let i = 0; i <= 16; i++) { const a = Math.PI * (i / 16); pts.push(new THREE.Vector3(ank.x + Math.cos(a) * .046, ank.y - .012 - Math.sin(a) * .01, ank.z - Math.sin(a) * .05 + .012)); }
   const curve = new THREE.CatmullRomCurve3(pts); const g = new THREE.TubeGeometry(curve, 24, .006, 8, false); const n = g.attributes.position.count; const a = new Float32Array(n * 4).fill(0); for (let i = 0; i < n; i++) { a[i * 4] = .1; a[i * 4 + 1] = .25; a[i * 4 + 2] = .6; } g.setAttribute('aS', new THREE.BufferAttribute(a, 4)); g.deleteAttribute('uv'); return g; }
+function vampStrap(av, sd, st, L) { // Mary Jane / slide instep strap over the midfoot
+  const { ank, z0, len, ground } = L; const { B } = footBins(av, sd);
+  const k = Math.min(NU - 1, Math.max(0, Math.floor(NU * 0.40)));
+  const b = B[k]; const xc = (b.x0 + b.x1) / 2, hw = Math.max(0.02, (b.x1 - b.x0) / 2 + 0.006);
+  const z = z0 + len * (st.slide ? 0.40 : 0.36);
+  const y0 = ground + st.sole + 0.003, y1 = b.y1 + (st.slide ? 0.016 : 0.009);
+  const pts = [];
+  for (let i = 0; i <= 16; i++) { const a = Math.PI * (i / 16); pts.push(new THREE.Vector3(xc + Math.cos(a) * hw, y0 + Math.pow(Math.sin(a), 1.35) * (y1 - y0), z)); }
+  const thick = st.slide ? 0.010 : 0.0045;
+  const curve = new THREE.CatmullRomCurve3(pts); const g = new THREE.TubeGeometry(curve, 24, thick, 8, false);
+  const n = g.attributes.position.count; const a = new Float32Array(n * 4).fill(0);
+  for (let i = 0; i < n; i++) { a[i * 4] = .4; a[i * 4 + 1] = .25; a[i * 4 + 2] = .7; }
+  g.setAttribute('aS', new THREE.BufferAttribute(a, 4)); g.deleteAttribute('uv'); return g; }
 const MATS = new Map();
 function shoeMaterial(up, sole, st) {
   const key = up + sole + st.d + (st.line || 0); if (MATS.has(key)) return MATS.get(key);
   const m = new THREE.MeshStandardMaterial({ color: '#fff', roughness: .62, metalness: 0, side: THREE.DoubleSide });
-  const U = { uUp: { value: new THREE.Color(up) }, uSo: { value: new THREE.Color(sole) }, uSt: { value: new THREE.Vector4(st.d, st.sole, st.line || 0, st.strap || 0) } };
+  const U = { uUp: { value: new THREE.Color(up) }, uSo: { value: new THREE.Color(sole) }, uSt: { value: new THREE.Vector4(st.d, st.sole, st.line || 0, st.strap ? 1 : (st.elastic ? 2 : 0)) } };
   m.onBeforeCompile = sh => { Object.assign(sh.uniforms, U);
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute vec4 aS; varying vec4 vS; varying vec3 vB;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvS = aS; vB = position;');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
@@ -84,6 +115,7 @@ vec3 bumpS(vec3 surf, vec3 nrm, float hgt){ vec3 dx = dFdx(surf), dy = dFdy(surf
   if (d > 1.5 && d < 2.5) { vec2 q = vec2(u * 26.0, v * 44.0); vec2 f = fract(q) - 0.5; float hole = (1.0 - smoothstep(0.18, 0.26, length(f))) * step(0.52, u) * step(u, 0.95) * step(cx, 0.13) * step(0.5, hr); c = mix(c, c * 0.25, hole); h -= 0.0012 * hole; }
   if (d > 2.5 && d < 3.5) { float cap = step(0.86, u) * step(hr, 0.9); c = mix(c, uSo, cap * 0.9); float lz = step(0.4, u) * step(u, 0.8) * step(cx, 0.045) * step(0.6, hr) * step(0.5, fract(u * 26.0)); c = mix(c, vec3(0.97), lz); }
   if (d > 4.5 && d < 5.5) { float sd = (1.0 - smoothstep(0.0, 0.004, abs(u - 0.62))) * step(cx, 0.12) * step(0.5, hr); c *= 1.0 - 0.25 * sd; }
+  if (d > 5.7 && d < 6.5 && uSt.w > 1.5) { float el = step(0.12, u) * step(u, 0.55) * step(0.02, cx) * step(cx, 0.22) * step(0.45, hr); c = mix(c, c * 0.45, el); }
   if (u < 0.3 && hr > 0.88) { c *= 0.85; h += 0.001; } // padded collar
   c = mix(c, uSo, sole); c *= 1.0 - 0.35 * sl; h += 0.0015 * sl;
   if (uSt.z > 0.5) { float st = (1.0 - smoothstep(0.0, 0.0018, abs(vB.y - uGround - uSt.y - 0.006))) * step(0.18, u) * step(u, 0.95); c = mix(c, c * 0.8, st); }
@@ -97,7 +129,7 @@ export function buildShoes(av, piece) {
   if (av.shoes2) { av.shoes2.forEach(m => { m.parent && m.parent.remove(m); m.geometry.dispose(); }); av.shoes2 = null; }
   if (!piece || piece.id === 'socks') return false; const st = SHOE_STYLE[piece.id] || SHOE_STYLE.sneaker;
   const P = av.tpl.P; const out = [];
-  for (const sd of [1, -1]) { const S = sd > 0 ? 'Left' : 'Right'; const L = loft(av, sd, st); const geos = [L.g]; if (st.strap) geos.push(strap(av, sd, st, L));
+  for (const sd of [1, -1]) { const S = sd > 0 ? 'Left' : 'Right'; const L = loft(av, sd, st); const geos = [L.g]; if (st.strap) geos.push(strap(av, sd, st, L)); if (st.vampStrap) geos.push(vampStrap(av, sd, st, L));
     const toe = P[S + 'ToeBase']; const mat = shoeMaterial(piece.c, piece.sole || '#f2f2f0', st); mat.userData.ground.value = L.ground;
     for (const g of geos) { skinTo(av, g, (i, x, y, z) => { const k = ss(toe.z - .02, toe.z + .025, z); return k > 0 ? [[S + 'Foot', 1 - k], [S + 'ToeBase', k]] : [[S + 'Foot', 1]]; });
       const mesh = new THREE.SkinnedMesh(g, mat); bindMesh(av, mesh, 1); out.push(mesh); } }
