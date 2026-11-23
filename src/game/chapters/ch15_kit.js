@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { PI, V, dist2, follow } from './helpers.js';
 import { act } from './ch12_acting.js';
+import { dnState } from '../daynight.js';
 export { act };
 
 // ---------- cutscene movement (same pattern as ch14) ----------
@@ -112,8 +113,17 @@ export function tracerLine(g, a, b) { const geo = new THREE.BufferGeometry().set
 export function rotorBlur(H) { const m = new THREE.Mesh(new THREE.CircleGeometry(5.6, 32), new THREE.MeshBasicMaterial({ color: '#1a1e22', transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })); m.rotation.x = -PI / 2; m.position.y = 3.27; H.g.add(m); H.blur = m; return m; }
 
 // ---------- dawn grade (used from Ch 19's end on): warm the sky + fill while a step runs. setLight() resets it on the next step. ----------
-export function dawn(g, k = 1) { try { const S = g.scene; g.hemi.intensity = 1.05 + .35 * k; g.hemi.color.set(k > .6 ? '#ffd8b0' : '#c8b8c8'); g.hemi.groundColor.set('#5a4a40'); if (g.moon) { g.moon.intensity = Math.max(g.moon.intensity, .9); g.moon.color && g.moon.color.set('#ffc890'); }
-  if (S.fog) { S.fog.color.set(k > .6 ? '#d8a888' : '#8a7a8a'); } S.environmentIntensity = .45; } catch (e) { /* lighting only */ } }
+export function dawn(g, k = 1) { try { const S = g.scene, sky = g.world && g.world.env && g.world.env.sky, U = sky && sky.material.uniforms;
+  if (!g._dawn0) { // remember the story night look once, and put it back the next time a step sets its light
+    if (!g._rainL) S.traverse(o => { if (!g._rainL && o.isLineSegments && o.material && o.material.color && o.material.color.getHexString() === '9fb0b0') g._rainL = o; });
+    g._dawn0 = { hor: U && U.uHor.value.clone(), zen: U && U.uZen.value.clone(), moon: U && U.uMoon.value.clone(), day: U && U.uDay ? U.uDay.value : 0, mc: g.moon && g.moon.color.clone(), exp: g.renderer.toneMappingExposure, rain: g._rainL ? g._rainL.material.opacity : 0 };
+    if (!g._dawnPatched) { g._dawnPatched = true; const orig = g.setLight.bind(g); g.setLight = (m) => { const o = g._dawn0; if (o) { if (U) { U.uHor.value.copy(o.hor); U.uZen.value.copy(o.zen); U.uMoon.value.copy(o.moon); if (U.uDay) U.uDay.value = o.day; } if (g.moon && o.mc) g.moon.color.copy(o.mc); if (g._rainL) g._rainL.material.opacity = o.rain; g._dawn0 = null; } return orig(m); }; } }
+  const D = dnState(.235 + .07 * k, g._dawnS || (g._dawnS = {}));
+  if (U) { U.uHor.value.copy(D.hor); U.uZen.value.copy(D.zen); U.uMoon.value.copy(D.sunDir); if (U.uDay) U.uDay.value = D.dayK; }
+  if (g._rainL) g._rainL.material.opacity = Math.max(0, .32 * (1 - k * 1.6));
+  g.hemi.color.copy(D.hs); g.hemi.groundColor.copy(D.hg); g.hemi.intensity = .9 + 1.0 * D.dayK;
+  if (g.moon) { g.moon.color.copy(D.sun); g.moon.intensity = .5 + 1.6 * Math.min(1, Math.max(0, (D.e + .05) / .35)); }
+  if (S.fog) { S.fog.color.copy(D.fog); } S.environmentIntensity = .3 + .5 * D.dayK; } catch (e) { /* lighting only */ } }
 
 // a big full-screen title card (finale + chapter beats)
 export function card(lines, ms = 3200, sub = '') { let el = document.getElementById('atqCard'); if (!el) { el = document.createElement('div'); el.id = 'atqCard'; el.style.cssText = 'position:fixed;inset:0;z-index:41;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(6,6,8,.82);color:#f4ead8;font-family:Georgia,serif;text-align:center;pointer-events:none;opacity:0;transition:opacity .6s'; document.body.appendChild(el); }

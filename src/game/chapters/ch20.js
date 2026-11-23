@@ -131,7 +131,7 @@ export const steps = [
       if (!D.half && b.hp < b.maxHp * .55) { D.half = true; g.toast('She is calling them', 2); g.horde(8, [[-8, -6480], [8, -6484], [-14, -6470], [14, -6472], [0, -6496]], { runner: true }); g.say([['dube', "She's still giving orders. Even now."]]); }
       if (!D.low && b.hp < b.maxHp * .25) { D.low = true; g.say([['keem', "Dad, now! Together!"]]); } } },
 
-  { id: 'c20_jets', ch: 20, cp: [0, -6446, PI], obj: '', hint: '', mood: 'sad', beat: 0, rain: false,
+  { id: 'c20_jets', ch: 20, cp: [0, -6446, PI], obj: '', hint: '', mood: 'day', beat: 0, rain: false,
     enter(g) {
       const D = g.stepData; g.openGate(true); cast(g, D, 0, -6444, ALL); giveHammer(D.dad, false); D.dw = .85; dawn(g, .85);
       place(g.player, -.4, -6448, PI); place(D.dad, 1.4, -6447.2, PI); place(D.nia, -2, -6446.6, PI); place(D.mom, -3.2, -6445.4, PI); place(D.reyes, 2.8, -6445.6, PI); place(D.dube, 4.2, -6444.4, PI);
@@ -140,10 +140,10 @@ export const steps = [
       script(g, [
         (g) => { g.audio.engine && g.audio.engine(true, .9); g.shake(.25); },
         ['nia', "What's that sound?"],
-        (g) => { cam(g, V(0, 1.4, -6438), V(0, 14, -6520)); D.j.forEach((J, i) => fly(J, V(-30 + i * 14, 40 - i * 2, -6900), V(-30 + i * 14, 22, -6560), 3.4)); },
+        (g) => { cam(g, V(0, 1.4, -6440), V(0, 16, -6492)); D.j.forEach((J, i) => fly(J, V(-18 + i * 12, 36 - i * 2, -6720), V(-18 + i * 12, 18, -6470), 3.6)); },
         ['pilot', "Harbor Authority, this is Flight Lead. We are over Riverside."],
         ['pilot', "We heard a little girl on the radio last night. My wife made her recipe in our kitchen."],
-        (g) => { D.j.forEach((J, i) => fly(J, V(-30 + i * 14, 22, -6560), V(60 + i * 10, 34, -6200), 3.2)); g.shake(.6); cam(g, V(-1.8, 1.5, -6455.4), V(-.4, 1.6, -6447.6)); },
+        (g) => { D.j.forEach((J, i) => fly(J, V(-18 + i * 12, 18, -6470), V(40 + i * 12, 30, -6220), 3.2)); g.shake(.6); cam(g, V(-1.8, 1.5, -6455.4), V(-.4, 1.6, -6447.6)); },
         ['pilot', "Riverside, Flight Lead. We're standing down. Going home."],
         (g) => { g.audio.engine && g.audio.engine(false); act(D.nia, 'hug', { k: 1 }); act(D.mom, 'hold', { k: .8 }); },
         ['keem', "It's over."],
@@ -154,31 +154,31 @@ export const steps = [
     },
     update(g, dt) { const D = g.stepData; tickMv(g, D, dt); morning(g, D, dt, 1); } },
 
-  { id: 'c20_porch', ch: 20, cp: [-8, -5038, -PI / 2], obj: '', hint: '', mood: 'calm', beat: 0, rain: false,
+  { id: 'c20_porch', ch: 20, cp: [-8, -5038, -PI / 2], obj: '', hint: '', mood: 'day', beat: 0, rain: false,
     enter(g) {
       const D = g.stepData; g.openGate(true); try { const W = g.world; W.ensureZone && W.ensureZone(17); if (W.zones && W.zones[17]) W.zones[17].visible = true; } catch (e) { /* Elm Street set */ } D.lobster = false; cast(g, D, -8, -5038, ['dad', 'nia', 'mom', 'reyes', 'dube', 'tuck', 'danny']); giveHammer(D.dad, false); D.dw = 1; dawn(g, 1);
       D.h = heli(g, 3, -5068, PI * .2); rotorBlur(D.h); D.h.spin && D.h.spin(6); if (D.h.blur) D.h.blur.material.opacity = .12;
       // Dad on Mr. Dube's front steps with the hammer, everybody on the lawn
-      place(D.dad, -9.6, -5034, PI / 2); place(D.dube, -10.4, -5031.6, PI * .6); place(g.player, -6.4, -5036.4, -PI * .6); place(D.nia, -6.6, -5038.4, -PI * .5); place(D.mom, -7.8, -5039.4, -PI * .4);
-      place(D.reyes, -4.8, -5034.4, -PI * .7); place(D.danny, -3, -5040, -PI * .6); place(D.tuck, -2, -5038.4, -PI * .55);
-      g.cut = { anim: 'Idle_Loop', cam: V(-3.6, 1.7, -5030.8), look: V(-8.4, 1.25, -5036), flash: false }; snap(g);
+      place(D.dad, -12.8, -5035, PI / 2); place(D.dube, -13.8, -5032.8, PI * .6); place(g.player, -10.6, -5036.2, -PI / 2); place(D.nia, -10.4, -5037.8, -PI * .55); place(D.mom, -11.4, -5038.6, -PI * .4);
+      place(D.reyes, -10.2, -5033.4, -PI * .6); place(D.danny, -7.6, -5036, -PI / 2); place(D.tuck, -7.2, -5034.4, -PI * .55);
+      g.cut = { anim: 'Idle_Loop', cam: V(-7.4, 1.7, -5031.4), look: V(-12, 1.3, -5035.4), flash: false }; snap(g);
       script(g, [
         (g) => { act(D.dad, 'hold', { sides: 'R', k: .8 }); g.audio.thud && g.audio.thud(); },
         ['dube', "Morning, Marcus. Those steps aren't going to fix themselves."],
         ['marcus', "Told you I'd get to them."],
-        (g) => { cam(g, V(-.4, 1.6, -5035.6), V(-2.6, 1.4, -5039.4)); },
+        (g) => { cam(g, V(-5.2, 1.6, -5038.6), V(-7.4, 1.4, -5035.2)); },
         ['danny', "I landed on a street! On purpose! Tuck, tell them it was on purpose."],
         ['tuck', "It was mostly on purpose."],
-        (g) => { cam(g, V(-4.2, 1.6, -5041.6), V(-5.2, 1.4, -5035.4)); },
+        (g) => { cam(g, V(-8.4, 1.6, -5031.2), V(-10.2, 1.45, -5033.4)); },
         ['reyes', "Forty-one towns have called in. They're making it. All of them."],
-        (g) => { cam(g, V(-5.4, 1.1, -5041.2), V(-6.6, 1.0, -5038.4)); },
+        (g) => { cam(g, V(-9, 1.05, -5039.8), V(-10.4, .95, -5037.8)); },
         ['nia', "Biscuit wants to know if it's quiet now."],
         ['dana', "It's quiet, baby. The good kind."],
-        (g) => { act(D.dad, null); cam(g, V(-3.8, 1.55, -5039.4), V(-6.4, 1.5, -5036.4)); },
+        (g) => { act(D.dad, null); cam(g, V(-8.6, 1.6, -5037.4), V(-10.6, 1.5, -5036.2)); },
         ['keem', "After the quiet, we get to start over."],
-        (g) => { walk(D, D.dad, -7.6, -5035.4, { sp: 1.1, face: -PI / 2 }); cam(g, V(-4, 1.6, -5033.2), V(-7, 1.45, -5036)); },
+        (g) => { walk(D, D.dad, -11.6, -5035.6, { sp: 1.1, face: PI / 2 }); cam(g, V(-9, 1.6, -5034), V(-11.2, 1.5, -5035.8)); },
         ['marcus', "Right behind you, son."],
-        (g) => { cam(g, V(4, 4.2, -5024), V(-7, 1.2, -5038)); card('THE END', 5200, 'AFTER THE QUIET · A LONE KEEM STUDIOS GAME'); setTimeout(() => { hideCard(); g.onComplete && g.onComplete(20); }, 5600); },
+        (g) => { cam(g, V(-2, 5, -5026), V(-11, 1.2, -5036)); card('THE END', 5200, 'AFTER THE QUIET · A LONE KEEM STUDIOS GAME'); setTimeout(() => { hideCard(); g.onComplete && g.onComplete(20); }, 5600); },
       ]);
     },
     update(g, dt) { const D = g.stepData; tickMv(g, D, dt); dawn(g, 1); if (D.h && D.h.tick) D.h.tick(dt); } },

@@ -105,21 +105,21 @@ export const steps = [
     enter(g) {
       const D = g.stepData; g.openGate(true); cast(g, D, 0, -6014, ALL); giveHammer(D.dad, false); onAir(false);
       place(D.nia, 0, -6020.7, PI); place(D.reyes, 1.6, -6020.2, PI * .8); place(g.player, -1.8, -6018.6, PI * .85); place(D.dad, -3, -6017.6, PI * .8); place(D.mom, 2.8, -6018.4, -PI * .8); place(D.dube, 4, -6016.6, -PI * .75);
-      g.cut = { anim: 'Idle_Loop', cam: V(.9, 1.35, -6024.4), look: V(0, 1.0, -6020.4), flash: false }; snap(g);
+      g.cut = { anim: 'Idle_Loop', cam: V(.6, 1.6, -6023.5), look: V(0, 1.0, -6020.6), flash: false }; snap(g);
       script(g, [
         ['reyes', "Red light means you're on. Just read it like a story."],
-        (g) => { onAir(true); g.audio.click && g.audio.click(); cam(g, V(.5, 1.05, -6023.6), V(0, .95, -6020.6)); },
+        (g) => { onAir(true); g.audio.click && g.audio.click(); cam(g, V(.35, 1.5, -6023.2), V(0, .95, -6020.6)); },
         ['nia', "Hi. My name is Nia. I'm in Riverside, Maine. My brother Keem can't turn, and Dr. Reyes made a cure from his blood."],
         ['nia', "It works. It worked on my dad. So here's how you make it. Step one…"],
-        (g) => { cam(g, V(-.4, 1.7, -6023.2), V(-2.4, 1.4, -6018)); },
+        (g) => { cam(g, V(-1.2, 1.65, -6021.4), V(-2.6, 1.4, -6017.8)); },
         ['marcus', "Listen to her. Steady as a rock."],
         (g) => { g.audio.staticBurst && g.audio.staticBurst(1); },
         ['radio', "…this is Bar Harbor… we hear you, Riverside… say again step four…"],
-        (g) => { cam(g, V(.5, 1.05, -6023.6), V(0, .95, -6020.6)); },
+        (g) => { cam(g, V(.35, 1.5, -6023.2), V(0, .95, -6020.6)); },
         ['nia', "Step four. Spin it for ninety seconds. Not eighty-nine."],
-        (g) => { g.audio.staticBurst && g.audio.staticBurst(1.3); g.shake(.15); cam(g, V(3.4, 1.7, -6023.6), V(0, 1.2, -6019.4)); },
+        (g) => { g.audio.staticBurst && g.audio.staticBurst(1.3); g.shake(.15); cam(g, V(3.6, 1.8, -6015.2), V(0, 1.2, -6020)); },
         ['director', "Very touching. Now listen to me, little girl. Put your brother on."],
-        (g) => { walk(D, g.player, -.6, -6020.6, { sp: 1.2, face: PI }); cam(g, V(-.2, 1.5, -6024.4), V(-.6, 1.4, -6020.4)); },
+        (g) => { walk(D, g.player, -.6, -6020.6, { sp: 1.2, face: PI }); cam(g, V(-.3, 1.7, -6023.4), V(-.6, 1.45, -6020.4)); },
         ['keem', "I'm here."],
         ['director', "The Riverside bridge. Dawn. You walk across alone, and the jets turn around. You don't, and they don't."],
         ['dana', "Keem, no."],
