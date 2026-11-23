@@ -80,13 +80,19 @@ export const LOOT_SPOTS = [
   ['lf3', 'duffel', 12, 54, .4], ['lc5', 'crate', -14, 50, .2], ['ld4', 'dumpster', 24, 64, 0],
   ['lc6', 'crate', 12, -50, 0], ['la7', 'arms', -14, -52, 1.1], ['ld5', 'dumpster', 18, -64, 0],
   ['ld6', 'dumpster', -124, -12, 1.57], ['lc7', 'crate', -124, 8, .3], ['lg4', 'gascans', -108, 14, 0], ['lf4', 'duffel', -110, -14, 2],
-  ['lc8', 'crate', 86, 18, .2], ['la8', 'arms', 86, 42, .8], ['ld7', 'dumpster', -92, 44, 0],
+  ['lc8', 'crate', 79, 17.4, .2], ['la8', 'arms', 86, 42, .8], ['ld7', 'dumpster', -92, 44, 0],
 ];
 const SPEC = { gascans: { table: 'gascache', label: 'Gas cans', w: 1.0, d: .6, h: .5 }, crate: { table: 'supply', label: 'Supply crate', w: 1.0, d: .8, h: .75 }, dumpster: { table: 'dumpster', label: 'Dumpster', w: 1.8, d: 1.0, h: 1.2 }, arms: { table: 'arms', label: 'Gun case', w: .9, d: .45, h: .4 }, duffel: { table: 'duffel', label: 'Duffel bag', w: .9, d: .45, h: .4 } };
 export function addLoot(W, spots = LOOT_SPOTS) {
+  const R = CFG.ROAD_HALF || 5;
+  const onRoad = (x, z, S) => { const hx = Math.max(S.w, S.d) / 2 + .35; return CFG.ZR.some(zr => Math.abs(z - zr) < R + hx) || CFG.XR.some(xr => Math.abs(x - xr) < R + hx); };
+  const clear = (x, z, S) => !W.col.hit(x, z, .9) && !onRoad(x, z, S);
   for (const [id, kind, x, z, ry] of spots) { const S = SPEC[kind]; let px = x, pz = z;
-    { const RH = (CFG.ROAD_HALF || 5) + .9; for (const zr of CFG.ZR) if (Math.abs(pz - zr) < RH) pz = zr + Math.sign(pz - zr || 1) * (RH + .3); for (const xr of CFG.XR) if (Math.abs(px - xr) < RH && Math.abs(pz - (CFG.ZR.find(zr => Math.abs(pz - zr) < RH + 1) ?? 1e9)) > RH) px = xr + Math.sign(px - xr || 1) * (RH + .3); } // v1.9.64 wider roads: keep loot on the sidewalk
-    if (W.col.hit(px, pz, .9)) { const alt = [[0, 2], [0, -2], [2, 0], [-2, 0], [2, 2], [-2, -2], [0, 4], [0, -4]].find(([dx, dz]) => !W.col.hit(x + dx, z + dz, .9)); if (!alt) continue; px = x + alt[0]; pz = z + alt[1]; }
+    { const pad = Math.max(S.w, S.d) / 2 + .45, RH = R + pad; // v1.9.93: clear by the item's own size, not a flat 0.9 m
+      for (const zr of CFG.ZR) if (Math.abs(pz - zr) < RH) pz = zr + Math.sign(pz - zr || 1) * (RH + .25);
+      for (const xr of CFG.XR) if (Math.abs(px - xr) < RH && Math.abs(pz - (CFG.ZR.find(zr => Math.abs(pz - zr) < RH + 1) ?? 1e9)) > RH) px = xr + Math.sign(px - xr || 1) * (RH + .25); }
+    // Prefer a sidewalk step over a shove onto the asphalt (the old +z first pick put lc8 on the z=24 road).
+    if (!clear(px, pz, S)) { const alt = [[-2, 0], [2, 0], [0, -2], [0, 2], [-3, 0], [3, 0], [-4, 0], [4, 0], [0, -3], [0, 3], [-2, -2], [2, -2], [-2, 2], [2, 2], [0, -4], [0, 4], [-5, 0], [5, 0]].find(([dx, dz]) => clear(px + dx, pz + dz, S)); if (!alt) continue; px += alt[0]; pz += alt[1]; }
     placeSpot(W, id, kind, px, pz, ry, S); }
 }
 function placeSpot(W, id, kind, x, z, ry, S) {
