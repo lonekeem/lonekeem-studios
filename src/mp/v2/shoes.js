@@ -88,7 +88,7 @@ function footBins(av, sd) {
   const g = av.skin.geometry, p = g.attributes.aP0 || g.attributes.position, w2 = g.attributes.aW2, n = p.count;
   let z0 = 9, z1 = -9; const pts = [];
   const ankY = av.tpl.P[(sd > 0 ? 'Left' : 'Right') + 'Foot'].y;
-  for (let i = 0; i < n; i++) { const x = p.getX(i); if (Math.sign(x) !== sd) continue; const y = p.getY(i), z = p.getZ(i); if (!(w2.getZ(i) > .5 || (y < ankY + .09 && w2.getY(i) + w2.getZ(i) > .5))) continue; pts.push([x, y, z]); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
+  for (let i = 0; i < n; i++) { const x = p.getX(i); if (Math.sign(x) !== sd) continue; const y = p.getY(i), z = p.getZ(i); const fw = w2.getZ(i), lw = w2.getY(i); if (!(fw > .25 || (y < ankY + .2 && fw + lw > .25))) continue; pts.push([x, y, z]); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
   const B = []; for (let k = 0; k < NU; k++) B.push({ x0: 9, x1: -9, y0: 9, y1: -9, n: 0 });
   for (const [x, y, z] of pts) { const k = Math.min(NU - 1, Math.floor((z - z0) / (z1 - z0) * NU)); const b = B[k]; b.x0 = Math.min(b.x0, x); b.x1 = Math.max(b.x1, x); b.y0 = Math.min(b.y0, y); b.y1 = Math.max(b.y1, y); b.n++; }
   for (let k = 0; k < NU; k++) if (!B[k].n) Object.assign(B[k], B[k - 1] || B[k + 1]);
@@ -113,12 +113,12 @@ function loft(av, sd, st) {
   const heelHalf = (heelB.x1 - heelB.x0) / 2;
   const sect = (k) => {
     const b = B[k]; const u = (k + .5) / NU;
-    const pad = .014 + st.bulk * .5;
+    const pad = .012 + st.bulk * .45;
     let x0 = b.x0 - pad, x1 = b.x1 + pad;
     const toeK = Math.max(0, (u - .7) / .3); const extra = st.bulk * Math.sin(Math.min(1, u * 1.4) * Math.PI * .5);
     x0 -= extra * .4; x1 += extra * .4;
-    const instep = Math.sin(Math.PI * ss(.16, .28, u) * (1 - ss(.58, .8, u)));
-    let top = b.y1 + pad + extra * .6 + instep * .01;
+    const instep = Math.sin(Math.PI * ss(.14, .26, u) * (1 - ss(.55, .82, u)));
+    let top = b.y1 + pad + extra * .6 + instep * .016;
     if (st.col > .06) {
       const shaft = ank.y + .02 + st.col;
       const fade0 = st.cowboyV ? .12 : .08, fade1 = st.cowboyV ? .52 : .42;
@@ -136,7 +136,7 @@ function loft(av, sd, st) {
       top = Math.min(top, ank.y + .028 + st.col + .04 * ss(.22, .42, u) * (1 - ss(.55, .8, u)));
     } else {
       // Low, level U-shaped opening around the ankle; rise only over the vamp.
-      const cover = b.y1 + .012 + instep * .01;
+      const cover = b.y1 + pad + instep * .012;
       const collar = Math.max(ground + st.sole + .018, ank.y - 0.022 + Math.min(st.col, 0) * 0.5);
       const open = 1 - ss(.26, .60, u);
       top = cover * (1 - open) + collar * open;
@@ -182,18 +182,9 @@ function loft(av, sd, st) {
   for (let c = 1; c <= capN; c++) { const a = c / capN * Math.PI / 2; const f = Math.cos(a); const r = { ...toe }; const hw = (toe.x1 - toe.x0) / 2, xc = (toe.x1 + toe.x0) / 2; const wf = Math.max(.12, Math.pow(f, .6 + (1 - tr) * .8)); r.x0 = xc - hw * wf; r.x1 = xc + hw * wf; r.y1 = toe.y0 + (toe.y1 - toe.y0) * Math.max(.25, Math.pow(f, .5)); if (st.openToe || st.slide) r.y1 = toeLip + Math.max(0, f) * (st.thong ? .002 : .005); r.z = toe.z + (.012 + st.bulk * .8 + (1 - tr) * .02) * Math.sin(a); r.u = 1; out.push(r); }
   const N = out.length;
   for (let k = 0; k < N; k++) { const r = out[k]; const xc = (r.x0 + r.x1) / 2, hw = (r.x1 - r.x0) / 2, yc = (r.y0 + r.y1) / 2, hh = (r.y1 - r.y0) / 2;
-    const fx0 = (r.bx0 != null ? r.bx0 : r.x0 + .004) - .006, fx1 = (r.bx1 != null ? r.bx1 : r.x1 - .004) + .006, fy1 = (r.by1 != null ? r.by1 : r.y1) + .006, fy0 = r.y0 + .002;
     for (let j = 0; j <= NV; j++) { const th = j / NV * Math.PI * 2; const c = Math.cos(th), s = Math.sin(th);
-      const nX = s < 0 ? 6 : 8, nY = s < 0 ? 6 : 8;
-      let x = xc + hw * Math.sign(c) * Math.pow(Math.abs(c), 2 / nX), y = yc + hh * Math.sign(s) * Math.pow(Math.abs(s), 2 / nY);
-      if (x > fx0 && x < fx1 && y > fy0 && y < fy1) {
-        const dx = x - xc, dy = y - yc; let t = 1e9;
-        if (dx > 1e-6) t = Math.min(t, (fx1 - xc) / dx);
-        if (dx < -1e-6) t = Math.min(t, (fx0 - xc) / dx);
-        if (dy > 1e-6) t = Math.min(t, (fy1 - yc) / dy);
-        if (dy < -1e-6) t = Math.min(t, (fy0 - yc) / dy);
-        if (t < 1e8) { x = xc + dx * t; y = yc + dy * t; }
-      }
+      const e = s < 0 ? 4 : 2.8;
+      const x = xc + hw * Math.sign(c) * Math.pow(Math.abs(c), 2 / e), y = yc + hh * Math.sign(s) * Math.pow(Math.abs(s), 2 / (s < 0 ? 6 : 2.5));
       pos.push(x, y, r.z); uv.push(k / (N - 1), j / NV, (y - r.y0) / Math.max(.001, r.y1 - r.y0), (x - xc) / Math.max(.001, hw)); } }
   for (let k = 0; k < N - 1; k++) for (let j = 0; j < NV; j++) { const a = k * (NV + 1) + j, b = a + NV + 1; idx.push(a, a + 1, b, a + 1, b + 1, b); }
   const cap = (k, flip) => { const c0 = pos.length / 3; const r = out[k]; pos.push((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2, r.z); uv.push(k / (N - 1), .25, .5, 0); for (let j = 0; j < NV; j++) { const a = k * (NV + 1) + j; flip ? idx.push(c0, a + 1, a) : idx.push(c0, a, a + 1); } };
