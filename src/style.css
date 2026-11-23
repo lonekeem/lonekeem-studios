@@ -730,3 +730,4 @@ kbd.kk{display:inline-block;min-width:1.5em;padding:1px 6px;margin:0 2px;border-
 #ctlRef .ctbl td:first-child{font-weight:700;white-space:nowrap;color:var(--g)}
 #ctlRef .ctbl .cw{opacity:.8;font-size:12px}
 @media (max-height:420px){#ctlRef .ctbl{font-size:12px}#ctlRef .ctbl td{padding:3px 5px}#ctlRef .ctbl .cw{font-size:11px}#tutHud h3{font-size:14px;margin:0 0 2px}#tutHud .tw{font-size:11.5px}#tutHud .th{font-size:12px;margin:0 0 4px}}
+#ctlRef kbd.pg{font-size:.9em}#ctlRef kbd.pg.sh{font-size:.8em}#tutHud kbd.pg.sh{font-size:.8em}
