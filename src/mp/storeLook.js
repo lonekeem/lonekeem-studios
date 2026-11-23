@@ -75,7 +75,7 @@ export function applySel(M, L, parts, OUTFIT) {
 function pieceWorn(id, extra = {}) {
   const pr = PRESETS[id];
   if (pr) return { id: pr.id, c: extra.c || pr.c || '#888888', c2: extra.c2 || pr.c2 || '#ffffff', p: pr.p ? patIndex(pr.p) : (extra.p || 0) };
-  return { id, c: extra.c || '#888888', c2: extra.c2 || '#ffffff', p: extra.p || 0, sole: extra.sole };
+  return { id, c: extra.c || '#888888', c2: extra.c2 || '#ffffff', p: extra.p || 0, sole: extra.sole, lace: extra.lace, sp: extra.sp };
 }
 function pieceAcc(id, extra = {}) {
   return { id, m: extra.m ?? 1, g: extra.g ?? 0, c: extra.c || '#2b2b30', c2: extra.c2 || '#f2f2f0', p: extra.p || 0 };
