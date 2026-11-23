@@ -140,10 +140,10 @@ export const steps = [
       script(g, [
         (g) => { g.audio.engine && g.audio.engine(true, .9); g.shake(.25); },
         ['nia', "What's that sound?"],
-        (g) => { cam(g, V(0, 1.4, -6440), V(0, 16, -6492)); D.j.forEach((J, i) => fly(J, V(-18 + i * 12, 36 - i * 2, -6720), V(-18 + i * 12, 18, -6470), 3.6)); },
+        (g) => { cam(g, V(0, 1.4, -6440), V(0, 11, -6478)); D.j.forEach((J, i) => fly(J, V(-12 + i * 10, 24 - i * 1.5, -6640), V(-12 + i * 10, 13, -6445), 5)); },
         ['pilot', "Harbor Authority, this is Flight Lead. We are over Riverside."],
         ['pilot', "We heard a little girl on the radio last night. My wife made her recipe in our kitchen."],
-        (g) => { D.j.forEach((J, i) => fly(J, V(-18 + i * 12, 18, -6470), V(40 + i * 12, 30, -6220), 3.2)); g.shake(.6); cam(g, V(-1.8, 1.5, -6455.4), V(-.4, 1.6, -6447.6)); },
+        (g) => { D.j.forEach((J, i) => fly(J, V(-12 + i * 10, 13, -6445), V(30 + i * 12, 30, -6230), 3.6)); g.shake(.6); cam(g, V(-1.8, 1.5, -6455.4), V(-.4, 1.6, -6447.6)); },
         ['pilot', "Riverside, Flight Lead. We're standing down. Going home."],
         (g) => { g.audio.engine && g.audio.engine(false); act(D.nia, 'hug', { k: 1 }); act(D.mom, 'hold', { k: .8 }); },
         ['keem', "It's over."],
@@ -161,7 +161,7 @@ export const steps = [
       // Dad on Mr. Dube's front steps with the hammer, everybody on the lawn
       place(D.dad, -12.8, -5035, PI / 2); place(D.dube, -13.8, -5032.8, PI * .6); place(g.player, -10.6, -5036.2, -PI / 2); place(D.nia, -10.4, -5037.8, -PI * .55); place(D.mom, -11.4, -5038.6, -PI * .4);
       place(D.reyes, -10.2, -5033.4, -PI * .6); place(D.danny, -7.6, -5036, -PI / 2); place(D.tuck, -7.2, -5034.4, -PI * .55);
-      g.cut = { anim: 'Idle_Loop', cam: V(-7.4, 1.7, -5031.4), look: V(-12, 1.3, -5035.4), flash: false }; snap(g);
+      g.cut = { anim: 'Idle_Loop', cam: V(-7.6, 1.8, -5039.6), look: V(-12, 1.3, -5035), flash: false }; snap(g);
       script(g, [
         (g) => { act(D.dad, 'hold', { sides: 'R', k: .8 }); g.audio.thud && g.audio.thud(); },
         ['dube', "Morning, Marcus. Those steps aren't going to fix themselves."],
@@ -169,7 +169,7 @@ export const steps = [
         (g) => { cam(g, V(-5.2, 1.6, -5038.6), V(-7.4, 1.4, -5035.2)); },
         ['danny', "I landed on a street! On purpose! Tuck, tell them it was on purpose."],
         ['tuck', "It was mostly on purpose."],
-        (g) => { cam(g, V(-8.4, 1.6, -5031.2), V(-10.2, 1.45, -5033.4)); },
+        (g) => { cam(g, V(-11.8, 1.6, -5030.6), V(-10.2, 1.45, -5033.4)); },
         ['reyes', "Forty-one towns have called in. They're making it. All of them."],
         (g) => { cam(g, V(-9, 1.05, -5039.8), V(-10.4, .95, -5037.8)); },
         ['nia', "Biscuit wants to know if it's quiet now."],
