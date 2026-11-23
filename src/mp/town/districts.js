@@ -23,10 +23,10 @@ export function inZone(x, z, pad = 0) {
 }
 
 // Hand-placed outer houses so the original 25 lots never shift. Faces point at the new roads.
-// 3 enterable, 16 closed (instanced).
+// 6 enterable, 13 closed (instanced). Extra enterable houses sit near Willow Park, the east road and the west road.
 export const OUTER_HOUSES = [
   { cx: -80, cz: 57.5, w: 9, d: 9, face: 'S', road: 72, side: -1, enterable: true },
-  { cx: -56, cz: 57.5, w: 9, d: 9, face: 'S', road: 72, side: -1 },
+  { cx: -56, cz: 57.5, w: 9, d: 9, face: 'S', road: 72, side: -1, enterable: true },
   { cx: 52, cz: 57.5, w: 9, d: 9, face: 'S', road: 72, side: -1 },
   { cx: 76, cz: 57.5, w: 9, d: 9, face: 'S', road: 72, side: -1, enterable: true },
   { cx: -64, cz: 86.5, w: 9, d: 9, face: 'N', road: 72, side: 1 },
@@ -37,10 +37,10 @@ export const OUTER_HOUSES = [
   { cx: 80, cz: -57.5, w: 9, d: 9, face: 'N', road: -72, side: 1 },
   { cx: -64, cz: -86.5, w: 9, d: 9, face: 'S', road: -72, side: -1 },
   { cx: 64, cz: -86.5, w: 9, d: 9, face: 'S', road: -72, side: -1 },
-  { cx: 89.5, cz: 16, w: 9, d: 9, face: 'E', road: 104 },
+  { cx: 89.5, cz: 16, w: 9, d: 9, face: 'E', road: 104, enterable: true },
   { cx: 89.5, cz: 40, w: 9, d: 9, face: 'E', road: 104 },
   { cx: 89.5, cz: -56, w: 9, d: 9, face: 'E', road: 104 },
-  { cx: -89.5, cz: 40, w: 9, d: 9, face: 'W', road: -104 },
+  { cx: -89.5, cz: 40, w: 9, d: 9, face: 'W', road: -104, enterable: true },
   { cx: -89.5, cz: 56, w: 9, d: 9, face: 'W', road: -104 },
   { cx: -89.5, cz: -48, w: 9, d: 9, face: 'W', road: -104 },
   { cx: -89.5, cz: -72, w: 9, d: 9, face: 'W', road: -104 },
@@ -201,10 +201,11 @@ function closedShop(W, cx, cz, w, d, name, bg) {
 
 function addMall(W) {
   const { B } = W;
-  // Ott's is enterable (kiosk kit, no KL Fuel storefront). The other two bays are closed facades (phone perf).
+  // Ott's and Cedar Laundry are enterable (kiosk kit). Falls Video stays a closed facade (phone perf).
   const bd = makeBuilding(W, { id: 'mall1', kind: 'kiosk', cx: -116, cz: -9, w: 9, d: 10, face: 'E', ci: 4, locked: 0, color: '#c8bfae' });
   W.enterable.push(bd); W.mall = bd; shopSign(bd, ["OTT'S", 'HARDWARE'], '#6a3b28');
-  closedShop(W, -116, 0, 8.6, 10, ['CEDAR', 'LAUNDRY'], '#2a4a6a');
+  const laundry = makeBuilding(W, { id: 'mall0', kind: 'kiosk', cx: -116, cz: 0, w: 8.6, d: 10, face: 'E', ci: 2, locked: 0, color: '#c8bfae' });
+  W.enterable.push(laundry); shopSign(laundry, ['CEDAR', 'LAUNDRY'], '#2a4a6a');
   closedShop(W, -116, 9, 8.6, 10, ['FALLS', 'VIDEO'], '#3a2a4a');
   B.bounds('concrete', -110.2, -107.6, .03, .09, -15.5, 15.5, '#c5c1b6', 2);
   for (let k = -3; k <= 3; k++) B.bounds('paint', -110.0, -107.8, .09, .12, k * 4.2 - .06, k * 4.2 + .06, '#d8c15a', 1);

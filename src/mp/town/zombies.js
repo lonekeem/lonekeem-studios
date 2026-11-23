@@ -137,6 +137,14 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
         if (d < 1.05) { move = false; if ((z.cd -= dt) <= 0 && !near.drv) { z.cd = R(1.2, 1.8); z.play('Punch_Jab', { once: true, force: true, speed: .9, cb: () => { z.curName = ''; } }); z.hitAt = .35; } z.root.rotation.y += angDiff(z.root.rotation.y, Math.atan2(tx, tz)) * Math.min(1, dt * 8); if (!z.oneShot) z.play('Idle_Loop'); }
         else { let dir = null; if (ni === 0 && nav && d > 2.5) dir = nav.dir(pp.x, pp.z); if (dir) { dx = dir[0]; dz = dir[1]; } else { dx = tx / d; dz = tz / d; } }
       } else if (z.st === 'look') { const ex = z.look[0] - pp.x, ez = z.look[1] - pp.z, d = Math.hypot(ex, ez) || 1; dx = ex / d; dz = ez / d; sp *= .8;
+      } else if (z.home) { // stay inside an infested building until they notice a player
+        const r = z.home;
+        if (!z.hx || z.homeT <= 0 || Math.hypot(z.hx - pp.x, z.hz - pp.z) < .7) {
+          z.hx = r.x0 + .7 + Math.random() * Math.max(.2, r.x1 - r.x0 - 1.4);
+          z.hz = r.z0 + .7 + Math.random() * Math.max(.2, r.z1 - r.z0 - 1.4);
+          z.homeT = 1.6 + Math.random() * 2.4;
+        }
+        z.homeT -= dt; const ex = z.hx - pp.x, ez = z.hz - pp.z, d = Math.hypot(ex, ez) || 1; dx = ex / d; dz = ez / d; sp *= z.tank ? .7 : .55; if (z.runner) sp *= .45;
       } else { // wander along the road graph
         if (z.node < 0) pickNode(z); const n = graph[z.node]; const wx = n.x + z.off[0], wz = n.z + z.off[1]; const ex = wx - pp.x, ez = wz - pp.z, d = Math.hypot(ex, ez); if (d < 2) { pickNode(z); } dx = ex / (d || 1); dz = ez / (d || 1); sp *= z.tank ? .85 : .7; if (z.runner) sp *= .4;
       }
@@ -164,7 +172,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     const part = head ? 'head' : r < .3 ? 'chest' : r < .45 ? 'belly' : r < .7 ? (Math.random() < .5 ? 'uarm' : 'farm') + side : r < .85 ? 'thigh' + side : r < .95 ? 'shin' + side : 'neck'; addWound(z, { kind: 'bullet', part, nx: lx * .9, nz: lz * .9 || .1, size: .045 * R(.9, 1.2), run: R(.12, .3) }); }
   out.wound = wound;
   // co-op missions: spawn a zombie at a spot (already chasing) and change how many roam the town
-  out.spawnAt = (x, z, o = {}) => { if (col.hit(x, z, .4)) return null; const c = make(x, z, o); c.node = -1; pickNode(c); if (o.chase !== false) { c.st = 'chase'; c.lose = 0; } c.mission = o.mission || null; return c; };
+  out.spawnAt = (x, z, o = {}) => { if (col.hit(x, z, .4) && !o.home) return null; const c = make(x, z, o); c.node = -1; pickNode(c); if (o.home) c.home = o.home; if (o.bid) c.bid = o.bid; if (o.packI != null) c.packI = o.packI; if (o.chase !== false) { c.st = 'chase'; c.lose = 0; } else { c.st = 'wander'; c.lose = 0; } c.mission = o.mission || null; return c; };
   out.setNight = k => { nightMul = k; };
   out.setTarget = n => { target = n; out.target = n; };
   out.update = update; return out;

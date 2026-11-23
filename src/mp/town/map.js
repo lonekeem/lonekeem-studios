@@ -1,5 +1,5 @@
 // "Quiet Falls": the original 2x2 core (25 houses: 7 enterable, 18 closed instanced exteriors, a store, a gas station, sheds)
-// plus an outer ring of streets — Willow Park, Quiet Falls School, Cedar Plaza, more houses. CORE lots stay fixed so
+// plus an outer ring of streets — Willow Park, Quiet Falls School, Cedar Plaza, more houses. Some enterable buildings are infested (see infest.js). CORE lots stay fixed so
 // co-op mission spots (crates, Marcus shed, store, radio tower, evac) do not move. New roads live on CFG.ZR/XR.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';

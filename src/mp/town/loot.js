@@ -45,6 +45,7 @@ Object.assign(TABLES, {
   arms: [['revolver', 3, 1, 1], ['smg', 3, 1, 1], ['rifle', 2.5, 1, 1], ['shotgun', 2.5, 1, 1], ['lever', 1.5, 1, 1], ['crossbow', 1.5, 1, 1], ['sniper', 1.2, 1, 1], ['saw', 1, 1, 1], ['auto12', 1, 1, 1], ['handcannon', 1, 1, 1], ['harpoon', .6, 1, 1], ['flamer', .6, 1, 1], ['launcher', .5, 1, 1], ['minigun', .4, 1, 1],
     ['ammo_light', 4, 12, 30], ['ammo_shell', 3, 6, 12], ['ammo_rifle', 4, 20, 50], ['ammo_bolt', 1.5, 5, 10], ['ammo_fuel', 1, 40, 100], ['ammo_gl', .8, 3, 6], ['grenade', 1.5, 1, 2]],
   duffel: [['cash', 3, 15, 40], ['revolver', .5, 1, 1], ['smg', .35, 1, 1], ['rifle', .25, 1, 1], ['ammo_rifle', 1, 10, 24], ['crossbow', .15, 1, 1], ['ammo_bolt', .3, 3, 6], ['medkit', 2, 1, 1], ['bandage', 3, 1, 3], ['bat', 1, 1, 1], ['crowbar', 1, 1, 1], ['gascan', 1.5, 1, 1], ['keys', 1, 1, 1], ['pistol', 1.2, 1, 1], ['ammo_light', 2, 8, 18], ['shotgun', .6, 1, 1], ['ammo_shell', 1.4, 3, 8], ['grenade', 1.2, 1, 2]],
+  clear: [['cash', 3, 8, 20], ['ammo_light', 4, 6, 14], ['bandage', 2, 1, 2], ['food', 2, 1, 2], ['ammo_shell', 2, 2, 6], ['water', 1, 1, 1], ['rags', 1, 1, 2]],
 });
 export function rollTable(name, rnd) { const T = TABLES[name] || TABLES.living; const out = []; const n = 1 + Math.floor(rnd() * 3); const tot = T.reduce((s, r) => s + r[1], 0);
   for (let i = 0; i < n; i++) { let x = rnd() * tot; for (const r of T) { x -= r[1]; if (x <= 0) { const q = r[2] + Math.floor(rnd() * (r[3] - r[2] + 1)); const e = out.find(o => o.id === r[0]); if (e) e.n += q; else out.push({ id: r[0], n: q }); break; } } } return out; }
