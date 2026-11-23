@@ -17,6 +17,7 @@ export function initMenu() {
   const play = $('#btnPlay'); if (play) play.addEventListener('click', () => $('#btnNew').click());
   $('#btnLobby').addEventListener('click', () => world().then(m => m.openOnline('games')));
   $('#btnBoard').addEventListener('click', () => world().then(m => m.openOnline('board')));
+  const bc = $('#btnClans'); if (bc) bc.addEventListener('click', () => world().then(m => m.openOnline('clans')));
   const best = () => { const b = +(LSget('atq3.survBest') || 0); const el = $('#survBestTxt'); if (el) el.textContent = b ? 'Endless waves · your best: wave ' + b : 'Endless waves'; };
   best(); new MutationObserver(best).observe($('#title'), { attributes: true, attributeFilter: ['class'] });
   setTimeout(() => import('../mp/cloud.js').then(m => { m.watchTitle(); m.autoSync().catch(() => {}); }).catch(() => {}), 1500);

@@ -51,7 +51,7 @@ function back(list) {
   if (lab.length) { lab.sort((a, b) => rc(a).y - rc(b).y); lab[0].click(); return; }
   try { handleHardwareBack(); } catch (e) { } }
 function tabs(d) { const f = st.focus; let bar = null;
-  const bars = [...document.querySelectorAll('.tabs, [id$=Tabs], .ctabs, .stabs')].filter(b => vis(b) && b.querySelectorAll('button').length > 1 && onTop(b.querySelector('button')));
+  const bars = [...document.querySelectorAll('.tabs, [id$=Tabs], .ctabs, .stabs, .wseg')].filter(b => vis(b) && b.querySelectorAll('button').length > 1 && onTop(b.querySelector('button')));
   if (!bars.length) return false; bar = (f && bars.find(b => b.contains(f))) || bars[0];
   const bs = [...bar.querySelectorAll('button')].filter(vis); let i = bs.findIndex(b => b.matches('.on, .sel, .active, [aria-selected=true]')); if (i < 0) i = 0;
   const n = bs[(i + d + bs.length) % bs.length]; n.click(); setTimeout(() => { setFocus(null); }, 0); return true; }
