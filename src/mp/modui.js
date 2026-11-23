@@ -238,6 +238,6 @@ export function attachStaff(root, ctx) {
   });
   api._stop = stopAuth;
   // If the first lookup runs before a restored session is ready, try again shortly so the tab appears without a reopen.
-  refreshRole().then(on => { if (!on) setTimeout(() => refreshRole(), 400); });
+  refreshRole().then(on => { if (!on) setTimeout(() => refreshRole().then(on2 => { if (!on2) setTimeout(() => refreshRole(), 800); }), 400); });
   return api;
 }

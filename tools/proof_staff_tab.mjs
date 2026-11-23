@@ -81,8 +81,8 @@ function tabInfo() {
   });
 }
 
-async function signFake(role, { notify = false } = {}) {
-  await p.evaluate(({ role, notify }) => {
+async function signFake(role, { notify = false, pending = false } = {}) {
+  await p.evaluate(({ role, notify, pending }) => {
     if (!role) {
       window.__MP_FAKE_AUTH = {};
       if (notify) window.dispatchEvent(new CustomEvent('atq-auth', { detail: { event: 'SIGNED_OUT' } }));
@@ -93,9 +93,18 @@ async function signFake(role, { notify = false } = {}) {
       email: role === 'admin' ? 'admin@localhost' : (role === 'moderator' ? 'mod@localhost' : 'player@localhost'),
       name: role === 'admin' ? 'Nova' : (role === 'moderator' ? 'Riley' : 'Alex'),
       role,
+      pending: !!pending,
     };
     if (notify) window.dispatchEvent(new CustomEvent('atq-auth', { detail: { event: 'SIGNED_IN' } }));
-  }, { role, notify });
+  }, { role, notify, pending });
+}
+
+async function clickStaffIfVisible() {
+  const info = await tabInfo();
+  if (info.hidden) return info;
+  await p.click('#wStaffTab');
+  await p.waitForTimeout(400);
+  return tabInfo();
 }
 
 // --- 1. Guest / unsigned: no Staff tab ---
@@ -131,35 +140,45 @@ info = await tabInfo();
 need('late player sign-in does not show Staff tab', info.hidden === true, info);
 await shot('05-late-player-no-staff');
 
-// --- 5. Restored admin session at startup ---
-await signFake('admin', { notify: false });
+// --- 5. Hydrating restored admin session: first lookup misses, retry shows tab without reopen or auth event ---
 await toTitle();
+await signFake('admin', { pending: true });
+await openLobby();
+info = await tabInfo();
+need('pending restored session is hidden at first', info.hidden === true, info);
+await p.evaluate(() => { if (window.__MP_FAKE_AUTH) window.__MP_FAKE_AUTH.pending = false; });
+await p.waitForTimeout(1500);
+info = await tabInfo();
+need('hydrating restored admin session shows Staff tab after retry', info.hidden === false && info.text === 'Staff', info);
+info = await clickStaffIfVisible();
+need('hydrating admin panel is Admin with Moderators and Log', info.title === 'Admin' && info.modsVisible && info.logVisible, info);
+await shot('06-restored-admin-panel');
+
+// --- 6. Already-hydrated restored admin session (set before opening Online) ---
+await toTitle();
+await signFake('admin');
 await openLobby();
 info = await tabInfo();
 need('restored admin session shows Staff tab', info.hidden === false && info.text === 'Staff', info);
-await p.click('#wStaffTab');
-await p.waitForTimeout(400);
-info = await tabInfo();
+info = await clickStaffIfVisible();
 need('restored admin panel is Admin with Moderators and Log', info.title === 'Admin' && info.modsVisible && info.logVisible, info);
-await shot('06-restored-admin-panel');
+await shot('06b-restored-admin-ready');
 
-// --- 6. Restored player session ---
-await signFake('player', { notify: false });
+// --- 7. Restored player session ---
 await toTitle();
+await signFake('player');
 await openLobby();
 info = await tabInfo();
 need('restored player session does not show Staff tab', info.hidden === true, info);
 await shot('07-restored-player-no-staff');
 
-// --- 7. Restored moderator session ---
-await signFake('moderator', { notify: false });
+// --- 8. Restored moderator session ---
 await toTitle();
+await signFake('moderator');
 await openLobby();
 info = await tabInfo();
 need('restored moderator session shows Staff tab', info.hidden === false, info);
-await p.click('#wStaffTab');
-await p.waitForTimeout(400);
-info = await tabInfo();
+info = await clickStaffIfVisible();
 need('restored mod panel is Moderator without Moderators/Log', info.title === 'Moderator' && !info.modsVisible && !info.logVisible, info);
 await shot('08-restored-mod-panel');
 
