@@ -7,7 +7,7 @@ import { walk, tickMv, cam, snap, script, cast, followAll, freeze, place, face, 
 import { buildRoofHelipad } from './kit/roof.js';
 import { mats, prop, lamp } from './kit/common.js';
 
-export const meta = { n: 16, title: 'Last Light Out', endQuote: '“It\'s still quiet here.”', nextTeaser: 'To be continued — Chapter 17 coming soon.' };
+export const meta = { n: 16, title: 'Last Light Out', endQuote: '“It\'s still quiet here.”' };
 export const speakers = { harlow: 'Commander Harlow' };
 export const Z0 = -4500;
 let R = null;

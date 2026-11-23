@@ -433,9 +433,9 @@ export async function buildWorld(scene, Q, texLoader, base, CM = {}, yieldFn) {
     Z_pl(0, 8, -2664, '#ff4040', 14, 30); fire(-8, 0, -2560, .8); });
   let ensureZone = () => null;
   // ===== v2.0 CHAPTERS 12+ · registered from src/game/chapters/chNN.js (each owns a 300 m band; zones show only during their chapter) =====
-  // bands: ch12 z -2900..-3200 · ch13 -3300..-3600 · ch14 -3700..-4000 · ch15 -4100..-4400 · ch16 -4500..-4800
-  box(-300, -48, -4900, -2790); box(48, 300, -4900, -2790); box(-300, 300, -4960, -4900);
-  { const gN = new THREE.Mesh(new THREE.PlaneGeometry(300, 2120), groundMat); gN.rotation.x = -Math.PI / 2; gN.position.set(0, -0.006, -3850); gN.receiveShadow = true; scene.add(gN);
+  // bands: ch12 z -2900..-3200 · ch13 -3300..-3600 · ch14 -3700..-4000 · ch15 -4100..-4400 · ch16 -4500..-4800 · ch17 -4900..-5300 · ch18 -5400..-5700 · ch19 -5800..-6100 · ch20 -6200..-6600
+  box(-300, -48, -6900, -2790); box(48, 300, -6900, -2790); box(-300, 300, -6960, -6900);
+  { const gN = new THREE.Mesh(new THREE.PlaneGeometry(300, 4170), groundMat); gN.rotation.x = -Math.PI / 2; gN.position.set(0, -0.006, -4875); gN.receiveShadow = true; scene.add(gN);
     const kitCtx = { THREE, scene, Q, box, wallBox, sign, road, Z_pl, Z_lamp, fire, car, plankMat, swMat, groundMat, signTex, lights, walls, updaters, colliders };
     // Chapters 12+ are built the first time they are needed, so boot / Chapter 1 does not compile the hospital set.
     ensureZone = (ch) => {

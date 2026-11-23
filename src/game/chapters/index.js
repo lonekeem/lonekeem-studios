@@ -6,8 +6,10 @@ import * as ch13 from './ch13.js';
 import * as ch14 from './ch14.js';
 import * as ch15 from './ch15.js';
 import * as ch16 from './ch16.js';
+import * as ch17 from './ch17.js';
+import * as ch18 from './ch18.js';
 
-export const CH_MODULES = [ch12, ch13, ch14, ch15, ch16];
+export const CH_MODULES = [ch12, ch13, ch14, ch15, ch16, ch17, ch18];
 export const CHAPTER_LIST = [...CORE_CHAPTERS, ...CH_MODULES.map(m => m.meta)];
 export const NEW_STEPS = CH_MODULES.flatMap(m => m.steps);
 export const NEW_LOOT = CH_MODULES.flatMap(m => m.loot || []);
