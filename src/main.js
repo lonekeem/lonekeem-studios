@@ -306,7 +306,7 @@ $('#btnEndNext').onclick = () => { save = loadSave(LS) || save; const nc = Math.
 var CHN = CHAPTERS.map(c => (c ? c.title : '')), CHS = CHAPTERS.map(c => (c ? c.start : 0)); // derived from the chapter registry
 const unlockedCh = (s) => Math.max(s.maxCh || 1, s.done || (s.step || 0) >= 7 ? 2 : 1, s.done2 ? 3 : 1, CHS.findLastIndex(v => (s.step || 0) >= v) || 1);
 // chapter-select buttons are generated from the registry (src/game/chapters), so adding a chapter needs no HTML/menu edits
-{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.88 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
+{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.89 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
 const chList = $('#chList'); for (let c = 1; c <= LAST_CH; c++) { const b = document.createElement('button'); b.id = 'btnCh' + c; b.className = 'chb'; b.innerHTML = '<span class="cht"></span><span class="chs"></span>'; b.querySelector('.cht').textContent = 'Chapter ' + c + ' · ' + CHN[c]; chList.appendChild(b); }
 // v1.9.85: difficulty picker + star ratings; chapters behind your story progress start as replays (story progress untouched)
 const progCh = (s) => (s.step || 0) >= LAST_STORY_STEP && s.done ? LAST_CH + 1 : chOf(s.step || 0);
