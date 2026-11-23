@@ -117,7 +117,7 @@ function loft(av, sd, st) {
     let x0 = b.x0 - pad, x1 = b.x1 + pad;
     const toeK = Math.max(0, (u - .7) / .3); const extra = st.bulk * Math.sin(Math.min(1, u * 1.4) * Math.PI * .5);
     const instep = Math.sin(Math.PI * ss(.14, .26, u) * (1 - ss(.55, .82, u)));
-    x0 -= extra * .4 + instep * .01; x1 += extra * .4 + instep * .01;
+    x0 -= extra * .4 + instep * .006; x1 += extra * .4 + instep * .006;
     let top = b.y1 + pad + extra * .6 + instep * .016;
     if (st.col > .06) {
       const shaft = ank.y + .02 + st.col;
@@ -136,7 +136,7 @@ function loft(av, sd, st) {
       top = Math.min(top, ank.y + .028 + st.col + .04 * ss(.22, .42, u) * (1 - ss(.55, .8, u)));
     } else {
       // Low, level U-shaped opening around the ankle; rise only over the vamp.
-      const cover = Math.max(b.y1 + pad, ank.y + 0.014) + instep * 0.01;
+      const cover = Math.max(b.y1 + pad, ank.y - 0.028) + instep * 0.006;
       const collar = Math.max(ground + st.sole + .018, ank.y - 0.022 + Math.min(st.col, 0) * 0.5);
       const open = 1 - ss(.10, .34, u);
       top = cover * (1 - open) + collar * open;
