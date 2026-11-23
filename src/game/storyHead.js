@@ -69,7 +69,9 @@ export function attachStoryV2Head(c, L, sk, sm) {
     const lips = buildMouthGeos(Lm, Hprm, look, g);
     const lipM = new THREE.MeshStandardMaterial({ color: fo.lipCol, roughness: 0.44, metalness: 0 });
     const tthM = new THREE.MeshStandardMaterial({ color: '#f4f1ea', roughness: 0.28, metalness: 0 });
-    for (const [geoL, m] of [[lips.upper, lipM], [lips.lower, lipM], [lips.teeth, tthM]]) {
+    const parts = [[lips.upper, lipM], [lips.lower, lipM]];
+    if (lips.teeth) parts.push([lips.teeth, tthM]);
+    for (const [geoL, m] of parts) {
       toBone(geoL);
       const mesh = new THREE.Mesh(geoL, m);
       mesh.castShadow = true; mesh.frustumCulled = false; bone.add(mesh); c.parts.push(mesh);

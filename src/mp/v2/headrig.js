@@ -87,20 +87,29 @@ function lipRibbon(w, y, z, thick, depth, smile, lift, dir, nu = 28, nv = 8) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setIndex(idx); g.computeVertexNormals(); return g;
 }
-function teethGeo(w, y, z, open) {
-  const g = new THREE.BoxGeometry(w * 0.86, 0.006 + open * 0.01, 0.007, 6, 1, 1);
-  g.translate(0, y, z - 0.002); return g;
+// Teeth are a shared mesh that used to be mounted on every mouth, which left a white
+// strip between closed lips. Only build them for styles flagged open (ms[3]).
+function teethGeo(w, y, zFront) {
+  const h = 0.0036, d = 0.0042;
+  const g = new THREE.BoxGeometry(w * 0.7, h, d, 8, 1, 1);
+  // Front face stays behind the lip leading edge so it sits in the opening, not on top of it.
+  g.translate(0, y, zFront - d / 2);
+  return g;
 }
 export function buildMouthGeos(L, H, look, g) {
   const mn = (C.MOUTHS[look.mouth && look.mouth.s || 0] || C.MOUTHS[0])[0];
   const ms = MOUTH_SHAPES[mn] || MOUTH_SHAPES.Neutral; // [w, full, smile, open]
   const w0 = (g === 'f' ? 0.026 : 0.028) * (1 + 0.25 * ((ms[0] || .054) / .054 - 1));
-  const full = ms[1] || .5, smile = (ms[2] || 0) * 0.007, open = Math.min(0.0024, (ms[3] || 0) * 0.0022);
+  const full = ms[1] || .5, smile = (ms[2] || 0) * 0.007;
+  const showTeeth = !!(ms[3]);
+  // Closed mouths keep the lips together. Open/smiling styles get a real gap so teeth can sit inside.
+  const open = showTeeth ? 0.0058 : 0;
   const my = L.mouthY, mz = L.surfZ(0, my) + 0.0006;
   const thick = 0.0036 + full * 0.0028, depth = 0.0032 + full * 0.0024;
-  const upper = lipRibbon(w0, my + 0.0016 + open * 0.2, mz, thick, depth, smile, 0.0008, 1);
+  const upper = lipRibbon(w0, my + 0.0016 + open * 0.35, mz, thick, depth, smile, 0.0008, 1);
   const lower = lipRibbon(w0 * 0.96, my - 0.0024 - open, mz - 0.0002, thick * 1.06, depth * 1.02, smile * 0.7, -0.0004, -1);
-  const teeth = teethGeo(w0, my - 0.0008 - open * 0.2, mz, open);
+  const midY = (my + 0.0016 + open * 0.35 + 0.0008 + (my - 0.0024 - open - 0.0004)) / 2;
+  const teeth = showTeeth ? teethGeo(w0, midY, mz - 0.0012) : null;
   return { upper, lower, teeth };
 }
 const _lipMats = new Map();
@@ -109,6 +118,7 @@ function lipMat(col, kind) {
   if (_lipMats.has(k)) return _lipMats.get(k);
   const m = new THREE.MeshStandardMaterial({
     color: kind === 'teeth' ? '#f4f1ea' : col, roughness: kind === 'teeth' ? 0.28 : 0.44, metalness: 0,
+    polygonOffset: kind === 'teeth', polygonOffsetFactor: kind === 'teeth' ? 1 : 0, polygonOffsetUnits: kind === 'teeth' ? 1 : 0,
   });
   _lipMats.set(k, m); return m;
 }
@@ -123,10 +133,12 @@ function mountLips(av, look) {
   const fo = faceOpts(look, g, L, H);
   const geos = buildMouthGeos(L, H, look, g);
   const out = [];
-  for (const [geo, kind] of [[geos.upper, 'lip'], [geos.lower, 'lip'], [geos.teeth, 'teeth']]) {
+  const parts = [[geos.upper, 'lip', 2], [geos.lower, 'lip', 2]];
+  if (geos.teeth) parts.push([geos.teeth, 'teeth', 1]);
+  for (const [geo, kind, order] of parts) {
     geo.scale(s, s, s); geo.translate(C.x, C.y, C.z);
     skinTo(av, geo, () => [['Head', 1]]);
-    out.push(bindMesh(av, new THREE.SkinnedMesh(geo, lipMat(fo.lipCol, kind)), 2));
+    out.push(bindMesh(av, new THREE.SkinnedMesh(geo, lipMat(fo.lipCol, kind)), order));
   }
   av._lips = out;
 }
