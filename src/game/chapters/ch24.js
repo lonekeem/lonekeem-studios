@@ -65,7 +65,8 @@ export function buildZone(ctx) {
 function haleBoss(g, D) { const b = g.spawnZ(12, -8082, { boss: true, raider: true, hp: 3000, scale: 1.45, gun: 'rifle', shirt: '#1e2a44', runner: false }); b.cd = 2; b.aggro = 99; b.speed = 1.6; g.boss = b; D.b = b;
   $q('#bossn').textContent = 'COMMODORE HALE — Harbor Authority'; paintAuth(b, '#1e2a44', '#1a1e28'); helmOn(b, '#e8e8e2'); return b; }
 function grayBoss(g, D, x, z) { const b = g.spawnZ(x, z, { boss: true, fem: true, hp: 6400, scale: 2.15, runner: false }); b.cd = 2; b.aggro = 99; b.speed = 1.6; g.boss = b; D.b = b; $q('#bossn').textContent = 'THE GRAY — the first carrier';
-  const u = b.mat && b.mat.userData && b.mat.userData.u; if (u) { if (u.uShirt) u.uShirt.value.set('#c8ccd0'); if (u.uPants) u.uPants.value.set('#a8acb0'); } grayify(b); b.armor = (o) => (!D.on ? 0 : D.weak > 0 ? 1.6 : (o.boom ? .5 : .25)); g.audio.roar && setTimeout(() => g.audio.roar(b), 600); return b; }
+  const u = b.mat && b.mat.userData && b.mat.userData.u; if (u) { if (u.uShirt) u.uShirt.value.set('#c8ccd0'); if (u.uPants) u.uPants.value.set('#a8acb0'); } grayify(b); if (u && u.uBlood) u.uBlood.value = .35; const hm = []; b.root.traverse(o => { if (o.material && !Array.isArray(o.material) && o.material.name === 'Material_0') { o.material = o.material.clone(); hm.push(o.material); } });
+  D.tint = (weak) => { if (u && u.uSkin) u.uSkin.value.set(weak ? '#5a8ac8' : '#8e989e'); hm.forEach(m => m.color.set(weak ? '#7aa0e0' : '#a4acb2')); }; D.tint(false); b.armor = (o) => (!D.on ? 0 : D.weak > 0 ? 1.6 : (o.boom ? .5 : .25)); g.audio.roar && setTimeout(() => g.audio.roar(b), 600); return b; }
 
 const ALL = ['dad', 'nia', 'mom', 'reyes', 'danny'];
 const FIGHT = ['dad', 'reyes', 'mom'];
@@ -191,16 +192,16 @@ export const steps = [
       const u = b && b.mat && b.mat.userData && b.mat.userData.u;
       if (!b || b.dead || b.hp <= 0) { if (b && (b.dead || b.hp <= 0) && !D.won) { D.won = true; D.rings && D.rings.forEach(r => g.scene.remove(r.m)); D.rings = []; g.say([['marcus', "That's for my family. All of them."]]); afterBoss(g, () => goto(g, 'c24_dawn', 800), 5); } return; }
       if (g.cut) return;
-      if (D.weak > 0) { D.weak -= dt; if (D.weak <= 0) { if (u && u.uSkin) u.uSkin.value.set('#8e989e'); b.speed = 1.6; g.toast('The dose wore off', 1); } }
+      if (D.weak > 0) { D.weak -= dt; if (D.weak <= 0) { D.tint(false); b.speed = 1.6; g.toast('The dose wore off', 1); } }
       D.dart -= dt; if (D.dart <= 0 && D.weak <= 0) { D.dart = 7.5; const dir = b.root.position.clone().sub(D.vance.root.position).normalize(); D.vance.root.rotation.y = Math.atan2(dir.x, dir.z); D.vance.play && D.vance.play('Pistol_Aim_Neutral'); g.audio.shot && g.audio.shot('pistol');
-        D.weak = 4.5; b.speed = 1.0; if (u && u.uSkin) u.uSkin.value.set('#5a8ac8'); g.toast('Biscuit dose! It\'s weak — hit it NOW!', 2); if (!D.said) { D.said = true; g.say([['vance', "Dart's in! Now, Keem, now!"]]); } }
+        D.weak = 4.5; b.speed = 1.0; D.tint(true); g.toast('Biscuit dose! It\'s weak — hit it NOW!', 2); if (!D.said) { D.said = true; g.say([['vance', "Dart's in! Now, Keem, now!"]]); } }
       D.cd -= dt; if (D.cd <= 0) { D.cd = b.hp < b.maxHp * .4 ? 2.9 : 3.8; const P = g.player.root.position; ring(g, D, P.x, P.z, { r: 2.5, life: 1.15, dmg: 26 }); if (D.weak <= 0) { b.speed = 4.4; setTimeout(() => { if (b && !b.dead && !(D.weak > 0)) b.speed = 1.6; }, 1200); } }
       if (!D.half && b.hp < b.maxHp * .55) { D.half = true; g.toast('It is calling them', 2); grayHorde(g, 8, [[-28, -8080], [28, -8090], [-20, -8140], [20, -8140]], { runner: true }); g.say([['reyes', "It's calling the others. Keep it on the dart!"]]); }
       if (!D.low && b.hp < b.maxHp * .25) { D.low = true; g.say([['keem', "Dad! With me! Together!"], ['marcus', "Right next to you, son."]]); } } },
 
-  { id: 'c24_dawn', ch: 24, cp: [0, -8122, PI], obj: '', hint: '', mood: 'day', beat: 0, rain: false,
+  { id: 'c24_dawn', ch: 24, cp: [22, -8124, PI / 2], obj: '', hint: '', mood: 'day', beat: 0, rain: false,
     enter(g) {
-      const D = g.stepData; g.openGate(true); dry(g); D.lobster = false; cast(g, D, 0, -8120, ALL); vance(g, D, 3.2, -8121); giveHammer(D.dad, false); D.dw = .9; dawn(g, .9); if (A.mastLamp) A.mastLamp.emissiveIntensity = 0;
+      const D = g.stepData; g.wpTarget = null; g.openGate(true); dry(g); D.lobster = false; cast(g, D, 0, -8120, ALL); vance(g, D, 3.2, -8121); giveHammer(D.dad, false); D.dw = .9; dawn(g, .9); if (A.mastLamp) A.mastLamp.emissiveIntensity = 0;
       // the family at the lighthouse wall looking east over the water, sunrise
       place(g.player, 22, -8124, PI / 2); place(D.dad, 22.6, -8122.2, PI / 2); place(D.nia, 21.2, -8125.8, PI / 2); place(D.mom, 20.4, -8126.6, PI / 2); place(D.reyes, 19.6, -8121.4, PI * .6); place(D.vance, 20.6, -8119.8, PI * .6); place(D.danny, 18.6, -8123.6, PI * .55);
       if (D.nia.biscuit) D.nia.biscuit.visible = false; D.B = spawnBiscuit(g, 21.8, -8126.8, { y: 0, scale: 2.6 }); if (D.B.grp.children[1]) D.B.grp.children[1].visible = false; D.B.grp.rotation.y = PI / 2; g.props.push(D.B.grp);
