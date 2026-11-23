@@ -135,7 +135,7 @@ export const steps = [
       const vance = g.npc('vance', 'vance', 1.2, -3730, 0, 'Idle_Loop'); D.vance = vance;
       const reyes = g.npc('reyes', 'reyes', A.analyzer.pos[0] + 2.2, A.analyzer.pos[1] + 1.2, PI, 'Idle_Loop'); D.reyes = reyes;
       g.player.root.position.set(0, 0, -3708); g.player.root.rotation.y = PI;
-      g.cut = { anim: 'Idle_Loop', cam: V(3.4, 1.7, -3703.5), look: V(0, 1.25, -3710), flash: false }; snap(g);
+      g.cut = { anim: 'Idle_Loop', cam: V(3.4, 1.8, -3705.4), look: V(0, 1.25, -3710), flash: false }; snap(g);
       script(g, [
         (g) => { g.audio.thud && g.audio.thud(); act(vance, 'point', { sides: 'R', k: 1 }); walk(D, vance, 0.4, -3720, { sp: 1.7, end: 'Idle_Talking_Loop' }); },
         ['vance', 'Inside. Now. The rabbit first, then sleeves up.'],

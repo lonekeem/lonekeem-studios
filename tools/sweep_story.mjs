@@ -38,6 +38,12 @@ for (const c of LIST) { errs = []; nf = []; const t0 = Date.now(); const rec = {
         const ending = !document.querySelector('#ending')?.classList.contains('hidden'); const s = window.__atq.story[g.step];
         return { step: g.step, id: s && s.id, ending, obj: document.querySelector('#objt')?.textContent, alive: g.alive().length, state: window.__atq.state }; });
       await tick(30); await p.waitForTimeout(250);
+      const occ = await p.evaluate(async () => { const g = window.__atq.game; if (!g.cut || !g.cut.cam) return null; if (!window.__T3) window.__T3 = await import('/node_modules/three/build/three.module.js');
+        const c = g.camera, P = c.position.clone(), L = g.cut.look || g._lk; if (!L) return null; const d = L.clone().sub(P); const len = d.length(); if (len < 1.5) return null; d.normalize();
+        const rc = new window.__T3.Raycaster(P, d, 0, len - .8); rc.camera = c; const h = rc.intersectObjects(g.scene.children, true).filter(x => x.object.visible && x.object.type === 'Mesh' && !x.object.material.transparent && !x.object.isSkinnedMesh);
+        let vis = true; for (let o = h[0] && h[0].object; o; o = o.parent) if (!o.visible) vis = false;
+        if (h.length && h[0].distance < 1.2 && vis) { const gp = h[0].object.geometry.parameters; return { cam: P.toArray().map(v => +v.toFixed(2)), look: L.toArray().map(v => +v.toFixed(2)), hit: +h[0].distance.toFixed(2), geo: gp ? JSON.stringify(gp).slice(0, 80) : h[0].object.geometry.type, at: h[0].object.getWorldPosition(new window.__T3.Vector3()).toArray().map(v => +v.toFixed(1)) }; } return null; });
+      if (occ) { const key = occ.cam.join(','); if (!rec.occ) rec.occ = {}; if (!rec.occ[key]) { rec.occ[key] = { step: inf.id, ...occ }; await p.screenshot({ path: `${OUT}/occ-ch${c}-${inf.id}-${Object.keys(rec.occ).length}.png` }); } }
       if (inf.ending) { rec.ending = true; break; }
       if (inf.state === 'dead') { rec.died = inf.id; break; }
       if (/Boss down/.test(inf.obj || '')) await p.waitForTimeout(1200);
