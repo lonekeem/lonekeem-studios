@@ -64,13 +64,36 @@ export function buildZone(ctx) {
 // ---------- bosses ----------
 function haleBoss(g, D) { const b = g.spawnZ(12, -8082, { boss: true, raider: true, hp: 3000, scale: 1.45, gun: 'rifle', shirt: '#1e2a44', runner: false }); b.cd = 2; b.aggro = 99; b.speed = 1.6; g.boss = b; D.b = b;
   $q('#bossn').textContent = 'COMMODORE HALE — Harbor Authority'; paintAuth(b, '#1e2a44', '#1a1e28'); helmOn(b, '#e8e8e2'); return b; }
-function grayBoss(g, D, x, z) { const b = g.spawnZ(x, z, { boss: true, fem: true, hp: 6400, scale: 2.15, runner: false }); b.cd = 2; b.aggro = 99; b.speed = 1.6; g.boss = b; D.b = b; $q('#bossn').textContent = 'THE GRAY — the first carrier';
-  const u = b.mat && b.mat.userData && b.mat.userData.u; if (u) { if (u.uShirt) u.uShirt.value.set('#c8ccd0'); if (u.uPants) u.uPants.value.set('#a8acb0'); } grayify(b); if (u && u.uBlood) u.uBlood.value = .35; const hm = []; b.root.traverse(o => { if (o.material && !Array.isArray(o.material) && (o.material.name === 'Material_0' || o.material.vertexColors)) { o.material = o.material.clone(); hm.push(o.material); } });
-  D.tint = (weak) => { if (u && u.uSkin) u.uSkin.value.set(weak ? '#5a8ac8' : '#8e989e'); hm.forEach(m => m.color.set(weak ? '#7aa0e0' : '#a4acb2')); }; D.tint(false); b.armor = (o) => (!D.on ? 0 : D.weak > 0 ? 1.6 : (o.boom ? .5 : .25)); g.audio.roar && setTimeout(() => g.audio.roar(b), 600); return b; }
+// The Gray, the first carrier: one fixed, fully gray look (no random survivor colors), taller and gaunt, bone spurs down the
+// spine, long claws, glowing pale eyes and a slow gray haze. Hits and the death throw gray ash instead of red gore (z.ash).
+const GRAY = { skin: '#8a9296', shirt: '#50565a', pants: '#3c4044', shoes: '#2e3134', hair: '#5e6468' };
+function desat(mesh, tint) { const g0 = mesh.geometry, c = g0 && g0.attributes && g0.attributes.color; if (!c || mesh.userData._desat) return; const geo = g0.clone(), col = geo.attributes.color;
+  for (let i = 0; i < col.count; i++) { const l = col.getX(i) * .3 + col.getY(i) * .59 + col.getZ(i) * .11; col.setXYZ(i, l * tint[0], l * tint[1], l * tint[2]); } col.needsUpdate = true; mesh.geometry = geo; mesh.userData._desat = true; }
+function grayBoss(g, D, x, z) { const b = g.spawnZ(x, z, { boss: true, fem: false, rig: null, hp: 6400, scale: 2.45, runner: false }); b.cd = 2; b.aggro = 99; b.speed = 1.6; g.boss = b; D.b = b; b.ash = true; $q('#bossn').textContent = 'THE GRAY — the first carrier';
+  const u = b.mat && b.mat.userData && b.mat.userData.u; if (u) { ['Skin', 'Shirt', 'Pants', 'Shoes', 'Hair'].forEach(k => { if (u['u' + k]) u['u' + k].value.set(GRAY[k.toLowerCase()]); }); ['uJacket', 'uJSleeve'].forEach(k => { if (u[k]) u[k].value.set(GRAY.shirt); }); if (u.uBlood) u.uBlood.value = 0; if (u.uGrime) u.uGrime.value = .9; if (u.uJk) u.uJk.value = 0; ['uDecal', 'uBadge', 'uStripe', 'uPlaid', 'uCamo', 'uPuff', 'uGloss', 'uZed'].forEach(k => { if (u[k] && typeof u[k].value === 'number') u[k].value = 0; }); }
+  grayify(b, { eyes: false }); const hm = [];
+  b.root.traverse(o => { if (!o.isMesh || !o.material || Array.isArray(o.material) || o.material === b.mat) return; if (o.material.vertexColors) desat(o, [.62, .66, .7]); if (o.material.isMeshStandardMaterial && o.material.name !== 'grayfx') { o.material = o.material.clone(); hm.push(o.material); } });
+  // bone spurs, claws, eyes, haze
+  const bone = new THREE.MeshStandardMaterial({ color: '#c9ccc6', roughness: .55, name: 'grayfx' }), dark = new THREE.MeshStandardMaterial({ color: '#2a2e31', roughness: .4, metalness: .2, name: 'grayfx' });
+  const eyeM = new THREE.MeshBasicMaterial({ color: '#e8f8ff', name: 'grayfx' }); D.eyeM = eyeM;
+  const at = (bn, fn) => { const bb = b.bone && b.bone(bn); if (bb) fn(bb); };
+  ['DEF-spine.001', 'DEF-spine.002', 'DEF-spine.003', 'DEF-neck'].forEach((bn, i) => at(bn, bb => { for (const sx of [-1, 1]) { const sp = new THREE.Mesh(new THREE.ConeGeometry(.018, .09 + i * .02, 5), bone); sp.position.set(sx * .035, .05, -.09); sp.rotation.set(-1.9, 0, sx * .35); bb.add(sp); } }));
+  ['DEF-shoulder.L', 'DEF-shoulder.R'].forEach(bn => at(bn, bb => { for (let k = 0; k < 2; k++) { const sp = new THREE.Mesh(new THREE.ConeGeometry(.016, .11, 5), bone); sp.position.set(0, .06 + k * .05, -.03); sp.rotation.set(-.6, 0, 0); bb.add(sp); } }));
+  ['DEF-hand.L', 'DEF-hand.R'].forEach(bn => at(bn, bb => { for (let k = -1; k <= 1; k++) { const cl = new THREE.Mesh(new THREE.ConeGeometry(.008, .12, 4), dark); cl.position.set(k * .018, .13, .01); bb.add(cl); } }));
+  at('DEF-head', hb => { [-1, 1].forEach(sx => { const e = new THREE.Mesh(new THREE.SphereGeometry(.016, 8, 6), eyeM); e.position.set(sx * .032, .045, .086); hb.add(e); }); const glow = new THREE.PointLight('#cfe8ff', 1.2, 3.5); glow.position.set(0, .05, .2); hb.add(glow); });
+  { const hz = new THREE.Group(), hm2 = new THREE.MeshBasicMaterial({ color: '#9aa4aa', transparent: true, opacity: .16, depthWrite: false, name: 'grayfx' }); for (let i = 0; i < 7; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(.35 + (i % 3) * .1, 8, 6), hm2); m.userData.a = i * .9; m.userData.r = .45 + (i % 2) * .2; hz.add(m); } b.root.add(hz); D.haze = hz; D.hazeM = hm2; }
+  D.tint = (weak) => { if (u && u.uSkin) u.uSkin.value.set(weak ? '#5a8ac8' : GRAY.skin); hm.forEach(m => m.color.set(weak ? '#9ab8f0' : '#ffffff')); eyeM.color.set(weak ? '#7ab8ff' : '#e8f8ff'); };
+  D.tint(false); b.armor = (o) => (!D.on ? 0 : D.weak > 0 ? 1.6 : (o.boom ? .5 : .25)); g.audio.roar && setTimeout(() => g.audio.roar(b), 600); return b; }
+// per frame: haze drifts around the body; once dead, the body crumbles into the ground as ash
+function grayTick(g, D, dt) { const b = D.b; if (!b) return; const u = b.mat && b.mat.userData && b.mat.userData.u; if (u && u.uBlood) u.uBlood.value = 0;
+  if (D.haze) D.haze.children.forEach(m => { m.userData.a += dt * .7; m.position.set(Math.cos(m.userData.a) * m.userData.r, .5 + (Math.sin(m.userData.a * 1.3) * .5 + .5) * 1.1, Math.sin(m.userData.a) * m.userData.r); });
+  if (b.dead) { D.crumble = (D.crumble || 0) + dt; const k = Math.max(0, D.crumble - 1.4); if (k > 0 && k < 3.2) { b.root.position.y = -k * .55; if (D.hazeM) D.hazeM.opacity = Math.max(0, .16 - k * .05); D.ashT = (D.ashT || 0) - dt; if (D.ashT <= 0) { D.ashT = .12; const p = b.root.position.clone(); p.y = Math.max(.2, 1.2 - k * .3); p.x += rnd(-.6, .6); p.z += rnd(-.6, .6); g.gib(p, 6, Math.random() < .5 ? '#9aa2a6' : '#c8ced2'); } } else if (k >= 3.2) b.root.visible = false; } }
 
 const ALL = ['dad', 'nia', 'mom', 'reyes', 'danny'];
 const FIGHT = ['dad', 'reyes', 'mom'];
-const sun = (g, D, dt, to) => { D.dw = Math.min(to, (D.dw == null ? .25 : D.dw) + dt * .005); dawn(g, D.dw); };
+// v1.9.80 look: the headland was washed out by the default fog; thin it, deepen its color and lift the sun vs the sky fill so the scene reads
+const look24 = (g, D) => { const S = g.scene; if (S.fog && S.fog.density != null) { if (D.fd0 == null) D.fd0 = S.fog.density; S.fog.density = D.fd0 * .38; S.fog.color.multiplyScalar(.82); } if (g.hemi) g.hemi.intensity *= .72; if (g.moon) g.moon.intensity *= 1.3; };
+const sun = (g, D, dt, to) => { D.dw = Math.min(to, (D.dw == null ? .25 : D.dw) + dt * .005); dawn(g, D.dw); look24(g, D); };
 const vance = (g, D, x, z, r = PI) => { D.vance = g.npc('vance', 'vance', x, z, r, 'Idle_Loop'); return D.vance; };
 export const steps = [
   { id: 'c24_beach', ch: 24, cp: [0, -7914, PI], obj: '', hint: '', mood: 'sad', beat: 0, rain: false,
@@ -187,7 +210,7 @@ export const steps = [
         (g) => { act(D.dad, null); g.cut = null; b.st = 'chase'; D.on = true; followAll(g, D, ['dad', 'reyes']); },
       ]);
     },
-    update(g, dt) { const D = g.stepData, b = D.b; sun(g, D, dt, .85); tickRings(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: D.low ? 90 : 70, cd: 1 }); allyTick(g, D, 'reyes', dt, { dmg: 26, cd: 1.5 });
+    update(g, dt) { const D = g.stepData, b = D.b; sun(g, D, dt, .85); tickRings(g, D, dt); grayTick(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: D.low ? 90 : 70, cd: 1 }); allyTick(g, D, 'reyes', dt, { dmg: 26, cd: 1.5 });
       if (D.vance && !g.cut) { const v = D.vance.root.position, P = g.player.root.position, dx = P.x + 3 - v.x, dz = P.z + 3 - v.z, d = Math.hypot(dx, dz); if (d > 2) { const s = Math.min(d, 3.2 * dt); v.x += dx / d * s; v.z += dz / d * s; D.vance.play('Walk_Loop'); } }
       const u = b && b.mat && b.mat.userData && b.mat.userData.u;
       if (!b || b.dead || b.hp <= 0) { if (b && (b.dead || b.hp <= 0) && !D.won) { D.won = true; D.rings && D.rings.forEach(r => g.scene.remove(r.m)); D.rings = []; g.say([['marcus', "That's for my family. All of them."]]); afterBoss(g, () => goto(g, 'c24_dawn', 800), 5); } return; }
@@ -233,7 +256,7 @@ export const steps = [
         (g) => { cam(g, V(10, 6, -8112), V(26, 2, -8126)); card('THE END', 5600, 'AFTER THE QUIET · A LONE KEEM STUDIOS GAME'); { const tok = g.stepTok; setTimeout(() => { hideCard(); if (g.stepTok === tok) g.onComplete && g.onComplete(24); }, 6000); } },
       ]);
     },
-    update(g, dt) { const D = g.stepData; tickMv(g, D, dt); D.dw = Math.min(1, D.dw + dt * .01); dawn(g, D.dw); if (D.B) { const B = D.B; if (B.st === 'hop') { const p = B.grp.position; B.hop += dt * 4.6 / Math.max(.1, B.hd); const k = Math.min(1, B.hop); p.set(B.sx + (B.tx - B.sx) * k, Math.abs(Math.sin(k * B.hn * PI)) * .28, B.sz + (B.tz - B.sz) * k); if (k >= 1) { B.st = 'sit'; p.y = 0; } } else if (B.r && B.r.head) B.r.head.rotation.x = Math.max(0, Math.sin(g.t * 7)) * .3 - .05; } } },
+    update(g, dt) { const D = g.stepData; tickMv(g, D, dt); D.dw = Math.min(1, D.dw + dt * .01); dawn(g, D.dw); look24(g, D); if (D.B) { const B = D.B; if (B.st === 'hop') { const p = B.grp.position; B.hop += dt * 4.6 / Math.max(.1, B.hd); const k = Math.min(1, B.hop); p.set(B.sx + (B.tx - B.sx) * k, Math.abs(Math.sin(k * B.hn * PI)) * .28, B.sz + (B.tz - B.sz) * k); if (k >= 1) { B.st = 'sit'; p.y = 0; } } else if (B.r && B.r.head) B.r.head.rotation.x = Math.max(0, Math.sin(g.t * 7)) * .3 - .05; } } },
 ];
 
 export const loot = [

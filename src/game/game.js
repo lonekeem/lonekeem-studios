@@ -532,8 +532,8 @@ export class Game {
     if (k && kd < 6) { const dir = P.root.position.clone().sub(k.root.position).normalize(); k.root.position.copy(P.root.position).addScaledVector(dir, -0.8); k.st = 'feast'; k.play('Fixing_Kneeling', { speed: 2 }); k.root.rotation.y = Math.atan2(dir.x, dir.z); }
     $('#lowhp').style.opacity = 1; }
   damageZ(z, dmg, dir, o = {}) { if (z.dead) return; if (z.armor) { const m = z.armor(o); if (m < 1 && Math.random() < .3) this.floatText && this.floatText('ARMOR', '#c8ccd8'); dmg *= m; } z.hp -= dmg; if (!o.ai) z.playerHit = true; z.st = 'chase'; z.aggro = 99; const hp = z.root.position.clone(); hp.y = o.head ? 1.6 * z.scale : 1.1 * z.scale;
-    this.blood(hp, dir, o.head ? 18 : 10, o.boom ? 6 : 2.5); if (this.settings.gore && !o.boom && (!z.boss || Math.random() < .3)) this.woundFrom(z, null, o.blade ? 'claw' : 'bullet', dir, o.head); if (!o.boom && Math.random() < .4) this.decal(z.root.position.x + dir.x * .8, z.root.position.z + dir.z * .8, .7);
-    z.mat.userData.u.uBlood.value = Math.min(1.3, z.mat.userData.u.uBlood.value + (this.settings.gore ? .15 : 0)); this.audio.at(hp).splat(); if (this.settings.gore && Math.random() < .5) this.audio.at(hp).squelch(.6);
+    if (z.ash) this.gib(hp, o.boom ? 10 : 5, '#a4acb0'); else this.blood(hp, dir, o.head ? 18 : 10, o.boom ? 6 : 2.5); if (this.settings.gore && !z.ash && !o.boom && (!z.boss || Math.random() < .3)) this.woundFrom(z, null, o.blade ? 'claw' : 'bullet', dir, o.head); if (!z.ash && !o.boom && Math.random() < .4) this.decal(z.root.position.x + dir.x * .8, z.root.position.z + dir.z * .8, .7);
+    z.mat.userData.u.uBlood.value = Math.min(1.3, z.mat.userData.u.uBlood.value + (this.settings.gore && !z.ash ? .15 : 0)); this.audio.at(hp).splat(); if (this.settings.gore && Math.random() < .5) this.audio.at(hp).squelch(.6);
     if (z.hp <= 0) { this.killZ(z, dir, o); return; }
     this.audio.at(hp).zHurt && this.audio.zHurt(z, z.boss ? .75 : .55);
     if (z.tank) { if (o.head || dmg > 45) { z.stun = 0.18; if (z.mode === 'charge' || z.mode === 'wind') { z.mode = null; z.cd = Math.max(z.cd || 0, 1.2); } z.play(o.head ? 'Hit_Head' : 'Hit_Chest', { once: true, force: true, cb: () => { z.curName = ''; } }); z.vel.addScaledVector(dir, 1.1); } }
@@ -543,12 +543,12 @@ export class Game {
       const m = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }); this.flames = []; this.flameI = 0; for (let i = 0; i < 24; i++) { const s = new THREE.Sprite(m); s.visible = false; this.scene.add(s); this.flames.push({ s, v: V3(), life: 0 }); } }
     for (let i = 0; i < n; i++) { const f = this.flames[this.flameI = (this.flameI + 1) % 24]; f.s.position.copy(p); f.s.visible = true; f.life = rnd(.25, .5); f.v.copy(v || V3()).add(V3(rnd(-.8, .8), rnd(.6, 1.8), rnd(-.8, .8))); f.s.scale.setScalar(rnd(.3, .6)); } }
   spurt(z, bone, dur) { (this.spurts = this.spurts || []).push({ z, bone, t: dur }); if (this.spurts.length > 4) this.spurts.shift(); }
-  killZ(z, dir, o = {}) { if (!dir || !dir.clone) dir = V3(0, 0, 1); if (Math.random() < (z.boss ? 1 : .15)) this.audio.shout && this.audio.shout('keem_kill'); z.dead = true; z.deadT = 0; z.st = 'dead'; const mine = !o.ai || z.playerHit; if (mine) this.save.kills++; const gore = this.settings.gore;
+  killZ(z, dir, o = {}) { if (!dir || !dir.clone) dir = V3(0, 0, 1); if (Math.random() < (z.boss ? 1 : .15)) this.audio.shout && this.audio.shout('keem_kill'); z.dead = true; z.deadT = 0; z.st = 'dead'; const mine = !o.ai || z.playerHit; if (mine) this.save.kills++; const gore = this.settings.gore && !z.ash; // v1.9.80: z.ash (the Gray) crumbles to gray ash instead of red gore
     this.audio.at(z.root.position).zDeath && this.audio.zDeath(z, z.boss ? .95 : .7);
     const xp = kindKillXP(z, o); if (mine) this.addXP(xp); if (z.boss) this.addCash(500);
     else if (mine && Math.random() < .35) this.addCash(rnd(5, 18)); if (mine && !z.boss) this.dropLoot(z);
     if (o.boom || z.boss) z.play('Death01', { once: true, force: true, speed: o.boom ? 1.6 : 1, fade: .12 }); else { z.play(o.head ? 'Hit_Head' : 'Hit_Chest', { once: true, force: true, speed: 1.7, fade: .08, cb: () => { if (z.dead) z.play('Death01', { once: true, force: true, speed: 1.05, fade: .28 }); } }); } z.vel.addScaledVector(dir, o.boom ? 9 : 2.5); if (o.boom) z.vel.y = 6;
-    const pos = z.root.position.clone(); pos.y = 1.55 * z.scale; this.decal(z.root.position.x + dir.x, z.root.position.z + dir.z, 1.4);
+    const pos = z.root.position.clone(); pos.y = 1.55 * z.scale; if (z.ash) { this.gib(pos, 28, '#9aa2a6'); this.gib(pos, 12, '#d4dade'); } else this.decal(z.root.position.x + dir.x, z.root.position.z + dir.z, 1.4);
     const fin = o.finisher || (this.state.combo >= 3 && Math.random() < .6) || z.boss;
     if (gore && !z.noPool) { z.noPool = true; makePool(this, z.root.position.x + dir.x * .25, z.root.position.z + dir.z * .25, .35, rnd(1.1, 1.7)); }
     if (gore) { this.decal(z.root.position.x + dir.x * .5, z.root.position.z + dir.z * .5, 2.2); this.blood(pos.clone().setY(1.1 * z.scale), dir.clone().setY(.6), 22, 4.5, 1.2); }
