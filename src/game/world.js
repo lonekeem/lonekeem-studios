@@ -5,7 +5,8 @@ import { furnishKeemHouse } from './interiors.js';
 import { makeEnv } from './env.js';
 
 // Riverside, Maine — procedural night town built from CC0 Poly Haven PBR textures.
-export function buildWorld(scene, Q, texLoader, base, CM = {}) {
+export async function buildWorld(scene, Q, texLoader, base, CM = {}, yieldFn) {
+  const y = typeof yieldFn === 'function' ? yieldFn : () => Promise.resolve();
   const colliders = [], walls = [], updaters = [], lights = [], signList = []; const flags = { indoor: false }; // indoor (hospital chapters 12-13): no rain, no sky — set by game.setLight()
   const T = (n, rep = 1, srgb = true) => { const t = texLoader.load(base + 'tex/' + n + '.jpg'); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep, rep); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = Q.aniso; return t; };
   const pbr = (n, rep, o = {}) => { const m = new THREE.MeshStandardMaterial(Object.assign({ map: T(n + '_diff', rep), roughness: 1 }, o));
@@ -237,6 +238,7 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
   [[-26, -264], [26, -292]].forEach(([x, z]) => { const p = new THREE.Mesh(new THREE.CylinderGeometry(.15, .2, 12, 8), swMat); p.position.set(x, 6, z); scene.add(p); const h = new THREE.Mesh(new THREE.BoxGeometry(2, 1, .3), new THREE.MeshStandardMaterial({ color: '#222', emissive: '#fff', emissiveIntensity: 2 })); h.position.set(x, 12, z); scene.add(h); });
   const sl = new THREE.PointLight('#dfe8ff', 20, 50, 1.6); sl.position.set(0, 11, -278); if (Q.lamps > 3) { scene.add(sl); lights.push(sl); }
   const ch2 = { gateMesh, gateCol, panel, board };
+  await y();
   // ===== CHAPTERS 3–6 · zones south of Haverford (each zone is a Group shown only during its chapter) =====
   const zones = {}; const _add = scene.add.bind(scene);
   const zone = (ch, fn) => { const zg = new THREE.Group(); scene.add = (...o) => { zg.add(...o); return scene; }; try { fn(); } finally { scene.add = _add; } zg.visible = false; _add(zg); zones[ch] = zg; };
@@ -317,6 +319,7 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
   const gS7 = new THREE.Mesh(new THREE.PlaneGeometry(300, 720), groundMat); gS7.rotation.x = -Math.PI / 2; gS7.position.set(0, -0.006, -1350); gS7.receiveShadow = true; scene.add(gS7);
   const Z_wood = plankMat('#6a5238'), Z_sea2 = new THREE.MeshStandardMaterial({ color: '#0e1a22', roughness: .05, metalness: .4 });
   // CH7 — Route 77 coastal drive to Cape Marina (z -1005..-1255)
+  await y();
   zone(7, () => {
     road(0, -1130, 16, 250); box(-48, -20, -1240, -1005); box(20, 48, -1240, -1005);
     const sea = new THREE.Mesh(new THREE.PlaneGeometry(28, 240), Z_sea2); sea.rotation.x = -Math.PI / 2; sea.position.set(-34, -.3, -1125); scene.add(sea);
@@ -347,6 +350,7 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
     for (let i = 0; i < 6; i++) { wallBox(3, 2.6, .1, fenceM, -15 + i * 6, 1.3, -1684, false); }
     fire(-8, 0, -1500, 1); fire(10, 0, -1620, .9); Z_pl(0, 4, -1675, '#80ff90', 8, 26); Z_lamp(-7, -1560, '#ff4040'); Z_lamp(7, -1620, '#ff4040');
   });
+  await y();
   // building footprints (solid floorplans, not just thin wall colliders) so canopies cannot poke into interiors
   const footprints = [{ x0: KH.x0, x1: KH.x1, z0: KH.z0, z1: KH.z1 }, ...houseList.map(h => ({ x0: h.cx - h.w / 2, x1: h.cx + h.w / 2, z0: h.cz - h.d / 2, z1: h.cz + h.d / 2 }))];
   colliders.forEach(c => { if (c.car) return; const wx = c.x1 - c.x0, wz = c.z1 - c.z0; if (wx > 3 && wz > 3 && wx < 80 && wz < 80) footprints.push({ x0: c.x0, x1: c.x1, z0: c.z0, z1: c.z1 }); });
@@ -367,6 +371,7 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
       { x0: -46, x1: 46, z0: 56, z1: -140, n: n(70), inner: 24 }, { x0: -46, x1: 46, z0: -150, z1: -760, n: n(190), inner: 26 },
       { x0: -46, x1: 46, z0: -1000, z1: -1700, n: n(80), inner: 24 }, { x0: -46, x1: 46, z0: -1990, z1: -2690, n: n(80), inner: 24 },
       { x0: -100, x1: 100, z0: -1000, z1: -1700, n: n(60), inner: 50 }, { x0: -100, x1: 100, z0: -1990, z1: -2700, n: n(60), inner: 50 }] }); }
+  await y();
   updaters.push((dt, t, cam) => env.update(dt, t, cam));
 
   // rain
@@ -378,6 +383,7 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
   // bounds
   box(-300, -48, -300, 300); box(48, 300, -300, 300); box(-300, 300, 66, 300); // v1.6.3: old south bound (-400..-299) removed — it walled off Chapter 3+
 
+  await y();
   let _spots10 = [];
   // ===== v1.8 CHAPTERS 10–11 · Boston strip (x -48..48, z -1990..-2700), reached by checkpoint =====
   box(-300, -48, -2720, -1990); box(48, 300, -2720, -1990); box(-300, 300, -2800, -2700); box(-300, 300, -1990, -1960); Z_barrier(-2320);
@@ -425,14 +431,25 @@ export function buildWorld(scene, Q, texLoader, base, CM = {}) {
     const hb = new THREE.Mesh(new THREE.PlaneGeometry(3.2, .6), hM); hb.rotation.x = -Math.PI / 2; hb.position.set(0, .05, -2666); scene.add(hb);
     wallBox(6, 1, 3, new THREE.MeshStandardMaterial({ color: '#c8c8c0' }), 12, .5, -2600); sign(['AMBULANCE ONLY'], 12, 1.4, -2598.4, Math.PI, 2, .4, '#a01010');
     Z_pl(0, 8, -2664, '#ff4040', 14, 30); fire(-8, 0, -2560, .8); });
+  let ensureZone = () => null;
   // ===== v2.0 CHAPTERS 12+ · registered from src/game/chapters/chNN.js (each owns a 300 m band; zones show only during their chapter) =====
   // bands: ch12 z -2900..-3200 · ch13 -3300..-3600 · ch14 -3700..-4000 · ch15 -4100..-4400 · ch16 -4500..-4800
   box(-300, -48, -4900, -2790); box(48, 300, -4900, -2790); box(-300, 300, -4960, -4900);
   { const gN = new THREE.Mesh(new THREE.PlaneGeometry(300, 2120), groundMat); gN.rotation.x = -Math.PI / 2; gN.position.set(0, -0.006, -3850); gN.receiveShadow = true; scene.add(gN);
     const kitCtx = { THREE, scene, Q, box, wallBox, sign, road, Z_pl, Z_lamp, fire, car, plankMat, swMat, groundMat, signTex, lights, walls, updaters, colliders };
-    Object.keys(ZONE_BUILDERS).forEach(n => zone(+n, () => ZONE_BUILDERS[n](kitCtx))); }
+    // Chapters 12+ are built the first time they are needed, so boot / Chapter 1 does not compile the hospital set.
+    ensureZone = (ch) => {
+      const n = +ch;
+      if (zones[n]) return zones[n];
+      const fn = ZONE_BUILDERS[n] || ZONE_BUILDERS[String(n)];
+      if (!fn) return null;
+      zone(n, () => fn(kitCtx));
+      try { mountSigns(signList, scene); } catch (e) { /* ignore */ }
+      return zones[n];
+    }; }
+  await y();
   mountSigns(signList, scene);
-  return { env, ch2, zones, flags, houses: houseList, cars: carList, signTex, colliders, walls, updaters, lights, fire, car, sign, frontDoor, doorCol, doorBoards, tanker, tankCol, KH, mud, update(dt, t, cam) { updaters.forEach(u => u(dt, t, cam)); } };
+  return { env, ch2, zones, flags, houses: houseList, cars: carList, signTex, colliders, walls, updaters, lights, fire, car, sign, frontDoor, doorCol, doorBoards, tanker, tankCol, KH, mud, ensureZone, update(dt, t, cam) { updaters.forEach(u => u(dt, t, cam)); } };
 }
 // v1.9.28: a sign that is not on a wall and has nothing under it (a barrier, a post, a counter) gets two posts down to the
 // ground and a back face that carries the same lettering (like a real two-sided road sign), so it no longer floats and does not

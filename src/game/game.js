@@ -14,7 +14,7 @@ import { CAST, randomLook, raiderLook, DEFAULT_LOOK, zVoiceAssign } from './look
 import { bossProp, wrap, walkie } from './props.js';
 import { CharLib, Char, backpack, weaponMesh, makeDog, makeRabbit } from './chars.js';
 import { buildPickup } from './gear.js';
-import { loadRigs } from './avatar.js';
+import { loadRigs, loadMoreRigs, RIG_CORE, RIG_REST } from './avatar.js';
 import { WEAPONS, WEAPON_ORDER, stat, perk, xpFor, PERKS, writeSave } from './data.js';
 import { V3, clamp, lerp, rnd, angLerp, bloodTex } from './util.js';
 import { Input } from './input.js';
@@ -24,7 +24,7 @@ import { STORY, LOOT, chOf, TOTAL_PAGES, SPEAKER_NAMES } from './story.js';
 import { onDialogueLine, tickDialogueFace, endDialogueFace, resetDialogueFace } from './dialogueFace.js';
 import { hitChar, capsOf, updateAimPose, placeShotFx, muzzleWorld, stepAimAssist } from './aim.js';
 import { attachGameWeaponBar, syncWeaponBar } from '../ui/weaponBar.js';
-import { yieldPaint } from '../ui/loading.js';
+import { yieldPaint, yieldOnce, yieldIfNeeded, resetBudget } from '../ui/loading.js';
 
 const $ = (s) => document.querySelector(s);
 export const PRESETS = {
@@ -44,12 +44,27 @@ export function langLine(raw, mode) { const re = /\{([^|}]*)\|([^}]*)\}/g; const
     const len = voice.length || 1; bleeps.forEach(b => { b[0] /= len; b[1] /= len; }); } return { sub, voice, bleeps }; }
 export function playerLook() { return DEFAULT_LOOK; } // v1.9.28: story Keem always keeps his canon look (customization now dresses the multiplayer character)
 
-const yieldOnce = () => new Promise((r) => requestAnimationFrame(r));
 async function compileScene(r, scene, cam) {
   try {
     if (r && r.compileAsync) await r.compileAsync(scene, cam);
     else { await yieldOnce(); if (r && r.compile) r.compile(scene, cam); }
   } catch (e) { /* compile can fail on a mid-dispose frame */ }
+}
+function initAllTextures(r, root) {
+  if (!r || !r.initTexture || !root) return;
+  const seen = new Set();
+  const one = (t) => { if (t && t.isTexture && !seen.has(t)) { seen.add(t); try { r.initTexture(t); } catch (e) { /* ignore */ } } };
+  root.traverse(o => {
+    const ms = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+    for (const m of ms) {
+      if (!m) continue;
+      for (const k in m) one(m[k]);
+      const u = m.userData && m.userData.u;
+      if (u) for (const k in u) { const v = u[k] && (u[k].value !== undefined ? u[k].value : u[k]); one(v); }
+    }
+  });
+  if (root.environment) one(root.environment);
+  if (root.background && root.background.isTexture) one(root.background);
 }
 
 // v1.9.2: touch wording for objective hints on phones
@@ -57,6 +72,7 @@ const touchHint = (h) => h.replace(/\(WASD \/ left stick\)/g, '(left stick)').re
 export class Game {
   constructor(opts) { Object.assign(this, opts); this.t = 0; this.paused = true; this.running = false; this.timeScale = 1; this.hitstop = 0; this.trauma = 0; }
   async load(progress) {
+    try { if (this.audio) this.audio._sfxHold = true; } catch (e) { /* ignore */ }
     const S = this.settings; const qn = S.qual === 'auto' || !S.qual ? autoQuality() : S.qual; const Q = this.Q = PRESETS[qn] || PRESETS.med;
     const canvas = $('#gl'); const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: Q.name !== 'low', powerPreference: 'high-performance' });
     this.basePR = Math.min(window.devicePixelRatio || 1, Q.pr * (window.devicePixelRatio > 1 ? 1.34 : 1), 2); this.pr = this.basePR; r.setPixelRatio(this.pr);
@@ -75,11 +91,17 @@ export class Game {
     const moon = this.moon = new THREE.DirectionalLight(GRADE ? '#a9c0e0' : '#9fb4d0', GRADE ? 1.25 : 0.9); moon.position.set(-30, 50, 20); moon.castShadow = Q.shadows; moon.shadow.mapSize.set(Q.shadowMap, Q.shadowMap);
     const sc = moon.shadow.camera; sc.left = sc.bottom = -26; sc.right = sc.top = 26; sc.near = 1; sc.far = 140; moon.shadow.bias = -0.0005; moon.shadow.normalBias = 0.03; scene.add(moon, moon.target);
     const CK = ['sedan', 'suv', 'truck', 'police', 'van', 'taxi', 'hatchback-sports', 'suv-luxury', 'ambulance', 'debris-tire', 'debris-door', 'debris-bumper']; const CM = {};
-    await Promise.all(CK.map(k => new GLTFLoader().loadAsync(base + 'models/cars/' + k + '.glb').then(g => { CM[k] = g.scene; }).catch(() => { })));
-    progress && progress(0.55); await yieldOnce();
-    this.world = buildWorld(scene, Q, tl, base, CM); if (this.world.env && !/[?&]sky=0/.test(location.search)) { scene.background = null; scene.fog.color.copy(this.world.env.fogColor); } // v2.1 procedural sky dome + matching fog
-    progress && progress(0.72); await yieldOnce();
-    this.lib = new CharLib(gltf); this.lib.rigs = await loadRigs(base);
+    for (let i = 0; i < CK.length; i += 3) {
+      await Promise.all(CK.slice(i, i + 3).map(k => new GLTFLoader().loadAsync(base + 'models/cars/' + k + '.glb').then(g => { CM[k] = g.scene; }).catch(() => { })));
+      await yieldOnce();
+    }
+    progress && progress(0.55); await yieldPaint();
+    resetBudget();
+    this.world = await buildWorld(scene, Q, tl, base, CM, yieldPaint); if (this.world.env && !/[?&]sky=0/.test(location.search)) { scene.background = null; scene.fog.color.copy(this.world.env.fogColor); } // v2.1 procedural sky dome + matching fog
+    progress && progress(0.72); await yieldPaint();
+    this.lib = new CharLib(gltf); this.lib.rigs = await loadRigs(base, RIG_CORE, yieldPaint);
+    progress && progress(0.8); await yieldPaint();
+    await loadMoreRigs(this.lib.rigs, base, RIG_REST, yieldPaint);
     await new Promise(res => { if (mgr.itemsLoaded >= mgr.itemsTotal) res(); else { mgr.onLoad = res; setTimeout(res, 15000); } });
     // drive buttons (touch / mouse)
     [['#dGas', 'gas'], ['#dBrake', 'brake'], ['#dL', 'l'], ['#dR', 'r']].forEach(([id, k]) => { const e = $(id); if (!e) return; const on = (v) => (ev) => { ev.preventDefault(); this.drv = this.drv || {}; this.drv[k] = v; e.classList.toggle('on', v); };
@@ -100,10 +122,11 @@ export class Game {
     addEventListener('resize', () => this.resize()); this.resize();
     this.cam = { yaw: Math.PI / 2, pitch: -0.12, dist: CAM.dist, fp: !!S.fp, shake: V3() };
     this.fpsAcc = 0; this.fpsN = 0; this.fpsT = 0;
-    // warm up shaders without a long main-thread hitch
-    progress && progress(0.92);
-    await compileScene(r, scene, cam);
+    // Upload textures now; full shader / character warmup runs under the chapter loading overlay (not behind the title menu)
+    progress && progress(0.92); await yieldPaint();
+    initAllTextures(r, scene);
     progress && progress(1);
+    try { if (this.audio) { this.audio._sfxHold = false; this.audio._pumpSfx && this.audio._pumpSfx(); } } catch (e) { /* ignore */ }
   }
   resize() { const w = innerWidth, h = innerHeight; this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); if (this.composer) this.composer.setSize(w, h); this._xh = null; }
 
@@ -126,7 +149,7 @@ export class Game {
     this.scene.traverse(o => { if (o.geometry) K.add(o.geometry); (Array.isArray(o.material) ? o.material : [o.material]).forEach(add); }); this.lib.gltf.scene.traverse(o => { if (o.geometry) K.add(o.geometry); }); }
   disposeTree(root) { if (!root || !this._keep) return; const K = this._keep; root.traverse(o => { if (o.geometry && !K.has(o.geometry)) o.geometry.dispose(); const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
       ms.forEach(m => { if (K.has(m)) return; for (const k in m) { const v = m[k]; if (v && v.isTexture && !K.has(v)) v.dispose(); } const u = m.userData && m.userData.u; if (u) for (const k in u) { const v = u[k] && u[k].value; if (v && v.isTexture && !K.has(v)) v.dispose(); } m.dispose(); }); }); }
-  async prewarm() { // create every lazily-built fx up front: a light added mid-fight recompiles every shader (the 0.5–0.8 s grenade/first-shot freezes)
+  async prewarm() { // create every lazily-built fx / weapon / rig up front: a light or first zombie added mid-fight recompiles shaders
     if (!this._boomL) { this._boomL = new THREE.PointLight('#ff9040', 0, 60, 2); this.scene.add(this._boomL); this._ballGeo = new THREE.SphereGeometry(1, 12, 8); }
     while (this.booms.length < 4) { const b = { ball: new THREE.Mesh(this._ballGeo, new THREE.MeshBasicMaterial({ color: '#ffb050', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })) }; b.ball.visible = false; this.scene.add(b.ball); this.booms.push(b); }
     if (!this.flames) { this.flameAt(V3(0, -50, 0), 1); this.flames.forEach(f => { f.life = 0; f.s.visible = false; }); }
@@ -135,9 +158,41 @@ export class Game {
     if (this.player && this.player.mat) { const LG = this._limbG || (this._limbG = [new THREE.CapsuleGeometry(.05, .35, 3, 6), new THREE.CapsuleGeometry(.07, .45, 3, 6)]); const lm = new THREE.Mesh(LG[0], this.player.mat); lm.visible = false; this.scene.add(lm); } // severed limbs = body shader without skinning
     if (!this.faceL) { this.faceL = new THREE.PointLight('#ffe6cc', 0, 4.5, 1.6); this.faceL.castShadow = false; this.scene.add(this.faceL); }
     this.rFx();
+    const extras = [];
+    const wg = new THREE.Group(); wg.name = 'warmWeapons'; wg.position.set(0, -80, 0);
+    WEAPON_ORDER.forEach(id => { const src = this.weaponMeshes && this.weaponMeshes[id]; if (!src) return; const m = src.clone(true); m.visible = true; wg.add(m); });
+    this.scene.add(wg); extras.push(wg);
+    const rigs = (this.lib && this.lib.rigs) || {};
+    Object.values(rigs).forEach(root => { if (root) initAllTextures(this.renderer, root); });
+    const dummies = [];
+    resetBudget();
+    const mk = async (look) => {
+      try {
+        const c = new Char(this.lib, look, 1);
+        c.root.position.set(0, -80, 0);
+        this.scene.add(c.root);
+        dummies.push(c);
+      } catch (e) { /* a missing clip/rig should not abort warmup */ }
+      await yieldPaint(); // one character per frame so processHands cannot freeze the loader
+    };
+    await mk(Object.assign({}, randomLook((ZSEED++) | 0, true), { rig: null }));
+    for (const rig of Object.keys(rigs)) await mk(Object.assign({}, randomLook((ZSEED++) | 0, true), { rig }));
+    await mk(raiderLook((ZSEED++) | 0));
     const R = this.renderer, hid = []; this.scene.traverse(o => { if (!o.visible) { hid.push(o); o.visible = true; } }); const L = this.mLight, li = L ? L.intensity : 0;
     if (L) L.intensity = 6; if (this.muzzle) this.muzzle.visible = true; if (this.tracer) this.tracer.visible = true; if (this.faceL) this.faceL.intensity = 0.7;
-    try { await compileScene(R, this.scene, this.camera); R.render(this.scene, this.camera); } catch (e) { } hid.forEach(o => o.visible = false); if (L) L.intensity = li; if (this.muzzle) this.muzzle.visible = false; if (this.tracer) this.tracer.visible = false; if (this.faceL) this.faceL.intensity = 0; }
+    initAllTextures(R, this.scene);
+    await yieldPaint();
+    // compile with hidden materials visible, then restore before the first draw so we do not render every chapter zone at once
+    try { await compileScene(R, this.scene, this.camera); } catch (e) { }
+    hid.forEach(o => o.visible = false); if (L) L.intensity = li; if (this.muzzle) this.muzzle.visible = false; if (this.tracer) this.tracer.visible = false; if (this.faceL) this.faceL.intensity = 0;
+    await yieldPaint();
+    try { R.render(this.scene, this.camera); } catch (e) { }
+    extras.forEach(o => this.scene.remove(o));
+    dummies.forEach(c => {
+      this.scene.remove(c.root);
+      try { c.mixer.stopAllAction(); c.mixer.uncacheRoot(c.model); } catch (e) { /* ignore */ }
+    });
+  }
   clearActors() { townReset(this); this.zombies.forEach(z => { this.scene.remove(z.root); z.mixer.stopAllAction(); z.mixer.uncacheRoot(z.model); this.disposeTree(z.root); }); this.zombies = []; for (const k in this.npcs) { const n = this.npcs[k]; this.scene.remove(n.root); n.mixer.stopAllAction(); n.mixer.uncacheRoot(n.model); this.disposeTree(n.root); } this.npcs = {};
     this.pickups.forEach(p => this.scene.remove(p.mesh)); this.pickups = []; this.props.forEach(p => { this.scene.remove(p); this.disposeTree(p); }); this.props = []; this.decalN = 0; this.decals.forEach(d => d.visible = false); (this.pools || []).forEach(o => { this.scene.remove(o); o.material.dispose(); }); this.pools = [];
     if (this.truck) this.truck.driving = false; document.body.classList.remove('driving'); $('#drive')?.classList.add('hidden'); this.drv = {}; this.boss = null; $('#boss').classList.add('hidden'); this.dlgQ = []; this.dlgCur = null; $('#dlg').classList.remove('on'); }
@@ -159,7 +214,9 @@ export class Game {
     const cp = st.cp; P.root.position.set(cp[0], 0, cp[1]); P.root.rotation.y = cp[2] || 0; this.cam.yaw = (cp[2] || 0) + Math.PI; this.cam.pitch = -0.1;
     this.pack.visible = this.save.items.includes('backpack') || !!this.player.wantsPack; this.equip(this.save.cur || 'fists', true);
     if (!(await yn(0.2))) return;
-    this.survival = !!st.survival; const ch = chOf(i); const zs = this.world.zones || {}; for (const k in zs) if (zs[k] && zs[k].isObject3D) zs[k].visible = +k === ch; if (ch > (this.save.ch || 1) && !st.survival) this.save.ch = ch;
+    this.survival = !!st.survival; const ch = chOf(i);
+    try { if (this.world && this.world.ensureZone) this.world.ensureZone(ch); } catch (e) { /* ignore */ }
+    const zs = this.world.zones || {}; for (const k in zs) if (zs[k] && zs[k].isObject3D) zs[k].visible = +k === ch; if (ch > (this.save.ch || 1) && !st.survival) this.save.ch = ch;
     if (!st.survival) LOOT.forEach(l => { const lc = chOf(l.minStep || 0); if (!this.save.loot.includes(l.id) && (l.minStep || 0) <= i + 1 && (lc === ch || (ch <= 2 && lc <= 2))) this.addPickup(l); });
     this.world.frontDoor.rotation.y = i >= 3 ? -1.6 : 0; this.setDoor(i >= 3);
     this.setTruck(i);
@@ -169,7 +226,11 @@ export class Game {
     this.audio.setMood(st.mood || 'night'); this.audio.rain && this.audio.rain(st.rain !== false && st.mood !== 'day'); this.audio.beat(st.beat || 0);
     partnerEnter(this); this.checkpoint(); this.grace = 1.5;
     if (!(await yn(0.72))) return;
-    if (!this._warm) { this._warm = 1; await this.prewarm(); } else await compileScene(this.renderer, this.scene, this.camera);
+    try { if (this.audio) this.audio._sfxHold = true; } catch (e) { /* ignore */ }
+    initAllTextures(this.renderer, this.scene);
+    if (!this._warm) { this._warm = 1; await this.prewarm(); }
+    else await yieldPaint();
+    try { if (this.audio) { this.audio._sfxHold = false; this.audio._pumpSfx && this.audio._pumpSfx(); } } catch (e) { /* ignore */ }
     if (this.stepTok !== tok) return;
     setP(1);
     this.last = performance.now(); }

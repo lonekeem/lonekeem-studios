@@ -55,3 +55,20 @@ export function hideLoading() {
 export function yieldPaint() {
   return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 }
+
+/** One animation frame — used to slice long load work so the loader stays animated. */
+export function yieldOnce() {
+  return new Promise((r) => requestAnimationFrame(r));
+}
+
+let _budgetT = 0;
+export function resetBudget() { _budgetT = performance.now(); }
+/** Yield a frame if the current slice has already run longer than `ms`. */
+export function yieldIfNeeded(ms = 8) {
+  const now = performance.now();
+  if (!_budgetT) _budgetT = now;
+  if (now - _budgetT >= ms) {
+    return new Promise((r) => requestAnimationFrame(() => { _budgetT = performance.now(); r(); }));
+  }
+  return Promise.resolve();
+}

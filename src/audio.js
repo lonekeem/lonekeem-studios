@@ -14,17 +14,16 @@ export class AudioSys {
     this.master = ctx.createGain(); this.master.connect(ctx.destination);
     this.music = ctx.createGain(); this.music.connect(this.master);
     this.sfx = ctx.createGain(); this.sfx.connect(this.master);
-    // reverb
-    const len = ctx.sampleRate * 2.5, ir = ctx.createBuffer(2, len, ctx.sampleRate);
-    for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
-    this.verb = ctx.createConvolver(); this.verb.buffer = ir; const vg = ctx.createGain(); vg.gain.value = 0.35; this.verb.connect(vg); vg.connect(this.master);
-    // noise buffer
-    const nb = this.noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 3, ctx.sampleRate);
-    const d = nb.getChannelData(0); let last = 0;
-    for (let i = 0; i < d.length; i++) { const w = Math.random() * 2 - 1; last = (last + 0.02 * w) / 1.02; d[i] = last * 3.5; }
-    this.white = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate); const wd = this.white.getChannelData(0); for (let i = 0; i < wd.length; i++) wd[i] = Math.random() * 2 - 1;
+    // reverb + noise buffers are filled in slices so AudioContext creation does not freeze the loader
+    this.verb = ctx.createConvolver(); const vg = ctx.createGain(); vg.gain.value = 0.35; this.verb.connect(vg); vg.connect(this.master);
+    // tiny placeholder so wind can start immediately; full IR / noise fill off the critical path
+    const nb = this.noiseBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.25), ctx.sampleRate);
+    const nd = nb.getChannelData(0); let last = 0;
+    for (let i = 0; i < nd.length; i++) { const w = Math.random() * 2 - 1; last = (last + 0.02 * w) / 1.02; nd[i] = last * 3.5; }
+    this.white = ctx.createBuffer(1, 4096, ctx.sampleRate); const wd = this.white.getChannelData(0); for (let i = 0; i < wd.length; i++) wd[i] = Math.random() * 2 - 1;
+    this._fillAudioBuffers();
     // wind bed
-    const src = ctx.createBufferSource(); src.buffer = nb; src.loop = true;
+    const src = ctx.createBufferSource(); src.buffer = nb; src.loop = true; this._windSrc = src;
     this.windF = ctx.createBiquadFilter(); this.windF.type = 'lowpass'; this.windF.frequency.value = 400;
     this.windG = ctx.createGain(); this.windG.gain.value = 0.15;
     src.connect(this.windF); this.windF.connect(this.windG); this.windG.connect(this.music); src.start();
@@ -32,6 +31,33 @@ export class AudioSys {
     this.mode = this.mode || 'boot'; this.applyVolumes();
     this._tick = setInterval(() => this.ambientTick(), 1000);
     this.chordIdx = 0;
+  }
+  async _fillAudioBuffers() {
+    const ctx = this.ctx; if (!ctx) return;
+    const fill = async (data, fn) => {
+      const step = 8192;
+      for (let i = 0; i < data.length; i += step) {
+        fn(data, i, Math.min(data.length, i + step));
+        if (i + step < data.length) await new Promise(r => (typeof requestIdleCallback === 'function' ? requestIdleCallback(r, { timeout: 32 }) : requestAnimationFrame(r)));
+      }
+    };
+    const irLen = Math.floor(ctx.sampleRate * 1.2), ir = ctx.createBuffer(2, irLen, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const d = ir.getChannelData(c);
+      await fill(d, (arr, a, b) => { for (let i = a; i < b; i++) arr[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 3); });
+    }
+    try { this.verb.buffer = ir; } catch (e) { /* ignore */ }
+    const nb = this.noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 3, ctx.sampleRate);
+    const d = nb.getChannelData(0); let last = 0;
+    await fill(d, (arr, a, b) => { for (let i = a; i < b; i++) { const w = Math.random() * 2 - 1; last = (last + 0.02 * w) / 1.02; arr[i] = last * 3.5; } });
+    this.white = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const wd2 = this.white.getChannelData(0);
+    await fill(wd2, (arr, a, b) => { for (let i = a; i < b; i++) arr[i] = Math.random() * 2 - 1; });
+    if (this.windF && this.noiseBuf) {
+      try { if (this._windSrc) this._windSrc.stop(); } catch (e) { /* ignore */ }
+      const src = ctx.createBufferSource(); src.buffer = this.noiseBuf; src.loop = true; this._windSrc = src;
+      src.connect(this.windF); try { src.start(); } catch (e) { /* ignore */ }
+    }
   }
   applyVolumes() { if (!this.ctx) return;
     if (!this.ctx) return;
@@ -247,12 +273,34 @@ P.init = function () { const first = !this.ctx; O.init.call(this); if (!first ||
   this.lastBark = 0; this.applyVolumes();
   const names = ONE.slice(); for (const f in FAM) for (let i = 0; i < FAM[f]; i++) names.push(f + i);
   fetch(BASE + 'manifest.json').then(r => r.json()).then(m => { this.man = m; }).catch(() => {});
-  let i = 0; const next = () => { if (i < names.length) this.load(names[i++]).finally(next); }; for (let k = 0; k < 4; k++) next();
+  // Decode a small core set now; the rest pump in idle time so chapter load / shader compile is not fighting 200+ decodes.
+  const CORE = new Set(['explosion', 'rain_loop', 'truck_loop', 'boss_roar', 'reload_out', 'reload_in', 'door_open', 'creak', 'knife', 'coins', 'chop', 'roll',
+    'gun_pistol', 'gun_rifle', 'gun_shotgun', 'gun_smg', 'reload_pistol', 'reload_rifle', 'reload_shotgun', 'click_pistol', 'click_rifle',
+    'step_concrete0', 'step_concrete1', 'step_grass0', 'step_grass1', 'punch0', 'punch1', 'flesh0', 'flesh1', 'bat0',
+    'z_growl0', 'z_growl1', 'z_attack0', 'z_moan0', 'scream0', 'scream1']);
+  const core = names.filter(n => CORE.has(n));
+  this._sfxRest = names.filter(n => !CORE.has(n));
+  let i = 0; const next = () => { if (i < core.length) this.load(core[i++]).finally(next); else this._pumpSfx(); }; for (let k = 0; k < 2; k++) next();
 };
 P.applyVolumes = function () { O.applyVolumes.call(this); if (!this.ctx) return; this.sfx.gain.value = this.s.sfxVol ?? 1; if (this.voiceBus) this.voiceBus.gain.value = this.s.voices === false ? 0 : (this.s.voiceVol ?? 1); };
 P.load = function (name) { if (this.bufs[name]) return Promise.resolve(this.bufs[name]); if (this.loading[name]) return this.loading[name];
   return this.loading[name] = fetch(BASE + name + '.mp3').then(r => { if (!r.ok || /html/.test(r.headers.get('content-type') || '')) throw 0; return r.arrayBuffer(); })
     .then(a => new Promise((res, rej) => { const q = this.ctx.decodeAudioData(a, res, rej); if (q && q.catch) q.catch(rej); })).then(b => (this.bufs[name] = b)).catch(() => null); };
+P._pumpSfx = function () {
+  if (this._sfxPump) return;
+  const q = this._sfxRest; if (!q || !q.length) return;
+  this._sfxPump = true;
+  const step = () => {
+    if (this._sfxHold) { this._sfxPump = false; return; }
+    if (!q.length) { this._sfxPump = false; return; }
+    const n = q.shift();
+    this.load(n).finally(() => {
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(step, { timeout: 240 });
+      else setTimeout(step, 24);
+    });
+  };
+  step();
+};
 // play a sample; returns the source node, or null if not loaded (caller then uses the synth fallback)
 // v1.4.1 3D audio: audio.at(pos) tags the next sample(s) in this tick with a world position -> PannerNode (equalpower for phones),
 // inverse distance falloff, distance low-pass, and a hard cap on simultaneous sounds (far/quiet ones are dropped first).

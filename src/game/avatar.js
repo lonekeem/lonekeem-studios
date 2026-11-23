@@ -53,13 +53,31 @@ function buildMitten(info, thumbDir, mat) {
 }
 
 export const EXTRA = {}; // non-character models (Biscuit the rabbit)
+// Load the models a chapter-1 / menu boot actually needs first; the rest arrive in the background so the loader can keep painting.
+export const RIG_CORE = ['keem', 'nia', 'dad', 'zombie2', 'genm', 'genf', 'zombie_male'];
+export const RIG_ALL = ['keem', 'nia', 'dad', 'raider', 'zombie2', 'walt', 'ruth', 'dube', 'gus', 'reyes', 'tuck', 'vance', 'genm', 'genf', 'zombie_male', 'zombie_office', 'zombie_elder', 'zombie_big', 'zombie_cop', 'zombie_worker'];
+export const RIG_REST = RIG_ALL.filter(k => !RIG_CORE.includes(k));
 // character lighting: characters sit in the scene's own lighting; only a faint lift/rim keeps silhouettes readable in the dark (?lift= / ?rim= for tuning)
 const _qp = (k, d) => { try { const v = new URLSearchParams(location.search).get(k); return v == null ? d : +v; } catch (e) { return d; } };
 const LIGHT = { lift: _qp('lift', 0.05), rim: _qp('rim', 0.1) };
-export async function loadRigs(base, keys = ['keem', 'nia', 'dad', 'raider', 'zombie2', 'walt', 'ruth', 'dube', 'gus', 'reyes', 'tuck', 'vance', 'genm', 'genf', 'zombie_male', 'zombie_office', 'zombie_elder', 'zombie_big', 'zombie_cop', 'zombie_worker']) {
-  const out = {}; const L = new GLTFLoader(); L.loadAsync(base + 'models/chars/biscuit.glb').then(g => { EXTRA.biscuit = g.scene; }).catch(() => { });
-  await Promise.all(keys.map(k => L.loadAsync(base + 'models/chars/' + k + '.glb').then(g => { out[k] = g.scene; }).catch(() => { })));
+async function loadRigKeys(out, base, keys, yieldFn, batch = 2) {
+  const L = new GLTFLoader();
+  for (let i = 0; i < keys.length; i += batch) {
+    const slice = keys.slice(i, i + batch).filter(k => !out[k]);
+    if (slice.length) await Promise.all(slice.map(k => L.loadAsync(base + 'models/chars/' + k + '.glb').then(g => { out[k] = g.scene; }).catch(() => { })));
+    if (yieldFn) await yieldFn();
+  }
   return out;
+}
+export async function loadRigs(base, keys = RIG_CORE, yieldFn) {
+  const out = {};
+  const L = new GLTFLoader();
+  L.loadAsync(base + 'models/chars/biscuit.glb').then(g => { EXTRA.biscuit = g.scene; }).catch(() => { });
+  await loadRigKeys(out, base, keys, yieldFn, 2);
+  return out;
+}
+export async function loadMoreRigs(out, base, keys, yieldFn) {
+  return loadRigKeys(out || {}, base, keys, yieldFn, 2);
 }
 
 const _m = new THREE.Matrix4(), _p = new THREE.Vector3(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _q2 = new THREE.Quaternion();
