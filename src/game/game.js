@@ -20,6 +20,7 @@ import { stepMove, startRoll, startJump, stepVehicle, stepFollowCam, clampCamToP
 import { syncWounds, addWound, bloodyMouth, makePool, tickPools, setHandBlood } from './gore.js';
 import { STORY, LOOT, chOf, TOTAL_PAGES, SPEAKER_NAMES, CH_START } from './story.js';
 import { buddyUpdate, buddyReset } from './biscuitBuddy.js';
+import { photoApply } from './photoMode.js';
 import { diffOf, diffId, loadRun, saveRun, newRun } from './difficulty.js';
 import { onDialogueLine, tickDialogueFace, endDialogueFace, resetDialogueFace } from './dialogueFace.js';
 import { hitChar, capsOf, updateAimPose, placeShotFx, muzzleWorld, stepAimAssist } from './aim.js';
@@ -879,12 +880,12 @@ export class Game {
       const st = this._camFollow || (this._camFollow = {});
       stepFollowCam({ cam, yaw: C.yaw, pitch: C.pitch, px: P.root.position.x, py: P.root.position.y, pz: P.root.position.z, aim, crouch: !!(this.state && this.state.crouch), dt: rdt, zoom: ws.zoom, state: st, hitDist }); }
     // first person (v1.9.17): hide the player's whole body (mannequin, avatar skin, head/hair/hat/face parts, held weapon) and use a tight near plane so nothing of Keem is ever in the view
-    const fpOn = !!(C.fp && !this.cut && !this.dying && !(T && T.driving)); this.setFPBody(fpOn); if (!fpOn) this.pushCamOutOfChars();
+    const fpOn = !!(C.fp && !this.photo && !this.cut && !this.dying && !(T && T.driving)); this.setFPBody(fpOn); if (!fpOn) this.pushCamOutOfChars();
     const wantNear = fpOn ? .06 : .12; if (cam.near !== wantNear) { cam.near = wantNear; cam.updateProjectionMatrix(); }
     // shake
     if (this.trauma > 0) { const k = this.trauma * this.trauma * .18; cam.position.x += (this._kickX || 0) * k; cam.position.y += (this._kickY || 1) * k; cam.rotation.z += (this._kickR || 0) * k * .35; this.trauma = Math.max(0, this.trauma - rdt * 2.2); }
     // viewmodel
-    this._fpWallD = 99; this.vm.visible = !!(C.fp && !(T && T.driving) && !this.cut && !this.dying); if (this.vm.visible) { const s = this.state; const bob = Math.sin(this.t * 9) * .012 * Math.min(1, this.input.move.length()); this.vm.position.set(aim ? 0.0 : .22, (aim ? -.14 : -.2) + bob, -.45);
+    this._fpWallD = 99; this.vm.visible = !!(C.fp && !this.photo && !(T && T.driving) && !this.cut && !this.dying); if (this.vm.visible) { const s = this.state; const bob = Math.sin(this.t * 9) * .012 * Math.min(1, this.input.move.length()); this.vm.position.set(aim ? 0.0 : .22, (aim ? -.14 : -.2) + bob, -.45);
       const w = WEAPONS[this.save.cur]; this.vm.rotation.set(s.atk > 0 && w.type === 'melee' ? -1.2 + s.atk / this.ws.rate * 2.4 : (s.reload > 0 ? .6 : 0), w.type === 'melee' ? .3 : 0, 0);
       // never let the held weapon poke through a wall: measure how far its tip reaches along the view and pull it back toward the camera when a wall is closer
       cam.updateMatrixWorld(true); this.vm.updateMatrixWorld(true); const fwd = V3(); cam.getWorldDirection(fwd); const rc = this._fpRay || (this._fpRay = new THREE.Raycaster()); rc.set(cam.position, fwd); rc.near = 0; rc.far = 2.6; const wh = rc.intersectObjects(this.shotWalls(), false)[0]; this._fpWallD = wh ? wh.distance : 99;
@@ -892,7 +893,7 @@ export class Game {
       this._fpPull = lerp(this._fpPull || 0, pull, Math.min(1, rdt * 14)); this.vm.position.z += this._fpPull; this.vm.position.y -= this._fpPull * .7; this.vm.rotation.x -= this._fpPull * .5; if (this._fpPull > .62) this.vm.visible = false; /* weapon lowered out of view when your face is against a wall */ }
     this.rldSync(); $('#xhair').classList.toggle('hidden', !(WEAPONS[this.save?.cur]?.type === 'gun' || C.fp) || !!(T && T.driving) || !!this.cut || !!this.dying);
     // flashlight from chest
-    const fl = this.flash; const fpos = P.root.position.clone(); fpos.y += 1.3; const fdir = V3(); cam.getWorldDirection(fdir); if (T && T.driving) { fpos.copy(T.g.position).y += 1; fdir.set(Math.sin(T.head), -.1, Math.cos(T.head)); }
+    const fl = this.flash; const fpos = P.root.position.clone(); fpos.y += 1.3; const fdir = V3(); if (this.photo && this.photo.fdir) fdir.copy(this.photo.fdir); else cam.getWorldDirection(fdir); if (T && T.driving) { fpos.copy(T.g.position).y += 1; fdir.set(Math.sin(T.head), -.1, Math.cos(T.head)); }
     // first person: the torch sits at the eye (slightly low/right) instead of the chest and dims as a wall gets close, so a wall in your face is not a blown-out white blob
     const fpT = fpOn && !(T && T.driving); if (fpT) { fpos.copy(cam.position); const rgt = V3(Math.cos(C.yaw), 0, -Math.sin(C.yaw)); fpos.addScaledVector(rgt, .02); fpos.y -= .04; } const wd = fpT ? this._fpWallD || 99 : 99; this._flI = lerp(this._flI == null ? 17 : this._flI, 17 * clamp(Math.pow(Math.max(wd, .05) / 2.5, 1.6) * (wd < 1.2 ? Math.pow(wd / 1.2, .85) : 1), .002, 1), Math.min(1, rdt * 30)); fl.intensity = this._flI; fl.angle = lerp(.42, .85, clamp((1.4 - wd) / 1.2, 0, 1));
     fl.position.copy(fpos).addScaledVector(fdir, fpT ? 0 : .3); fl.target.position.copy(fpos).addScaledVector(fdir, 10); fl.visible = !this.cut || this.cut.flash;
@@ -901,6 +902,7 @@ export class Game {
     if (this.player && this.scene) { if (!this.faceL) { this.faceL = new THREE.PointLight('#ffe6cc', 0, 4.5, 1.6); this.faceL.castShadow = false; this.scene.add(this.faceL); } this.faceL.visible = true; this.faceL.intensity = this.cut ? 0.7 : 0; /* v1.9.10: face fill only in cutscenes (made the player glow white in play); keep the light in the scene so shaders are not recompiled */ const hp = this.cut && this.cut.look ? this.cut.look : this.player.root.position, hy = this.cut && this.cut.look ? hp.y + .25 : hp.y + 1.7, cp = cam.position; this.faceL.position.set(hp.x + (cp.x - hp.x) * .45, hy, hp.z + (cp.z - hp.z) * .45); }
     if (this.audio.listen) { const K = this.world && this.world.KH, c = cam.position; this.audio.listen(cam, !!((this.world.flags && this.world.flags.indoor) || (K && c.x > K.x0 && c.x < K.x1 && c.z > K.z0 && c.z < K.z1))); }
     try { glowUpdate(this); } catch (e) { if (!this._glowErr) { this._glowErr = 1; console.warn('glow', e); } }
+    if (this.photo) photoApply(this); // v1.9.88 photo mode free camera
     if (this.composer) this.composer.render(); else this.renderer.render(this.scene, cam);
     if (this.running && !this.paused) this.hud(); }
   hud() { const s = this.save, w = WEAPONS[s.cur]; try { syncWeaponBar(); } catch (e) { /* ignore */ }

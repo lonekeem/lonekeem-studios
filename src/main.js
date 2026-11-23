@@ -11,6 +11,7 @@ import { SURVIVAL_STEP, chOf, CH_START, CHAPTERS, LAST_CH, LAST_STORY_STEP, TOTA
 import { WEAPONS, WEAPON_ORDER, UPGRADES, upCost, AMMO_SHOP, PERKS, xpFor, defaultSave, loadSave, writeSave, clearSave, stat, ARMOR, ARMOR_ORDER } from './game/data.js';
 import { DIFF, diffId, STAR_RULES, starStr, fmtT, recordStars, saveRun } from './game/difficulty.js';
 import { installBgListeners, onAppLeave, onAppReturn, leaveApp, returnApp, isAway } from './bgPause.js';
+import { photoOpen, photoClose } from './game/photoMode.js';
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const DEF = { vol: 0.9, auto: true, music: 0.6, text: 1, subs: true, playSubs: false, gore: true, lang: 'on', qteEasy: false, still: false, hints: true, qual: 'auto', sens: 1, fp: false, sfxVol: 1, voiceVol: 1, voices: true,
@@ -82,7 +83,7 @@ async function play(step, o = {}) { if (o.prologue) import('./game/prologue.js')
   try { onTutReady(g); } catch (e) { /* ignore */ }
   if (isAway()) pause(); }
 function inGameplay() { if (state === 'play') return true; if (game && game.running && (game.pro || state === 'loading')) return true; return false; }
-function fromPauseMenu() { return state === 'paused' || (['shop', 'inv', 'settings', 'custom'].includes(state) && back === '#pause'); }
+function fromPauseMenu() { return state === 'paused' || (state === 'photo' || ['shop', 'inv', 'settings', 'custom'].includes(state) && back === '#pause'); }
 function pause() {
   if (!game) return;
   if (state === 'paused' || fromPauseMenu()) { game.paused = true; return; }
@@ -93,7 +94,7 @@ function pause() {
   showScreen('#pause'); back = '#pause';
 }
 function resume() { state = 'play'; showScreen(null); try { audio.resumeAll(); } catch (e) {} if (game) { game.paused = false; game.last = performance.now(); } }
-addEventListener('keydown', e => { audio.init(); if ((e.key === 'Escape' || e.key === 'p' || e.key === 'P') && state !== 'play') { if (state === 'paused') resume(); else if (['shop', 'inv', 'settings'].includes(state) && back === '#pause') { state = 'paused'; showScreen('#pause'); } }
+addEventListener('keydown', e => { audio.init(); if (state === 'photo') { if (e.key === 'Escape') photoClose(game); return; } if ((e.key === 'Escape' || e.key === 'p' || e.key === 'P') && state !== 'play') { if (state === 'paused') resume(); else if (['shop', 'inv', 'settings'].includes(state) && back === '#pause') { state = 'paused'; showScreen('#pause'); } }
   if ((e.key === 'i' || e.key === 'I' || e.key === 'Tab') && state === 'play') { e.preventDefault(); pause(); openInv(); } });
 addEventListener('pointerdown', () => audio.init());
 // v1.5.1 tap-to-unlock: iOS only unlocks Web Audio from touchend/click, so resume (plus a 1-sample buffer) on each tap until 'running'. Respects the silent switch.
@@ -325,6 +326,7 @@ $('#btnCustom').textContent = 'My Character'; $('#btnCustom').onclick = () => op
 $('#btnArmory').onclick = () => { back = '#title'; openShop(); }; $('#btnInvT').onclick = () => { back = '#title'; openInv(); };
 $('#btnPShop').onclick = () => { back = '#pause'; openShop(); }; $('#btnPInv').onclick = () => { back = '#pause'; openInv(); };
 $('#btnSettings').onclick = () => { back = '#title'; state = 'settings'; showScreen('#settings'); }; $('#btnControls').onclick = () => { subFrom = '#settings'; showScreen('#controls'); }; $('#btnCredits').onclick = () => { subFrom = '#settings'; showScreen('#credits'); };
+$('#btnPhoto').onclick = () => { if (!game || state !== 'paused') return; state = 'photo'; showScreen(null); photoOpen(game, () => { state = 'paused'; showScreen('#pause'); }); };
 $('#btnPauseSettings').onclick = () => { back = '#pause'; state = 'settings'; showScreen('#settings'); };
 $('#btnResume').onclick = resume; $('#btnPause').onclick = e => { e.stopPropagation(); pause(); };
 $('#skipObj').onclick = () => game && game.skipObjective();
