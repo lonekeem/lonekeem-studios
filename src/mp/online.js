@@ -68,8 +68,67 @@ export async function installNativeAuth(onDone) {
   App.addListener('appUrlOpen', ({ url }) => finish(url));
   try { const l = await App.getLaunchUrl(); if (l && l.url) finish(l.url); } catch (e) { /* ignore */ }
 }
-export async function signOut() { const f = FAKE(); if (f) { window.__MP_FAKE_AUTH = {}; return; } const c = await sb(); await c.auth.signOut(); }
+export async function signOut() {
+  const f = FAKE();
+  if (f) {
+    window.__MP_FAKE_AUTH = {};
+    try { window.dispatchEvent(new CustomEvent('atq-auth', { detail: { event: 'SIGNED_OUT' } })); } catch (e) { /* ignore */ }
+    return;
+  }
+  const c = await sb(); await c.auth.signOut();
+}
+const isLocalHost = () => typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+/** Auth changes (restored session, sign-in, sign-out). Localhost also listens for a window 'atq-auth' event so proofs can simulate a late sign-in. Returns unsubscribe. */
+export function onAuthChange(cb) {
+  let unsub = null, cancelled = false;
+  sb().then(c => {
+    if (cancelled) return;
+    const { data } = c.auth.onAuthStateChange((event, session) => { try { cb(event, session || null); } catch (e) { /* ignore */ } });
+    unsub = () => { try { data.subscription.unsubscribe(); } catch (e) { /* ignore */ } };
+  }).catch(() => {});
+  const local = ev => { try { cb((ev && ev.detail && ev.detail.event) || 'SIGNED_IN', ev && ev.detail && ev.detail.session); } catch (e) { /* ignore */ } };
+  if (typeof window !== 'undefined' && isLocalHost()) window.addEventListener('atq-auth', local);
+  return () => {
+    cancelled = true;
+    try { unsub && unsub(); } catch (e) { /* ignore */ }
+    if (typeof window !== 'undefined') window.removeEventListener('atq-auth', local);
+  };
+}
+/** Wait briefly for a persisted session to hydrate. Resolves quickly on INITIAL_SESSION if the user is signed out. */
+async function waitForSession(c, ms = 1800) {
+  const first = await getUser();
+  if (first) return first;
+  return await new Promise(resolve => {
+    let done = false, unsub = null;
+    const finish = u => { if (done) return; done = true; clearTimeout(t); try { unsub && unsub(); } catch (e) { /* ignore */ } resolve(u || null); };
+    const t = setTimeout(async () => { finish(await getUser().catch(() => null)); }, ms);
+    try {
+      const { data } = c.auth.onAuthStateChange((event, session) => {
+        if (session && session.user) finish(session.user);
+        else if (event === 'INITIAL_SESSION') finish(session && session.user || null);
+      });
+      unsub = () => { try { data.subscription.unsubscribe(); } catch (e) { /* ignore */ } };
+    } catch (e) { /* timeout path */ }
+  });
+}
 /** 'admin' | 'moderator' | 'player' | null (signed out / unreachable). Reads the caller's own row via the server RPC. */
-export async function getRole() { const f = FAKE(); if (f) return f.email ? (f.role || 'player') : null; try { const c = await sb(); const u = await getUser(); if (!u) return null; const { data, error } = await c.schema('public').rpc('mp_my_role'); if (error) return null; return data; } catch (e) { return null; } }
+export async function getRole() {
+  const f = FAKE();
+  if (f) return f.email ? (f.role || 'player') : null;
+  try {
+    const c = await sb();
+    const u = await waitForSession(c);
+    if (!u) return null;
+    let lastErr = null;
+    for (let i = 0; i < 3; i++) {
+      const { data, error } = await c.schema('public').rpc('mp_my_role');
+      if (!error) return data;
+      lastErr = error;
+      await new Promise(r => setTimeout(r, 200 * (i + 1)));
+    }
+    if (lastErr) console.warn('[mp] mp_my_role failed', lastErr.message || lastErr);
+    return null;
+  } catch (e) { return null; }
+}
 /** Is the Google provider switched on in the Supabase dashboard? (button stays hidden until Keem finishes the OAuth setup) */
 export async function googleEnabled() { try { const r = await withTimeout(fetch(SB_URL + '/auth/v1/settings', { headers: { apikey: SB_KEY } }), 4000, 'settings'); const j = await r.json(); return !!(j.external && j.external.google); } catch (e) { return false; } }

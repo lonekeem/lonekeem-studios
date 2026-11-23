@@ -4,7 +4,7 @@ import {
   mutePlayer, unmutePlayer, banPlayer, unbanPlayer, kickPlayer, resetName,
   resetClanBanner, resetClanName, listReports, resolveReport, deleteChat, emitStaff,
 } from './mod.js';
-import { getRole } from './online.js';
+import { getRole, onAuthChange } from './online.js';
 
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const preview = () => (typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && window.__MP_FAKE_AUTH && window.__MP_FAKE_AUTH.preview) || null;
@@ -58,8 +58,13 @@ export function attachStaff(root, ctx) {
     }
   }
 
+  let roleGen = 0;
   async function refreshRole() {
-    try { role = await getRole(); } catch (e) { role = null; }
+    const g = ++roleGen;
+    let next = null;
+    try { next = await getRole(); } catch (e) { next = null; }
+    if (g !== roleGen) return isStaffRole(role);
+    role = next;
     const st = isStaffRole(role);
     signed = st;
     showTab(st);
@@ -228,6 +233,11 @@ export function attachStaff(root, ctx) {
     isStaff: () => isStaffRole(role),
     role: () => role,
   };
-  refreshRole();
+  const stopAuth = onAuthChange((event) => {
+    if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'SIGNED_OUT') refreshRole();
+  });
+  api._stop = stopAuth;
+  // If the first lookup runs before a restored session is ready, try again shortly so the tab appears without a reopen.
+  refreshRole().then(on => { if (!on) setTimeout(() => refreshRole(), 400); });
   return api;
 }
