@@ -6,6 +6,7 @@ import { initTutorial, offerTutorial, onGameReady as onTutReady } from './ui/tut
 import { installHardwareBack } from './ui/hwBack.js';
 import { runLaunchFlow, playIntroThen, applySafeDefaults, installGateSettings, isUnder13 } from './ui/gate.js';
 import { initDailies, attachDailies, renderDailies } from './ui/dailies.js';
+import { initRewards, attachRewards } from './ui/rewards.js';
 import { SURVIVAL_STEP, chOf, CH_START, CHAPTERS, LAST_CH, LAST_STORY_STEP, TOTAL_PAGES } from './game/story.js';
 import { WEAPONS, WEAPON_ORDER, UPGRADES, upCost, AMMO_SHOP, PERKS, xpFor, defaultSave, loadSave, writeSave, clearSave, stat } from './game/data.js';
 import { installBgListeners, onAppLeave, onAppReturn, leaveApp, returnApp, isAway } from './bgPause.js';
@@ -57,6 +58,7 @@ async function ensureGame() { if (game) return game; if (gamePromise) return gam
       $('#endH').textContent = 'End of Chapter ' + ch + ' · ' + C[ch].title; $('#endQ').textContent = C[ch].endQuote; $('#endNext').textContent = last ? (C[ch].nextTeaser || 'To be continued — Chapter ' + (ch + 1) + ' coming soon.') : 'Chapter ' + (ch + 1) + ' · ' + C[ch + 1].title + ' is unlocked. Your level, cash and weapons carry over.'; $('#btnEndNext').textContent = 'Continue to Chapter ' + nx; $('#btnEndNext').classList.toggle('hidden', last); showScreen('#ending'); audio.setMood('sad'); };
     try { trackGame(g, i => i === SURVIVAL_STEP); } catch (e) { console.warn('leaderboard tracking off', e); }
     try { attachDailies(g); } catch (e) { console.warn('dailies tracking off', e); }
+    try { attachRewards(g); } catch (e) { console.warn('rewards tracking off', e); }
     try { onTutReady(g); } catch (e) { /* ignore */ }
     game = g; hideLoading(); return g; })();
   return gamePromise; }
@@ -227,6 +229,7 @@ else if (qs.has('step')) { $('#warning').classList.add('hidden'); save = default
 else { $('#warning').classList.add('hidden'); applySafeDefaults(S, saveS); runLaunchFlow({ audio, applySettings: () => applySafeDefaults(S, saveS), onDone: () => toTitle() }); }
 initMenu();
 initDailies();
+initRewards();
 initTutorial({ play: () => play(SURVIVAL_STEP, { tutorial: true }), toTitle });
 window.__atqBooted = true;
 installHardwareBack();

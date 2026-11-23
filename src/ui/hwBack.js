@@ -33,6 +33,7 @@ export function handleHardwareBack() {
     if (labeled) { labeled.click(); return true; }
   }
 
+  if (vis('#rewards')) return click('#rewards .back');
   if (vis('#dailies')) return click('#dailies .back');
   if (vis('#online')) return click('#online .wback');
   if (vis('#shop')) return click('#shop .back');
