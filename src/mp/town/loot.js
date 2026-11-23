@@ -2,6 +2,10 @@
 import * as THREE from 'three';
 import { boxGeo } from './kit.js';
 import { plain } from './building.js';
+import { WEAPONS } from '../../game/data.js';
+const MELEE_IC = { bat: '🏏', crowbar: '🪝', pan: '🍳', machete: '🔪', axe: '🪓', chainsaw: '⛓️', katana: '⚔️', tomahawk: '🪓', longsword: '🗡️' };
+const MELEE_W = { bat: 1.4, crowbar: 1.6, pan: 1.1, machete: 1.2, axe: 2.4, chainsaw: 5.5, katana: 1.3, tomahawk: 1.1, longsword: 2.8 };
+function meleeItem(id) { const w = WEAPONS[id]; return { n: w.name, w: MELEE_W[id] || 1.5, ic: MELEE_IC[id] || '🗡️', cat: 'weapon', melee: { dmg: w.dmg / 22, reach: w.range * 0.8, name: id, rate: w.rate } }; }
 export const ITEMS = {
   wood: { n: 'Wood planks', w: 1.2, ic: '🪵', cat: 'material' }, gascan: { n: 'Gas can (5 L)', w: 3.5, ic: '⛽', cat: 'fuel' }, emptycan: { n: 'Empty gas can', w: .8, ic: '🛢️', cat: 'fuel' },
   food: { n: 'Canned food', w: .45, ic: '🥫', cat: 'supply' }, water: { n: 'Water bottle', w: .5, ic: '💧', cat: 'supply' }, bandage: { n: 'Bandage', w: .1, ic: '🩹', cat: 'med', heal: 18 }, medkit: { n: 'First-aid kit', w: .8, ic: '🧰', cat: 'med', heal: 55 },
@@ -20,8 +24,9 @@ export const ITEMS = {
   ammo_rifle: { n: 'Rifle round', w: .05, ic: '🔹', cat: 'ammo' }, ammo_bolt: { n: 'Crossbow bolt', w: .08, ic: '➴', cat: 'ammo' }, ammo_fuel: { n: 'Fuel (1 unit)', w: .03, ic: '🟧', cat: 'ammo' }, ammo_gl: { n: '40mm grenade', w: .35, ic: '🟢', cat: 'ammo' },
   grenade: { n: 'Frag grenade', w: .5, ic: '💣', cat: 'weapon' },
   ammo_light: { n: '9mm round', w: .03, ic: '🔸', cat: 'ammo' }, ammo_shell: { n: 'Shotgun shell', w: .06, ic: '🟥', cat: 'ammo' },
-  bat: { n: 'Baseball bat', w: 1.4, ic: '🏏', cat: 'weapon', melee: { dmg: 2.2, reach: 1.7, name: 'bat' } }, crowbar: { n: 'Crowbar', w: 1.6, ic: '🪝', cat: 'weapon', melee: { dmg: 2.6, reach: 1.6, name: 'crowbar' }, pry: true },
-  pan: { n: 'Frying pan', w: 1.1, ic: '🍳', cat: 'weapon', melee: { dmg: 1.7, reach: 1.4, name: 'pan' } }, keys: { n: 'Car keys', w: .1, ic: '🔑', cat: 'tool' }, battery: { n: 'Car battery', w: 6, ic: '🔋', cat: 'material' },
+  bat: meleeItem('bat'), crowbar: Object.assign(meleeItem('crowbar'), { pry: true }), pan: meleeItem('pan'),
+  machete: meleeItem('machete'), axe: meleeItem('axe'), chainsaw: meleeItem('chainsaw'), katana: meleeItem('katana'), tomahawk: meleeItem('tomahawk'), longsword: meleeItem('longsword'),
+  keys: { n: 'Car keys', w: .1, ic: '🔑', cat: 'tool' }, battery: { n: 'Car battery', w: 6, ic: '🔋', cat: 'material' },
 };
 // [item, weight, min, max]
 export const TABLES = {
@@ -57,7 +62,7 @@ export class Bag {
   can(id, n = 1) { return this.weight + ITEMS[id].w * n <= this.cap + 1e-6; }
   add(id, n = 1) { let got = 0; for (let i = 0; i < n; i++) { if (!this.can(id)) break; this.items[id] = (this.items[id] || 0) + 1; got++; } if (got) this.onChange && this.onChange(); return got; }
   remove(id, n = 1) { if (this.count(id) < n) return false; this.items[id] -= n; if (!this.items[id]) delete this.items[id]; this.onChange && this.onChange(); return true; }
-  best() { let b = { name: 'fists', dmg: 1, reach: 1.2 }; if (this.pref === 'fists') return b; if (this.pref && this.items[this.pref] && ITEMS[this.pref].melee) return ITEMS[this.pref].melee; for (const k in this.items) { const m = ITEMS[k].melee; if (m && m.dmg > b.dmg) b = m; } return b; }
+  best() { const fists = { name: 'fists', dmg: 1, reach: 1.2 }; if (this.pref === 'fists') return fists; if (this.pref && this.items[this.pref] && ITEMS[this.pref] && ITEMS[this.pref].melee) return ITEMS[this.pref].melee; let b = fists; for (const k in this.items) { const m = ITEMS[k] && ITEMS[k].melee; if (m && m.dmg > b.dmg) b = m; } return b; }
   hasPry() { return this.count('crowbar') > 0; }
 }
 

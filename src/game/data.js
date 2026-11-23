@@ -3,6 +3,7 @@ export const WEAPONS = {
   fists:   { name: 'Fists', type: 'melee', dmg: 18, rate: 0.42, range: 1.6, price: 0, desc: 'Jab, cross. Better than nothing.' },
   pan:     { name: 'Frying Pan', type: 'melee', dmg: 34, rate: 0.6, range: 1.9, price: 0, bonk: true, desc: 'Mom\'s cast iron. BONK.' },
   bat:     { name: 'Baseball Bat', type: 'melee', dmg: 48, rate: 0.7, range: 2.1, price: 150, desc: 'Dad\'s old Louisville. Heavy swing.' },
+  crowbar: { name: 'Crowbar', type: 'melee', dmg: 56, rate: 0.65, range: 2.0, price: 200, pry: true, desc: 'Pries locked doors and skulls alike.' },
   machete: { name: 'Machete', type: 'melee', dmg: 62, rate: 0.6, range: 2.0, price: 450, sever: true, desc: 'Cuts limbs clean off.' },
   axe:     { name: 'Fire Axe', type: 'melee', dmg: 90, rate: 0.95, range: 2.2, price: 900, sever: true, desc: 'Slow. Brutal. Finisher machine.' },
   chainsaw:{ name: 'Chainsaw', type: 'melee', dmg: 140, rate: 0.5, range: 2.3, price: 1400, sever: true, ch: 3, desc: 'Big Moose Truck Stop special. Loud. Messy. Perfect.' },
@@ -25,7 +26,7 @@ export const WEAPONS = {
   launcher:{ name: 'M32 Grenade Launcher', type: 'gun', ammo: 'gl', dmg: 40, rate: 0.6, mag: 6, reload: 3.4, spread: 0.004, range: 60, gl: true, price: 6000, ch: 11, desc: 'Six-round drum. Pulled off the Harbor Gate turret. Boom.' },
   sniper:  { name: 'Hunting Sniper', type: 'gun', ammo: 'rifle', dmg: 160, rate: 1.2, mag: 5, reload: 2.6, spread: 0.001, range: 160, zoom: 3, price: 2600, desc: 'One shot, one head.' },
 };
-export const WEAPON_ORDER = ['fists', 'pan', 'bat', 'machete', 'axe', 'chainsaw', 'pistol', 'revolver', 'smg', 'shotgun', 'rifle', 'saw', 'lever', 'auto12', 'handcannon', 'harpoon', 'minigun', 'katana', 'tomahawk', 'longsword', 'crossbow', 'flamer', 'launcher', 'sniper'];
+export const WEAPON_ORDER = ['fists', 'pan', 'bat', 'crowbar', 'machete', 'axe', 'chainsaw', 'pistol', 'revolver', 'smg', 'shotgun', 'rifle', 'saw', 'lever', 'auto12', 'handcannon', 'harpoon', 'minigun', 'katana', 'tomahawk', 'longsword', 'crossbow', 'flamer', 'launcher', 'sniper'];
 export const UPGRADES = {
   dmg: { name: 'Damage', per: 0.15, max: 4 },
   mag: { name: 'Magazine', per: 0.25, max: 3, gun: true },
@@ -34,6 +35,14 @@ export const UPGRADES = {
 };
 export const upCost = (w, k, lvl) => Math.round((80 + (WEAPONS[w].price || 200) * 0.35) * (lvl + 1) * (k === 'dmg' ? 1.2 : 1));
 export const AMMO_SHOP = { bolt: { name: 'Crossbow bolts ×10', n: 10, price: 90 }, fuel: { name: 'Fuel canister ×100', n: 100, price: 140 }, gl: { name: '40mm grenades ×6', n: 6, price: 260 }, light: { name: '9mm/.44 ammo ×36', n: 36, price: 60 }, shell: { name: 'Shells ×12', n: 12, price: 80 }, rifle: { name: 'Rifle rounds ×40', n: 40, price: 110 }, grenade: { name: 'Pipe grenade', n: 1, price: 150 }, med: { name: 'Med kit', n: 1, price: 120 } };
+
+export const ARMOR = {
+  vest_light:  { name: 'Light Vest', price: 400, absorb: 0.15, desc: 'Padded scavenger vest. Softens bites and scrapes.' },
+  vest_combat: { name: 'Combat Vest', price: 900, absorb: 0.30, desc: 'Layered plates under worn cloth. Cuts incoming damage.' },
+  vest_riot:   { name: 'Riot Armor', price: 1800, absorb: 0.45, desc: 'Heavy town-watch armor. The best protection you can buy.' },
+};
+export const ARMOR_ORDER = ['vest_light', 'vest_combat', 'vest_riot'];
+export function armorAbsorb(save) { const a = save && ARMOR[save.armor]; return a ? a.absorb : 0; }
 export const PERKS = [null, null,
   { name: 'Tough Kid', desc: '+20 max health' }, { name: 'Steady Hands', desc: '+15% accuracy' }, { name: 'Scavenger', desc: '+30% cash from loot' },
   { name: 'Brawler', desc: '+25% melee damage' }, { name: 'Quick Hands', desc: '20% faster reloads' }, { name: 'Marathon', desc: '+15% sprint speed' },
@@ -43,7 +52,7 @@ export function perk(save, i) { return save.level >= i; }
 
 const KEY = 'atq3_save';
 export function defaultSave() {
-  return { v: 3, step: 0, cash: 0, xp: 0, level: 1, owned: ['fists'], up: {}, ammo: { light: 0, shell: 0, rifle: 0 }, mags: {}, grenades: 0, meds: 1,
+  return { v: 3, step: 0, cash: 0, xp: 0, level: 1, owned: ['fists'], outfits: ['classic'], up: {}, ammo: { light: 0, shell: 0, rifle: 0, bolt: 0, fuel: 0, gl: 0 }, mags: {}, grenades: 0, meds: 1, armor: null, armors: [],
     pages: [], items: [], loot: [], cur: 'fists', kills: 0, bites: 0, done: false, ch: 1, done2: false };
 }
 export function loadSave(LS) { for (const k of [KEY, KEY + '.bak']) { try { const s = JSON.parse(LS.getItem(k) || 'null'); if (s && (s.v | 0) >= 3) return Object.assign(defaultSave(), s, { v: 3 }); } catch (e) {} } return null; }

@@ -552,13 +552,21 @@ body.driving #wbar{display:none!important}
 #shop.town-overlay .panel{max-height:min(96vh,720px);overflow:hidden;display:flex;flex-direction:column}
 #shop.town-overlay .glist{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
 #shop.town-overlay .back{flex:none}
+#shop .gi .st .arm{color:#c9d6e8}
+#shopCash .armtag{display:inline-block;margin-left:8px;color:#c9d6e8;font-weight:700}
+#rwShopBar.rwShop{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0}
+#rwShopBar.rwShop b{font-size:13px}
+#shop.town-overlay .panel{position:relative}
+#shop.town-overlay #rwShopBar.rwShop{position:absolute;top:6px;right:10px;width:auto;margin:0;padding:0;background:transparent;border:none;z-index:3}
+#shop.town-overlay #rwShopBar.rwShop .small,#shop.town-overlay #rwShopBar.rwShop b{display:none}
 @media (min-aspect-ratio:4/3) and (max-height:430px){
   #shop.town-overlay{padding:4px 8px;align-items:stretch}
-  #shop.town-overlay .panel{width:min(860px,100%);height:100%;max-height:100%;padding:8px 12px;gap:6px}
-  #shop.town-overlay h2{font-size:16px;margin:0}
-  #shop.town-overlay .small{display:none}
+  #shop.town-overlay .panel{width:min(860px,100%);height:100%;max-height:100%;padding:6px 10px;gap:4px}
+  #shop.town-overlay h2,#shop.town-overlay #shopTitle{font-size:15px;margin:0;padding-right:88px}
+  #shop.town-overlay .small,#shop.town-overlay #shopBlurb{display:none}
   #shop.town-overlay .gi{padding:6px 8px}
-  #shop.town-overlay .gi button{min-height:36px}
+  #shop.town-overlay .gi b{font-size:13px}
+  #shop.town-overlay .gi button{min-height:34px}
 }
 
 /* Stack the boss name/bar under the objective so long hints never overlap it, including phone landscape (844x390, 911x411, 1024x472). */

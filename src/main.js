@@ -8,7 +8,7 @@ import { runLaunchFlow, playIntroThen, applySafeDefaults, installGateSettings, i
 import { initDailies, attachDailies, renderDailies } from './ui/dailies.js';
 import { initRewards, attachRewards } from './ui/rewards.js';
 import { SURVIVAL_STEP, chOf, CH_START, CHAPTERS, LAST_CH, LAST_STORY_STEP, TOTAL_PAGES } from './game/story.js';
-import { WEAPONS, WEAPON_ORDER, UPGRADES, upCost, AMMO_SHOP, PERKS, xpFor, defaultSave, loadSave, writeSave, clearSave, stat } from './game/data.js';
+import { WEAPONS, WEAPON_ORDER, UPGRADES, upCost, AMMO_SHOP, PERKS, xpFor, defaultSave, loadSave, writeSave, clearSave, stat, ARMOR, ARMOR_ORDER } from './game/data.js';
 import { installBgListeners, onAppLeave, onAppReturn, leaveApp, returnApp, isAway } from './bgPause.js';
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -112,6 +112,43 @@ onAppReturn(() => {
 });
 installBgListeners();
 
+
+function currentOutfitId() { try { const sel = JSON.parse(LS.getItem('atq3.look') || 'null'); if (sel && sel.outfit) return sel.outfit; } catch (e) {} return 'classic'; }
+let _outfits = null, _outfitMap = null;
+async function loadOutfits() {
+  if (_outfits) return { OUTFITS: _outfits, OUTFIT: _outfitMap };
+  const m = await import('./game/looks.js');
+  _outfits = m.OUTFITS; _outfitMap = m.OUTFIT;
+  return { OUTFITS: _outfits, OUTFIT: _outfitMap };
+}
+async function applyStoreOutfit(id) {
+  save.outfits = [...new Set(['classic', ...(save.outfits || []), id])];
+  let sel = { outfit: id };
+  try { sel = Object.assign({}, JSON.parse(LS.getItem('atq3.look') || '{}') || {}, { outfit: id }); } catch (e) { sel = { outfit: id }; }
+  try { LS.setItem('atq3.look', JSON.stringify(sel)); } catch (e) {}
+  try {
+    const SL = await import('./mp/storeLook.js');
+    const K = await import('./mp/look.js');
+    const { saveProfile, getProfile } = await import('./mp/profile.js');
+    const { OUTFIT } = await loadOutfits();
+    const L = SL.applySel(K.loadLook() || K.defaultLook('mp_m1'), sel, ['outfit'], OUTFIT);
+    K.saveLook(L);
+    const p = getProfile();
+    if (p) saveProfile({ sel: Object.assign({}, p.sel || {}, { outfit: id }), look: L, owned: save.outfits, cash: save.cash }, { silent: true });
+    const town = window.__mpTown;
+    if (town && town.wearLook) {
+      const cur = town.net && town.net.me && town.net.me.look;
+      if (cur && cur.exclusive === 'skin.keem_story') { try { town.toast && town.toast('Saved for your character. Story Keem keeps his look.', 2.2); } catch (e) {} }
+      else await town.wearLook(Object.assign({}, L, { name: (cur && cur.name) || L.name }));
+    }
+  } catch (e) { console.warn('outfit', e); }
+}
+function equipStoreArmor(id) {
+  save.armors = [...new Set([...(save.armors || []), id])];
+  save.armor = id;
+  try { if (window.__mpTown && window.__mpTown.applyArmor) window.__mpTown.applyArmor(); } catch (e) {}
+}
+
 // ---------- shop ----------
 let shopTab = 'guns', shopOverlay = false, shopOnClose = null;
 function closeTownShop() {
@@ -127,19 +164,49 @@ function openTownShop(onClose) {
   const bc = $('#btnShopCustom'); if (bc) bc.style.display = 'none';
   renderShop();
 }
-function renderShop() { $('#shopCash').textContent = `Cash: $${save.cash}  ·  Level ${save.level}`;
-  const tabs = [['guns', 'Guns'], ['melee', 'Melee'], ['up', 'Upgrades'], ['sup', 'Ammo & supplies']]; $('#shopTabs').innerHTML = ''; tabs.forEach(([k, n]) => { const b = document.createElement('button'); b.textContent = n; b.className = shopTab === k ? 'on' : ''; b.onclick = () => { shopTab = k; renderShop(); }; $('#shopTabs').appendChild(b); });
-  const L = $('#shopList'); L.innerHTML = ''; const card = (html, btns, eq) => { const d = document.createElement('div'); d.className = 'gi' + (eq ? ' eq' : ''); d.innerHTML = html; btns.forEach(([t, fn, dis]) => { const b = document.createElement('button'); b.textContent = t; b.disabled = !!dis; b.onclick = () => { fn(); writeSave(LS, save); audio.pickup(); if (shopOverlay && window.__mpTown && window.__mpTown.seedLoadout) try { window.__mpTown.seedLoadout(); } catch (e) {} renderShop(); }; d.appendChild(b); }); L.appendChild(d); };
+function renderShop() {
+  const title = $('#shopTitle'); if (title) title.textContent = shopOverlay ? 'Store' : 'Armory';
+  const blurb = $('#shopBlurb'); if (blurb) blurb.textContent = shopOverlay
+    ? 'Buy guns, melee and swords, ammo, med kits, grenades, armor and clothes with your shared in-game cash. No real-money purchases.'
+    : 'Spend shared in-game cash on guns, melee, ammo, gear and clothes. In-game money only — there are no real-money purchases in this game.';
+  const ar = ARMOR[save.armor];
+  $('#shopCash').innerHTML = `Cash: $${save.cash}  ·  Level ${save.level}` + (ar ? ` <span class="armtag">· ${ar.name} (−${Math.round(ar.absorb * 100)}% dmg)</span>` : '');
+  if (shopTab === 'sup') shopTab = 'ammo';
+  const tabs = [['guns', 'Guns'], ['melee', 'Melee'], ['ammo', 'Ammo'], ['gear', 'Gear'], ['clothes', 'Clothes'], ['up', 'Upgrades']];
+  $('#shopTabs').innerHTML = ''; tabs.forEach(([k, n]) => { const b = document.createElement('button'); b.textContent = n; b.className = shopTab === k ? 'on' : ''; b.onclick = () => { shopTab = k; renderShop(); }; $('#shopTabs').appendChild(b); });
+  const L = $('#shopList'); L.innerHTML = ''; const card = (html, btns, eq) => { const d = document.createElement('div'); d.className = 'gi' + (eq ? ' eq' : ''); d.innerHTML = html; btns.forEach(([t, fn, dis]) => { const b = document.createElement('button'); b.textContent = t; b.disabled = !!dis; b.onclick = () => { const r = fn(); writeSave(LS, save); audio.pickup(); if (shopOverlay && window.__mpTown && window.__mpTown.seedLoadout) try { window.__mpTown.seedLoadout(); } catch (e) {} Promise.resolve(r).finally(() => renderShop()); }; d.appendChild(b); }); L.appendChild(d); };
   const buy = (n) => { if (save.cash < n) return false; save.cash -= n; return true; };
   if (shopTab === 'guns' || shopTab === 'melee') WEAPON_ORDER.filter(id => (WEAPONS[id].type === 'gun') === (shopTab === 'guns') && id !== 'fists').forEach(id => { const w = WEAPONS[id], s = stat(save, id), own = save.owned.includes(id);
-    const st = w.type === 'gun' ? `DMG ${Math.round(s.dmg)}${w.pellets ? '×' + w.pellets : ''} · MAG ${s.mag} · RLD ${s.reload.toFixed(1)}s · ${w.auto ? 'auto' : 'semi'}` : `DMG ${Math.round(s.dmg)} · ${w.sever ? 'can sever limbs' : 'blunt'}${w.bonk ? ' · BONK' : ''}`;
-    const lockCh = w.ch && !(save.done || (save.ch || 1) >= w.ch); const btns = lockCh ? [['Chapter ' + w.ch + ' unlock', () => {}, true]] : own ? [[save.cur === id ? 'Equipped' : 'Equip', () => { save.cur = id; if (game && state !== 'title') game.equip(id, true); }, save.cur === id]] : [[w.price ? `Buy $${w.price}` : 'Story unlock', () => { if (buy(w.price)) { save.owned.push(id); if (w.type === 'gun') save.mags[id] = s.mag; } }, !w.price || save.cash < w.price]];
+    const st = w.type === 'gun' ? `DMG ${Math.round(s.dmg)}${w.pellets ? '×' + w.pellets : ''} · MAG ${s.mag} · RLD ${s.reload.toFixed(1)}s · ${w.auto ? 'auto' : 'semi'} · ${w.ammo || ''} ammo` : `DMG ${Math.round(s.dmg)} · ${w.sever ? 'can sever limbs' : 'blunt'}${w.bonk ? ' · BONK' : ''}${w.pry ? ' · pries doors' : ''}${w.blade ? ' · blade' : ''}`;
+    const lockCh = !shopOverlay && w.ch && !(save.done || (save.ch || 1) >= w.ch); const btns = lockCh ? [['Chapter ' + w.ch + ' unlock', () => {}, true]] : own ? [[save.cur === id ? 'Equipped' : 'Equip', () => { save.cur = id; if (game && !shopOverlay && state !== 'title') game.equip(id, true); if (shopOverlay && window.__mpTown && window.__mpTown.equipWeapon) try { window.__mpTown.seedLoadout && window.__mpTown.seedLoadout(); window.__mpTown.equipWeapon(id); } catch (e) {} }, save.cur === id]] : [[w.price ? `Buy $${w.price}` : 'Take (free)', () => { if (!w.price || buy(w.price)) { if (!save.owned.includes(id)) save.owned.push(id); if (w.type === 'gun') save.mags[id] = s.mag; save.cur = id; } }, !!(w.price && save.cash < w.price)]];
     card(`<b>${w.name}</b><div class="st">${st}</div><div class="small">${w.desc || ''}</div>`, btns, save.cur === id); });
   if (shopTab === 'up') { const owned = WEAPON_ORDER.filter(id => save.owned.includes(id) && id !== 'fists'); if (!owned.length) L.innerHTML = '<p class="small">Find or buy a weapon first.</p>';
     owned.forEach(id => { const w = WEAPONS[id]; const u = save.up[id] = save.up[id] || {}; const keys = w.type === 'gun' ? ['dmg', 'mag', 'rel', 'acc'] : ['dmg'];
       card(`<b>${w.name}</b><div class="st">${keys.map(k => `${UPGRADES[k].name} ${u[k] || 0}/${UPGRADES[k].max}`).join(' · ')}</div>`, keys.map(k => { const lv = u[k] || 0, c = upCost(id, k, lv); return [lv >= UPGRADES[k].max ? `${UPGRADES[k].name} MAX` : `${UPGRADES[k].name} $${c}`, () => { if (buy(c)) { u[k] = lv + 1; if (game) game.ws = stat(save, save.cur); } }, lv >= UPGRADES[k].max || save.cash < c]; })); }); }
-  if (shopTab === 'sup') Object.entries(AMMO_SHOP).forEach(([k, a]) => { const have = k === 'grenade' ? save.grenades : k === 'med' ? save.meds : save.ammo[k] || 0;
-    card(`<b>${a.name}</b><div class="st">You have: ${have}</div>`, [[`Buy $${a.price}`, () => { if (buy(a.price)) { if (k === 'grenade') save.grenades += a.n; else if (k === 'med') save.meds += a.n; else save.ammo[k] = (save.ammo[k] || 0) + a.n; } }, save.cash < a.price]]); }); }
+  if (shopTab === 'ammo') Object.entries(AMMO_SHOP).filter(([k]) => k !== 'grenade' && k !== 'med').forEach(([k, a]) => { const have = save.ammo[k] || 0;
+    card(`<b>${a.name}</b><div class="st">You have: ${have}</div>`, [[`Buy $${a.price}`, () => { if (buy(a.price)) save.ammo[k] = (save.ammo[k] || 0) + a.n; }, save.cash < a.price]]); });
+  if (shopTab === 'gear') {
+    const sup = [['med', AMMO_SHOP.med], ['grenade', AMMO_SHOP.grenade]];
+    sup.forEach(([k, a]) => { if (!a) return; const have = k === 'grenade' ? save.grenades : save.meds;
+      card(`<b>${a.name}</b><div class="st">You have: ${have}</div>`, [[`Buy $${a.price}`, () => { if (buy(a.price)) { if (k === 'grenade') save.grenades += a.n; else save.meds += a.n; } }, save.cash < a.price]]); });
+    ARMOR_ORDER.forEach(id => { const a = ARMOR[id], own = (save.armors || []).includes(id) || save.armor === id, eq = save.armor === id;
+      const btns = own ? [[eq ? 'Equipped' : 'Equip', () => equipStoreArmor(id), eq]] : [[`Buy $${a.price}`, () => { if (buy(a.price)) equipStoreArmor(id); }, save.cash < a.price]];
+      card(`<b>${a.name}</b><div class="st arm">Reduces damage by ${Math.round(a.absorb * 100)}%</div><div class="small">${a.desc}</div>`, btns, eq); });
+  }
+  if (shopTab === 'clothes') {
+    if (!_outfits) { L.innerHTML = '<p class="small">Loading clothes…</p>'; loadOutfits().then(() => renderShop()); }
+    else {
+      const worn = currentOutfitId();
+      const owned = new Set(['classic', ...(save.outfits || [])]);
+      _outfits.forEach(o => {
+        const own = !o.price || owned.has(o.id); const eq = worn === o.id;
+        const lockLv = !shopOverlay && o.lvl && (save.level || 1) < o.lvl;
+        const btns = lockLv ? [['Level ' + o.lvl + ' unlock', () => {}, true]] : own ? [[eq ? 'Wearing' : 'Wear', () => applyStoreOutfit(o.id), eq]] : [[`Buy $${o.price}`, () => { if (buy(o.price)) return applyStoreOutfit(o.id); }, save.cash < o.price]];
+        card(`<b>${o.name}</b><div class="st">${own ? (eq ? 'Wearing now' : 'Owned') : 'Outfit · in-game cash'}${o.lvl && !shopOverlay && !own ? ' · Lv ' + o.lvl : ''}</div>`, btns, eq);
+      });
+    }
+  }
+}
 // ---------- customizer ----------
 // v1.9.28: story Keem always keeps his canon look. "My Character" opens the player PROFILE + character creator (src/mp/profileui.js):
 // the player's own multiplayer survivor, paid for with the shared cash. Data lives behind src/mp/profile.js (getProfile / saveProfile).
@@ -181,7 +248,7 @@ $('#btnEndNext').onclick = () => { save = loadSave(LS) || save; const nc = Math.
 var CHN = CHAPTERS.map(c => (c ? c.title : '')), CHS = CHAPTERS.map(c => (c ? c.start : 0)); // derived from the chapter registry
 const unlockedCh = (s) => Math.max(s.maxCh || 1, s.done || (s.step || 0) >= 7 ? 2 : 1, s.done2 ? 3 : 1, CHS.findLastIndex(v => (s.step || 0) >= v) || 1);
 // chapter-select buttons are generated from the registry (src/game/chapters), so adding a chapter needs no HTML/menu edits
-{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.57 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
+{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.58 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
 const chList = $('#chList'); for (let c = 1; c <= LAST_CH; c++) { const b = document.createElement('button'); b.id = 'btnCh' + c; b.textContent = 'Chapter ' + c + ' · ' + CHN[c]; chList.appendChild(b); }
 $('#btnChapters').onclick = () => { const s = loadSave(LS) || defaultSave(); const u = unlockedCh(s); for (let c = 2; c <= LAST_CH; c++) { const b = $('#btnCh' + c); b.disabled = c > u; b.textContent = 'Chapter ' + c + ' · ' + CHN[c] + (c > u ? ' (finish Chapter ' + (c - 1) + ')' : ''); } showScreen('#chapters'); };
 $('#btnCh1').onclick = () => { save = loadSave(LS) || defaultSave(); writeSave(LS, save); play(0); };

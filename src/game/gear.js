@@ -53,6 +53,7 @@ const MELEE = {
   katana(b) { b.cz('white', .018, .22, 0, 0, .06, .018, 8); for (let i = 0; i < 6; i++) b.box('poly', .038, .008, .008, 0, 0, -.03 + i * .033, 0, 0, .6); b.cz('gun', .016, .02, 0, 0, -.06, .018, 8); b.box('brass', .06, .065, .01, 0, 0, .18); b.box('steel', .028, .006, .7, 0, 0, .55); b.box('white', .014, .004, .7, 0, -.006, .55); b.box('steel', .028, .006, .03, 0, 0, .91); },
   tomahawk(b) { b.cz('wood', .018, .5, 0, 0, .2, .015, 8); b.cz('tape', .02, .16, 0, 0, .02); b.box('steel', .05, .02, .08, .03, 0, .45); b.box('steel', .13, .012, .09, .09, 0, .48); b.box('gun', .02, .02, .08, 0, 0, .41); b.box('blood', .04, .014, .03, .11, 0, .5); },
   longsword(b) { b.cz('tape', .016, .24, 0, 0, .05, .016, 8); b.sph('steel', .024, 0, 0, -.08); b.box('steel', .26, .026, .03, 0, 0, .2); b.box('steel', .05, .008, 1.0, 0, 0, .73); b.box('gun', .01, .01, .9, 0, .006, .73); b.box('steel', .045, .008, .04, 0, 0, 1.24, 0, 0, 0); b.box('rust', .03, .01, .1, 0, .001, .55); },
+  crowbar(b) { b.cz('steel', .012, .7, 0, 0, .3, .012, 8); b.cz('gun', .015, .18, 0, 0, .04, .015, 8); b.box('steel', .014, .014, .16, 0, .05, .72, .85, 0, 0); b.box('steel', .028, .01, .07, 0, .09, .82, .3); b.box('steel', .022, .008, .05, 0, 0, -.08); b.box('rust', .016, .01, .08, 0, .01, .5); },
 };
 const MEL_L = {};
 export function buildWeapon(id) { if (MELEE[id]) { const b = new B(); MELEE[id](b); return b.build(null); } if (GUNS[id]) { const b = new B(); const L = GUNS[id](b); return b.build(L); } return null; }
