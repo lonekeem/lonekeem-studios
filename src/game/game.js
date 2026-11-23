@@ -384,7 +384,8 @@ export class Game {
       const dx = cam.position.x - q.x, dz = cam.position.z - q.z, d = Math.hypot(dx, dz); if (d >= rad) return;
       const k = rad / (d || 1e-6); cam.position.x = q.x + dx * k; cam.position.z = q.z + dz * k; };
     for (const z of this.zombies) consider(z); for (const k in this.npcs) consider(this.npcs[k]);
-    if (P) clampCamToPlayer(cam, P.x, P.y, P.z, this.state && this.state.crouch); }
+    // v1.9.64: the follow-cam distance clamp is for normal play only; cutscene, death and driving cameras sit far from the player on purpose
+    if (P && !this.cut && !this.dying && !(this.truck && this.truck.driving)) clampCamToPlayer(cam, P.x, P.y, P.z, this.state && this.state.crouch); }
   victim(x, z, look, eaters = 3) { const v = this.npc('v' + Math.random(), look, x, z, 0, 'Idle_Loop'); v.play('Idle_Loop', { force: true, speed: 0 }); this.freezeClip(v, 'Idle_Loop', 0); v.mat.userData.u.uBlood.value = this.settings.gore ? 1 : 0.2; v.bleed = true;
     // always lie on the back, broadside to the player, limbs relaxed and on the ground
     v.life = 1; v.isVictim = true; v.struggle = .35; v.jolt = 0; v.screamT = rnd(.5, 2);
