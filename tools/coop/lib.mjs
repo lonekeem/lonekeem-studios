@@ -38,7 +38,7 @@ export async function enter(p, { name = 'Ava', room = 'test-coop-1', mission = n
     const pr = PR.getProfile(); const tw = await import('/src/mp/town/town.js');
     document.querySelector('#title') && document.querySelector('#title').classList.add('hidden'); window.__exited = 0; tw.enterTown({ look: Object.assign({}, pr.look, { name: name || pr.name }), solo: true, room, mission, onExit: () => { window.__exited = 1; } });
   }, { name, room, mission });
-  await p.waitForFunction(() => window.__mpTown, null, { timeout: 240000 }); await p.waitForTimeout(800);
+  await p.waitForFunction(() => !!window.__mpTown, null, { timeout: 240000 }); await p.waitForTimeout(800);
 }
 export const frames = (p, n) => p.evaluate(n => new Promise(r => { let k = 0; const f = () => { if (++k >= n) r(); else requestAnimationFrame(f); }; requestAnimationFrame(f); }), n);
 export async function freecam(p, pos, look) {
