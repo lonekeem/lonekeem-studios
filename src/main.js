@@ -9,6 +9,7 @@ import { initDailies, attachDailies, renderDailies } from './ui/dailies.js';
 import { initRewards, attachRewards } from './ui/rewards.js';
 import { SURVIVAL_STEP, chOf, CH_START, CHAPTERS, LAST_CH, LAST_STORY_STEP, TOTAL_PAGES, STORY } from './game/story.js';
 import { WEAPONS, WEAPON_ORDER, UPGRADES, upCost, AMMO_SHOP, PERKS, xpFor, defaultSave, loadSave, writeSave, clearSave, stat, ARMOR, ARMOR_ORDER } from './game/data.js';
+import { DIFF, diffId, STAR_RULES, starStr, fmtT, recordStars, saveRun } from './game/difficulty.js';
 import { installBgListeners, onAppLeave, onAppReturn, leaveApp, returnApp, isAway } from './bgPause.js';
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -51,11 +52,15 @@ async function ensureGame() { if (game) return game; if (gamePromise) return gam
   if (!studioOn && (!$('#loading') || $('#loading').classList.contains('hidden'))) showLoading({ message: 'LOADING', title: 'Riverside' });
   gamePromise = (async () => { const { Game } = await import('./game/game.js'); const g = new Game({ settings: S, audio, LS, save }); { const NM = { keem: 'Keem', marcus: 'Dad', nia: 'Nia', npcf: 'Neighbor', npcm: 'Neighbor', walt: 'Mr. Walt', ruth: 'Ruth', gus: 'Big Gus' }; let bk = document.getElementById('bark'); if (!bk) { bk = document.createElement('div'); bk.id = 'bark'; bk.style.cssText = 'position:fixed;left:50%;bottom:22%;transform:translateX(-50%);max-width:80vw;padding:4px 10px;border-radius:8px;background:rgba(0,0,0,.55);color:#eee;font:14px Georgia,serif;pointer-events:none;opacity:0;transition:opacity .25s;z-index:30;text-align:center'; document.body.appendChild(bk); } let bt; audio.onBark = (who, t) => { if (!t || S.playSubs === false || (g.dlgCur)) return; bk.textContent = (NM[who] || who) + ': ' + t.replace(/\{([^|}]*)\|([^}]*)\}/g, (m, a, b) => S.lang === 'off' ? b : a); bk.style.opacity = 1; clearTimeout(bt); bt = setTimeout(() => bk.style.opacity = 0, 2600); }; }
     await g.load(p => setProgress(p));
-    g.onDeath = () => { state = 'dead'; $('#deadMsg').textContent = g.survival ? 'Survived to wave ' + (g.stepData.wave || 0) + ' · Best: wave ' + (LS.getItem('atq3.survBest') || 0) : ['They got you.', 'Keem didn\'t make it.', 'Torn apart in Riverside.', 'Should\'ve rolled.'][(Math.random() * 4) | 0]; showScreen('#dead'); };
+    g.onDeath = () => { if (g.run && !g.survival) { g.run.deaths = (g.run.deaths || 0) + 1; saveRun(LS, g.run); } state = 'dead'; $('#deadMsg').textContent = g.survival ? 'Survived to wave ' + (g.stepData.wave || 0) + ' · Best: wave ' + (LS.getItem('atq3.survBest') || 0) : ['They got you.', 'Keem didn\'t make it.', 'Torn apart in Riverside.', 'Should\'ve rolled.'][(Math.random() * 4) | 0]; showScreen('#dead'); };
     g.onPause = () => { if (state === 'play') pause(); else if (state === 'paused') resume(); };
     g.onComplete = (ch = 1) => { const C = CHAPTERS, last = ch >= LAST_CH, nx = Math.min(LAST_CH, ch + 1); // chapter table comes from src/game/chapters (no hard-coded last chapter)
-      save.done = true; if (ch >= 2) save.done2 = true; save.maxCh = Math.max(save.maxCh || 1, nx); save.ch = nx; save.step = last ? LAST_STORY_STEP : CH_START[nx]; writeSave(LS, save); state = 'ending'; g.paused = true; $('#endStats').innerHTML = `Kills: ${save.kills} · Level ${save.level} · Cash $${save.cash} · Comic pages ${save.pages.length}/${TOTAL_PAGES}`;
-      $('#endH').textContent = 'End of Chapter ' + ch + ' · ' + C[ch].title; $('#endQ').textContent = C[ch].endQuote; $('#endNext').textContent = last ? (C[ch].nextTeaser || 'To be continued — Chapter ' + (ch + 1) + ' coming soon.') : 'Chapter ' + (ch + 1) + ' · ' + C[ch + 1].title + ' is unlocked. Your level, cash and weapons carry over.'; $('#btnEndNext').textContent = 'Continue to Chapter ' + nx; $('#btnEndNext').classList.toggle('hidden', last); showScreen('#ending'); audio.setMood('sad'); };
+      const run = g.run && g.run.ch === ch ? g.run : null, rs = recordStars(save, ch, run); g.run = null; saveRun(LS, null);
+      const starHtml = `<div class="endStars" aria-label="${rs.s} of 3 stars">${starStr(rs.s)}</div><div class="small endRun">${STAR_RULES.map((t, i) => `<span class="${rs.got[i] ? 'ok' : 'no'}">${rs.got[i] ? '★' : '☆'} ${t}</span>`).join('')}</div><div class="small">${run ? 'Time ' + fmtT(run.t) + ' · Damage taken ' + Math.round(run.dmg) + ' · Deaths ' + (run.deaths | 0) + ' · ' + DIFF[run.diff].name : ''}${rs.newBest && save.stars[ch] && run ? ' · <b>New best!</b>' : ''}</div>`;
+      if (g.replay) { save.rp = null; writeSave(LS, save); state = 'ending'; g.paused = true; $('#endStats').innerHTML = starHtml; $('#endH').textContent = 'Replay complete · Chapter ' + ch + ' · ' + C[ch].title; $('#endQ').textContent = C[ch].endQuote; $('#endNext').textContent = 'Your story progress is unchanged. Best: ' + starStr(save.stars[ch].s) + (save.stars[ch].t ? ' in ' + fmtT(save.stars[ch].t) : '') + '.'; $('#btnEndNext').classList.add('hidden'); $('#btnEndSel').classList.remove('hidden'); showScreen('#ending'); { const ep = $('#ending .panel'); if (ep) ep.scrollTop = 0; } audio.setMood('sad'); return; }
+      $('#btnEndSel').classList.add('hidden');
+      save.done = true; if (ch >= 2) save.done2 = true; save.maxCh = Math.max(save.maxCh || 1, nx); save.ch = nx; save.step = last ? LAST_STORY_STEP : CH_START[nx]; writeSave(LS, save); state = 'ending'; g.paused = true; $('#endStats').innerHTML = starHtml + `<div class="small">Kills: ${save.kills} · Level ${save.level} · Cash $${save.cash} · Comic pages ${save.pages.length}/${TOTAL_PAGES}</div>`;
+      $('#endH').textContent = 'End of Chapter ' + ch + ' · ' + C[ch].title; $('#endQ').textContent = C[ch].endQuote; $('#endNext').textContent = last ? (C[ch].nextTeaser || 'To be continued — Chapter ' + (ch + 1) + ' coming soon.') : 'Chapter ' + (ch + 1) + ' · ' + C[ch + 1].title + ' is unlocked. Your level, cash and weapons carry over.'; $('#btnEndNext').textContent = 'Continue to Chapter ' + nx; $('#btnEndNext').classList.toggle('hidden', last); showScreen('#ending'); { const ep = $('#ending .panel'); if (ep) ep.scrollTop = 0; } audio.setMood('sad'); };
     try { trackGame(g, i => i === SURVIVAL_STEP); } catch (e) { console.warn('leaderboard tracking off', e); }
     try { attachDailies(g); } catch (e) { console.warn('dailies tracking off', e); }
     try { attachRewards(g); } catch (e) { console.warn('rewards tracking off', e); }
@@ -66,7 +71,7 @@ function goLandscape() { if (document.body.dataset.dev !== 'touch' || window.Cap
 async function play(step, o = {}) { if (o.prologue) import('./game/prologue.js').then(m => m.preloadPrologue(audio)).catch(() => {}); goLandscape(); showScreen(null); $('#stage').classList.remove('hidden'); state = 'loading';
   const showChLoad = () => { if (step === SURVIVAL_STEP) showLoading({ message: 'SURVIVAL', title: 'Endless waves' }); else { const ch = chOf(step || 0); showLoading({ ch, title: (CHAPTERS[ch] && CHAPTERS[ch].title) || 'Riverside' }); } };
   showChLoad(); await yieldPaint();
-  const g = await ensureGame(); g.save = save; g.settings = S; audio.init();
+  const g = await ensureGame(); g.save = save; g.settings = S; g.replay = o.replay || null; g.run = null; audio.init();
   showChLoad(); await yieldPaint();
   $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden');
   if (o.prologue) { g.wantPrologue = true; try { const m = await import('./game/prologue.js'); await Promise.race([m.preloadPrologue(audio), new Promise(r => setTimeout(r, 6000))]); } catch (e) { } }
@@ -300,10 +305,20 @@ var CHN = CHAPTERS.map(c => (c ? c.title : '')), CHS = CHAPTERS.map(c => (c ? c.
 const unlockedCh = (s) => Math.max(s.maxCh || 1, s.done || (s.step || 0) >= 7 ? 2 : 1, s.done2 ? 3 : 1, CHS.findLastIndex(v => (s.step || 0) >= v) || 1);
 // chapter-select buttons are generated from the registry (src/game/chapters), so adding a chapter needs no HTML/menu edits
 { const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.85 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
-const chList = $('#chList'); for (let c = 1; c <= LAST_CH; c++) { const b = document.createElement('button'); b.id = 'btnCh' + c; b.textContent = 'Chapter ' + c + ' · ' + CHN[c]; chList.appendChild(b); }
-$('#btnChapters').onclick = () => { const s = loadSave(LS) || defaultSave(); const u = unlockedCh(s); for (let c = 2; c <= LAST_CH; c++) { const b = $('#btnCh' + c); b.disabled = c > u; b.textContent = 'Chapter ' + c + ' · ' + CHN[c] + (c > u ? ' (finish Chapter ' + (c - 1) + ')' : ''); } showScreen('#chapters'); };
-$('#btnCh1').onclick = () => { save = loadSave(LS) || defaultSave(); writeSave(LS, save); play(0); };
-for (let c = 2; c <= LAST_CH; c++) $('#btnCh' + c).onclick = () => { save = loadSave(LS) || defaultSave(); save.ch = c; writeSave(LS, save); play(CHS[c]); };
+const chList = $('#chList'); for (let c = 1; c <= LAST_CH; c++) { const b = document.createElement('button'); b.id = 'btnCh' + c; b.className = 'chb'; b.innerHTML = '<span class="cht"></span><span class="chs"></span>'; b.querySelector('.cht').textContent = 'Chapter ' + c + ' · ' + CHN[c]; chList.appendChild(b); }
+// v1.9.85: difficulty picker + star ratings; chapters behind your story progress start as replays (story progress untouched)
+const progCh = (s) => (s.step || 0) >= LAST_STORY_STEP && s.done ? LAST_CH + 1 : chOf(s.step || 0);
+function renderChapters() { const s = loadSave(LS) || defaultSave(); const u = unlockedCh(s), pc = progCh(s), d = diffId(s), st = s.stars || {};
+  document.querySelectorAll('#diffSel button').forEach(b => b.classList.toggle('on', b.dataset.d === d)); $('#diffBlurb').textContent = DIFF[d].name + ': ' + DIFF[d].blurb + (d === 'easy' ? ' · max 2 stars' : '');
+  for (let c = 1; c <= LAST_CH; c++) { const b = $('#btnCh' + c), lock = c > u, r = st[c]; b.disabled = lock; b.classList.toggle('replay', !lock && c < pc); b.classList.toggle('cur', c === pc);
+    b.querySelector('.cht').textContent = 'Chapter ' + c + ' · ' + CHN[c] + (lock ? ' (finish Chapter ' + (c - 1) + ')' : '');
+    b.querySelector('.chs').innerHTML = lock ? '' : (r ? `<b>${starStr(r.s)}</b><i>${r.t ? fmtT(r.t) + ' · ' : ''}${DIFF[r.diff] ? DIFF[r.diff].name : ''}</i>` : `<b class="dim">☆☆☆</b><i>${c === pc ? 'Up next' : c < pc ? 'Replay' : ''}</i>`); } }
+$('#diffSel').innerHTML = Object.values(DIFF).map(x => `<button data-d="${x.id}">${x.name}</button>`).join(''); $('#starRules').textContent = STAR_RULES.map(t => '★ ' + t).join('  ·  ');
+document.querySelectorAll('#diffSel button').forEach(b => b.onclick = () => { save = loadSave(LS) || defaultSave(); save.diff = b.dataset.d; writeSave(LS, save); renderChapters(); });
+$('#btnChapters').onclick = () => { renderChapters(); showScreen('#chapters'); };
+const startCh = (c) => { save = loadSave(LS) || defaultSave(); const pc = progCh(save); if (c < pc) { save.rp = { ch: c, step: CHS[c] }; writeSave(LS, save); play(c === 1 ? 0 : CHS[c], { replay: { ch: c } }); return; } if (c > 1) save.ch = c; writeSave(LS, save); play(c === 1 ? 0 : CHS[c]); };
+for (let c = 1; c <= LAST_CH; c++) $('#btnCh' + c).onclick = () => startCh(c);
+$('#btnEndSel').onclick = () => { toTitle(); renderChapters(); showScreen('#chapters'); };
 $('#btnSurvival').onclick = () => { save = loadSave(LS) || defaultSave(); writeSave(LS, save); play(SURVIVAL_STEP); };
 $('#btnContinue').onclick = () => { save = loadSave(LS) || defaultSave(); play(save.step || 0); };
 $('#btnCustom').textContent = 'My Character'; $('#btnCustom').onclick = () => openCustom('#title'); $('#btnShopCustom').onclick = () => openCustom(back === '#pause' ? '#pause' : '#shop');
@@ -315,7 +330,7 @@ $('#btnResume').onclick = resume; $('#btnPause').onclick = e => { e.stopPropagat
 $('#skipObj').onclick = () => game && game.skipObjective();
 $('#btnRestartCp').onclick = () => { resume(); game.restartCheckpoint(); };
 $('#btnQuit').onclick = () => { writeSave(LS, save); toTitle(); };
-$('#btnRetry').onclick = () => { showScreen(null); state = 'play'; save = loadSave(LS) || save; game.save = save; game.paused = false; game.last = performance.now(); if (!game.survival) game.step = save.step; game.restartCheckpoint(); };
+$('#btnRetry').onclick = () => { showScreen(null); state = 'play'; save = loadSave(LS) || save; game.save = save; game.paused = false; game.last = performance.now(); if (!game.survival) game.step = game.replay && save.rp && save.rp.ch === game.replay.ch ? save.rp.step : save.step; game.restartCheckpoint(); };
 $('#btnDeadQuit').onclick = toTitle; $('#btnEndTitle').onclick = toTitle;
 // ---------- settings ----------
 const bindS = (id, k, kind) => { const el = $(id); if (!el) return; if (kind === 'chk') { el.checked = !!S[k]; el.onchange = () => { S[k] = el.checked; saveS(); applyS(k); }; } else if (kind === 'sel') { el.value = S[k]; el.onchange = () => { S[k] = el.value; saveS(); applyS(k); }; } else { el.value = S[k]; el.oninput = () => { S[k] = +el.value; saveS(); applyS(k); }; } };

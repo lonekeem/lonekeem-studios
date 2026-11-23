@@ -18,7 +18,8 @@ import { V3, clamp, lerp, rnd, angLerp, bloodTex } from './util.js';
 import { Input } from './input.js';
 import { stepMove, startRoll, startJump, stepVehicle, stepFollowCam, clampCamToPlayer, CAM } from './pctl.js';
 import { syncWounds, addWound, bloodyMouth, makePool, tickPools, setHandBlood } from './gore.js';
-import { STORY, LOOT, chOf, TOTAL_PAGES, SPEAKER_NAMES } from './story.js';
+import { STORY, LOOT, chOf, TOTAL_PAGES, SPEAKER_NAMES, CH_START } from './story.js';
+import { diffOf, diffId, loadRun, saveRun, newRun } from './difficulty.js';
 import { onDialogueLine, tickDialogueFace, endDialogueFace, resetDialogueFace } from './dialogueFace.js';
 import { hitChar, capsOf, updateAimPose, placeShotFx, muzzleWorld, stepAimAssist } from './aim.js';
 import { attachGameWeaponBar, syncWeaponBar } from '../ui/weaponBar.js';
@@ -136,7 +137,11 @@ export class Game {
     P.attach('DEF-spine.003', this.pack); this.pack.position.set(0, 0.12, -0.2); this.pack.rotation.set(0.1, 0, 0); if (P.skin) { this.pack.scale.setScalar(.6); this.pack.position.set(0, -0.03, -0.05); } else this.pack.scale.setScalar(1);
     mountHeld(P, this.hand, (this.save && this.save.cur) || 'fists');
     this.pack.visible = !!(P.wantsPack || (this.save && this.save.items.includes('backpack'))); return P; }
-  async start(step, opts = {}) { if (this._lookKey !== JSON.stringify(playerLook())) this.makePlayer(); step = step || 0; if (!this.holdSave && !(STORY[step] && STORY[step].survival)) this.save.step = step; await this.loadStep(step, { overlay: opts.overlay !== false }); this.paused = !!(typeof window !== 'undefined' && window.__atq && window.__atq.isAway && window.__atq.isAway()); if (!this.running) { this.running = true; this.last = performance.now(); requestAnimationFrame((t) => this.frame(t)); } await yieldOnce(); }
+  async start(step, opts = {}) { if (this._lookKey !== JSON.stringify(playerLook())) this.makePlayer(); step = step || 0; if (!this.holdSave && !this.replay && !(STORY[step] && STORY[step].survival)) this.save.step = step; this.beginRun(step); await this.loadStep(step, { overlay: opts.overlay !== false }); this.paused = !!(typeof window !== 'undefined' && window.__atq && window.__atq.isAway && window.__atq.isAway()); if (!this.running) { this.running = true; this.last = performance.now(); requestAnimationFrame((t) => this.frame(t)); } await yieldOnce(); }
+  // v1.9.85: chapter run stats for star ratings (time in play, damage taken, deaths, lowest difficulty used)
+  beginRun(step) { const st = STORY[step]; if (!st || st.survival || this.holdSave) { this.run = null; return; } const ch = chOf(step), d = diffId(this.save), RANK = { easy: 0, normal: 1, hard: 2 };
+    let r = this.run || loadRun(this.LS); if (!r || r.ch !== ch || step === CH_START[ch] || !!r.replay !== !!this.replay) r = newRun(ch, d, this.replay); else if (RANK[d] < RANK[r.diff]) r.diff = d;
+    this.run = r; saveRun(this.LS, r); }
   leave() {
     this.paused = true; this.running = false; this.cut = null;
     this.stepTok = (this.stepTok || 0) + 1;
@@ -253,7 +258,7 @@ export class Game {
     if (this.wpTarget) { P.x = this.wpTarget[0]; P.z = this.wpTarget[2]; return; }
     if (this.step < STORY.length - 1 && !STORY[this.step].survival && !STORY[this.step + 1].survival) this.loadStep(this.step + 1); }
   restartCheckpoint() { this.stepTok = (this.stepTok || 0) + 1; this.paused = false; this.last = performance.now(); Promise.resolve(this.loadStep(this.step)).catch((e) => { console.error(e); this.clearActors(); this.cut = null; this.dying = null; this.dead = false; const cp = STORY[this.step].cp; this.player.root.position.set(cp[0], 0, cp[1]); }); }
-  checkpoint() { if (this.holdSave) return; if (!this.survival) { this.save.step = this.step; this.save.played = true; } writeSave(this.LS, this.save); }
+  checkpoint() { if (this.holdSave) return; if (!this.survival) { if (this.replay) { this.save.rp = { ch: this.replay.ch, step: this.step }; } else { this.save.step = this.step; this.save.played = true; } } writeSave(this.LS, this.save); if (this.run) saveRun(this.LS, this.run); }
   setDoor(open) { const w = this.world; w.doorCol.x0 = open ? 999 : 11.9; w.doorCol.x1 = open ? 999 : 12.1; w.doorBoards.forEach(b => b.visible = !open); w.frontDoor.rotation.y = open ? -1.6 : 0; }
   setTruck(i) { if (!this.truck) { const g = this.world.car(22, -64, 0, '#7a2218', { truck: true, lights: true }); this.truck = { g, v: 0, head: 0, driving: false }; this.truck.col = g.userData.col; }
     const T = this.truck; T.g.position.set(22, 0, -64); T.head = 0; T.v = 0; T.g.rotation.y = 0; T.driving = false; this.updateTruckCol(); if (i >= 7) { T.g.position.set(1.5, 0, -95); T.g.rotation.y = 0.5; this.updateTruckCol(); } }
@@ -309,7 +314,7 @@ export class Game {
     else this.addPickup({ kind: 'hp', n: 25, pos, drop: 20 }); }
   killPickup(p) { this.scene.remove(p.mesh); const i = this.pickups.indexOf(p); if (i >= 0) this.pickups.splice(i, 1); }
   takePickup(p) { const l = p.l, s = this.save; this.scene.remove(p.mesh); this.pickups.splice(this.pickups.indexOf(p), 1); if (l.id && !l.story) s.loot.push(l.id); this.audio.pickup();
-    if (l.kind === 'cash') this.addCash(l.n); else if (l.kind === 'ammo') { s.ammo[l.item] = (s.ammo[l.item] || 0) + l.n; this.floatText(`+${l.n} ${l.item} ammo`, '#d8e8a0'); if (l.drop) this.toast(`+${l.n} ${l.item} ammo`, 1); }
+    if (l.kind === 'cash') this.addCash(l.n); else if (l.kind === 'ammo') { const an = Math.max(1, Math.round(l.n * diffOf(this).ammo)); s.ammo[l.item] = (s.ammo[l.item] || 0) + an; this.floatText(`+${an} ${l.item} ammo`, '#d8e8a0'); if (l.drop) this.toast(`+${an} ${l.item} ammo`, 1); }
     else if (l.kind === 'hp') { this.hp = Math.min(this.maxHp, this.hp + l.n); this.toast(`+${l.n} health`, 1); } else if (l.kind === 'med') { s.meds++; this.floatText('+1 Med kit', '#fff'); } else if (l.kind === 'grenade') { s.grenades += l.n || 1; this.floatText('+Pipe grenade', '#fff'); }
     else if (l.kind === 'page') { s.pages.push(l.id); this.toast(`Comic page found (${s.pages.length}/${TOTAL_PAGES}): "${l.text}"`, 3); this.addXP(25); }
     else if (l.kind === 'weapon') { this.give(l.item); if (l.ammo) s.ammo[WEAPONS[l.item].ammo] = (s.ammo[WEAPONS[l.item].ammo] || 0) + l.ammo; }
@@ -412,6 +417,7 @@ export class Game {
     if (o.raider) { c.raider = true; c.hp = c.maxHp = o.hp || 90; c.speed = 2.6; c.cd = rnd(1, 2.5); const h = new THREE.Group(); h.add(weaponMesh(o.gun || 'rifle')); mountHeld(c, h, o.gun || 'rifle'); c.gunM = h; c.gunId = o.gun || 'rifle'; c.play('Pistol_Aim_Neutral'); if (c.mat && c.mat.userData.u && c.mat.userData.u.uShirt) if (o.shirt && c.mat.userData.u.uJacket) { c.mat.userData.u.uJacket.value.set(o.shirt); c.mat.userData.u.uShirt.value.set(o.shirt); } }
     // Pose immediately so a zombie that pops into view (e.g. during a melee-kill hitch / hitstop) is never left in bind T-pose.
     try { c.mixer.update(0); } catch (e) { /* first pose */ }
+    { const dm = diffOf(this).hp; if (dm !== 1 && c.hp > 0) { c.hp = Math.max(1, Math.round(c.hp * dm)); c.maxHp = Math.max(1, Math.round((c.maxHp || c.hp) * dm)); } } // v1.9.85 difficulty
     this.zombies.push(c); return c; }
   horde(n, pts, o = {}) { for (let i = 0; i < n; i++) { const p = pts[i % pts.length]; this.spawnZ(p[0] + rnd(-3, 3), p[1] + rnd(-3, 3), o); } }
   alive() { return this.zombies.filter(z => !z.dead); }
@@ -524,7 +530,7 @@ export class Game {
     const pd = this.player.root.position.distanceTo(pos); if (pd < R * 0.6 && !this.truck.driving) this.hurt(40 * (1 - pd / R), pos); }
 
   // ---------- combat ----------
-  hurt(n, from) { if (this.dying || this.state.roll > 0 || this.god || this.grace > 0 || this.dlgCur && this.cut) return; if (n > 0) { const ab = armorAbsorb(this.save); if (ab) n *= (1 - ab); if (this.save) this.save.bites = (this.save.bites || 0) + 1; } this.hp -= n; this.audio.hurt(); this.flashScreen('hit'); this.shake(0.35); this.lastHurt = this.t;
+  hurt(n, from) { if (this.dying || this.state.roll > 0 || this.god || this.grace > 0 || this.dlgCur && this.cut) return; if (n > 0) { const ab = armorAbsorb(this.save); if (ab) n *= (1 - ab); n *= diffOf(this).dmg; if (this.run && !this.survival) { this.run.dmg += Math.min(n, Math.max(0, this.hp)); this._runDirty = true; } if (this.save) this.save.bites = (this.save.bites || 0) + 1; } this.hp -= n; this.audio.hurt(); this.flashScreen('hit'); this.shake(0.35); this.lastHurt = this.t;
     if (this.settings.gore && Math.random() < .5) this.screenSplat(); const p = this.player.root.position.clone(); p.y = 1.2; this.blood(p, V3(0, .3, 0), 8, 2); if (this.settings.gore && n >= 5) this.woundFrom(this.player, from, 'melee');
     if (this.hp <= 0) { this.hp = 0; this.die(from); } else if (n > 15) { this.player.play('Hit_Chest', { once: true, cb: () => { this.player.curName = ''; } }); this.state.stun = 0.35; } }
   die(from) { const P = this.player; this.dying = { t: 0, t0: performance.now() }; this.dlgQ = []; this.dlgCur = null; endDialogueFace(this); $('#dlg').classList.remove('on'); this.audio.beat(0); this.audio.scream(0.15); P.play('Death01', { once: true });
@@ -664,7 +670,7 @@ export class Game {
     if (this.dying) { this.updateDying(dt); if (this.boss && !this.boss.propped) { this.boss.propped = 1; bossProp(this, this.boss, document.querySelector('#bossn')?.textContent); }
     this.updateZ(dt); this.updateFX(dt); tickPools(this, dt); tickGfx(this, dt); return; }
     // cutscene camera
-    if (this.pro) this.pro.tick(rdt); const st = STORY[this.step]; st.update && st.update(this, dt); partnerUpdate(this, dt); this.failsafe(dt);
+    if (this.run && !this.cut && !this.survival) { this.run.t += rdt; if ((this._runSv = (this._runSv || 0) + rdt) > 5) { this._runSv = 0; saveRun(this.LS, this.run); } } if (this.pro) this.pro.tick(rdt); const st = STORY[this.step]; st.update && st.update(this, dt); partnerUpdate(this, dt); this.failsafe(dt);
     if (s.fireCd > 0) s.fireCd -= dt; if (s.reload > 0) { s.reload -= dt; if (s.reload <= 0) this.finishReload(); }
     if (s.comboT > 0) { s.comboT -= dt; if (s.comboT <= 0) s.combo = 0; }
     if (this.hp < this.maxHp && this.t - (this.lastHurt || 0) > 5) this.hp = Math.min(this.maxHp, this.hp + dt * 4);

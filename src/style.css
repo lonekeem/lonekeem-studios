@@ -301,7 +301,14 @@ body:not(.hudv2) #tAtk{right:40px;bottom:40px}body:not(.hudv2) #tAim{right:0;bot
 body:not(.hudv2) #tReload{right:140px;bottom:20px}body:not(.hudv2) #tRoll{right:132px;bottom:84px}body:not(.hudv2) #tJump{right:82px;bottom:140px}body:not(.hudv2) #tUse{right:12px;bottom:150px}
 body:not(.hudv2).driving #tbtns{bottom:150px}
 
-#chList{display:flex;flex-direction:column;gap:12px}
+#chList{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+/* v1.9.85 chapter select: difficulty + stars */
+#chList .chb{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;min-height:58px}
+#chList .chb .chs{display:flex;gap:8px;align-items:baseline;font-size:13px}#chList .chb .chs b{color:#ffd54a;letter-spacing:.08em;font-size:16px}#chList .chb .chs b.dim{color:#5d6d62}#chList .chb .chs i{font-style:normal;opacity:.75}
+#chList .chb.cur{border-color:var(--g)}#chList .chb:disabled{opacity:.45}
+.chsel .diffRow{display:flex;align-items:center;gap:12px;font:600 15px system-ui}.seg{display:flex;gap:0;border:1px solid var(--gd);border-radius:10px;overflow:hidden}.seg button{border:0;border-radius:0;margin:0;padding:9px 16px;min-width:86px}.seg button.on{background:#2a7a4a;color:#fff}
+.chsel p.small{margin:0}.dim{opacity:.7}
+.endStars{font-size:38px;color:#ffd54a;letter-spacing:.12em;text-align:center;text-shadow:0 0 12px rgba(255,190,40,.45)}.endRun{display:flex;flex-direction:column;gap:2px;margin:4px 0}.endRun .no{opacity:.5}
 .glowArrow{position:absolute;transform:translate(-50%,-50%);text-align:center;pointer-events:none;color:#ffd54a;text-shadow:0 0 6px #000;font:800 11px system-ui;z-index:7}
 .glowArrow i{display:block;font-style:normal;font-size:22px;filter:drop-shadow(0 0 5px #ffb000);animation:glowArr 1s ease-in-out infinite}
 .glowArrow b{display:block;font-weight:800}
@@ -581,3 +588,4 @@ body.driving #wbar{display:none!important}
 }
 /* v1.9.52: cheap vignette for Low quality (Medium / High do it in the post grade) */
 body.gfx-vig::before{content:'';position:fixed;inset:0;z-index:5;pointer-events:none;background:radial-gradient(ellipse 75% 70% at 50% 50%,rgba(0,0,0,0) 58%,rgba(0,0,0,.34) 100%)}
+@media (max-height:430px){.endStars{font-size:26px}.endRun{flex-direction:row;flex-wrap:wrap;gap:2px 14px}#ending .panel{gap:8px;padding:18px 26px}#ending .panel h2{font-size:20px}}
