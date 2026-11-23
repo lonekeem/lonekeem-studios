@@ -116,7 +116,8 @@ export class Game {
     setLoad(0.84); await yieldPaint();
     // Remaining story/survival rigs used to block first load for a long sit at ~80%. Chapter 1 only needs RIG_CORE; the rest load in the background.
     this._rigsRest = loadMoreRigs(this.lib.rigs, base, RIG_REST, yieldPaint).then(() => { this._rigsRestDone = true; return this.lib.rigs; }).catch(() => { this._rigsRestDone = true; return this.lib.rigs; });
-    await new Promise(res => { if (mgr.itemsLoaded >= mgr.itemsTotal) res(); else { mgr.onLoad = res; setTimeout(res, 8000); } });
+    // World textures use fire-and-forget loader.load(), so the manager can sit short of itemsTotal. Do not block first load for them.
+    await new Promise(res => { if (mgr.itemsLoaded >= mgr.itemsTotal) res(); else { mgr.onLoad = res; mgr.onError = res; setTimeout(res, 1500); } });
     // drive buttons (touch / mouse)
     [['#dGas', 'gas'], ['#dBrake', 'brake'], ['#dL', 'l'], ['#dR', 'r']].forEach(([id, k]) => { const e = $(id); if (!e) return; const on = (v) => (ev) => { ev.preventDefault(); this.drv = this.drv || {}; this.drv[k] = v; e.classList.toggle('on', v); };
       e.addEventListener('pointerdown', on(true)); ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => e.addEventListener(t, on(false))); });
