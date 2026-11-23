@@ -6,7 +6,7 @@ step 3:  python3 tools/el_batches.py split  -> cuts each batch at the long pause
 No keys are read or printed here."""
 import json, os, re, subprocess, sys
 from pathlib import Path
-ROOT = Path(__file__).resolve().parents[1]; OUT = ROOT / 'public' / 'sfx' / 'v'; W = Path('/workspace/atq-ch1520-voices'); RAW = W / 'raw'; RAW.mkdir(parents=True, exist_ok=True)
+ROOT = Path(__file__).resolve().parents[1]; OUT = ROOT / 'public' / 'sfx' / 'v'; W = Path(os.environ.get('ATQ_VOICES', '/workspace/atq-ch1520-voices')); RAW = W / 'raw'; RAW.mkdir(parents=True, exist_ok=True)
 CAST = {  # same voices as earlier chapters; danny (Sheldon - Quirky) + harlow are new library voices
   'keem': ('6OzrBCQf8cjERkYgzSg8', 'eleven_v3'), 'dana': ('XrExE9yKIg1WjnnlVkGX', 'eleven_v3'),
   'marcus': ('riqnCDqBJCxuKuDEeenv', 'eleven_multilingual_v2'), 'nia': ('H8BjWxFjrzNszTO74noq', 'eleven_multilingual_v2'),
@@ -15,6 +15,7 @@ CAST = {  # same voices as earlier chapters; danny (Sheldon - Quirky) + harlow a
   'radio': ('nJvj5shg2xu1GKGxqfkE', 'eleven_multilingual_v2'),
   'danny': ('ujcXHLWtGPYXnqBoMBgg', 'eleven_v3'), 'harlow': ('exurTFaGNF2gnRcPNH8I', 'eleven_v3'),
   'director': ('Xb7hH8MSUJpSbSDYk0k2', 'eleven_v3'), 'pilot': ('nJvj5shg2xu1GKGxqfkE', 'eleven_multilingual_v2'),
+  'hale': ('jAW0IMxOTz75sgLAYWp6', 'eleven_multilingual_v2'), 'gladys': ('A0g6t0RQc9zkMPsGNEIG', 'eleven_multilingual_v2'), 'yard': ('Q4oILuo4P8VeXtE6FMLI', 'eleven_multilingual_v2'),
 }
 def plan(maxn=8):
   subprocess.run(['node', 'tools/extract_lines.mjs'], cwd=ROOT, check=True, capture_output=True)
