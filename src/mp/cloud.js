@@ -14,12 +14,13 @@ const revKey = uid => 'atq.profile.rev.' + uid;
 // ONE profile data layer: fix/customize's src/mp/profile.js (used by profileui.js, the new creator, My Character and the town).
 // This module only adds the cloud: it registers itself as profile.js's sync hook (pull after Google sign-in, push after every save).
 import * as PROFILE from './profile.js';
+import { exportRoster, importRoster } from './chars.js';
 let P = PROFILE; PROFILE.registerProfileSync({ pull: (u) => pull(u), push: (p) => push(p) });
 const ready = Promise.resolve(PROFILE);
 export const profiles = () => ready;
 export const profileScreen = () => import('./profileui.js');
 /** The profile screen (welcome / create / edit) with Google sign-in that comes back to the Online tab. Resolves with the profile or null. */
-export async function openProfileScreen(mode = 'auto') { await autoSync().catch(() => {}); const { openProfile } = await import('./profileui.js'); return openProfile({ mode, onSignIn: async () => { const o = await import('./online.js'); await o.signInGoogle('online'); } }); }
+export async function openProfileScreen(mode = 'auto', opts = {}) { await autoSync().catch(() => {}); const { openProfile } = await import('./profileui.js'); return openProfile({ mode, slotId: opts.slotId, asNew: opts.asNew, onSignIn: async () => { const o = await import('./online.js'); await o.signInGoogle('online'); } }); }
 /** Signed in with Google but this device has not loaded that account's profile yet (e.g. right after the redirect): do it now. */
 let autoP = null;
 export function autoSync() { if (autoP) return autoP; autoP = (async () => { const u = await getUser().catch(() => null); if (!u || !u.id) return { state: 'guest' }; const cur = PROFILE.getProfile(); if (cur && cur.uid === u.id) return { state: 'synced' }; return syncOnSignIn(); })().finally(() => { setTimeout(() => { autoP = null; }, 3000); }); return autoP; }
@@ -27,8 +28,8 @@ export function autoSync() { if (autoP) return autoP; autoP = (async () => { con
 // ---------- cloud hooks ----------
 const status = new Set(); export const onSyncStatus = fn => { status.add(fn); return () => status.delete(fn); };
 const emit = (w, d) => status.forEach(fn => { try { fn(w, d); } catch (e) { /* ignore */ } });
-const payload = () => ({ v: 1, save: rd(SAVE), sel: rd(SEL), survBest: +(LSx.get(BEST) || 0), stats: (rd(META) || {}).stats || {} });
-function applyCloudData(d) { if (!d) return; if (d.save && typeof d.save === 'object') { const j = JSON.stringify(d.save); LSx.set(SAVE, j); LSx.set(SAVE + '.bak', j); } if (d.sel) wr(SEL, d.sel); if (d.survBest) LSx.set(BEST, String(Math.max(+(LSx.get(BEST) || 0), d.survBest | 0))); try { window.__atq && window.__atq.reloadSave && window.__atq.reloadSave(); } catch (e) { /* ignore */ } }
+const payload = () => ({ v: 1, save: rd(SAVE), sel: rd(SEL), survBest: +(LSx.get(BEST) || 0), stats: (rd(META) || {}).stats || {}, chars: exportRoster() });
+function applyCloudData(d) { if (!d) return; if (d.save && typeof d.save === 'object') { const j = JSON.stringify(d.save); LSx.set(SAVE, j); LSx.set(SAVE + '.bak', j); } if (d.sel) wr(SEL, d.sel); if (d.survBest) LSx.set(BEST, String(Math.max(+(LSx.get(BEST) || 0), d.survBest | 0))); if (d.chars) { try { importRoster(d.chars); } catch (e) { /* ignore */ } } try { window.__atq && window.__atq.reloadSave && window.__atq.reloadSave(); } catch (e) { /* ignore */ } }
 const gAvatar = u => { const m = (u && u.user_metadata) || {}; const a = m.avatar_url || m.picture || ''; return /^https:\/\//.test(a) ? a : null; };
 /** pull(user): the saved cloud profile for this Google account, or null when it has none yet. */
 async function pull(user) {

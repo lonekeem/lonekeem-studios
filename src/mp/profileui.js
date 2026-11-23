@@ -8,6 +8,7 @@ import { animate } from './anim.js';
 import * as K from './look.js';
 import { applySel, ALL_PARTS } from './storeLook.js';
 import { getProfile, saveProfile, hasProfile, pullProfile, DEFAULT_SEL } from './profile.js';
+import { upsertChar, setActiveId, getChar, KEEM_ID } from './chars.js';
 import { OUTFITS, OUTFIT, HAIRS, HAIR_COLORS, SKINS, FACES, BEARDS, EYES } from '../game/looks.js';
 
 const CSS = `
@@ -49,12 +50,14 @@ const NAMES = ['Ash', 'Rook', 'Juno', 'Dex', 'Nova', 'Kai', 'Mars', 'Sage', 'Rio
 const CLOSE = { skin: 1, face: 1, hair: 1 };
 
 // mode: 'auto' (welcome + create when there is no profile, else edit) | 'create' | 'edit'.  Resolves with the saved profile or null (closed).
-export function openProfile({ mode = 'auto', onSignIn } = {}) {
+export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
   return new Promise(async (resolve) => {
     if (!document.getElementById('prof-css')) document.head.append(el('style', { id: 'prof-css' }, CSS));
-    if (mode === 'auto') mode = hasProfile() ? 'edit' : 'welcome';
-    const P0 = getProfile(); let sel = Object.assign({}, DEFAULT_SEL, (P0 && P0.sel) || readOldSel()); let name = (P0 && P0.name) || ''; const base = (P0 && P0.look) || K.loadLook() || K.defaultLook('mp_m1');
-    const touched = new Set(P0 && K.loadLook() ? [] : ALL_PARTS); let step = 0; const done = new Set();
+    if (mode === 'auto' && !asNew && !slotId) mode = hasProfile() ? 'edit' : 'welcome';
+    const P0 = getProfile(); let sel = Object.assign({}, DEFAULT_SEL, (P0 && P0.sel) || readOldSel()); let name = (P0 && P0.name) || ''; let base = (P0 && P0.look) || K.loadLook() || K.defaultLook('mp_m1');
+    let touched = new Set(P0 && K.loadLook() ? [] : ALL_PARTS); let step = 0; const done = new Set();
+    if (asNew) { mode = 'create'; sel = Object.assign({}, DEFAULT_SEL); name = ''; base = K.defaultLook('mp_m1'); touched = new Set(ALL_PARTS); }
+    else if (slotId && slotId !== KEEM_ID) { const ch = getChar(slotId); if (ch) { mode = mode === 'auto' ? 'edit' : mode; sel = Object.assign({}, DEFAULT_SEL, ch.sel || {}); name = ch.name || name; base = ch.look || base; touched = new Set(ALL_PARTS); } }
     const wallet = () => { const s = (window.__atq && window.__atq.save) || {}; return s; };
     const root = el('div', { id: 'prof' }); document.body.append(root);
     let renderer = null, scene, cam, av = null, gen = 0, running = true, rot = 0, swayT = 0, drag = null, zoom = 0, t = 0, last = performance.now(), auto = true;
@@ -113,7 +116,14 @@ export function openProfile({ mode = 'auto', onSignIn } = {}) {
           el('div', { cls: 'lbl' }, 'Build'), el('div', { cls: 'grid' }, [[.92, 'Slim'], [1, 'Average'], [1.1, 'Stocky']].map(([v, n]) => card(n, { on: sel.build === v, click: () => set('extra', () => { sel.build = v; }) })))],
       };
       let toastT = 0; const toast = (m) => { sub.textContent = m; sub.style.color = '#ffb0a8'; clearTimeout(toastT); toastT = setTimeout(() => { sub.style.color = ''; sub.textContent = SUB[STEPS[step][0]]; }, 2600); };
-      const save = () => { const p = saveProfile({ name: name || 'Survivor', sel, look: look() }); finish(p); };
+      const save = () => {
+        const L = look(); L.name = name || 'Survivor';
+        const slot = upsertChar({ id: (slotId && slotId !== KEEM_ID) ? slotId : undefined, name: L.name, sel, look: L });
+        if (slot) setActiveId(slot.id);
+        // Editing a slot should not rename the account when they already have a profile name
+        const p = (asNew || slotId) && hasProfile() ? saveProfile({ sel, look: L }) : saveProfile({ name: L.name, sel, look: L });
+        finish(Object.assign({}, p || {}, { name: L.name, sel, look: L, slotId: slot && slot.id }));
+      };
       function render() { const [key, label] = STEPS[step]; const W = wallet(); document.getElementById('profCash').textContent = '$' + (W.cash | 0); nm.textContent = name;
         stepsEl.innerHTML = ''; STEPS.forEach(([k, n], i) => stepsEl.append(el('button', { cls: (i === step ? 'on' : '') + (done.has(i) ? ' done' : ''), on: { click: () => { if (mode === 'create' && i > step && !name.trim()) return; step = i; render(); } } }, (mode === 'create' ? (i + 1) + '. ' : '') + n)));
         h3.textContent = (mode === 'create' ? `Step ${step + 1} of ${STEPS.length} · ` : '') + label; sub.textContent = SUB[key]; const sc = body.scrollTop; body.innerHTML = ''; body.append(...PAGES[key]()); body.scrollTop = sc; foot.innerHTML = '';

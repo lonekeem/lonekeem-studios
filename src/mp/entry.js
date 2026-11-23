@@ -11,7 +11,7 @@ export function install() {
     title.classList.add('hidden');
     const PR = await import('./profile.js'); const cloud = await import('./cloud.js');
     if (!PR.hasProfile()) { const p = await cloud.openProfileScreen('auto'); if (!p) { show(); return; } }
-    const p = PR.getProfile(); const tw = await import('./town/town.js'); tw.enterTown({ look: Object.assign({}, p.look, { name: p.name }), solo: true, onExit: show });
+    const p = PR.getProfile(); const { getPlayLook } = await import('./chars.js'); const look = Object.assign({}, getPlayLook(), { name: (getPlayLook().name) || p.name }); const tw = await import('./town/town.js'); tw.enterTown({ look, solo: true, onExit: show });
   });
   // back from the Google redirect: reopen the multiplayer menu so the sign-in shows up straight away
   try { if (sessionStorage.getItem('atq.mp.resume')) { sessionStorage.removeItem('atq.mp.resume'); setTimeout(() => b.click(), 800); } } catch (e) { /* ignore */ }

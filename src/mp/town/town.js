@@ -29,7 +29,7 @@ import { onAppLeave, onAppReturn } from '../../bgPause.js';
 
 function nameTag(text) { const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#000a'; g.roundRect ? g.roundRect(8, 10, 240, 44, 14) : g.rect(8, 10, 240, 44); g.fill(); g.fillStyle = '#fff'; g.font = '600 28px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text.slice(0, 16), 128, 33); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true })); s.scale.set(.5, .125, 1); s.renderOrder = 20; return s; }
 
-export async function enterTown({ look, onExit, room = 'town', solo = false } = {}) {
+export async function enterTown({ look, onExit, room = 'town', solo = false, local = false, ...opts } = {}) {
   try { window.__atq && window.__atq.showLoading && window.__atq.showLoading({ message: 'MULTIPLAYER', title: 'Quiet Falls' }); } catch (e) { /* ignore */ }
   if (!document.getElementById('mpt-css')) document.head.append(el('style', { id: 'mpt-css' }, CSS));
   // ---- DOM: the town canvas + panels live in the story's #stage; controls and HUD are the story game's own (v1.9.7 layout) ----
@@ -49,22 +49,39 @@ export async function enterTown({ look, onExit, room = 'town', solo = false } = 
   const inp = useG ? G.input : (window.__mpInput || (window.__mpInput = new Input(shim)));
   // small extra buttons in the same round style: Bag, Shop, Exit (second row under the story's grenade / swap / view / pause buttons)
   const hudr2 = el('div', { id: 'hudr2' }); const xb = (t, fn) => { const b = el('button', { cls: 'rb' }, t); b.addEventListener('click', e => { e.stopPropagation(); fn(); }); b.addEventListener('touchstart', e => e.stopPropagation(), { passive: true }); hudr2.append(b); return b; };
-  xb('Bag', () => togglePanel('bag')); xb('Shop', () => togglePanel('shop')); xb('Exit', () => exit()); hudEl.append(hudr2);
+  xb('Bag', () => togglePanel('bag')); xb('Shop', () => openArmory()); xb('Doors', () => togglePanel('shop')); xb('Exit', () => exit()); hudEl.append(hudr2);
   root.append(canvas, vig, gaugeC, panel, pausePanel, dead); stage.append(root);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true }); renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const scene = new THREE.Scene(); const FOG_FAR = 105; scene.background = new THREE.Color('#aab5b8'); scene.fog = new THREE.Fog('#aab5b8', 28, FOG_FAR);
   scene.add(new THREE.HemisphereLight('#dfe8f0', '#59614a', 1.25)); const sun = new THREE.DirectionalLight('#ffeccc', 2.1); sun.position.set(36, 60, 28); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = sc.bottom = -34; sc.right = sc.top = 34; sc.near = 5; sc.far = 160; sun.shadow.bias = -.0006; sun.shadow.normalBias = .04; scene.add(sun, sun.target);
   const cam = new THREE.PerspectiveCamera(58, 1, .1, 320);
   // ---- world ----
-  const W = buildTown(scene, { hooks: [addGas, addLoot] }); const col = W.col; const bag = new Bag(26); bag.add('cash', 60); bag.add('water', 1); bag.add('pistol', 1); bag.add('ammo_light', 24); bag.add('grenade', 1); bag.pref = 'pistol'; // story start: Dad's lockbox pistol (12 loaded + 24 spare)
+  const W = buildTown(scene, { hooks: [addGas, addLoot] }); const col = W.col; const bag = new Bag(26); bag.add('water', 1); bag.pref = 'fists'; // weapons + cash come from the shared Survival/story save via seedLoadout()
   // v1.9.28 shared wallet: town cash IS the story/Survival cash (window.__atq.save), so loot earned anywhere pays for doors, guns and My Character items
-  { const W$ = () => window.__atq && window.__atq.save; if (W$()) { bag.items.cash = Math.max(0, W$().cash | 0); if (!bag.items.cash) delete bag.items.cash; let lc = bag.count('cash'); const wt = setInterval(() => { const sv = W$(), c = bag.count('cash'); if (sv && c !== lc) { lc = c; sv.cash = c; writeSave(localStorage, sv); } try { if (!running) clearInterval(wt); } catch (e) { /* town still loading */ } }, 400); } }
+  const AMMO_BAG = { light: 'ammo_light', shell: 'ammo_shell', rifle: 'ammo_rifle', bolt: 'ammo_bolt', fuel: 'ammo_fuel', gl: 'ammo_gl' };
+  const seedLoadout = () => {
+    const sv = window.__atq && window.__atq.save; if (!sv) return;
+    bag.items.cash = Math.max(0, sv.cash | 0); if (!bag.items.cash) delete bag.items.cash;
+    for (const id of (sv.owned || [])) { if (id && id !== 'fists' && ITEMS[id] && (ITEMS[id].gun || ITEMS[id].melee) && !bag.count(id)) bag.add(id, 1); }
+    for (const [k, bid] of Object.entries(AMMO_BAG)) { const n = (sv.ammo && sv.ammo[k]) | 0, have = bag.count(bid); if (n > have) bag.add(bid, n - have); }
+    if ((sv.grenades | 0) > bag.count('grenade')) bag.add('grenade', (sv.grenades | 0) - bag.count('grenade'));
+    if ((sv.meds | 0) > bag.count('medkit')) bag.add('medkit', (sv.meds | 0) - bag.count('medkit'));
+    if (sv.cur && sv.cur !== 'fists' && bag.count(sv.cur)) bag.pref = sv.cur;
+  };
+  { const W$ = () => window.__atq && window.__atq.save; if (W$()) { seedLoadout(); let lc = bag.count('cash'); const wt = setInterval(() => { const sv = W$(), c = bag.count('cash'); if (sv && c !== lc) { lc = c; sv.cash = c; writeSave(localStorage, sv); } try { if (!running) clearInterval(wt); } catch (e) { /* town still loading */ } }, 400); } }
+  const openArmory = () => {
+    const api = window.__atq;
+    if (api && api.openTownShop) {
+      api.openTownShop(() => { seedLoadout(); try { if (bag.pref) equipWeapon(bag.pref); } catch (e) { /* bar may not be ready */ } try { syncWeaponBar(); } catch (e) {} });
+    } else togglePanel('shop');
+  };
   // containers (fridges, cabinets, dumpsters): no shadow casting (4 shadow-pass draws each for nothing visible)
   for (const c of W.containers) if (c.lid && c.lid.parent) c.lid.parent.traverse(m => { if (m.isMesh) m.castShadow = false; });
   // distance gating of small static props (draw-call budget): leaf objects of the freshly built world, shown within PROP_R of the player
   const gateList = []; { const PROP_R = 36; const bb = new THREE.Box3(), v = new THREE.Vector3(); const add = o => { if (o.isLight || o.isSprite || (o.name && o.name.startsWith('static_'))) return; if (!o.isMesh && o.children.length > 20) { o.children.forEach(add); return; } try { bb.setFromObject(o); } catch (e) { return; } if (bb.isEmpty()) return; bb.getCenter(v); const r = bb.getSize(new THREE.Vector3()).length() / 2; if (r > 40) return; gateList.push({ o, x: v.x, z: v.z, r, hid: false }); }; scene.children.slice().forEach(add); gateList.R = PROP_R; for (const g of gateList) g.o.traverse(m => { if (m.isMesh && !m.isInstancedMesh && m.castShadow && g.r < 2.2) m.castShadow = false; }); }
   // online (Supabase Realtime) when reachable, otherwise solo (BroadcastChannel: other tabs of this browser only)
-  const onl = solo ? null : await goOnline(room); let online = !!onl; if (onl) onl.transport.onstatus = ok => { online = ok; };
+  const localNet = !!(solo || local || /^(w-test-|test-)/i.test(String(room || '')));
+  const onl = localNet ? null : await goOnline(room); let online = !!onl; if (onl) onl.transport.onstatus = ok => { online = ok; };
   const net = new Net(room, onl ? onl.transport : undefined); net.me = { name: look.name || 'Survivor', look }; net.hello();
   const models = await loadCarModels(); const carMgr = createCars({ scene, W, models }); const cars = carMgr.cars; for (const c of cars) W.containers.push(c.cabin, c.trunk);
   // cars: no real shadow casting (10 meshes each in the shadow pass) -> one soft blob plane per car instead
@@ -72,7 +89,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false } = 
     for (const c of cars) { c.g.traverse(m => { if (m.isMesh) m.castShadow = false; }); const bl = new THREE.Mesh(new THREE.PlaneGeometry(c.L * .92 + .6, 2.5).rotateX(-Math.PI / 2).rotateY(Math.PI / 2), bm); bl.position.y = .07; bl.renderOrder = 1; bl.name = 'blob'; c.g.add(bl); } }
   const carBy = id => cars.find(c => c.id === id);
   const S = { roll: 0, atk: 0, atkHit: 0, vy: 0, y: 0, crouch: false, aim: false, shotT: 0, stun: 0, combo: 0, spd: 0 }; const me = { av: null, y: 0, x: SPAWN.x, z: SPAWN.z, ry: SPAWN.ry, sp: 0, drv: null, hp: 100, swing: 0, dead: 0, hitCd: 0, prot: 0 }; const remotes = new Map();
-  const mkAvatar = async lk => { if (lk && lk.exclusive === 'skin.keem_story') { try { return await makeKeemChar(); } catch (e) { console.warn('keem', e); } } const tpl = await loadBase(lk.base); const av = new Avatar(tpl); dress(av, lk); try { av.motion = await makeMotion(av); } catch (e) { console.warn('motion', e); } return av; };
+  const mkAvatar = async lk => { const L = lk || {}; if (L.exclusive === 'skin.keem_story') { try { return await makeKeemChar(); } catch (e) { console.warn('keem', e); } } const base = L.base || 'mp_m1'; const tpl = await loadBase(base); const av = new Avatar(tpl); try { dress(av, Object.assign({ base }, L, L.exclusive === 'skin.keem_story' ? {} : { exclusive: undefined })); } catch (e) { console.warn('dress', e); } try { av.motion = await makeMotion(av); } catch (e) { console.warn('motion', e); } return av; };
   me.av = await mkAvatar(look); scene.add(me.av.root); const myTag = nameTag(net.me.name); scene.add(myTag);
   // ---- bodies (persistent corpses, drawn by the zombies module if present) ----
   // sounds: the story game's AudioSys (samples + synth fallback); fails silent if audio is blocked
@@ -164,7 +181,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false } = 
     if (P) { const anim = fists ? (S.combo % 2 ? 'Punch_Cross' : 'Punch_Jab') : 'Sword_Attack'; const cl = P.lib.clips[anim]; P.play(anim, { once: true, force: true, speed: cl ? (cl.duration / rate) * .8 : 1, cb: () => { P.curName = ''; } }); } try { aud.swing(); } catch (e) { /* ignore */ } };
   // ---- input ----
   // keyboard extras (story Input already maps E/F use, Space jump, Ctrl roll, C crouch, V view, Q swap, G grenade, R = alt action, J fire); B = bag
-  const kd = e => { if (e.repeat) return; if (e.code === 'KeyB') togglePanel('bag'); if (e.code === 'KeyN') togglePanel('shop'); }; addEventListener('keydown', kd);
+  const kd = e => { if (e.repeat) return; if (e.code === 'KeyB') togglePanel('bag'); if (e.code === 'KeyN') openArmory(); }; addEventListener('keydown', kd);
   let camYaw = SPAWN.ry, camPitch = .42, camDist = CAM.dist, drag = null, followSt = {}; // desktop: look / fire / aim on the town canvas (#gl is hidden, so the story Input mouse path does not run here)
   canvas.addEventListener('contextmenu', e => e.preventDefault());
   canvas.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; if (matchMedia('(pointer:fine)').matches && !document.pointerLockElement && canvas.requestPointerLock) { try { canvas.requestPointerLock(); } catch (x) { /* ignore */ } } if (e.button === 0) { inp.mAtk = true; inp.edge.atk = true; } if (e.button === 2) inp.mAim = true; drag = [e.clientX, e.clientY]; });
@@ -313,7 +330,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false } = 
       camPos.copy(cam.position); camInit = true; camDist = followSt.d; }
     sun.position.set(me.x + 36, 60, me.z + 28); sun.target.position.set(me.x, 0, me.z); sun.target.updateMatrixWorld();
     // HUD
-    { try { syncWeaponBar(); } catch (e) { /* ignore */ } const hb = $q('#hpb i'); if (hb) hb.style.width = me.hp + '%'; $q('#hpTxt').textContent = `Health : ${Math.ceil(me.hp)}  ·  $${bag.count('cash')}  ·  ${bag.weight.toFixed(0)}/${bag.cap}kg`; $q('#ammoTxt').textContent = c ? `${c.kind || 'Car'}  ·  ${Math.round(c.fuel)} L` : (curGun() ? `${WEAPONS[curGun()].name}  ·  Ammo : ${GS.mag[curGun()] || 0} / ${ammoCount(curGun())}${GS.rl > 0 ? '  (reloading)' : ''}` : (n => n.charAt(0).toUpperCase() + n.slice(1))(bag.best().name)); { const gc = bag.count('grenade'); const g1 = $q('#grenN'), g2 = $q('#grenN2'); if (g1) g1.textContent = gc; if (g2) g2.textContent = gc; } { const ta = $q('#tAtk'); if (ta) ta.textContent = curGun() ? 'FIRE' : 'HIT'; } const ob = $q('#obj'); ob.innerHTML = `<b>QUIET FALLS</b><span>${online ? 'Online' : 'Solo'} · Players ${net.peers.size + 1}${Z ? ` · Zombies ${Z.stats().alive}` : ''}</span>`;
+    { try { syncWeaponBar(); } catch (e) { /* ignore */ } const hb = $q('#hpb i'); if (hb) hb.style.width = me.hp + '%'; $q('#hpTxt').textContent = `Health : ${Math.ceil(me.hp)}  ·  $${bag.count('cash')}  ·  ${bag.weight.toFixed(0)}/${bag.cap}kg`; $q('#ammoTxt').textContent = c ? `${c.kind || 'Car'}  ·  ${Math.round(c.fuel)} L` : (curGun() ? `${WEAPONS[curGun()].name}  ·  Ammo : ${GS.mag[curGun()] || 0} / ${ammoCount(curGun())}${GS.rl > 0 ? '  (reloading)' : ''}` : (n => n.charAt(0).toUpperCase() + n.slice(1))(bag.best().name)); { const gc = bag.count('grenade'); const g1 = $q('#grenN'), g2 = $q('#grenN2'); if (g1) g1.textContent = gc; if (g2) g2.textContent = gc; } { const ta = $q('#tAtk'); if (ta) ta.textContent = curGun() ? 'FIRE' : 'HIT'; } const ob = $q('#obj'); ob.innerHTML = `<b>QUIET FALLS</b><span>${online ? 'Online' : (net.peers.size > 0 ? 'Local' : 'Solo')} · Players ${net.peers.size + 1}${Z ? ` · Zombies ${Z.stats().alive}` : ''}</span>`;
       document.body.classList.toggle('driving', !!c); driveEl && driveEl.classList.toggle('hidden', !c); gaugeC.style.display = c ? 'block' : 'none'; if (c) drawGauge(gaugeC, c.fuelFrac, Math.abs(c.v) * 3.6, c.fuelFrac < .15, t); const tu = $q('#tUse'); if (tu && !SET.hudv2) tu.textContent = '✋'; }
     minAcc += dt; if (minAcc > .12) { minAcc = 0; drawMini(); }
     if (GR.shake > 0) { cam.position.x += (Math.random() - .5) * .35 * GR.shake; cam.position.y += (Math.random() - .5) * .25 * GR.shake; }
@@ -325,13 +342,13 @@ export async function enterTown({ look, onExit, room = 'town', solo = false } = 
   net.onLeave = p => { const r = remotes.get(p.id); if (r) { r.av && (scene.remove(r.av.root), r.av.dispose()); r.tag && scene.remove(r.tag); remotes.delete(p.id); } };
   function exit(edit) { townOn = false; running = false; try { offLeave(); offReturn(); } catch (e) { /* ignore */ } try { document.exitPointerLock && document.pointerLockElement && document.exitPointerLock(); } catch (e) { /* ignore */ } try { aud.resumeAll(); aud.engine(false); aud.tires && aud.tires(false); aud.noKeem = false; aud.setMood('menu'); } catch (e) { /* ignore */ } removeEventListener('keydown', kd); shim.onPause = oldPause; shim.state.crouch = false; for (const [e, , up] of drvBind.filter(Boolean)) e.classList.remove('on'); for (const [e, d] of saved) e.style.display = d; glEl && (glEl.style.display = ''); hudr2.remove(); document.body.classList.remove('driving'); driveEl && driveEl.classList.add('hidden'); hudEl.classList.add('hidden'); touchEl.classList.add('hidden'); stage.classList.add('hidden'); net.close(); renderer.dispose(); root.remove(); try { detachWeaponBar('town'); if (G) attachGameWeaponBar(G); } catch (e) { /* ignore */ } delete window.__mpTown; delete window.__mpLobby; if (edit === true) { import('../creator.js').then(m => m.openCreator({ onClose: onExit, onPlay: l => enterTown({ look: l, onExit, room }) })).then(c => { window.__mpCreator = c; }); } else onExit && onExit(); }
   W.closed.update(me.x, me.z); renderer.compile(scene, cam);
-  const api = { W, me, S, GS, AG, fireGun, startReload, aud, CTX, net, cars, bag, gather, scene, cam, remotes, equipWeapon, swapWeapon, get Z() { return Z; }, inp, shim, openPause, togglePause, acts: () => acts.map(a => a.label), toast, hurt, die, respawn, spawnPoint,
+  const api = { W, me, S, GS, AG, fireGun, startReload, aud, CTX, net, cars, bag, seedLoadout, gather, scene, cam, remotes, equipWeapon, swapWeapon, get Z() { return Z; }, inp, shim, openPause, togglePause, acts: () => acts.map(a => a.label), toast, hurt, die, respawn, spawnPoint,
     setPos: (x, z) => { me.x = x; me.z = z; camInit = false; followSt.d = null; }, key: (k, v) => { inp.keys[k] = v; }, camYaw: v => { camYaw = v; }, setCam: (yaw, pitch, dist) => { if (yaw != null) camYaw = yaw; if (pitch != null) { camPitch = pitch; lookPitch = fpPitch = pitch; } if (dist != null) camDist = dist; }, setLook: (yaw, pitch) => { if (yaw != null) camYaw = yaw; if (pitch != null) lookPitch = fpPitch = pitch; }, use: () => { wantUse = true; }, useHold: (v) => { if (v) wantUse = true; }, alt: () => { wantAlt = true; }, hit: () => { wantHit = true; }, enter: car => enterCar(car), exitCar, peers: () => net.peers.size, peerNames: () => [look.name || 'Survivor', ...[...net.peers.values()].map(p => p.name)].filter(Boolean), sendChat, setDoor, openLoot, closePanel, togglePanel, take, lootOf, buyDoor, noise, brakes: v => { hitHeld = v; }, stats: () => ({ calls: renderer.info.render.calls, tris: renderer.info.render.triangles, closedShown: W.closed.shown, closedHi: W.closed.shownHi }), renderer };
 
   try { attachTownWeaponBar({ bag, ITEMS, WEAPONS, GS, ammoCount, equipWeapon, pauseOpen: () => pausePanel.style.display === 'flex' || me.dead > 0 }); } catch (e) { console.warn('wbar', e); }
   const chat = el('div', { cls: 'chatui' }, el('div', { cls: 'chatlog' }), el('form', { cls: 'chatform', on: { submit: ev => { ev.preventDefault(); const inp = ev.target.querySelector('input'); sendChat(inp.value); inp.value = ''; } } }, el('input', { type: 'text', maxlength: '80', placeholder: 'Chat (Enter)', autocomplete: 'off' })));
   root.append(chat);
-  if (!solo && !online) try { toast("Couldn't reach other players — you're in solo mode.", 3.2); } catch (e) { /* ignore */ }
+  if (!solo && !online && !localNet) try { toast("Couldn't reach other players — you're in solo mode.", 3.2); } catch (e) { /* ignore */ }
   window.__mpTown = api; window.__mpLobby = api; window.__mpChat = { send: sendChat, log: () => chatLog.slice() };
  try { aud.setMood('day'); } catch (e) { /* ignore */ } try { window.__atq && window.__atq.hideLoading && window.__atq.hideLoading(); } catch (e) { /* ignore */ } requestAnimationFrame(frame); return api;
 }

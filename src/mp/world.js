@@ -5,6 +5,7 @@
 //  - Leaderboard: public.lb_top / public.lb_submit (supabase/migrations/20261121_world_lobby_leaderboard.sql). Guests need no login.
 import { sb, getUser, signInGoogle, signOut, googleEnabled, installNativeAuth } from './online.js';
 import { profiles, openProfileScreen, syncOnSignIn, signedOut, onSyncStatus, watchTitle } from './cloud.js';
+import { getActiveId, getPlayLook, getChar, KEEM_ID } from './chars.js';
 const $ = s => document.querySelector(s);
 const LS = (() => { try { localStorage.setItem('__w', 1); localStorage.removeItem('__w'); return localStorage; } catch (e) { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; } })();
 const MAX_PLAYERS = 8;
@@ -79,20 +80,27 @@ async function lobbyChannel() {
 }
 const MOCK_ROOMS = [{ room: 'w-a1', host: 'Nia_Rose', title: "Nia_Rose's game", players: ['a', 'b', 'c', 'd', 'e'], avatar: null }, { room: 'w-b2', host: 'BigGus77', title: "BigGus77's game", players: ['a', 'b'], avatar: null }, { room: 'w-c3', host: 'LongNameSurvivor', title: "LongNameSurvivor's game", players: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], avatar: null }];
 
-// ---------- joining: character creator (existing) -> town in that room ----------
+// ---------- joining: pick a saved character, then enter the town ----------
+async function chooseLook(opts = {}) {
+  if (opts.look) return { id: opts.charId || 'given', look: opts.look };
+  const { pickCharacter } = await import('./charselect.js');
+  return pickCharacter();
+}
 async function joinRoom(room, title, ui, opts = {}) {
   const test = !!(opts.test || isTestRoom(room));
-  const PR = await profiles(); if (ui) ui.hide(); $('#title').classList.add('hidden');
+  const PR = await profiles();
   const back = (msg) => { try { window.__atq && window.__atq.hideLoading && window.__atq.hideLoading(); } catch (e) { /* ignore */ } $('#title').classList.remove('hidden'); if (ui) { ui.open('games'); if (msg) { const s = document.querySelector('#wGamesInfo'); if (s) { s.textContent = msg; s.classList.add('warn'); } } } };
   try {
-    if (!PR.hasProfile()) { const made = await openProfileScreen('auto'); if (!made) { back(); return; } }
-    const p = PR.getProfile(); const look = Object.assign({}, p.look, { name: p.name });
+    if (!PR.hasProfile()) { const made = await openProfileScreen('auto'); if (!made) return; }
+    const picked = await chooseLook(opts); if (!picked) return; // stay on the lobby
+    if (ui) ui.hide(); $('#title').classList.add('hidden');
+    const p = PR.getProfile(); const look = Object.assign({}, picked.look, { name: (picked.look && picked.look.name) || (p && p.name) || 'Survivor' });
     let L = null;
     if (!test) {
-      try { L = await lobbyChannel(); await L.ch.track({ room, title: title || (p.name + "'s game"), name: p.name, avatar: p.avatarUrl || null, at: Date.now() }); } catch (e) { console.warn('[world] could not list this game in the lobby:', e.message); }
+      try { L = await lobbyChannel(); await L.ch.track({ room, title: title || (p.name + "'s game"), name: p.name, char: look.name, avatar: p.avatarUrl || null, at: Date.now() }); } catch (e) { console.warn('[world] could not list this game in the lobby:', e.message); }
     }
     const tw = await import('./town/town.js');
-    await tw.enterTown({ look, room, onExit: () => { try { L && L.ch.untrack(); } catch (e) { /* ignore */ } back(); } });
+    await tw.enterTown({ look, room, local: test, onExit: () => { try { L && L.ch.untrack(); } catch (e) { /* ignore */ } back(); } });
   } catch (e) { console.warn('[world] join failed:', e && e.message); back("Couldn't start the game. " + (e && e.message ? e.message : 'Please try again.')); }
 }
 
@@ -218,7 +226,7 @@ function buildUI() {
   }
   // existing multiplayer character creator; the result becomes the profile's character (and syncs if signed in)
   async function makeCharacter() {
-    ui.hide(); $('#title').classList.add('hidden'); await openProfileScreen('edit'); $('#title').classList.remove('hidden'); ui.show();
+    ui.hide(); $('#title').classList.add('hidden'); const aid = getActiveId(); await openProfileScreen('edit', { slotId: aid !== KEEM_ID ? aid : undefined }); $('#title').classList.remove('hidden'); ui.show();
   }
   function editName(then) {
     const el = q('#wProf'); el.innerHTML = `<form class="wnameform"><input id="wNameIn" maxlength="16" placeholder="Your nickname" value="${esc(prof && prof.name || '')}" autocomplete="off"><button class="primary" type="submit">Save</button><button type="button" id="wNameX">Cancel</button></form>`;
@@ -255,8 +263,9 @@ function buildUI() {
   q('#btnQuickJoin').onclick = async () => { const open = rooms.filter(r => r.players.length < MAX_PLAYERS); if (open.length) { const r = open[0]; joinRoom(r.room, r.title, ui); } else { const p = await profile(); joinRoom('w-' + Math.random().toString(36).slice(2, 8), (p.name || 'Survivor') + "'s game", ui); } };
   q('#btnPractice').onclick = async () => {
     const PR = await profiles(); if (!PR.hasProfile()) { ui.hide(); const made = await openProfileScreen('auto'); if (!made) { $('#title').classList.remove('hidden'); ui.open('games'); return; } ui.show(); }
+    const picked = await chooseLook(); if (!picked) return;
     const p = PR.getProfile(); ui.hide(); $('#title').classList.add('hidden');
-    try { const tw = await import('./town/town.js'); await tw.enterTown({ look: Object.assign({}, p.look, { name: p.name }), solo: true, onExit: () => { $('#title').classList.remove('hidden'); ui.open('games'); } }); }
+    try { const tw = await import('./town/town.js'); await tw.enterTown({ look: Object.assign({}, picked.look, { name: (picked.look && picked.look.name) || (p && p.name) || 'Survivor' }), solo: true, onExit: () => { $('#title').classList.remove('hidden'); ui.open('games'); } }); }
     catch (e) { $('#title').classList.remove('hidden'); ui.open('games'); const s = q('#wGamesInfo'); if (s) { s.textContent = "Couldn't start practice. " + (e.message || 'Please try again.'); s.classList.add('warn'); } }
   };
   async function loadBoard() {

@@ -21,6 +21,7 @@ const click = (sel) => {
 /** @returns true if the back press was consumed */
 export function handleHardwareBack() {
   // Highest overlays first.
+  if (vis('#charSel')) return click('#charSelCancel');
   if (vis('#tutOffer')) return click('#tutSkip') || click('#tutMenu') || click('#tutStay') || click('#tutStart');
   if (vis('#layEdit')) return click('#layEdit #leDone, #layEdit .back');
 

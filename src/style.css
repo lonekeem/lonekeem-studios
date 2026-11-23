@@ -546,3 +546,17 @@ body.driving #wbar{display:none!important}
   #tutHud .tbox{padding:8px 10px}
   #tutHud p{margin:0 0 4px;font-size:12px}
 }
+
+/* Online armory overlay: same shop UI, does not hide #stage or pause other players */
+#shop.town-overlay{z-index:60;background:rgba(2,8,4,.82)}
+#shop.town-overlay .panel{max-height:min(96vh,720px);overflow:hidden;display:flex;flex-direction:column}
+#shop.town-overlay .glist{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch}
+#shop.town-overlay .back{flex:none}
+@media (min-aspect-ratio:4/3) and (max-height:430px){
+  #shop.town-overlay{padding:4px 8px;align-items:stretch}
+  #shop.town-overlay .panel{width:min(860px,100%);height:100%;max-height:100%;padding:8px 12px;gap:6px}
+  #shop.town-overlay h2{font-size:16px;margin:0}
+  #shop.town-overlay .small{display:none}
+  #shop.town-overlay .gi{padding:6px 8px}
+  #shop.town-overlay .gi button{min-height:36px}
+}

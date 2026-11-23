@@ -21,7 +21,7 @@ const audio = new AudioSys(S);
 let save = loadSave(LS) || defaultSave(); let game = null, gamePromise = null; let state = 'boot', back = '#title';
 window.__atq = { get audio() { return audio; }, get game() { return game; }, get state() { return state; }, get save() { return save; }, showLoading, hideLoading, setProgress,
   leaveApp, returnApp, isAway,
-  reloadSave: () => { save = loadSave(LS) || save; if (state === 'title') refreshTitleProgress(); } }; // cloud sync: refresh in-memory save + Continue. Never call toTitle()/showScreen here — #online is a .screen, so that would hide the lobby and kick a signed-in player back to the menu.
+  reloadSave: () => { save = loadSave(LS) || save; if (state === 'title') refreshTitleProgress(); }, openTownShop, closeTownShop }; // cloud sync: refresh in-memory save + Continue. Never call toTitle()/showScreen here — #online is a .screen, so that would hide the lobby and kick a signed-in player back to the menu.
 try { audio.loadTracks(); } catch (e) { /* ignore */ }
 
 function showScreen(id) { $$('.screen').forEach(s => s.classList.add('hidden')); if (id) $(id).classList.remove('hidden'); }
@@ -110,11 +110,23 @@ onAppReturn(() => {
 installBgListeners();
 
 // ---------- shop ----------
-let shopTab = 'guns';
-function openShop() { state = 'shop'; renderShop(); showScreen('#shop'); }
+let shopTab = 'guns', shopOverlay = false, shopOnClose = null;
+function closeTownShop() {
+  const el = $('#shop'); if (!el) return;
+  el.classList.add('hidden'); el.classList.remove('town-overlay');
+  const bc = $('#btnShopCustom'); if (bc) bc.style.display = '';
+  shopOverlay = false; const cb = shopOnClose; shopOnClose = null; if (cb) try { cb(); } catch (e) {}
+}
+function openShop() { shopOverlay = false; shopOnClose = null; const bc = $('#btnShopCustom'); if (bc) bc.style.display = ''; state = 'shop'; renderShop(); showScreen('#shop'); }
+function openTownShop(onClose) {
+  shopOverlay = true; shopOnClose = onClose || null;
+  const el = $('#shop'); el.classList.remove('hidden'); el.classList.add('town-overlay');
+  const bc = $('#btnShopCustom'); if (bc) bc.style.display = 'none';
+  renderShop();
+}
 function renderShop() { $('#shopCash').textContent = `Cash: $${save.cash}  ·  Level ${save.level}`;
   const tabs = [['guns', 'Guns'], ['melee', 'Melee'], ['up', 'Upgrades'], ['sup', 'Ammo & supplies']]; $('#shopTabs').innerHTML = ''; tabs.forEach(([k, n]) => { const b = document.createElement('button'); b.textContent = n; b.className = shopTab === k ? 'on' : ''; b.onclick = () => { shopTab = k; renderShop(); }; $('#shopTabs').appendChild(b); });
-  const L = $('#shopList'); L.innerHTML = ''; const card = (html, btns, eq) => { const d = document.createElement('div'); d.className = 'gi' + (eq ? ' eq' : ''); d.innerHTML = html; btns.forEach(([t, fn, dis]) => { const b = document.createElement('button'); b.textContent = t; b.disabled = !!dis; b.onclick = () => { fn(); writeSave(LS, save); audio.pickup(); renderShop(); }; d.appendChild(b); }); L.appendChild(d); };
+  const L = $('#shopList'); L.innerHTML = ''; const card = (html, btns, eq) => { const d = document.createElement('div'); d.className = 'gi' + (eq ? ' eq' : ''); d.innerHTML = html; btns.forEach(([t, fn, dis]) => { const b = document.createElement('button'); b.textContent = t; b.disabled = !!dis; b.onclick = () => { fn(); writeSave(LS, save); audio.pickup(); if (shopOverlay && window.__mpTown && window.__mpTown.seedLoadout) try { window.__mpTown.seedLoadout(); } catch (e) {} renderShop(); }; d.appendChild(b); }); L.appendChild(d); };
   const buy = (n) => { if (save.cash < n) return false; save.cash -= n; return true; };
   if (shopTab === 'guns' || shopTab === 'melee') WEAPON_ORDER.filter(id => (WEAPONS[id].type === 'gun') === (shopTab === 'guns') && id !== 'fists').forEach(id => { const w = WEAPONS[id], s = stat(save, id), own = save.owned.includes(id);
     const st = w.type === 'gun' ? `DMG ${Math.round(s.dmg)}${w.pellets ? '×' + w.pellets : ''} · MAG ${s.mag} · RLD ${s.reload.toFixed(1)}s · ${w.auto ? 'auto' : 'semi'}` : `DMG ${Math.round(s.dmg)} · ${w.sever ? 'can sever limbs' : 'blunt'}${w.bonk ? ' · BONK' : ''}`;
@@ -143,7 +155,7 @@ function renderInv() { const s = save; const need = xpFor(s.level);
   add(`<b>Collectibles</b><div class="st">${s.pages.length ? s.pages.length + ' Captain Riverside comic pages found' : 'Find the ' + TOTAL_PAGES + ' Captain Riverside comic pages hidden around the story.'}</div>`); }
 
 // ---------- buttons ----------
-$$('.back').forEach(b => b.onclick = () => { if (state === 'custom' && back === '#shop') { openShop(); return; } if (back === '#pause') { state = 'paused'; showScreen('#pause'); return; } state = 'title'; showScreen('#title'); });
+$$('.back').forEach(b => b.onclick = () => { if (shopOverlay || ($('#shop') && $('#shop').classList.contains('town-overlay'))) { closeTownShop(); return; } if (state === 'custom' && back === '#shop') { openShop(); return; } if (back === '#pause') { state = 'paused'; showScreen('#pause'); return; } state = 'title'; showScreen('#title'); });
 $('#btnWarn').onclick = async () => {
   try { audio.init(); audio.unlock && audio.unlock(); } catch (e) {}
   showScreen(null); const st = $('#studio'); st.classList.remove('hidden'); fadeIn();
@@ -166,7 +178,7 @@ $('#btnEndNext').onclick = () => { save = loadSave(LS) || save; const nc = Math.
 var CHN = CHAPTERS.map(c => (c ? c.title : '')), CHS = CHAPTERS.map(c => (c ? c.start : 0)); // derived from the chapter registry
 const unlockedCh = (s) => Math.max(s.maxCh || 1, s.done || (s.step || 0) >= 7 ? 2 : 1, s.done2 ? 3 : 1, CHS.findLastIndex(v => (s.step || 0) >= v) || 1);
 // chapter-select buttons are generated from the registry (src/game/chapters), so adding a chapter needs no HTML/menu edits
-{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.42 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
+{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.43 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
 const chList = $('#chList'); for (let c = 1; c <= LAST_CH; c++) { const b = document.createElement('button'); b.id = 'btnCh' + c; b.textContent = 'Chapter ' + c + ' · ' + CHN[c]; chList.appendChild(b); }
 $('#btnChapters').onclick = () => { const s = loadSave(LS) || defaultSave(); const u = unlockedCh(s); for (let c = 2; c <= LAST_CH; c++) { const b = $('#btnCh' + c); b.disabled = c > u; b.textContent = 'Chapter ' + c + ' · ' + CHN[c] + (c > u ? ' (finish Chapter ' + (c - 1) + ')' : ''); } showScreen('#chapters'); };
 $('#btnCh1').onclick = () => { save = loadSave(LS) || defaultSave(); writeSave(LS, save); play(0); };
