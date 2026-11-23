@@ -51,6 +51,16 @@ export function normalize(look) { // fill missing fields from the defaults (forw
   if (o.mask && !C.MASKS.some(m => m[0] === o.mask.id)) o.mask = null;
   // Hijab was removed from the creator; existing looks fall back to hair.
   if (o.acc && o.acc.hat && o.acc.hat.id === 'hijab') o.acc.hat = null;
+  if (o.worn && o.worn.shoes) {
+    const sh = o.worn.shoes;
+    if (sh.id && !C.SHOES.some(s => s[0] === sh.id)) sh.id = 'sneaker';
+    if (!sh.sole) sh.sole = '#f2f2f0';
+    if (!sh.lace) sh.lace = '#f2f2f0';
+    if (sh.sp == null) {
+      const map = { 0: 0, 1: 2, 5: 3, 7: 4, 14: 5 };
+      sh.sp = map[sh.p] != null ? map[sh.p] : 0;
+    }
+  }
   if (o.acc) {
     let p = o.acc.pierce;
     if (typeof p === 'string') p = p === 'none' ? [] : [p];

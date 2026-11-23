@@ -138,7 +138,15 @@ export async function openCreator({ onClose, onPlay } = {}) {
     const p = look.worn[slot]; const f = [];
     f.push(el('div', { cls: 'row' }, el('button', { cls: !p ? 'on' : '', on: { click: () => { change(() => look.worn[slot] = null); renderBody(); } } }, 'None')));
     f.push(catalogGrid(tbl, p && p.id, id => { change(() => { const keep = look.worn[slot]; look.worn[slot] = keep ? { ...keep, id } : { id, c: pickCol(), c2: '#ffffff', p: 0 }; }); renderBody(true); }, { fav: slot }));
-    if (p) { f.push(el('h4', {}, 'Fabric pattern (' + C.PATTERNS.length + ')'), el('div', { cls: 'chips' }, C.PATTERNS.map((n, i) => el('button', { cls: (p.p || 0) === i ? 'on' : '', on: { click: () => change(() => { look.worn[slot].p = i; }) , }}, n)))); f.push(...colorRow('Main colour', C.SWATCH.cloth, () => p.c, c => { look.worn[slot].c = c; }), ...colorRow('Pattern / accent colour', C.SWATCH.cloth, () => p.c2, c => { look.worn[slot].c2 = c; })); if (slot === 'shoes') f.push(...colorRow('Sole colour', ['#f2f2f0', '#17181b', '#c8a27a', '#8a8f98', '#c0392b', '#2f5fa8'], () => p.sole, c => { look.worn[slot].sole = c; })); }
+    if (p && slot === 'shoes') {
+      const pats = C.SHOE_PATTERNS || C.PATTERNS;
+      const cur = p.sp != null ? p.sp : 0;
+      f.push(el('h4', {}, 'Design (' + pats.length + ')'), el('div', { cls: 'chips' }, pats.map((n, i) => el('button', { cls: cur === i ? 'on' : '', on: { click: () => change(() => { look.worn[slot].sp = i; look.worn[slot].p = i; }) } }, n))));
+      f.push(...colorRow('Main colour', C.SWATCH.cloth, () => p.c, c => { look.worn[slot].c = c; }));
+      f.push(...colorRow('Accent colour', C.SWATCH.cloth, () => p.c2, c => { look.worn[slot].c2 = c; }));
+      f.push(...colorRow('Sole colour', ['#f2f2f0', '#17181b', '#c8a27a', '#8a8f98', '#c0392b', '#2f5fa8', '#d9b44a', '#1b1c1f'], () => p.sole, c => { look.worn[slot].sole = c; }));
+      f.push(...colorRow('Lace colour', ['#f2f2f0', '#17181b', '#c0392b', '#2f5fa8', '#e9b949', '#8a8f98', '#d9b44a', '#c8a27a'], () => p.lace || '#f2f2f0', c => { look.worn[slot].lace = c; }));
+    } else if (p) { f.push(el('h4', {}, 'Fabric pattern (' + C.PATTERNS.length + ')'), el('div', { cls: 'chips' }, C.PATTERNS.map((n, i) => el('button', { cls: (p.p || 0) === i ? 'on' : '', on: { click: () => change(() => { look.worn[slot].p = i; }) , }}, n)))); f.push(...colorRow('Main colour', C.SWATCH.cloth, () => p.c, c => { look.worn[slot].c = c; }), ...colorRow('Pattern / accent colour', C.SWATCH.cloth, () => p.c2, c => { look.worn[slot].c2 = c; })); }
     return f;
   };
   const pickCol = () => C.SWATCH.cloth[Math.floor(Math.random() * C.SWATCH.cloth.length)];
