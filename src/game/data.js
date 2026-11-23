@@ -52,7 +52,7 @@ export function perk(save, i) { return save.level >= i; }
 
 const KEY = 'atq3_save';
 export function defaultSave() {
-  return { v: 3, step: 0, cash: 0, xp: 0, level: 1, owned: ['fists'], outfits: ['classic'], up: {}, ammo: { light: 0, shell: 0, rifle: 0, bolt: 0, fuel: 0, gl: 0 }, mags: {}, grenades: 0, meds: 1, armor: null, armors: [],
+  return { v: 3, step: 0, cash: 0, xp: 0, level: 1, owned: ['fists'], outfits: ['classic'], cosmetics: [], up: {}, ammo: { light: 0, shell: 0, rifle: 0, bolt: 0, fuel: 0, gl: 0 }, mags: {}, grenades: 0, meds: 1, armor: null, armors: [],
     pages: [], items: [], loot: [], cur: 'fists', kills: 0, bites: 0, done: false, ch: 1, done2: false };
 }
 export function loadSave(LS) { for (const k of [KEY, KEY + '.bak']) { try { const s = JSON.parse(LS.getItem(k) || 'null'); if (s && (s.v | 0) >= 3) return Object.assign(defaultSave(), s, { v: 3 }); } catch (e) {} } return null; }

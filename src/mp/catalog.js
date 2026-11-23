@@ -56,6 +56,7 @@ export const TOPS = [
   ['threeq', '3/4 sleeve', 'u', .7, .05, .98, .1, .13, 0, 0, 0, 0, 0], ['capsl', 'Cap sleeve', 'f', .2, .05, .98, .1, .13, 0, 0, 0, 0, 0], ['sundress', 'Sundress', 'f', 0, .05, .92, .13, .15, .3, 0, 0, .04, 0],
   ['sleevedress', 'Dress sleeves', 'f', .45, .05, .98, .08, .12, .32, 0, 0, .05, 0], ['minidress', 'Mini dress', 'f', .2, .05, .98, .1, .13, .2, 0, 0, .03, 0], ['maxidress', 'Maxi dress', 'f', 0, .05, .92, .11, .14, .85, 0, 0, .07, 0],
   ['bodysuit', 'Bodysuit', 'u', 1, .0, .98, .1, .12, .06, 0, 0, 0, 0], ['jersey', 'Sport jersey', 'u', .25, .0, .96, .14, .15, 0, 0, .005, 0, 0], ['flowy', 'Flowy blouse', 'f', .8, .0, .98, .12, .14, 0, 0, .008, .0, 0],
+  ['hoodie', 'Pullover hoodie', 'u', 1, .0, 1.0, .05, .13, 0, 1, .01, 0, 0], ['polo', 'Polo shirt', 'u', .45, .04, .98, .1, .1, 0, 0, 0, 0, 0], ['kurta', 'Kurta', 'u', 1, .05, .98, .12, .12, .28, 0, .004, .012, 0],
 ];
 // jackets: [id, name, g, sleeveEnd, hem, neckTop, openHalfW, openTop, dressLen, hood/collar(turtle), loose, flare]
 export const JACKETS = [
@@ -63,6 +64,7 @@ export const JACKETS = [
   ['puffer', 'Puffer', 'u', 1, .0, 1.0, .05, .0, 0, 1, .02, 0], ['trench', 'Trench coat', 'u', 1, -.2, .98, .06, .0, .45, 0, .008, .03], ['cardigan', 'Cardigan', 'u', 1, -.08, .98, .07, .0, 0, 0, .008, 0], ['vest', 'Vest', 'u', 0, .02, .98, .07, .0, 0, 0, .008, 0],
   ['parka', 'Parka', 'u', 1, -.12, 1.0, .05, .0, .2, 1, .016, .02], ['windbreaker', 'Windbreaker', 'u', 1, .04, .98, .05, .0, 0, 0, .012, 0], ['zip', 'Zip hoodie', 'u', 1, .0, 1.0, .04, .0, 0, 1, .011, 0], ['varsity', 'Varsity', 'u', 1, .06, .98, .06, .0, 0, 0, .01, 0],
   ['cropjacket', 'Cropped jacket', 'f', 1, .3, .98, .06, .0, 0, 0, .007, 0], ['cropzip', 'Cropped zip hoodie', 'f', 1, .36, .97, .0, .0, 0, 0, .013, 0], ['longcoat', 'Long coat', 'u', 1, -.3, .98, .06, .0, .75, 0, .009, .04], ['shacket', 'Shirt jacket', 'u', 1, -.02, .98, .06, .0, 0, 0, .009, 0], ['poncho', 'Poncho', 'u', .8, -.1, .99, .0, .0, .1, 0, .018, .06],
+  ['robe', 'Belted robe', 'u', 1, -.25, .98, .08, .0, .7, 0, .014, .05],
 ];
 // pants / skirts: [id, name, g, legEnd, waist, loose, flare]  (flare is per-leg radial offset, k = x + y * s)
 export const PANTS = [
@@ -76,6 +78,7 @@ export const SHOES = [
   ['sneaker', 'Sneakers', 'u', .985, .03, .013, 1, 0], ['lowtop', 'Low-top canvas', 'u', .985, .014, .006, 1, 0], ['hightop', 'High-tops', 'u', .88, .024, .008, 1, 0], ['runner', 'Runners', 'u', .985, .03, .008, 0, 0], ['boot', 'Boots', 'u', .72, .02, .008, 0, 0],
   ['ankleboot', 'Ankle boots', 'u', .9, .02, .007, 0, 0], ['combat', 'Combat boots', 'u', .78, .03, .01, 0, 0], ['kneeboot', 'Knee boots', 'f', .5, .02, .007, 0, 0], ['thighboot', 'Thigh boots', 'f', .28, .02, .006, 0, 0], ['flat', 'Flats', 'f', .995, .008, .005, 0, 0],
   ['loafer', 'Loafers', 'u', .985, .012, .006, 0, 0], ['dress', 'Dress shoes', 'm', .985, .012, .006, 1, 0], ['chunky', 'Chunky sneakers', 'u', .97, .045, .012, 1, 0], ['work', 'Work boots', 'u', .8, .028, .011, 1, 0], ['rain', 'Rain boots', 'u', .6, .018, .01, 0, 0], ['socks', 'Socks only', 'u', .8, .004, .004, 0, 0], ['clog', 'Clogs', 'u', .975, .035, .02, 1, 0],
+  ['kneesock', 'Knee socks', 'u', .52, .006, .004, 0, 0],
 ];
 export const GLOVES = [['short', 'Gloves', .98, .005], ['long', 'Long gloves', .55, .005], ['elbow', 'Elbow gloves', .3, .005], ['work', 'Work gloves', .93, .012], ['fingerless', 'Wrist wraps', .93, .006], ['driving', 'Driving gloves', .97, .005], ['winter', 'Winter mitts', .9, .016]];
 export const OUTFIT_SLOTS = ['top', 'jacket', 'pants', 'shoes', 'gloves'];
@@ -85,9 +88,10 @@ export const HATS = [
   H('capflat', 'Baseball cap', 'cap'), H('capshort', 'Short-brim cap', 'cap', { brim: .05 }), H('caplong', 'Long-brim cap', 'cap', { brim: .13 }), H('beanie', 'Beanie', 'beanie'), H('beanietall', 'Tall slouch beanie', 'beanie', { tall: 1.5 }), H('beaniepom', 'Pom beanie', 'beanie', { pom: 1 }),
   H('bucket', 'Bucket hat', 'bucket'), H('fedora', 'Fedora', 'brimmed', { wide: 1.6, crown: .75, style: 'fedora' }), H('sun', 'Sun hat', 'brimmed', { wide: 2.4, crown: .6, style: 'sun' }), H('cowboy', 'Western hat', 'brimmed', { wide: 2.0, crown: 1.0, style: 'western' }), H('beret', 'Beret', 'beret'),
   H('headband', 'Headband', 'headband'), H('headbandthin', 'Thin headband', 'headband', { thick: .007 }), H('bandana', 'Bandana', 'bandana'), H('hardhat', 'Hard hat', 'hardhat'), H('visor', 'Sun visor', 'visor'), H('crown', 'Crown', 'crown'), H('catears', 'Cat-ear hat', 'ears'), H('hood', 'Hood up', 'hood'), H('helmet', 'Rider helmet', 'helmet'),
+  H('hijab', 'Hijab', 'hijab'), H('wrap', 'Head wrap', 'wrap'),
 ];
 // each hat's own default colours [main, accent]
-export const HAT_DEFAULTS = { capflat: ['#2b4a7a', '#f2f2f0'], capshort: ['#3d6b45', '#f2f2f0'], caplong: ['#2e2f35', '#d9b44a'], beanie: ['#566a8a', '#d8d6cf'], beanietall: ['#9a4a34', '#e9dcc0'], beaniepom: ['#e4d6b6', '#c9503f'], bucket: ['#c8b78a', '#7a6a48'], fedora: ['#4b4038', '#1b1b1d'], sun: ['#e6d3a0', '#c2503f'], cowboy: ['#8a6238', '#e1cf9f'], beret: ['#6a2c42', '#3b1826'], headband: ['#d9483a', '#f2f2f0'], headbandthin: ['#f2f2f0', '#1a1a1a'], bandana: ['#2a4a8a', '#f2f2f0'], hardhat: ['#f0b400', '#2a2a2e'], visor: ['#f2f2f0', '#2a2a2e'], crown: ['#d9b44a', '#fff'], catears: ['#f1b3c6', '#e24b78'], hood: ['#4b5a4a', '#2c352c'], helmet: ['#2a2b31', '#c23b3b'] };
+export const HAT_DEFAULTS = { capflat: ['#2b4a7a', '#f2f2f0'], capshort: ['#3d6b45', '#f2f2f0'], caplong: ['#2e2f35', '#d9b44a'], beanie: ['#566a8a', '#d8d6cf'], beanietall: ['#9a4a34', '#e9dcc0'], beaniepom: ['#e4d6b6', '#c9503f'], bucket: ['#c8b78a', '#7a6a48'], fedora: ['#4b4038', '#1b1b1d'], sun: ['#e6d3a0', '#c2503f'], cowboy: ['#8a6238', '#e1cf9f'], beret: ['#6a2c42', '#3b1826'], headband: ['#d9483a', '#f2f2f0'], headbandthin: ['#f2f2f0', '#1a1a1a'], bandana: ['#2a4a8a', '#f2f2f0'], hardhat: ['#f0b400', '#2a2a2e'], visor: ['#f2f2f0', '#2a2a2e'], crown: ['#d9b44a', '#fff'], catears: ['#f1b3c6', '#e24b78'], hood: ['#4b5a4a', '#2c352c'], helmet: ['#2a2b31', '#c23b3b'], hijab: ['#2f5d3a', '#1a3a24'], wrap: ['#c0392b', '#f2e6c8'] };
 export const GLASSES_LIST = [];
 for (const [sid, sn, o] of [['round', 'Round', { shape: 'round' }], ['square', 'Square', { shape: 'square' }], ['hex', 'Hex', { shape: 'hex' }], ['cat', 'Cat-eye', { shape: 'cat' }], ['oval', 'Oval', { shape: 'oval', w: .03, h: .018 }], ['big', 'Oversized', { shape: 'round', w: .036, h: .034 }], ['avi', 'Aviator', { shape: 'oval', aviator: 1, w: .032, h: .026 }], ['thin', 'Thin square', { shape: 'square', w: .028, h: .015, th: .0022 }]])
   for (const [lid, ln, lo] of [['clear', 'clear', {}], ['dark', 'shades', { dark: 1 }]]) GLASSES_LIST.push(H(sid + lid, sn + ' ' + ln, 'frame', { ...o, ...lo }));

@@ -6,9 +6,9 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { stylizeFrag } from './chars.js';
 
 export const SKINS = ['#f3d2bd', '#e6b89a', '#d9a98c', '#c68e6a', '#ad7652', '#8d5a3b', '#73482e', '#5b3a26', '#4a2c1c', '#3b2417', '#2d1b11'];
-export const HAIR_COLORS = ['#0b0806', '#1d130c', '#3a2414', '#5a3a22', '#7a5a3a', '#a07a4a', '#c9a86a', '#8a3a1e', '#aaa69e', '#e8e4dc', '#6a2a6a', '#1e3a7a'];
-export const HAIRS = { crop: 'Cropped', hightop: 'High-top fade', afro: 'Afro', curls: 'Short curls', puffs: 'Puffs', braids: 'Box braids', cornrows: 'Cornrows', locs: 'Locs', waves: 'Waves', buzz: 'Buzz cut',
-  short: 'Short', slick: 'Slicked back', long: 'Long', bun: 'Bun', ponytail: 'Ponytail', mohawk: 'Mohawk', balding: 'Balding', bald: 'Bald' };
+export const HAIR_COLORS = ['#0b0806', '#1d130c', '#3a2414', '#5a3a22', '#7a5a3a', '#a07a4a', '#c9a86a', '#8a3a1e', '#aaa69e', '#e8e4dc', '#f3f1ea', '#f4c2d4', '#d8d4cc', '#c9b8ff', '#6a2a6a', '#1e3a7a'];
+export const HAIRS = { crop: 'Cropped', buzz: 'Buzz cut', pixie: 'Pixie', hightop: 'High-top fade', afro: 'Afro', curls: 'Short curls', wavy: 'Long waves', curly: 'Long curls', puffs: 'Puffs', braids: 'Box braids', cornrows: 'Cornrows', locs: 'Locs', waves: 'Waves',
+  short: 'Short', slick: 'Slicked back', long: 'Long straight', bun: 'Bun', ponytail: 'Ponytail', mohawk: 'Mohawk', balding: 'Balding', bald: 'Bald' };
 export const BEARDS = { none: 'None', stubble: 'Stubble', mustache: 'Mustache', goatee: 'Goatee', full: 'Full beard' };
 export const EYES = ['#2a1608', '#3a2210', '#4a3018', '#3a4a2a', '#3a5a7a', '#5a6a72'];
 export const FACES = {  // jaw width, jaw depth, nose width, lip size, brow tilt, eye size

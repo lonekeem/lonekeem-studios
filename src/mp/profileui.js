@@ -11,6 +11,8 @@ import { applySel, ALL_PARTS } from './storeLook.js';
 import { getProfile, saveProfile, hasProfile, pullProfile, DEFAULT_SEL } from './profile.js';
 import { upsertChar, setActiveId, getChar, KEEM_ID } from './chars.js';
 import { OUTFITS, OUTFIT, HAIRS, HAIR_COLORS, SKINS, FACES, BEARDS, EYES } from '../game/looks.js';
+import * as COS from './cosmetics.js';
+import { poseChair } from './chair.js';
 
 const CSS = `
 #prof{position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;background:radial-gradient(120% 100% at 30% 20%,#23332b 0%,#0d1411 70%);color:#eef2ee;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;user-select:none}
@@ -42,13 +44,14 @@ const CSS = `
 #prof .welcome h1{margin:0;font-size:28px;color:#9fe0b4}#prof .welcome p{margin:0 0 6px;color:#9fb3a6;max-width:420px}
 #prof .welcome button{width:min(340px,90%);border-radius:14px;padding:14px;font-size:16px;font-weight:700;background:#1d2b23;border:1px solid #2f4a3a}
 #prof .welcome .g{background:#fff;color:#222;border-color:#fff}#prof .welcome .pri{background:#3d8f5c;border-color:#5fc086}#prof .welcome .note{font-size:12.5px;color:#7f998a}
+#prof .subs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}#prof .subs button{background:#14201a;border:1px solid #2a3e32;border-radius:999px;padding:5px 10px;font-size:12px;color:#b9cbbf}#prof .subs button.on{background:#3d8f5c;border-color:#5fc086;color:#fff;font-weight:700}
 @media (orientation:portrait){#prof .main{flex-direction:column}#prof .stage{flex:0 0 40%}#prof .grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}}
 `;
 const el = (tag, props = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(props)) { if (k === 'cls') e.className = v; else if (k === 'on') for (const [ev, fn] of Object.entries(v)) e.addEventListener(ev, fn); else if (k === 'style') e.style.cssText = v; else e[k] = v; } for (const c of kids.flat()) if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(String(c))); return e; };
-const STEPS = [['name', 'Name'], ['skin', 'Skin & eyes'], ['face', 'Face'], ['hair', 'Hair'], ['outfit', 'Outfit'], ['extra', 'Extras']];
-const SUB = { name: 'This is what other players see above your head.', skin: 'Pick a skin tone and eye colour.', face: 'Face shape and facial hair.', hair: 'Hairstyle and colour.', outfit: 'Free outfits plus ones you buy with the cash you earn in Story, Survival and Online.', extra: 'Backpack, glasses and body build.' };
+const STEPS = [['name', 'Name'], ['skin', 'Skin & eyes'], ['face', 'Face'], ['hair', 'Hair'], ['outfit', 'Outfits'], ['clothes', 'Clothes'], ['extra', 'Accessories']];
+const SUB = { name: 'This is what other players see above your head.', skin: 'Pick a skin tone and eye colour. You can also pick a body.', face: 'Face shape and facial hair.', hair: 'Hairstyle and colour, including dyed looks.', outfit: 'Ready-made outfits. Free ones plus ones you buy with shared cash.', clothes: 'Shirts, jackets, pants and shoes. Some are free, some you buy in the Store.', extra: 'Hats, glasses, earrings, piercings, chains, a wheelchair, backpack and build.' };
 const NAMES = ['Ash', 'Rook', 'Juno', 'Dex', 'Nova', 'Kai', 'Mars', 'Sage', 'Rio', 'Zuri', 'Blaze', 'Echo', 'Onyx', 'Ivy', 'Jett', 'Remy'];
-const CLOSE = { skin: 1, face: 1, hair: 1 };
+const CLOSE = { skin: 1, face: 1, hair: 1, extra: 1 };
 
 // mode: 'auto' (welcome + create when there is no profile, else edit) | 'create' | 'edit'.  Resolves with the saved profile or null (closed).
 export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
@@ -86,14 +89,14 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
       const side = el('div', { cls: 'side' }); const h3 = el('h3'); const sub = el('div', { cls: 'sub' }); const body = el('div', { cls: 'body' }); const foot = el('div', { cls: 'foot' }); side.append(h3, sub, body, foot);
       root.append(top, stepsEl, el('div', { cls: 'main' }, stage, side));
       renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1)); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      scene = new THREE.Scene(); scene.add(new THREE.HemisphereLight('#e2ecff', '#4a5248', 1.2)); const k = new THREE.DirectionalLight('#fff4e6', 2.3); k.position.set(1.6, 2.6, 3); scene.add(k); const r2 = new THREE.DirectionalLight('#9bd4b4', 1); r2.position.set(-2, 2, -2.5); scene.add(r2);
+      scene = new THREE.Scene(); scene.add(new THREE.HemisphereLight('#e8f0ff', '#4a5248', 1.05)); const k = new THREE.DirectionalLight('#fff4e6', 2.05); k.position.set(1.4, 2.5, 3); scene.add(k); const fill = new THREE.DirectionalLight('#c9e4ff', .7); fill.position.set(-2.2, 1.8, 1.6); scene.add(fill); const rim = new THREE.DirectionalLight('#ffe6d2', 1.35); rim.position.set(-1.2, 2.2, -3.2); scene.add(rim);
       const floor = new THREE.Mesh(new THREE.CircleGeometry(.7, 48), new THREE.MeshStandardMaterial({ color: '#1f3328', roughness: 1 })); floor.rotation.x = -Math.PI / 2; scene.add(floor);
       cam = new THREE.PerspectiveCamera(30, 1, .05, 30);
       canvas.addEventListener('pointerdown', e => { drag = e.clientX; auto = false; canvas.setPointerCapture(e.pointerId); }); canvas.addEventListener('pointermove', e => { if (drag != null) { rot += (e.clientX - drag) * .012; drag = e.clientX; } }); canvas.addEventListener('pointerup', () => { drag = null; });
       const frame = (now) => { if (!running) return; requestAnimationFrame(frame); const dt = Math.min(.05, (now - last) / 1000); last = now; t += dt; const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return;
         if (canvas.width !== Math.floor(w * renderer.getPixelRatio())) { renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
         if (auto) { swayT += dt; rot = .45 * Math.sin(swayT * .5); } /* gentle sway around the FRONT: never drifts to the back, even after a slow load / Google redirect */ const zf = CLOSE[STEPS[step][0]] ? 1 : 0; zoom += (zf - zoom) * Math.min(1, dt * 5); const s = av ? av.root.scale.y : 1; const fit = Math.max(1, .9 / cam.aspect);
-        if (av) { av.root.rotation.y = rot; try { animate(av, t, 0); } catch (e) { /* ignore */ } } cam.position.set(0, (1.0 + zoom * .56) * s, (3.9 - zoom * 2.0) * fit); cam.lookAt(0, (.9 + zoom * .6) * s, 0); renderer.render(scene, cam); };
+        if (av) { av.root.rotation.y = rot; try { animate(av, t, 0); } catch (e) { /* ignore */ } try { if (look().acc && look().acc.chair) poseChair(av, t); } catch (e) { /* ignore */ } } cam.position.set(0, (1.0 + zoom * .56) * s, (3.9 - zoom * 2.0) * fit); cam.lookAt(0, (.9 + zoom * .6) * s, 0); renderer.render(scene, cam); };
       requestAnimationFrame(frame);
       const look = () => { const L = applySel(base, sel, [...touched], OUTFIT); L.name = name || 'Survivor'; return L; };
       const rebuild = async () => { const L = look(); const g = ++gen; const tpl = await loadBase(L.base); if (g !== gen || !running) return; if (!av || av.tpl !== tpl) { if (av) { scene.remove(av.root); av.dispose(); } av = new Avatar(tpl); scene.add(av.root); } try { dress(av, L); } catch (e) { console.error('dress', e); } };
@@ -101,20 +104,49 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
       const card = (title, { on, tag, tagCls = '', chips, lock, click }) => el('button', { cls: 'card' + (on ? ' on' : '') + (lock ? ' lock' : ''), on: { click } }, chips ? el('div', { cls: 'chips' }, chips.map(c => el('i', { style: 'background:' + c }))) : null, el('b', {}, title), tag ? el('span', { cls: 'tag ' + tagCls }, tag) : null);
       const swatches = (key, arr, part) => el('div', { cls: 'sws' }, arr.map(c => el('button', { cls: 'sw' + (sel[key] === c ? ' on' : ''), style: 'background:' + c, title: c, on: { click: () => set(part, () => { sel[key] = c; }) } })));
       const owned = (o) => !o.price || ((wallet().outfits || []).includes(o.id));
+      sel.parts = sel.parts || {};
+      let clothSub = 'top', accSub = 'hat';
+      const buyPiece = (id) => { const W = wallet(); if (COS.ownedCosmetic(W, id)) return true; const p = COS.priceOf(id); if ((W.cash | 0) < p) { toast(`You need $${p}. Earn cash in Story, Survival or Online.`); return false; } if (!confirm(`Buy ${COS.itemName(id)} for $${p} (in-game cash)?`)) return false; COS.buyCosmetic(W, id); saveProfile({ cash: W.cash, cosmetics: W.cosmetics }, { silent: true }); try { window.__atq.audio.pickup(); } catch (e) { /* ignore */ } return true; };
+      const wearId = (slot) => { const v = sel.parts[slot]; if (v == null) return null; return typeof v === 'string' ? v : v.id; };
+      const pickPiece = (slot, id, extra) => set('clothes', () => { if (id && id !== 'none' && !buyPiece(id)) return false; sel.parts = sel.parts || {}; sel.parts[slot] = (id == null || id === 'none') ? 'none' : id; if (extra && extra.mirror) sel.parts[extra.mirror] = sel.parts[slot]; if (slot === 'glasses') sel.glasses = id !== 'none'; if (slot === 'chair' && id === 'chair') { /* mobility aid */ } });
+      const pieceCards = (list, slot, { none = true, current, extra } = {}) => {
+        const W = wallet(); const cur = current != null ? current : wearId(slot); const items = [];
+        if (none) items.push(['none', 'None']);
+        for (const row of list) items.push([row[0], row[1]]);
+        return el('div', { cls: 'grid' }, items.map(([id, label]) => { const p = COS.priceOf(id), own = COS.ownedCosmetic(W, id), on = (id === 'none' ? (cur == null || cur === 'none') : cur === id);
+          const tag = on ? 'Wearing' : own || !p ? (id === 'none' ? '' : 'Free') : '$' + p;
+          return card(label, { on, lock: !own && p, tag: tag || undefined, tagCls: on ? 'wear' : (!own && p ? 'price' : 'own'), click: () => pickPiece(slot, id, extra) }); }));
+      };
       const PAGES = {
         name: () => { const inp = el('input', { cls: 'name', value: name, maxLength: 18, placeholder: 'Your name', on: { input: e => { name = e.target.value; nm.textContent = name; } } }); setTimeout(() => { try { inp.focus(); } catch (e) { /* ignore */ } }, 50);
           return [inp, el('div', { cls: 'lbl' }, 'Ideas'), el('div', { cls: 'grid' }, NAMES.slice(0, 8).map(n => card(n, { click: () => { name = n; inp.value = n; nm.textContent = n; } })))]; },
-        skin: () => [el('div', { cls: 'lbl' }, 'Skin tone'), swatches('skin', SKINS, 'skin'), el('div', { cls: 'lbl' }, 'Eye colour'), swatches('eyes', EYES, 'skin')],
+        skin: () => [el('div', { cls: 'lbl' }, 'Body'), el('div', { cls: 'grid' }, [['mp_m1', 'Guy'], ['mp_f1', 'Girl']].map(([id, n]) => card(n, { on: (sel.base || 'mp_m1') === id, click: () => set('skin', () => { sel.base = id; base = Object.assign({}, base, { base: id }); }) }))),
+          el('div', { cls: 'lbl' }, 'Skin tone'), swatches('skin', SKINS, 'skin'), el('div', { cls: 'lbl' }, 'Eye colour'), swatches('eyes', EYES, 'skin')],
         face: () => [el('div', { cls: 'lbl' }, 'Face shape'), el('div', { cls: 'grid' }, Object.entries(FACES).map(([k, f]) => card(f.name === 'Keem' ? 'Classic' : f.name, { on: sel.face === k, click: () => set('face', () => { sel.face = k; }) }))),
           el('div', { cls: 'lbl' }, 'Facial hair'), el('div', { cls: 'grid' }, Object.entries(BEARDS).map(([k, n]) => card(n, { on: sel.beard === k, click: () => set('face', () => { sel.beard = k; }) })))],
         hair: () => [el('div', { cls: 'lbl' }, 'Colour'), swatches('hairColor', HAIR_COLORS, 'hair'), el('div', { cls: 'lbl' }, 'Style'), el('div', { cls: 'grid' }, Object.entries(HAIRS).map(([k, n]) => card(n, { on: sel.hair === k, click: () => set('hair', () => { sel.hair = k; }) })))],
         outfit: () => { const W = wallet(); const sorted = [...OUTFITS].sort((a, b) => (owned(b) - owned(a)) || ((a.price || 0) - (b.price || 0)));
-          return [el('div', { cls: 'grid' }, sorted.map(o => { const own = owned(o), lockLv = !own && o.lvl && (W.level || 1) < o.lvl, wear = sel.outfit === o.id;
+          return [el('div', { cls: 'grid' }, sorted.map(o => { const own = owned(o), lockLv = !own && o.lvl && (W.level || 1) < o.lvl, wear = sel.outfit === o.id && !Object.keys(sel.parts || {}).length;
             return card(o.name, { on: wear, lock: !own, chips: [o.jacket || o.shirt, o.shirt, o.pants, o.shoes], tag: wear ? 'Wearing' : own ? 'Owned' : lockLv ? '🔒 Level ' + o.lvl : '$' + o.price, tagCls: wear ? 'wear' : own ? 'own' : lockLv ? 'lockt' : 'price',
               click: () => set('outfit', () => { if (!own) { if (lockLv) { toast(`Reach level ${o.lvl} to unlock ${o.name}.`); return false; } if ((W.cash | 0) < o.price) { toast(`You need $${o.price}. Earn cash in Story, Survival or Online.`); return false; } if (!confirm(`Buy ${o.name} for $${o.price} (in-game cash)?`)) return false;
-                W.cash -= o.price; W.outfits = [...new Set([...(W.outfits || ['classic']), o.id])]; saveProfile({ cash: W.cash, owned: W.outfits }, { silent: true }); try { window.__atq.audio.pickup(); } catch (e) { /* ignore */ } } sel.outfit = o.id; }) }); }))]; },
-        extra: () => [el('div', { cls: 'grid' }, card('Backpack', { on: sel.pack, tag: sel.pack ? 'On' : 'Off', tagCls: sel.pack ? 'wear' : '', click: () => set('extra', () => { sel.pack = !sel.pack; }) }), card('Glasses', { on: sel.glasses, tag: sel.glasses ? 'On' : 'Off', tagCls: sel.glasses ? 'wear' : '', click: () => set('extra', () => { sel.glasses = !sel.glasses; }) })),
-          el('div', { cls: 'lbl' }, 'Build'), el('div', { cls: 'grid' }, [[.92, 'Slim'], [1, 'Average'], [1.1, 'Stocky']].map(([v, n]) => card(n, { on: sel.build === v, click: () => set('extra', () => { sel.build = v; }) })))],
+                W.cash -= o.price; W.outfits = [...new Set([...(W.outfits || ['classic']), o.id])]; saveProfile({ cash: W.cash, owned: W.outfits }, { silent: true }); try { window.__atq.audio.pickup(); } catch (e) { /* ignore */ } } sel.outfit = o.id; sel.parts = {}; }) }); }))]; },
+        clothes: () => { const tabs = [['top', 'Shirts'], ['jacket', 'Jackets'], ['pants', 'Pants'], ['shoes', 'Shoes']];
+          const lists = { top: COS.catalogEntries('TOPS'), jacket: COS.catalogEntries('JACKETS'), pants: COS.catalogEntries('PANTS'), shoes: COS.catalogEntries('SHOES') };
+          return [el('div', { cls: 'subs' }, tabs.map(([k, n]) => el('button', { cls: clothSub === k ? 'on' : '', on: { click: () => { clothSub = k; render(); } } }, n))), pieceCards(lists[clothSub], clothSub, { none: clothSub === 'jacket' })]; },
+        extra: () => { const tabs = [['hat', 'Hats'], ['glasses', 'Glasses'], ['earL', 'Earrings'], ['pierce', 'Piercings'], ['neck', 'Chains'], ['chair', 'Mobility']];
+          const lists = { hat: COS.catalogEntries('HATS'), glasses: COS.catalogEntries('GLASSES_LIST'), earL: COS.catalogEntries('EARRINGS'), pierce: COS.catalogEntries('PIERCINGS'), neck: COS.catalogEntries('NECKLACES'), chair: [['chair', 'Wheelchair']] };
+          const pier = () => { const cur = new Set(Array.isArray(sel.parts.pierce) ? sel.parts.pierce : (sel.parts.pierce ? [sel.parts.pierce] : [])); const W = wallet();
+            return el('div', { cls: 'grid' }, [['none', 'None'], ...lists.pierce.map(r => [r[0], r[1]])].map(([id, label]) => {
+              const on = id === 'none' ? cur.size === 0 : cur.has(id), p = COS.priceOf(id), own = COS.ownedCosmetic(W, id);
+              return card(label, { on, lock: !own && p, tag: on ? 'On' : own || !p ? (id === 'none' ? '' : 'Free') : '$' + p, tagCls: on ? 'wear' : (!own && p ? 'price' : 'own'),
+                click: () => set('clothes', () => { if (id === 'none') { sel.parts.pierce = []; return; } if (!buyPiece(id)) return false; const a = new Set(Array.isArray(sel.parts.pierce) ? sel.parts.pierce : []); if (a.has(id)) a.delete(id); else a.add(id); sel.parts.pierce = [...a]; }) }); })); };
+          return [
+            el('div', { cls: 'subs' }, tabs.map(([k, n]) => el('button', { cls: accSub === k ? 'on' : '', on: { click: () => { accSub = k; render(); } } }, n))),
+            accSub === 'pierce' ? pier() : pieceCards(lists[accSub], accSub, { none: true, extra: accSub === 'earL' ? { mirror: 'earR' } : null }),
+            el('div', { cls: 'lbl' }, 'Also'),
+            el('div', { cls: 'grid' }, card('Backpack', { on: sel.pack, tag: sel.pack ? 'On' : 'Off', tagCls: sel.pack ? 'wear' : '', click: () => set('extra', () => { sel.pack = !sel.pack; }) })),
+            el('div', { cls: 'lbl' }, 'Build'), el('div', { cls: 'grid' }, [[.92, 'Slim'], [1, 'Average'], [1.1, 'Stocky']].map(([v, n]) => card(n, { on: sel.build === v, click: () => set('extra', () => { sel.build = v; }) })))
+          ]; },
       };
       let toastT = 0; const toast = (m) => { sub.textContent = m; sub.style.color = '#ffb0a8'; clearTimeout(toastT); toastT = setTimeout(() => { sub.style.color = ''; sub.textContent = SUB[STEPS[step][0]]; }, 2600); };
       const save = () => {

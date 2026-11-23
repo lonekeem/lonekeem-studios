@@ -21,7 +21,7 @@ const META = 'atq.profile.v1', SAVE = 'atq3_save', SEL = 'atq3.look';
 const rd = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
 const wr = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage full / private mode */ } };
 const listeners = new Set(); let sync = null;
-export const DEFAULT_SEL = { outfit: 'classic', hair: 'crop', hairColor: '#0b0806', face: 'keem', beard: 'none', skin: '#6a4430', eyes: '#2a1608', pack: false, glasses: false, build: 1 };
+export const DEFAULT_SEL = { outfit: 'classic', hair: 'crop', hairColor: '#0b0806', face: 'keem', beard: 'none', skin: '#6a4430', eyes: '#2a1608', pack: false, glasses: false, build: 1, base: 'mp_m1', parts: {} };
 
 function storySave() { const live = typeof window !== 'undefined' && window.__atq && window.__atq.save; return live || rd(SAVE) || { v: 3, step: 0, cash: 0, xp: 0, level: 1, owned: ['fists'], outfits: ['classic'] }; }
 function writeStory(s) { const j = JSON.stringify(s); try { localStorage.setItem(SAVE, j); localStorage.setItem(SAVE + '.bak', j); } catch (e) { /* ignore */ } }
@@ -30,7 +30,7 @@ export function hasProfile() { return !!rd(META); }
 export function getProfile() {
   const m = rd(META); if (!m) return null; const s = storySave();
   return { v: 1, name: m.name || 'Survivor', uid: m.uid || null, email: m.email || null, avatarUrl: m.avatarUrl || null,
-    sel: Object.assign({}, DEFAULT_SEL, rd(SEL) || {}), look: K.loadLook() || K.defaultLook('mp_m1'), cash: s.cash | 0, owned: [...new Set(['classic', ...(s.outfits || [])])],
+    sel: Object.assign({}, DEFAULT_SEL, rd(SEL) || {}, { parts: Object.assign({}, (rd(SEL) || {}).parts || {}) }), look: K.loadLook() || K.defaultLook('mp_m1'), cash: s.cash | 0, owned: [...new Set(['classic', ...(s.outfits || [])])], cosmetics: [...new Set(s.cosmetics || [])],
     level: s.level || 1, stats: Object.assign({ kills: s.kills || 0 }, m.stats || {}), createdAt: m.createdAt || Date.now(), updatedAt: m.updatedAt || 0 };
 }
 export function saveProfile(p, { silent = false } = {}) {
@@ -39,7 +39,7 @@ export function saveProfile(p, { silent = false } = {}) {
   wr(META, { v: 1, name, uid: p.uid ?? old.uid ?? null, email: p.email ?? old.email ?? null, avatarUrl: p.avatarUrl ?? old.avatarUrl ?? null, stats: p.stats || old.stats || {}, createdAt: old.createdAt || p.createdAt || now, updatedAt: now });
   if (p.sel) wr(SEL, Object.assign({}, DEFAULT_SEL, p.sel));
   if (p.look) K.saveLook(Object.assign({}, p.look, { name }));
-  const s = storySave(); if (p.cash != null && isFinite(p.cash)) s.cash = Math.max(0, Math.floor(p.cash)); if (Array.isArray(p.owned)) s.outfits = [...new Set(['classic', ...(s.outfits || []), ...p.owned])]; writeStory(s);
+  const s = storySave(); if (p.cash != null && isFinite(p.cash)) s.cash = Math.max(0, Math.floor(p.cash)); if (Array.isArray(p.owned)) s.outfits = [...new Set(['classic', ...(s.outfits || []), ...p.owned])]; if (Array.isArray(p.cosmetics)) s.cosmetics = [...new Set(p.cosmetics)]; writeStory(s);
   const out = getProfile(); if (!silent) { listeners.forEach(cb => { try { cb(out); } catch (e) { console.warn(e); } }); if (out.uid && sync && sync.push) Promise.resolve().then(() => sync.push(out)).catch(e => console.warn('profile push', e)); }
   return out;
 }

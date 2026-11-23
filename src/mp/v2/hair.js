@@ -271,10 +271,10 @@ export function hairMaterial(c1, c2, hl = .35, skin = null) { // skin: blend the
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         { vec3 V = normalize(vViewPosition); vec3 N = normalize(vNormal); vec3 T = normalize(vT - N * dot(vT, N));
           vec3 L = normalize(vec3(0.35, 0.8, 0.5)); vec3 Hh = normalize(L + V); float th = dot(T, Hh); float sinTH = sqrt(max(0.0, 1.0 - th * th));
-          float spec = (pow(sinTH, 24.0) * 0.2 + pow(sinTH, 7.0) * 0.07) * (0.7 + 0.5 * gStr); float rimF = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 2.5);
-          totalEmissiveRadiance += mix(diffuseColor.rgb, vec3(1.0), 0.35) * spec * (0.5 + 0.5 * vH.x) + diffuseColor.rgb * (0.12 + rimF * 0.2); }`);
+          float spec = (pow(sinTH, 28.0) * 0.34 + pow(sinTH, 8.0) * 0.11) * (0.75 + 0.5 * gStr); float rimF = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 2.4);
+          totalEmissiveRadiance += mix(diffuseColor.rgb, vec3(1.0), 0.42) * spec * (0.55 + 0.5 * vH.x) + diffuseColor.rgb * (0.12 + rimF * 0.24); }`);
   };
-  m.customProgramCacheKey = () => 'v2hair9'; _mats.set(key, m); return m;
+  m.customProgramCacheKey = () => 'v2hair10'; _mats.set(key, m); return m;
 }
 
 // ---------- facial hair: polar band around the mouth. Inner edge = first entry into the mask, outer edge = exit; both edges tuck under

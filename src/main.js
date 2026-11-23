@@ -124,7 +124,7 @@ async function loadOutfits() {
 async function applyStoreOutfit(id) {
   save.outfits = [...new Set(['classic', ...(save.outfits || []), id])];
   let sel = { outfit: id };
-  try { sel = Object.assign({}, JSON.parse(LS.getItem('atq3.look') || '{}') || {}, { outfit: id }); } catch (e) { sel = { outfit: id }; }
+  try { sel = Object.assign({}, JSON.parse(LS.getItem('atq3.look') || '{}') || {}, { outfit: id, parts: {} }); } catch (e) { sel = { outfit: id, parts: {} }; }
   try { LS.setItem('atq3.look', JSON.stringify(sel)); } catch (e) {}
   try {
     const SL = await import('./mp/storeLook.js');
@@ -134,7 +134,7 @@ async function applyStoreOutfit(id) {
     const L = SL.applySel(K.loadLook() || K.defaultLook('mp_m1'), sel, ['outfit'], OUTFIT);
     K.saveLook(L);
     const p = getProfile();
-    if (p) saveProfile({ sel: Object.assign({}, p.sel || {}, { outfit: id }), look: L, owned: save.outfits, cash: save.cash }, { silent: true });
+    if (p) saveProfile({ sel: Object.assign({}, p.sel || {}, { outfit: id, parts: {} }), look: L, owned: save.outfits, cash: save.cash }, { silent: true });
     const town = window.__mpTown;
     if (town && town.wearLook) {
       const cur = town.net && town.net.me && town.net.me.look;
@@ -143,6 +143,31 @@ async function applyStoreOutfit(id) {
     }
   } catch (e) { console.warn('outfit', e); }
 }
+async function applyStorePiece(slot, id, opts = {}) {
+  if (id && id !== 'none') save.cosmetics = [...new Set([...(save.cosmetics || []), id])];
+  let sel = { parts: {} };
+  try { sel = Object.assign({ parts: {} }, JSON.parse(LS.getItem('atq3.look') || '{}') || {}); } catch (e) { sel = { parts: {} }; }
+  sel.parts = Object.assign({}, sel.parts || {}); sel.parts[slot] = id;
+  if (opts.mirror) sel.parts[opts.mirror] = id;
+  if (slot === 'glasses') sel.glasses = id !== 'none' && !!id;
+  try { LS.setItem('atq3.look', JSON.stringify(sel)); } catch (e) {}
+  try {
+    const SL = await import('./mp/storeLook.js');
+    const K = await import('./mp/look.js');
+    const { saveProfile, getProfile } = await import('./mp/profile.js');
+    const { OUTFIT } = await loadOutfits();
+    const L = SL.applySel(K.loadLook() || K.defaultLook('mp_m1'), sel, ['outfit', 'extra', 'clothes'], OUTFIT);
+    K.saveLook(L);
+    const p = getProfile();
+    if (p) saveProfile({ sel: Object.assign({}, p.sel || {}, sel, { parts: sel.parts }), look: L, cosmetics: save.cosmetics || [], cash: save.cash }, { silent: true });
+    const town = window.__mpTown;
+    if (town && town.wearLook) {
+      const cur = town.net && town.net.me && town.net.me.look;
+      if (cur && cur.exclusive === 'skin.keem_story') { try { town.toast && town.toast('Saved for your character. Story Keem keeps his look.', 2.2); } catch (e) {} }
+      else await town.wearLook(Object.assign({}, L, { name: (cur && cur.name) || L.name }));
+    }
+  } catch (e) { console.warn('cosmetic', e); }
+}
 function equipStoreArmor(id) {
   save.armors = [...new Set([...(save.armors || []), id])];
   save.armor = id;
@@ -150,7 +175,7 @@ function equipStoreArmor(id) {
 }
 
 // ---------- shop ----------
-let shopTab = 'guns', shopOverlay = false, shopOnClose = null;
+let shopTab = 'guns', shopClothesSub = 'outfits', shopOverlay = false, shopOnClose = null;
 function closeTownShop() {
   const el = $('#shop'); if (!el) return;
   el.classList.add('hidden'); el.classList.remove('town-overlay');
@@ -194,15 +219,40 @@ function renderShop() {
       card(`<b>${a.name}</b><div class="st arm">Reduces damage by ${Math.round(a.absorb * 100)}%</div><div class="small">${a.desc}</div>`, btns, eq); });
   }
   if (shopTab === 'clothes') {
-    if (!_outfits) { L.innerHTML = '<p class="small">Loading clothes…</p>'; loadOutfits().then(() => renderShop()); }
+    if (!_outfits) { L.innerHTML = '<p class="small">Loading clothes…</p>'; Promise.all([loadOutfits(), import('./mp/cosmetics.js')]).then(() => renderShop()); }
     else {
-      const worn = currentOutfitId();
-      const owned = new Set(['classic', ...(save.outfits || [])]);
-      _outfits.forEach(o => {
-        const own = !o.price || owned.has(o.id); const eq = worn === o.id;
-        const lockLv = !shopOverlay && o.lvl && (save.level || 1) < o.lvl;
-        const btns = lockLv ? [['Level ' + o.lvl + ' unlock', () => {}, true]] : own ? [[eq ? 'Wearing' : 'Wear', () => applyStoreOutfit(o.id), eq]] : [[`Buy $${o.price}`, () => { if (buy(o.price)) return applyStoreOutfit(o.id); }, save.cash < o.price]];
-        card(`<b>${o.name}</b><div class="st">${own ? (eq ? 'Wearing now' : 'Owned') : 'Outfit · in-game cash'}${o.lvl && !shopOverlay && !own ? ' · Lv ' + o.lvl : ''}</div>`, btns, eq);
+      import('./mp/cosmetics.js').then(COS => {
+        if (shopTab !== 'clothes') return;
+        L.innerHTML = '';
+        const sub = document.createElement('div'); sub.className = 'tabs'; sub.style.margin = '0 0 8px';
+        [['outfits', 'Outfits'], ['pieces', 'Clothes'], ['acc', 'Accessories']].forEach(([k, n]) => { const b = document.createElement('button'); b.textContent = n; b.className = shopClothesSub === k ? 'on' : ''; b.onclick = () => { shopClothesSub = k; renderShop(); }; sub.appendChild(b); });
+        L.appendChild(sub);
+        if (shopClothesSub === 'outfits') {
+          const worn = currentOutfitId();
+          const owned = new Set(['classic', ...(save.outfits || [])]);
+          _outfits.forEach(o => {
+            const own = !o.price || owned.has(o.id); let _parts = {}; try { _parts = JSON.parse(LS.getItem('atq3.look') || '{}').parts || {}; } catch (e) { _parts = {}; } const eq = worn === o.id && !Object.keys(_parts).length;
+            const lockLv = !shopOverlay && o.lvl && (save.level || 1) < o.lvl;
+            const btns = lockLv ? [['Level ' + o.lvl + ' unlock', () => {}, true]] : own ? [[eq ? 'Wearing' : 'Wear', () => applyStoreOutfit(o.id), eq]] : [[`Buy $${o.price}`, () => { if (buy(o.price)) return applyStoreOutfit(o.id); }, save.cash < o.price]];
+            card(`<b>${o.name}</b><div class="st">${own ? (eq ? 'Wearing now' : 'Owned') : 'Outfit · in-game cash'}${o.lvl && !shopOverlay && !own ? ' · Lv ' + o.lvl : ''}</div>`, btns, eq);
+          });
+          return;
+        }
+        let selParts = {}; try { selParts = (JSON.parse(LS.getItem('atq3.look') || '{}').parts) || {}; } catch (e) { selParts = {}; }
+        const curOf = slot => { const v = selParts[slot]; return v == null ? null : (typeof v === 'string' ? v : v.id); };
+        const sections = shopClothesSub === 'pieces' ? COS.STORE_SECTIONS.filter(s => !s.acc) : COS.STORE_SECTIONS.filter(s => s.acc);
+        sections.forEach(sec => {
+          const h = document.createElement('p'); h.className = 'small'; h.style.margin = '10px 0 4px'; h.textContent = sec.title; L.appendChild(h);
+          const rows = sec.items || COS.catalogEntries(sec.list);
+          const list = [...rows];
+          if (sec.slot !== 'top' && sec.slot !== 'pants' && sec.slot !== 'shoes') list.unshift(['none', 'None']);
+          list.forEach(row => {
+            const id = row[0], name = row[1] || COS.itemName(id); const p = COS.priceOf(id); const own = COS.ownedCosmetic(save, id);
+            const eq = (id === 'none' ? (curOf(sec.slot) == null || curOf(sec.slot) === 'none') : curOf(sec.slot) === id) || (sec.slot === 'pierce' && Array.isArray(selParts.pierce) && selParts.pierce.includes(id));
+            const btns = own || !p ? [[eq ? 'Wearing' : 'Wear', () => applyStorePiece(sec.slot, id, { mirror: sec.mirror }), eq]] : [[`Buy $${p}`, () => { if (buy(p)) { save.cosmetics = [...new Set([...(save.cosmetics || []), id])]; return applyStorePiece(sec.slot, id, { mirror: sec.mirror }); } }, save.cash < p]];
+            card(`<b>${name}</b><div class="st">${own || !p ? (eq ? 'Wearing now' : (p ? 'Owned' : 'Free in the creator')) : 'In-game cash'}</div>`, btns, eq);
+          });
+        });
       });
     }
   }

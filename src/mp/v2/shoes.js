@@ -6,10 +6,10 @@ import { skinTo, bindMesh } from './headrig.js';
 // d: 1 laces, 2 clog holes, 3 canvas toecap, 4 heel strap, 5 slip-on (loafer), 6 plain/dress
 export const SHOE_STYLE = {
   sneaker: { sole: .022, toe: .9, bulk: .012, col: .012, d: 1, line: 1 }, lowtop: { sole: .012, toe: .95, bulk: .006, col: .0, d: 3, line: 1 }, hightop: { sole: .016, toe: .95, bulk: .008, col: .045, d: 3, line: 1 },
-  runner: { sole: .02, toe: .85, bulk: .009, col: .008, d: 1, line: 1 }, boot: { sole: .016, toe: .85, bulk: .009, col: .05, d: 6 }, ankleboot: { sole: .014, toe: .7, bulk: .006, col: .05, d: 6 },
-  combat: { sole: .02, toe: .9, bulk: .01, col: .05, d: 1 }, kneeboot: { sole: .012, toe: .6, bulk: .005, col: .05, d: 6 }, thighboot: { sole: .012, toe: .6, bulk: .005, col: .05, d: 6 },
+  runner: { sole: .02, toe: .85, bulk: .009, col: .008, d: 1, line: 1 }, boot: { sole: .016, toe: .85, bulk: .012, col: .16, d: 6 }, ankleboot: { sole: .014, toe: .7, bulk: .008, col: .11, d: 6 },
+  combat: { sole: .02, toe: .9, bulk: .014, col: .18, d: 1 }, kneeboot: { sole: .012, toe: .6, bulk: .008, col: .32, d: 6 }, thighboot: { sole: .012, toe: .6, bulk: .01, col: .48, d: 6 },
   flat: { sole: .006, toe: .6, bulk: .003, col: -.012, d: 6 }, loafer: { sole: .01, toe: .7, bulk: .005, col: -.006, d: 5 }, dress: { sole: .01, toe: .55, bulk: .005, col: -.004, d: 6 },
-  chunky: { sole: .036, toe: 1, bulk: .016, col: .014, d: 1, line: 1 }, work: { sole: .022, toe: 1, bulk: .013, col: .05, d: 1 }, rain: { sole: .014, toe: .9, bulk: .01, col: .05, d: 6 },
+  chunky: { sole: .036, toe: 1, bulk: .016, col: .014, d: 1, line: 1 }, work: { sole: .022, toe: 1, bulk: .013, col: .16, d: 1 }, rain: { sole: .014, toe: .9, bulk: .01, col: .14, d: 6 },
   clog: { sole: .03, toe: 1, bulk: .02, col: -.01, d: 2, strap: 1 },
 };
 const NU = 30, NV = 28;
@@ -34,9 +34,12 @@ function loft(av, sd, st) {
   const pos = [], uv = [], idx = [];
   const rings = []; const capN = 5;
   const sect = (k) => { const b = B[k]; const u = (k + .5) / NU; let x0 = b.x0 - m, x1 = b.x1 + m; const toeK = Math.max(0, (u - .7) / .3); const extra = st.bulk * Math.sin(Math.min(1, u * 1.4) * Math.PI * .5); x0 -= extra * .4; x1 += extra * .4;
-    let top = b.y1 + m + extra * .6; if (st.col >= 0) top = Math.min(top, ank.y + .03 + st.col + .045 * ss(.22, .42, u) * (1 - ss(.55, .8, u))); else { const lo = ank.y + st.col; top = u < .5 ? Math.min(top, lo + (top - lo) * ss(.25, .6, u)) : top; }
+    let top = b.y1 + m + extra * .6;
+    if (st.col > .06) { const shaft = ank.y + .02 + st.col; const heel = 1 - ss(.08, .4, u); top = Math.max(top, shaft * heel + top * (1 - heel)); const widen = .006 * heel * Math.min(1, st.col / .16); x0 -= widen; x1 += widen; }
+    else if (st.col >= 0) top = Math.min(top, ank.y + .03 + st.col + .045 * ss(.22, .42, u) * (1 - ss(.55, .8, u)));
+    else { const lo = ank.y + st.col; top = u < .5 ? Math.min(top, lo + (top - lo) * ss(.25, .6, u)) : top; }
     top = Math.max(top, ground + st.sole + .025 * (1 - toeK * .6)); return { x0, x1, y0: ground - .003, y1: top, z: z0 + u * len }; };
-  for (let k = 0; k < NU; k++) rings.push(sect(k)); if (st.col >= 0) for (let k = 1; k < NU; k++) { const r = rings[k], pr = rings[k - 1]; r.y1 = Math.max(r.y1, Math.min(pr.y1, pr.y1 - 1.3 * (r.z - pr.z))); }
+  for (let k = 0; k < NU; k++) rings.push(sect(k)); if (st.col >= 0) for (let k = 1; k < NU; k++) { const r = rings[k], pr = rings[k - 1]; const drop = (st.col > .06 ? .9 : 1.3) * (r.z - pr.z); r.y1 = Math.max(r.y1, Math.min(pr.y1, pr.y1 - drop)); }
   // rounded heel and toe caps
   const heel = rings[0], toe = rings[NU - 1]; const out = [];
   for (let c = capN; c >= 1; c--) { const a = c / capN * Math.PI / 2; const f = Math.cos(a); const r = { ...heel }; const hw = (heel.x1 - heel.x0) / 2, xc = (heel.x1 + heel.x0) / 2; r.x0 = xc - hw * Math.max(.15, f); r.x1 = xc + hw * Math.max(.15, f); r.y1 = heel.y0 + (heel.y1 - heel.y0) * Math.max(.3, .3 + .7 * f); r.z = heel.z - .028 * Math.sin(a) - m * .3; r.u = 0; out.push(r); }

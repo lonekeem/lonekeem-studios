@@ -40,7 +40,7 @@ float beardMask(vec3 p){ float ax = abs(p.x); float cy = -.08 + .068 * smoothste
   float mx = p.x / .048, my = (p.y + .084) / .0208; float mh = smoothstep(.85, 1.15, mx * mx + my * my); return up * fl * fr * mh; }
 `.replace(/\n/g, ' ');
 export function skinMaterial(U, faceTex, plain = false) { // plain: the neck tube — lit exactly like the body skin (no extra self-light) so there is no tone step where it meets the chest
-  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: plain ? .62 : .58, metalness: 0 });
+  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: plain ? .62 : .5, metalness: 0 });
   m.userData.face = { value: faceTex || null }; m.userData.beard = { value: new THREE.Vector4(0, 0, 0, 0) }; m.userData.beardCol = { value: new THREE.Color('#6b4e36') };
   m.onBeforeCompile = sh => {
     sh.uniforms.uBeard = m.userData.beard; sh.uniforms.uBeardCol = m.userData.beardCol; sh.uniforms.uSkin = U.uSkin; sh.uniforms.uFace = m.userData.face; sh.uniforms.uHasFace = { value: faceTex ? 1 : 0 };
@@ -51,10 +51,12 @@ export function skinMaterial(U, faceTex, plain = false) { // plain: the neck tub
         if (uBeard.x > .5) { float bm = beardMask(vL); c = mix(c, uBeardCol, smoothstep(0.0, 1.0, bm) * .8 * uBeard.y); /* v1.9.28 smooth cartoon underlay (no stipple) */ }
         diffuseColor.rgb = c;`)
       .replace('#include <emissivemap_fragment>', plain ? '#include <emissivemap_fragment>' : `#include <emissivemap_fragment>
-        { float rimF = pow(1.0 - clamp(dot(normalize(vNormal), normalize(vViewPosition)), 0.0, 1.0), 2.4);
-          totalEmissiveRadiance += diffuseColor.rgb * (0.06 + rimF * 0.16) + vec3(.03,.012,.01) * rimF; }`);
+        { vec3 N = normalize(vNormal); vec3 V = normalize(vViewPosition); float ndv = clamp(dot(N, V), 0.0, 1.0);
+          float wrap = pow(1.0 - ndv, 1.55); float rimF = pow(1.0 - ndv, 2.7);
+          /* soft subsurface-like wrap + face rim, still cheap on phones */
+          totalEmissiveRadiance += diffuseColor.rgb * (0.05 + wrap * 0.14) + vec3(0.16, 0.06, 0.04) * wrap * 0.45 + vec3(0.55, 0.72, 0.9) * rimF * 0.22; }`);
   };
-  m.customProgramCacheKey = () => 'v2skin' + (faceTex ? 'f' : '') + (plain ? 'p' : ''); return m;
+  m.customProgramCacheKey = () => 'v2skin2' + (faceTex ? 'f' : '') + (plain ? 'p' : ''); return m;
 }
 
 export function buildHead(av, look) {
@@ -112,11 +114,11 @@ export function faceOpts(look, g, L, H) {
 import { styleOf, buildCap, buildExtras, hairMaterial } from './hair.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 export function buildHairMesh(av, look, opt = {}) {
-  const h = av.head2; const id = look.hair && look.hair.id || 'bald'; const st0 = styleOf(id); const key = JSON.stringify([id, av._headKey, opt.hatCut || 0]);
+  const h = av.head2; const id = look.hair && look.hair.id || 'bald'; const st0 = styleOf(id); const key = JSON.stringify([id, av._headKey, opt.hatCut || 0, !!opt.hide]);
   const ears = av._ears; if (ears) { const show = !st0 || st0.ears !== false; ears[0].visible = ears[1].visible = show; }
   if (av._hairKey === key) { if (av._hair) av._hair.material = hairMaterial(look.hair.c, look.hair.c2 || look.hair.c, look.hair.hl ?? .35, skinHex(av)); return av._hair; }
   if (av._hair) { av._hair.parent && av._hair.parent.remove(av._hair); av._hair.geometry.dispose(); av._hair = null; }
-  av._hairKey = key; if (!st0) return null;
+  av._hairKey = key; if (!st0 || opt.hide) return null;
   let st = st0; if (opt.hatCut) st = Object.assign({}, st0, { mohawk: 0, tufts: 0, top: Math.min(st0.top, .003), front: 0, spikes: 0, round: 0, locks: 0, lockAmp: 0, tips: 0, frontLift: 0, waves: 0, T: Math.min(st0.T, opt.hatCut > 1 ? .004 : .006), curl: Math.min(st0.curl, .001), ex: (st0.ex || []).filter(e => (e[0] === 'locs' && e[1] > .1 && opt.hatCut < 2) || (e[0] === 'bun' && e[1] === 'low') || (e[0] === 'pony' && e[1] === 'low') || e[0] === 'braidpony' || e[0] === 'pigtails') });
   const parts = [...buildCap(h, st), ...buildExtras(h, st)];
   const geo = mergeGeometries(parts.map(g => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'aT', 'aH', 'aE'].includes(k)) g.deleteAttribute(k); if (!g.attributes.aE) g.setAttribute('aE', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count), 1)); return g; }), false);

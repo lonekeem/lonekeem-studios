@@ -27,6 +27,6 @@ export function animate(av, t, speed, mode = 'ground') { // speed 0 idle, ~1 wal
   d.LeftLeg = [Math.max(0, -c) * k * (s > -2 ? 1 : 1) * .0 + Math.max(0, Math.sin(ph + 1.2)) * k, 0, 0]; d.RightLeg = [Math.max(0, Math.sin(ph + 1.2 + Math.PI)) * k, 0, 0];
   d.LeftFoot = [-Math.max(0, Math.sin(ph + 1.2)) * k * .4, 0, 0]; d.RightFoot = [-Math.max(0, Math.sin(ph + 1.2 + Math.PI)) * k * .4, 0, 0];
   d.Spine = [-.04 * w - .01 * run, .1 * s * w, 0]; d.Spine01 = [breathe * 2, -.06 * s * w, sway * .3]; d.Spine02 = [breathe * 2.5 - .02 * run, -.05 * s * w, 0]; d.Head = [.02 * w - breathe, -.04 * s * w, 0];
-  if (mode === 'sit') { d.LeftUpLeg = [-1.45, 0, -.06]; d.RightUpLeg = [-1.45, 0, .06]; d.LeftLeg = [1.5, 0, 0]; d.RightLeg = [1.5, 0, 0]; d.LeftArm = [-.9, 0, -.3]; d.RightArm = [-.9, 0, .3]; d.LeftForeArm = [-.9, 0, 0]; d.RightForeArm = [-.9, 0, 0]; }
-  pose(av, d, [0, -Math.abs(c) * .02 * w * (1 + run) + (mode === 'sit' ? -.34 : 0) + breathe * .3, mode === 'sit' ? -.1 : 0]);
+  if (mode === 'sit') { d.LeftUpLeg = [-1.22, 0, -.1]; d.RightUpLeg = [-1.22, 0, .1]; d.LeftLeg = [.82, 0, 0]; d.RightLeg = [.82, 0, 0]; d.LeftFoot = [.08, 0, 0]; d.RightFoot = [.08, 0, 0]; d.LeftArm = [-.15, 0, -.62]; d.RightArm = [-.15, 0, .62]; d.LeftForeArm = [-.35, 0, -.08]; d.RightForeArm = [-.35, 0, .08]; d.Spine = [.06, 0, 0]; d.Spine01 = [.04, 0, 0]; }
+  pose(av, d, [0, -Math.abs(c) * .02 * w * (1 + run) + (mode === 'sit' ? -.48 : 0) + breathe * .3, mode === 'sit' ? -.12 : 0]);
 }

@@ -89,6 +89,30 @@ export const HAT = {
     if (rim.length > 3) B.tube(rim, .006, 'b', false, 60, 6); // hem round the face opening
     B.sphere(c.rx * .7, [0, c.eyeY - .11, c.zc - c.rz * .75], [1.15, 1.1, .7], 'a'); },
   helmet(B, c) { hemi(B, 'a', 0, c.crownY - .04, c.zc, c.rx * 1.12, c.ry * 1.18, c.rz * 1.1, 1.18); B.add(new THREE.CylinderGeometry(c.rz * 1.16, c.rz * 1.16, .05, 24, 1, true, -1.05, 2.1), 'k', [0, c.eyeY + .025, c.zc], [0, 0, 0], [c.rx / c.rz, 1, 1]); },
+  // Original hijab: cloth crown and a drape around the jaw, neck and shoulders, with a smooth face opening. Not a copy of any brand.
+  hijab(B, c) {
+    const g = new THREE.SphereGeometry(1, 48, 30, 0, PI * 2, 0, PI * .86); const pa = g.attributes.position;
+    const F = new THREE.Vector3(0, -.18, 1).normalize(), A = .82; const v = new THREE.Vector3(), t = new THREE.Vector3();
+    for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i); const d = v.dot(F); if (d <= Math.cos(A)) continue; t.copy(v).addScaledVector(F, -d); if (t.lengthSq() < 1e-6) t.set(0, 1, 0); t.normalize(); v.copy(F).multiplyScalar(Math.cos(A)).addScaledVector(t, Math.sin(A)); pa.setXYZ(i, v.x, v.y, v.z); }
+    g.computeVertexNormals(); const S = [c.rx * 1.16, c.ry * 1.22 + .03, c.rz * 1.16], O = [0, c.crownY - .03, c.zc - .004]; B.add(g, 'a', O, [0, 0, 0], S);
+    const rim = []; for (let k = 0; k <= 40; k++) { const a = (k / 40) * PI * 2; const up = new THREE.Vector3().crossVectors(F, new THREE.Vector3(1, 0, 0)).normalize().multiplyScalar(-1); t.set(Math.cos(a), 0, 0).addScaledVector(up, Math.sin(a)).normalize(); v.copy(F).multiplyScalar(Math.cos(A)).addScaledVector(t, Math.sin(A)); if (Math.acos(Math.max(-1, Math.min(1, v.y))) > PI * .86) continue; rim.push([O[0] + v.x * S[0], O[1] + v.y * S[1], O[2] + v.z * S[2]]); }
+    if (rim.length > 3) B.tube(rim, .005, 'b', false, 48, 5);
+    const ny = (c.P && c.P.neck ? c.P.neck.y : c.chinY - .08);
+    const chin = c.chinY || (ny + .07);
+    // Neck cloth that meets the crown, then a flatter shoulder cape — no floating ring, no thick chin cowl.
+    B.add(new THREE.SphereGeometry(1, 28, 18, 0, PI * 2, 0, PI * .62), 'a', [0, (chin + ny) * .5, c.zc - c.rz * .18], [0, 0, 0], [c.rx * 1.18, Math.max(.07, (chin - ny) * .62 + .02), c.rz * 1.08]);
+    B.add(new THREE.SphereGeometry(1, 28, 16, 0, PI * 2, 0, PI * .55), 'a', [0, ny - .03, c.zc - c.rz * .3], [0, 0, 0], [c.rx * 1.42, .055, c.rz * 1.2]);
+    B.add(new THREE.SphereGeometry(1, 20, 12), 'a', [0, ny - .01, c.back * .55], [0, 0, 0], [c.rx * .58, .06, c.rz * .48]);
+  },
+  // Original head wrap / turban: stacked cloth bands on the crown with a side fold. Covers the hair.
+  wrap(B, c) {
+    const y0 = c.crownY + .01, R = c.rx * 1.08, sz = c.rz / c.rx;
+    hemi(B, 'a', 0, y0 - .02, c.zc, R, c.ry * .7, R * sz, 1.05);
+    ring(B, 'b', 0, y0 + .01, c.zc, R * 1.02, R * 1.02 * sz, .018);
+    ring(B, 'a', 0, y0 + .04, c.zc, R * .98, R * .98 * sz, .02);
+    ring(B, 'b', 0, y0 + .07, c.zc, R * .88, R * .88 * sz, .016);
+    B.add(new THREE.SphereGeometry(1, 16, 12), 'b', [c.rx * .85, y0 + .02, c.zc], [0, 0, .4], [.05, .04, .06]);
+  },
 };
 // ---------- glasses ----------
 const lens = (B, c, shape, x, y, z, w, h, mat) => { const g = shape === 'round' ? new THREE.CylinderGeometry(1, 1, .004, 20) : shape === 'square' ? new THREE.BoxGeometry(2, .004, 2) : shape === 'hex' ? new THREE.CylinderGeometry(1, 1, .004, 6) : new THREE.CylinderGeometry(1, .9, .004, 14); B.add(g, mat, [x, y, z], [PI / 2, 0, 0], [w, 1, h]); };

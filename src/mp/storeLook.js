@@ -3,6 +3,7 @@
 import { skinTone } from './shaders.js';
 import * as C from './catalog.js';
 import * as K from './look.js';
+import { PRESETS, patIndex } from './cosmetics.js';
 
 export const SEL_KEY = 'atq3.look'; // story-format selections (kept from the old screen, so earlier choices + owned outfits carry over)
 const pat = (n) => Math.max(0, C.PATTERNS.indexOf(n));
@@ -12,7 +13,7 @@ const hex = (h) => (h && h.length === 4 ? '#' + h[1] + h[1] + h[2] + h[2] + h[3]
 const shade = (h, k) => { const n = parseInt(hex(h).slice(1), 16); const f = (v) => Math.max(0, Math.min(255, Math.round(v * k))).toString(16).padStart(2, '0'); return '#' + f(n >> 16) + f((n >> 8) & 255) + f(n & 255); };
 
 const HAIR = { crop: 'crew', hightop: 'curlfade', afro: 'afro', curls: 'curlcrop', puffs: 'afropuffs', braids: 'braids2', cornrows: 'cornrows', locs: 'dreads', waves: 'waves', buzz: 'buzz',
-  short: 'messy', slick: 'slickback', long: 'shoulder', bun: 'manbun', ponytail: 'ponylow', mohawk: 'mohawk', balding: 'receding', bald: 'bald' };
+  pixie: 'pixie', wavy: 'longwave', curly: 'longcurl', short: 'messy', slick: 'slickback', long: 'longstr', bun: 'manbun', ponytail: 'ponylow', mohawk: 'mohawk', balding: 'receding', bald: 'bald' };
 // face presets: [morph overrides, eye preset, brow preset, nose preset, mouth preset, age]
 const FACE = { // v1.9.28: gentle morphs (strong values made tall egg-shaped heads); the eye / brow / nose / mouth presets carry the difference
   keem: [{ jaw: .1, faceW: .05 }, 0, 3, 2, 1, 0], soft: [{ jaw: -.2, cheekFull: .3 }, 1, 0, 1, 3, 0],
@@ -65,9 +66,40 @@ export function applySel(M, L, parts, OUTFIT) {
   if (has('extra')) { const g = M._og; M.acc.glasses = L.glasses ? (g || { id: 'squareclear', m: 3, g: 0, c: '#1b1b1d', c2: '#fff', p: 0 }) : (g || null);
     M.acc.bag = L.pack ? (M._obag || { id: 'pack', m: 0, g: 0, c: '#2e3a2a', c2: '#3a4632', p: 0 }) : (M._obag || null);
     const bd = L.build || 1; M.morph.weight = bd < .97 ? -.6 : bd > 1.05 ? .55 : 0; M.morph.muscle = bd > 1.05 ? .5 : bd < .97 ? -.2 : 0; M.morph.shoulders = bd > 1.05 ? .4 : bd < .97 ? -.3 : 0; }
+  if (L.base && (L.base === 'mp_m1' || L.base === 'mp_f1')) M.base = L.base;
+  if (L.parts) applyParts(M, L.parts);
   return M;
 }
-export const ALL_PARTS = ['outfit', 'hair', 'face', 'skin', 'extra'];
+function pieceWorn(id, extra = {}) {
+  const pr = PRESETS[id];
+  if (pr) return { id: pr.id, c: extra.c || pr.c || '#888888', c2: extra.c2 || pr.c2 || '#ffffff', p: pr.p ? patIndex(pr.p) : (extra.p || 0) };
+  return { id, c: extra.c || '#888888', c2: extra.c2 || '#ffffff', p: extra.p || 0, sole: extra.sole };
+}
+function pieceAcc(id, extra = {}) {
+  return { id, m: extra.m ?? 1, g: extra.g ?? 0, c: extra.c || '#2b2b30', c2: extra.c2 || '#f2f2f0', p: extra.p || 0 };
+}
+export function applyParts(M, parts) {
+  if (!parts) return M;
+  M.worn = M.worn || {}; M.acc = M.acc || {};
+  const val = v => (typeof v === 'string' ? { id: v } : v);
+  for (const slot of ['top', 'jacket', 'pants', 'shoes', 'gloves']) {
+    if (!(slot in parts)) continue;
+    const v = parts[slot];
+    if (v == null || v === 'none') { if (slot === 'jacket' || slot === 'gloves') M.worn[slot] = null; continue; }
+    M.worn[slot] = pieceWorn(val(v).id, val(v));
+  }
+  for (const slot of ['hat', 'glasses', 'earL', 'earR', 'neck', 'bag', 'belt']) {
+    if (!(slot in parts)) continue;
+    const v = parts[slot];
+    if (v == null || v === 'none') { M.acc[slot] = null; continue; }
+    M.acc[slot] = pieceAcc(val(v).id, val(v));
+  }
+  if ('pierce' in parts) { const v = parts.pierce; M.acc.pierce = Array.isArray(v) ? v.filter(x => x && x !== 'none') : (v && v !== 'none' ? [typeof v === 'string' ? v : v.id] : []); }
+  if ('chair' in parts) M.acc.chair = (parts.chair && parts.chair !== 'none') ? { id: 'chair' } : null;
+  if (parts.earL && !('earR' in parts) && parts.earL !== 'none') M.acc.earR = M.acc.earL ? Object.assign({}, M.acc.earL) : null;
+  return M;
+}
+export const ALL_PARTS = ['outfit', 'hair', 'face', 'skin', 'extra', 'clothes'];
 // one-time migration: someone who customized on the old screen (atq3.look) but never opened multiplayer gets that look on their mp avatar
 export function migrateOnce(OUTFIT) {
   try { if (localStorage.getItem('atq.mp.look.v1') || localStorage.getItem('atq.mp.migrated')) return; const raw = localStorage.getItem(SEL_KEY); localStorage.setItem('atq.mp.migrated', '1'); if (!raw) return;

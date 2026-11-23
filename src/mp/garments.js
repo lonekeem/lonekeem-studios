@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { hookVertex, GLSL_COMMON } from './shaders.js';
 
-export const PATTERNS = ['Solid', 'Stripes', 'Pinstripe', 'Vertical stripes', 'Plaid', 'Camo', 'Polka dots', 'Checker', 'Gradient', 'Chevron', 'Tie-dye', 'Houndstooth', 'Argyle', 'Hex mesh', 'Speckle', 'Waves'];
+export const PATTERNS = ['Solid', 'Stripes', 'Pinstripe', 'Vertical stripes', 'Plaid', 'Camo', 'Polka dots', 'Checker', 'Gradient', 'Chevron', 'Tie-dye', 'Houndstooth', 'Argyle', 'Hex mesh', 'Speckle', 'Waves', 'Floral', 'Zebra'];
 const FRAG = /* glsl */`
 uniform float uKind; uniform vec4 uG1, uG2, uN, uPat; uniform vec3 uC1, uC2, uC3; uniform vec4 uSole;
 float pat(vec3 p, float id, float sc){
@@ -23,7 +23,9 @@ float pat(vec3 p, float id, float sc){
   else if (id < 12.5) { vec2 f = abs(fract(q * 0.6) - 0.5) * 2.0; v = step(f.x + f.y, 1.0) * 0.8; v = max(v, step(0.97, 1.0 - abs(f.x - f.y))); }
   else if (id < 13.5) { vec2 f = fract(q * vec2(1.0, 1.15)) - 0.5; v = step(abs(f.x) * 1.15 + abs(f.y) * 0.6, 0.45); }
   else if (id < 14.5) { v = step(0.78, vn(vec3(q * 6.0, 2.0))); }
-  else { v = smoothstep(0.35, 0.65, 0.5 + 0.5 * sin(q.x * 3.0 + sin(q.y * 4.0) * 1.5)); }
+  else if (id < 15.5) { v = smoothstep(0.35, 0.65, 0.5 + 0.5 * sin(q.x * 3.0 + sin(q.y * 4.0) * 1.5)); }
+  else if (id < 16.5) { vec2 f = fract(q * 0.65) - 0.5; float petals = 0.2 + 0.05 * sin(atan(f.y, f.x) * 5.0); v = step(length(f), petals); vec2 f2 = fract(q * 0.65 + vec2(0.5, 0.38)) - 0.5; v = max(v, step(length(f2), 0.15 + 0.04 * sin(atan(f2.y, f2.x) * 6.0))); v = max(v, step(length(f), 0.07) * 0.5); }
+  else { float n = q.y * 1.35 + sin(q.x * 2.4) * 0.5 + vn(vec3(q * 0.5, 2.0)) * 0.28; v = step(0.48, fract(n)); }
   return v;
 }
 uniform vec4 uLm; uniform vec4 uNk; uniform vec4 uArmO; uniform vec4 uArmD; uniform vec4 uDet;
@@ -79,6 +81,8 @@ vec3 garment(vec3 p, vec3 n, vec4 R){
   float lum = dot(c, vec3(0.3, 0.59, 0.11)); vec3 sc = lum > 0.35 ? c * 0.8 : c + vec3(0.07); c = mix(c, sc, seam * 0.85);
   if (kind != 2.0 && kind != 4.0) c *= mix(0.84, 1.0, smoothstep(0.0, 0.012, edge));
   if (uSole.z > 0.5 && !isArm) { float rb = step(0.5, fract(p.y * 60.0)); c *= 0.97 + 0.04 * rb; }
+  float grain = vn(p * 42.0); c *= 0.96 + 0.08 * grain;
+  float fold = 0.5 + 0.5 * sin((p.y * 18.0 + p.x * 7.0) + vn(p * 8.0) * 2.0); h += fold * 0.35; c *= 0.94 + 0.1 * fold;
   gH = h; return c;
 }
 vec3 bumpN(vec3 surf, vec3 nrm, float hgt, float k){ vec3 dx = dFdx(surf), dy = dFdy(surf); float hx = dFdx(hgt), hy = dFdy(hgt); vec3 r1 = cross(dy, nrm), r2 = cross(nrm, dx); float det = dot(dx, r1); vec3 g = sign(det) * (hx * r1 + hy * r2); return normalize(abs(det) * nrm - g * k); }
@@ -102,6 +106,6 @@ export function garmentMaterial(kind) {
         if (uKind > 1.5 && uKind < 2.5 && gr > 5.5) k = uShape.x + (position.y < 0.05 ? uShape.z : 0.0);
         transformed.xz += normalize(normal.xz + vec2(1e-5)) * k; }`, 'uniform float uKind; uniform vec4 uShape; uniform vec4 uG1; uniform vec4 uG2; uniform vec4 uDet; uniform vec4 uOver;\n');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + GLSL_COMMON + FRAG).replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = garment(vRest, normalize(vRestN), vR); diffuseColor.a = gA; if (gA < 0.02) discard;').replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n normal = bumpN(-vViewPosition, normal, gH, 1.0);'); };
-  m.customProgramCacheKey = () => 'mpgarm3';
+  m.customProgramCacheKey = () => 'mpgarm4';
   return m;
 }

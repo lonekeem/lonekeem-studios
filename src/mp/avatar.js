@@ -89,8 +89,9 @@ export class Avatar {
     const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .62, metalness: 0 }); const U = this.U;
     m.onBeforeCompile = sh => { Object.assign(sh.uniforms, U); hookVertex(sh);
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + 'varying vec3 vRest; varying vec3 vRestN; varying vec4 vR;\nfloat h11(float n){ return fract(sin(n*127.1)*43758.5453); }\nfloat h21(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }\nfloat h31(vec3 p){ return fract(sin(dot(p, vec3(127.1,311.7,74.7)))*43758.5453); }\nfloat vn(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(mix(h31(i),h31(i+vec3(1,0,0)),f.x),mix(h31(i+vec3(0,1,0)),h31(i+vec3(1,1,0)),f.x),f.y), mix(mix(h31(i+vec3(0,0,1)),h31(i+vec3(1,0,1)),f.x),mix(h31(i+vec3(0,1,1)),h31(i+vec3(1,1,1)),f.x),f.y),f.z); }\nfloat sdSeg(vec2 p, vec2 a, vec2 b){ vec2 pa=p-a, ba=b-a; float h=clamp(dot(pa,ba)/dot(ba,ba),0.0,1.0); return length(pa-ba*h); }\n' + FACE_FRAG_DECL)
-        .replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = paintSkin(vRest, normalize(vRestN), vR);'); };
-    m.customProgramCacheKey = () => 'mpskin'; return m;
+        .replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = paintSkin(vRest, normalize(vRestN), vR);')
+        .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>\n { vec3 N = normalize(vNormal); vec3 V = normalize(vViewPosition); float ndv = clamp(dot(N, V), 0.0, 1.0); float wrap = pow(1.0 - ndv, 1.6); float rimF = pow(1.0 - ndv, 2.7); totalEmissiveRadiance += diffuseColor.rgb * (0.04 + wrap * 0.1) + vec3(0.14, 0.05, 0.03) * wrap * 0.35 + vec3(0.5, 0.68, 0.85) * rimF * 0.16; }`); };
+    m.customProgramCacheKey = () => 'mpskin2'; return m;
   }
   // morph the head / body from the rest copy
   applyMorph(M, L) { /* implemented in morph.js, injected */ }
