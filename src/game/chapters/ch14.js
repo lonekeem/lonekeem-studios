@@ -6,7 +6,7 @@ import { act } from './ch12_acting.js';
 import { spawnBiscuit, hopTo, tickBiscuit } from './ch13_rabbit.js';
 import { buildCh14Lab } from './kit/ch14_lab.js';
 
-export const meta = { n: 14, title: 'Every Bite', endQuote: '“Every single bite.”', nextTeaser: 'To be continued — Chapter 15 coming soon.' };
+export const meta = { n: 14, title: 'Every Bite', endQuote: '“Every single bite.”' };
 export const speakers = { warden: 'The Warden' };
 export const Z0 = -3700;
 let API = null;

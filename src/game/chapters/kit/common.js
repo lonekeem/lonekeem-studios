@@ -24,7 +24,7 @@ export function room(ctx, { x, z, w, d, h = 3.6, mat, doors = {}, doorW = 2.4 })
   wallX(ctx, x - w / 2, x + w / 2, z + d / 2, h, mat, G(doors.n)); wallX(ctx, x - w / 2, x + w / 2, z - d / 2, h, mat, G(doors.s)); wallZ(ctx, z + d / 2, z - d / 2, x + w / 2, h, mat, G(doors.e)); wallZ(ctx, z + d / 2, z - d / 2, x - w / 2, h, mat, G(doors.w)); }
 // ceiling light panel. real=true adds a PointLight (use sparingly: <= 6 per piece for phones). flicker=0..1 makes it stutter.
 export function lamp(ctx, x, z, { y = 3.4, mat, real = false, color = '#fff0d0', intensity = 8, range = 16, flicker = 0, size = [1.2, .12, .5] } = {}) {
-  const K = mats(ctx), mm = mat || K.lamp; const m = new ctx.THREE.Mesh(new ctx.THREE.BoxGeometry(...size), mm); m.position.set(x, y, z); ctx.scene.add(m); let L = null;
+  const K = mats(ctx), mm0 = mat || K.lamp, mm = flicker > 0 ? mm0.clone() : mm0; const m = new ctx.THREE.Mesh(new ctx.THREE.BoxGeometry(...size), mm); m.position.set(x, y, z); ctx.scene.add(m); let L = null;
   if (real) L = ctx.Z_pl(x, y - .4, z, color, intensity, range);
   if (flicker > 0) { let seed = Math.abs(x * 13 + z * 7) % 6; ctx.updaters.push((dt, t) => { const k = Math.sin(t * 17 + seed) * Math.sin(t * 5.3 + seed * 2) > 1 - flicker * 1.4 ? .12 : 1; if (L) L.intensity = intensity * k; m.material.emissiveIntensity = (mm.emissiveIntensity || 2.4) * k; }); }
   return { mesh: m, light: L }; }

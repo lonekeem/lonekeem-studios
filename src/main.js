@@ -7,7 +7,7 @@ import { installHardwareBack } from './ui/hwBack.js';
 import { runLaunchFlow, playIntroThen, applySafeDefaults, installGateSettings, isUnder13 } from './ui/gate.js';
 import { initDailies, attachDailies, renderDailies } from './ui/dailies.js';
 import { initRewards, attachRewards } from './ui/rewards.js';
-import { SURVIVAL_STEP, chOf, CH_START, CHAPTERS, LAST_CH, LAST_STORY_STEP, TOTAL_PAGES } from './game/story.js';
+import { SURVIVAL_STEP, chOf, CH_START, CHAPTERS, LAST_CH, LAST_STORY_STEP, TOTAL_PAGES, STORY } from './game/story.js';
 import { WEAPONS, WEAPON_ORDER, UPGRADES, upCost, AMMO_SHOP, PERKS, xpFor, defaultSave, loadSave, writeSave, clearSave, stat, ARMOR, ARMOR_ORDER } from './game/data.js';
 import { installBgListeners, onAppLeave, onAppReturn, leaveApp, returnApp, isAway } from './bgPause.js';
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -21,7 +21,7 @@ const S = Object.assign({}, DEF, _saved); const saveS = () => LS.setItem('atq3.s
 if (S.ctlRev !== 2) { Object.assign(S, { ctl: 'twin', autoFire: false, assist: 0, stick: 'float', hand: 'right', btnScale: 1, btnOp: 1, invertY: false, padSens: 1, padDead: 0.15, btnLay: {}, hudv2: false, smoothMove: false, ctlRev: 2 }); try { saveS(); } catch (e) { } }
 const audio = new AudioSys(S);
 let save = loadSave(LS) || defaultSave(); let game = null, gamePromise = null; let state = 'boot', back = '#title';
-window.__atq = { get audio() { return audio; }, get game() { return game; }, get state() { return state; }, get save() { return save; }, showLoading, hideLoading, setProgress,
+window.__atq = { get story() { return STORY; }, get audio() { return audio; }, get game() { return game; }, get state() { return state; }, get save() { return save; }, showLoading, hideLoading, setProgress,
   leaveApp, returnApp, isAway,
   reloadSave: () => { save = loadSave(LS) || save; if (state === 'title') refreshTitleProgress(); }, openTownShop, closeTownShop }; // cloud sync: refresh in-memory save + Continue. Never call toTitle()/showScreen here — #online is a .screen, so that would hide the lobby and kick a signed-in player back to the menu.
 try { audio.loadTracks(); } catch (e) { /* ignore */ }
