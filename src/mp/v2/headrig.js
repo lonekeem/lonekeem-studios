@@ -151,7 +151,7 @@ export function buildHead(av, look) {
       const prof = neckProfile(av), cut = neckCut(av.tpl);
       for (let i = 0; i < np.count; i++) { const t = np.getY(i) + .5; const y = y1 + (y0 - y1) * t; const r = r1 + (r0 - r1) * t; const ux = np.getX(i), uz = np.getZ(i);
         let x = ux * r, z = C.z - .028 * s + uz * r * .92 + (1 - t) * .004; const b = prof(Math.min(y, cut + .004));
-        if (b && b.x > .02) { const w = y < cut - .004 ? 1 : 1 - Math.min(1, (y - (cut - .004)) / .035); const cz = (b.zf + b.zb) / 2, rz = (uz > 0 ? b.zf - cz : cz - b.zb); const grow = y < cut - .006 ? -.004 : .003;
+        if (b && b.x > .02) { const w = y < cut - .004 ? 1 : 1 - Math.min(1, (y - (cut - .004)) / .035); const cz = (b.zf + b.zb) / 2, rz = (uz > 0 ? b.zf - cz : cz - b.zb); const grow = y < cut - .006 ? -.004 - Math.min(.01, (cut - .006 - y) * .45) : .003; /* v1.9.81: sink the tube deeper below the cut so it can't poke between the faceted body triangles at the neckline (jagged skin flap over the collar) */
           const bx = ux * (b.x + grow), bz = cz + uz * (rz + grow); const ww = w * w * (3 - 2 * w); x = x + (bx - x) * ww; z = z + (bz - z) * ww; }
         np.setXYZ(i, x, y, z); }
       ng.deleteAttribute('uv'); ng.deleteAttribute('normal'); ng = mergeVertices(ng); ng.computeVertexNormals();
