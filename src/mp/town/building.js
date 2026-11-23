@@ -1,4 +1,4 @@
-// Enterable buildings (houses, store, gas kiosk, sheds): real hinged doors, furniture, lootable containers, roofs that lift off when you are inside.
+// Enterable buildings (houses, store, gas kiosk, sheds): real hinged doors, furniture, lootable containers, roofs that can cut away, a ceiling so the sky never shows through, and warm hanging lamps.
 import * as THREE from 'three';
 import { boxGeo, mulberry } from './kit.js';
 
@@ -57,7 +57,7 @@ export function makeBuilding(W, cfg) {
     const id = cfg.id + ':' + kind + ':' + bd.containers.length; const g = new THREE.Group(); g.position.set(lx, 0, lz); g.rotation.y = fa * Math.PI / 2; grp.add(g); const lid = new THREE.Group(); lid.position.set(-fw / 2, 0, fd / 2 + .01); g.add(lid);
     const pm = new THREE.Mesh(boxGeo(fw - .04, fh * .86, .04, 1.2), plain(M, mat, kind === 'fridge' ? '#bfc1ba' : '#6a5640')); pm.position.set(fw / 2, fh * .5, .02); lid.add(pm); pm.castShadow = true;
     const wp = toW(lx, lz); const fx = Math.sin(th + fa * Math.PI / 2), fz = Math.cos(th + fa * Math.PI / 2); const Cn = { id, table, label: label || LABEL[kind] || 'Container', x: wp[0], z: wp[1], fx, fz, reach: Math.max(fw, fd) / 2 + 1.0, looted: false, lid, open: 0, bid: cfg.id, kind }; W.containers.push(Cn); bd.containers.push(Cn); return Cn; };
-  // floor + ceiling-less interior
+  // floor + a real ceiling (added after the walls; lamps hang from it)
   box('floor', -hw, hw, 0, .06, -hd, hd, kind === 'store' ? '#8a8578' : '#a08c70', 2);
   const lockedF = rr() < (cfg.locked ? .75 : .1);
   if (kind === 'house') {
@@ -81,6 +81,13 @@ export function makeBuilding(W, cfg) {
     wall('x', -hd + 2.2, -hw, hw, [dr(-hw / 3)], { inn: 0 }); door('back', -hw / 3, -hd + 2.2, 1.0, 1, false);
     furn('register', hw - 1.6, hd - 1.5, 0, 'station', 'Counter'); furn('shelf', -hw + .35, 1.7, 1, 'station', 'Shelves'); furn('shelf', -hw + .35, .1, 1, 'station', 'Shelves'); furn('crate', 1.3, -hd + .7, 0, 'station', 'Crate'); furn('toolbox', hw - .5, -hd + .6, 3, 'station', 'Toolbox');
   } else { wall('x', hd, -hw, hw, [dr(0, 1.05)], { inn: -1 }); door('front', 0, hd, 1.05, 1, lockedF); wall('x', -hd, -hw, hw, [], { inn: 1 }); wall('z', -hw, -hd, hd, [], { inn: 1 }); wall('z', hw, -hd, hd, [win(0, .8)], { inn: -1 }); furn('crate', -1.0, -hd + .65, 0, 'shed', 'Crate'); furn('toolbox', hw - .55, -hd + .5, 3, 'shed', 'Toolbox'); }
+  // ceiling + warm hanging lamps. The ceiling stays put when a wall is cut away, so the sky never shows through.
+  { const cm = plain(M, 'plaster', '#f0e6d4'); const ceil = new THREE.Mesh(new THREE.PlaneGeometry(Math.max(.5, w - .1), Math.max(.5, d - .1)), cm); ceil.rotation.x = Math.PI / 2; ceil.position.y = Hh - .04; ceil.receiveShadow = true; grp.add(ceil); bd.ceiling = ceil;
+    if (!plainCache._lamp) { const lm = new THREE.MeshStandardMaterial({ color: '#f3e2bf', emissive: '#ffd19a', emissiveIntensity: 2.6, roughness: .4, metalness: .06 }); const sm = new THREE.MeshStandardMaterial({ color: '#cbb898', roughness: .7 }); plainCache._lamp = lm; plainCache._shade = sm; }
+    const nL = kind === 'store' ? 3 : (kind === 'shed' || kind === 'kiosk' ? 1 : 2);
+    const spots = []; if (nL === 1) spots.push([0, 0]); else if (nL === 2) spots.push([-w * .2, d * .2], [w * .2, -d * .18]); else for (let i = 0; i < nL; i++) spots.push([-w * .32 + (w * .64) * (i / (nL - 1)), (i % 2 ? .4 : -.3)]);
+    bd.lampPos = spots.map(([lx, lz]) => { const [x, z] = toW(lx, lz); const g = new THREE.Group(); g.position.set(lx, Hh - .12, lz); grp.add(g); const shade = new THREE.Mesh(new THREE.BoxGeometry(.42, .07, .42), plainCache._shade); g.add(shade); const bulb = new THREE.Mesh(new THREE.BoxGeometry(.32, .04, .32), plainCache._lamp); bulb.position.y = -.06; g.add(bulb); return [x, Hh - .22, z]; }); }
+
   // roof (separate mesh: lifts off when you stand inside)
   const rg = new THREE.Group(); grp.add(rg); bd.roof = rg; const rm = plain(M, 'roofmat', kind === 'house' ? ['#b7a89a', '#a3a39c', '#b08c78', '#97a090'][cfg.ci % 4] : '#8f8e8a');
   if (kind === 'house') { const len = Math.max(w, d) + .8, span = Math.min(w, d) + 1.0; const m = new THREE.Mesh(gableGeo(len, span, span * .3), rm); m.position.y = Hh; if (d > w) m.rotation.y = Math.PI / 2; m.castShadow = true; rg.add(m); }

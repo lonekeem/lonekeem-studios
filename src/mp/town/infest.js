@@ -322,7 +322,7 @@ export function attachInfest(T) {
     let cls = 'idle', text = name;
     if (s && s.st === 'infested') {
       const left = s.spawned ? s.zeds.filter(z => z && !z.dead).length : (s.spots || s.kinds || []).length || '?';
-      cls = 'hot'; text = name + ' · Infested' + (s.spawned ? ' · ' + left + ' left' : '');
+      cls = 'warn'; text = name + ' · Infested' + (s.spawned ? ' · ' + left + ' left' : '');
     } else if (s && s.st === 'cleared') { cls = 'ok'; text = name + ' · Cleared'; }
     else text = name;
     el.className = 'infbar ' + cls; el.textContent = text; el.style.display = 'block';
