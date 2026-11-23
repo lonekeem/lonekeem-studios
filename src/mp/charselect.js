@@ -5,13 +5,13 @@ import { openProfileScreen } from './cloud.js';
 import { hasProfile } from './profile.js';
 
 const CSS = `
-#charSel{position:fixed;inset:0;z-index:80;display:flex;align-items:stretch;justify-content:center;background:rgba(4,10,7,.94);color:#e8efe4;font-family:system-ui,-apple-system,sans-serif;padding:max(8px,env(safe-area-inset-top)) 10px max(8px,env(safe-area-inset-bottom));}
+#charSel{position:fixed;inset:0;z-index:80;display:flex;align-items:stretch;justify-content:center;background:#050b08;color:#e8efe4;font-family:system-ui,-apple-system,sans-serif;padding:max(8px,env(safe-area-inset-top)) 10px max(8px,env(safe-area-inset-bottom));}
 #charSel .box{width:min(960px,100%);height:100%;display:flex;flex-direction:column;gap:8px;min-height:0}
 #charSel h2{margin:0;font:700 16px system-ui;letter-spacing:.12em;text-transform:uppercase;color:#7fd49a;flex:none}
 #charSel .sub{margin:0;font-size:13px;opacity:.8;flex:none}
 #charSel .scroller{flex:1 1 auto;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;gap:10px;align-items:stretch;padding:4px 2px 8px}
-#charSel .card{flex:0 0 auto;width:min(200px,42vw);min-width:148px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 8px;border-radius:14px;border:1px solid #1d3a28;background:rgba(8,22,14,.92);color:inherit;text-align:center;min-height:0}
-#charSel .card.sel{border-color:#7fd49a;box-shadow:0 0 0 2px rgba(127,212,154,.35);background:rgba(47,107,69,.4)}
+#charSel .card{flex:0 0 auto;width:min(200px,42vw);min-width:148px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 8px;border-radius:14px;border:1px solid #1d3a28;background:#08160e;color:inherit;text-align:center;min-height:0}
+#charSel .card.sel{border-color:#7fd49a;box-shadow:0 0 0 2px rgba(127,212,154,.35);background:#1e4a30}
 #charSel .av{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:800 28px system-ui;color:#eafff0;border:2px solid #2a4a34;flex:none}
 #charSel .nm{font:700 15px system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 #charSel .tag{font-size:11px;letter-spacing:.06em;text-transform:uppercase;opacity:.7}
