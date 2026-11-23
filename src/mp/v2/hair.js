@@ -73,9 +73,33 @@ export const STYLES = {
   curtain: S({ T: .011, top: .012, side: .95, locks: 16, lockAmp: 0.0026, line: 'fem', ears: false, part: 3, bangs: .6, drop: { sh: .03, front: 52, end: -0.42, flare: .02, curve: .2 } }),
   dreads: S({ T: .008, top: .007, side: .95, line: 'low', ears: false, locsN: 46, ex: [['locs', .3]] }),
   twists: S({ T: .007, top: .004, side: .9, line: 'std', locsN: 44, ex: [['locs', .07]] }),
+  // New styles (original cartoon shapes, not copies of a brand). Long / ear-covering ones hide ears and earrings.
+  mullet: S({ T: .009, top: .016, side: .35, front: .01, locks: 16, lockAmp: 0.0028, tips: .4, line: 'std', drop: { front: 105, end: -0.3, flare: .022, curve: .22 } }),
+  shag: S({ T: .012, top: .018, side: .9, locks: 11, lockAmp: 0.0042, tips: .9, bangs: .55, line: 'fem', ears: false, part: 1, drop: { front: 52, end: -0.17, flare: .026, curve: .42, tipTurn: .01 } }),
+  wolf: S({ T: .013, top: .024, side: .95, locks: 11, lockAmp: 0.0045, tips: 1, bangs: .7, line: 'fem', ears: false, part: 1, drop: { sh: .02, front: 48, end: -0.32, flare: .032, curve: .34 } }),
+  halfup: S({ T: .011, top: .01, side: .95, locks: 16, lockAmp: 0.0024, line: 'fem', ears: false, part: 3, drop: { sh: .03, front: 58, end: -0.38, flare: .02, curve: .2 }, ex: [['bun', 'crown', .03]] }),
+  topknot: S({ T: .006, top: .004, side: .4, fade: .45, line: 'back', tilt: 18, ex: [['bun', 'top', .036]] }),
+  bantu: S({ T: .006, top: .002, side: .85, line: 'low', ex: [['knots', 7, .019]] }),
+  curlybob: S({ T: .014, top: .016, side: .95, curl: .005, curlN: 18, line: 'fem', ears: false, part: 1, drop: { front: 62, end: -0.13, flare: .022, curve: .55 } }),
+  sidebang: S({ T: .011, top: .012, side: .95, bangs: 1, part: 1, locks: 16, lockAmp: 0.0024, line: 'fem', ears: false, drop: { sh: .03, front: 48, end: -0.4, flare: .02, curve: .2 } }),
+  bluntbangs: S({ T: .011, top: .012, side: .95, bangs: 1.1, part: 3, locks: 16, lockAmp: 0.002, line: 'fem', ears: false, drop: { sh: .03, front: 44, end: -0.4, flare: .014, curve: .12 } }),
+  longlocs: S({ T: .008, top: .007, side: .95, line: 'low', ears: false, locsN: 48, ex: [['locs', .48]] }),
+  coils: S({ T: .016, top: .02, side: .9, curl: .008, curlN: 28, line: 'low', round: .5 }),
+  messybun: S({ T: .009, top: .01, side: .8, locks: 14, lockAmp: 0.003, tips: .6, line: 'back', ears: false, drop: { front: 80, end: -0.08, flare: .012 }, ex: [['bun', 'top', .07]] }),
+  fringepony: S({ T: .0075, top: .006, side: .75, bangs: .85, line: 'back', tilt: 25, ex: [['pony', 'high', .3]] }),
+  curlypony: S({ T: .01, top: .01, side: .8, curl: .004, curlN: 18, line: 'back', tilt: 25, ex: [['pony', 'high', .32]] }),
+  braidedbun: S({ T: .008, top: .0, side: 1, cornrow: 6, line: 'back', tilt: 35, ex: [['bun', 'low', .052]] }),
+  hime: S({ T: .011, top: .012, side: .95, bangs: 1, part: 3, line: 'fem', ears: false, drop: { sh: .025, front: 38, end: -0.36, flare: .01, curve: .1 } }),
+  pineapple: S({ T: .012, top: .01, side: .8, curl: .005, curlN: 16, line: 'back', tilt: 15, ex: [['pony', 'high', .36]] }),
+  doublepony: S({ T: .0075, top: .006, side: .75, line: 'back', tilt: 18, part: 2, ex: [['highpigtails', .28]] }),
+  frenchbraid: S({ T: .007, top: .0, side: .85, cornrow: 1, line: 'back', tilt: 35, ex: [['braidpony', .5]] }),
+  flipbob: S({ T: .011, top: .012, side: .95, locks: 14, lockAmp: 0.0028, line: 'fem', ears: false, part: 1, drop: { front: 62, end: -0.13, flare: .032, curve: .5, tipTurn: .02 } }),
+  softcurl: S({ T: .013, top: .015, side: .95, curl: .004, curlN: 18, line: 'fem', ears: false, drop: { sh: .025, front: 58, end: -0.22, flare: .03, curve: .35, wave: .016, waveN: 8 } }),
+  pageboy: S({ T: .01, top: .01, side: .85, locks: 18, lockAmp: 0.002, line: 'low', bangs: .4, ears: false }),
+  layers: S({ T: .012, top: .014, side: .95, locks: 12, lockAmp: 0.0036, tips: .5, part: 3, line: 'fem', ears: false, drop: { sh: .03, front: 56, end: -0.4, flare: .026, curve: .28, tipTurn: .008 } }),
 };
 // aliases for old saved ids (removed styles -> closest kept style)
-export const ALIAS = { dreadsshort: 'twists', afrotaper: 'afromini', wavefade: 'waves', hitop: 'curlfade', fauxhawk: 'mohawk', mullet: 'shoulder', shag: 'lob', balding: 'receding', topknot: 'manbun', bantu: 'spacebuns', curlybob: 'bob', sidebang: 'curtain', halfup: 'longstr', boxbraids: 'braids2', bobbraids: 'braids2', fringe: 'bowl' };
+export const ALIAS = { dreadsshort: 'twists', afrotaper: 'afromini', wavefade: 'waves', hitop: 'curlfade', fauxhawk: 'mohawk', balding: 'receding', boxbraids: 'braids2', bobbraids: 'braids2', fringe: 'bowl' };
 export const styleOf = id => STYLES[id] !== undefined ? STYLES[id] : STYLES[ALIAS[id]] !== undefined ? STYLES[ALIAS[id]] : STYLES.crew;
 
 // ---------- surface helpers (head-local metres)
@@ -235,6 +259,8 @@ export function buildExtras(head, st) {
     else if (k === 'locs' && a1 < .1) { // short twists: small coils over the whole scalp
       let i = 0; for (let el = 14; el <= 86; el += 8) { const n2 = Math.max(5, Math.round(34 * Math.cos(el * Math.PI / 180))); for (let j = 0; j < n2; j++) { const az = -180 + 360 * (j + .5 * (Math.round(el / 8) % 2)) / n2; if (Math.abs(az) < 62 && el < 42) continue; i++; const dEl = Math.min(el, 11); const r = .0078; const up = st.T * .5 + .002;
         out.push(...tube([scalpPt(head, az, el + 4, up), scalpPt(head, az, el, up + .003), scalpPt(head, az, el - dEl * .55, up + .004), scalpPt(head, az, el - dEl, up + .001)], r, r * .75, { seg: 5, rad: 5, groove: .3, tipRound: 1 })); } } }
+    else if (k === 'knots') { const n = a1 || 6, r = a2 || .02; for (let i = 0; i < n; i++) { const az = -160 + 320 * (i + .5) / n; const el = 38 + 22 * Math.cos(i * 1.8); const p = scalpPt(head, az, el, T + r * .55); out.push(...ball(p, r * (.92 + .16 * (i % 3 === 0 ? 1 : 0)), [1, .9, 1])); } }
+    else if (k === 'highpigtails') { for (const sd of [-1, 1]) { const p0 = scalpPt(head, sd * 95, 42, T + .006); const L = a1; const pts = [p0, p0.clone().add(new THREE.Vector3(sd * .04, -.02, -.02)), p0.clone().add(new THREE.Vector3(sd * .06, -L * .5, -.03)), p0.clone().add(new THREE.Vector3(sd * .05, -L, -.01))]; out.push(...ball(p0, .016)); out.push(...tube(pts, .024, .006, { seg: 24, rad: 10, groove: .12, pow: .7, tipRound: 1 })); } }
     else if (k === 'locs') { const N = st.locsN || 30; for (let i = 0; i < N; i++) { const az = -172 + 344 * (i + .5) / N; if (Math.abs(az) < 56 && a1 > .1) continue; const el = 22 + 10 * Math.cos(i * 2.3) + (hash(i * 3.3) - .5) * 10; const p0 = scalpPt(head, az, el, st.T); const n = p0.clone().normalize(); const sd = Math.sin(az * D2R), bk = Math.cos(az * D2R); const L = a1 * (.78 + .44 * hash(i)); const sw = (hash(i * 5.1) - .5) * .03;
       const pts = [p0.clone().addScaledVector(n, -.006), p0.clone().addScaledVector(n, .012), p0.clone().addScaledVector(n, .03).add(new THREE.Vector3(sd * .01 + sw, -.03, bk * .006)), p0.clone().addScaledVector(n, .04).add(new THREE.Vector3(sd * .012 + sw * 1.4, -L * .55, bk * .01)), p0.clone().addScaledVector(n, .036).add(new THREE.Vector3(sd * .01 + sw * 1.8, -L, bk * .006))];
       out.push(...tube(pts, .0115, .0055, { seg: 16, rad: 7, groove: .2, tipRound: 1, pow: .8 })); } }

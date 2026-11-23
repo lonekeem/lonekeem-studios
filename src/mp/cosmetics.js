@@ -4,10 +4,10 @@
 import * as C from './catalog.js';
 
 export const FREE = new Set([
-  'tee', 'longtee', 'tank', 'vneck', 'oversize',
-  'vest', 'cardigan', 'zip',
-  'jeans', 'joggers', 'shorts', 'leggings', 'midiskirt',
-  'sneaker', 'lowtop', 'loafer', 'ankleboot', 'flat', 'socks', 'kneesock',
+  'tee', 'longtee', 'tank', 'vneck', 'oversize', 'buttonup', 'henleyss', 'camp',
+  'vest', 'cardigan', 'zip', 'overshirt',
+  'jeans', 'joggers', 'shorts', 'leggings', 'midiskirt', 'sweatpants',
+  'sneaker', 'lowtop', 'loafer', 'ankleboot', 'flat', 'socks', 'kneesock', 'slides', 'midtop',
   'capflat', 'beanie', 'bandana', 'headband', 'hijab', 'wrap',
   'squareclear', 'roundclear', 'thinclear',
   'studTiny', 'studSmall', 'hoopTiny', 'hoopSmall', 'hoopMedium',
@@ -28,6 +28,12 @@ export const PRICE = {
   floralshorts: 150, zebraskirt: 200, chino: 140, bootcut: 140, dresspants: 180, highjeans: 140,
   hightop: 150, runner: 180, combat: 250, chunky: 200, dress: 200, boot: 180, work: 200, rain: 160,
   kneeboot: 220, thighboot: 260,
+  peplum: 160, wraptop: 180, thermal: 140, mockneck: 150, cowl: 180, jumper: 160, sweaterdress: 240,
+  wrapdress: 220, peasant: 180, ruffle: 170, dolman: 160, shirtdress: 220, polol: 140, kimonotop: 180,
+  fleece: 220, peacoat: 360, raincoat: 300, puffervest: 280, moto: 260, kimono: 240, duster: 380,
+  palazzo: 180, flarejeans: 160, pencilskirt: 150, wrapskirt: 170, culottes: 160, cargoshorts: 150,
+  pleatedskirt: 170, highwide: 180, skaterskirt: 140,
+  platform: 200, chelsea: 200, hiking: 220, mule: 160, desert: 180, maryjane: 150,
   fedora: 200, bucket: 150, cowboy: 200, visor: 80, beaniepom: 100, beanietall: 80, hood: 120,
   sun: 160, beret: 120, catears: 150, helmet: 200, caplong: 80, capshort: 60, hardhat: 100,
   avidark: 180, aviclear: 160, catclear: 150, catdark: 160, goggles: 200, bigclear: 160, bigdark: 170,

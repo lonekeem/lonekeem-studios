@@ -49,6 +49,10 @@ export const HAIR = [
   ['manbun', 'Man bun', 'm'], ['ponylow', 'Low ponytail', 'u'], ['ponyhigh', 'High ponytail', 'f'], ['bunhigh', 'High bun', 'f'], ['bunlow', 'Low bun', 'f'], ['spacebuns', 'Space buns', 'f'], ['afropuffs', 'Afro puffs', 'f'],
   ['pigtails', 'Pigtails', 'f'], ['braids2', 'Two Dutch braids', 'f'], ['braidpony', 'Braided ponytail', 'f'], ['cornrows', 'Cornrows', 'u'], ['bob', 'Bob', 'f'], ['lob', 'Long bob', 'f'], ['pixie', 'Pixie', 'f'],
   ['shoulder', 'Shoulder length', 'u'], ['longstr', 'Long straight', 'f'], ['longwave', 'Long waves', 'f'], ['longcurl', 'Long curls', 'f'], ['curtain', 'Curtain bangs', 'f'], ['dreads', 'Locs', 'u'], ['twists', 'Twists', 'u'],
+  ['mullet', 'Mullet', 'u'], ['shag', 'Shag', 'u'], ['wolf', 'Wolf cut', 'u'], ['halfup', 'Half-up', 'f'], ['topknot', 'Top knot', 'u'], ['bantu', 'Bantu knots', 'u'],
+  ['curlybob', 'Curly bob', 'f'], ['sidebang', 'Side bangs', 'f'], ['bluntbangs', 'Blunt bangs', 'f'], ['hime', 'Hime cut', 'f'], ['flipbob', 'Flip bob', 'f'], ['pageboy', 'Pageboy', 'u'],
+  ['longlocs', 'Long locs', 'u'], ['coils', 'Tight coils', 'u'], ['messybun', 'Messy bun', 'f'], ['fringepony', 'Pony with bangs', 'f'], ['curlypony', 'Curly ponytail', 'f'],
+  ['braidedbun', 'Braided bun', 'f'], ['pineapple', 'Pineapple pony', 'f'], ['doublepony', 'Double ponytail', 'f'], ['frenchbraid', 'French braid', 'f'], ['softcurl', 'Soft curls', 'f'], ['layers', 'Long layers', 'f'],
 ];
 export const BEARDS = [ // [id, name, kind]
   ['none', 'None', -1], ['stubble', 'Stubble', -2], ['full', 'Full beard', 1], ['boxed', 'Short boxed', 2], ['lumber', 'Big beard', 11], ['goatee', 'Goatee', 3], ['circle', 'Circle beard', 8], ['soul', 'Soul patch', 4], ['strap', 'Chin strap', 5], ['curtain', 'Chin curtain', 6],
@@ -66,6 +70,15 @@ export const TOPS = [
   ['sleevedress', 'Dress sleeves', 'f', .45, .05, .98, .08, .12, .32, 0, 0, .05, 0], ['minidress', 'Mini dress', 'f', .2, .05, .98, .1, .13, .2, 0, 0, .03, 0], ['maxidress', 'Maxi dress', 'f', 0, .05, .92, .11, .14, .85, 0, 0, .07, 0],
   ['bodysuit', 'Bodysuit', 'u', 1, .0, .98, .1, .12, .06, 0, 0, 0, 0], ['jersey', 'Sport jersey', 'u', .25, .0, .96, .14, .15, 0, 0, .005, 0, 0], ['flowy', 'Flowy blouse', 'f', .8, .0, .98, .12, .14, 0, 0, .008, .0, 0],
   ['hoodie', 'Pullover hoodie', 'u', 1, .0, 1.0, .05, .13, 0, 1, .01, 0, 0], ['polo', 'Polo shirt', 'u', .45, .04, .98, .1, .1, 0, 0, 0, 0, 0], ['kurta', 'Kurta', 'u', 1, .05, .98, .12, .12, .32, 0, .002, .03, 0],
+  ['peplum', 'Peplum top', 'f', .45, .12, .98, .1, .13, 0, 0, .004, .06, 0], ['wraptop', 'Wrap blouse', 'f', .8, .02, .96, .16, .12, 0, 0, .006, .02, 0],
+  ['buttonup', 'Button-up shirt', 'u', 1, .0, .98, .08, .08, 0, 0, .003, 0, 0], ['thermal', 'Thermal long-sleeve', 'u', 1, .04, 1.0, .06, .08, 0, 0, 0, 0, 0],
+  ['mockneck', 'Mock neck', 'u', .7, .04, 1.01, 0, 0, 0, 1, 0, 0, 0], ['cowl', 'Cowl neck', 'f', 1, .0, 1.02, .04, .18, 0, 1, .01, 0, 0],
+  ['jumper', 'Sweater', 'u', 1, -.02, 1.0, .06, .12, 0, 0, .01, 0, 0], ['sweaterdress', 'Sweater dress', 'f', 1, .0, 1.0, .08, .12, .55, 0, .008, .04, 0],
+  ['wrapdress', 'Wrap dress', 'f', .8, .04, .95, .16, .14, .42, 0, .004, .05, 0], ['peasant', 'Peasant blouse', 'f', .7, .0, .96, .14, .16, 0, 0, .01, .02, 0],
+  ['camp', 'Camp shirt', 'u', .5, .02, .97, .12, .1, 0, 0, .006, 0, 0], ['ruffle', 'Ruffle top', 'f', .25, .04, .94, .14, .16, 0, 0, .004, .03, 0],
+  ['henleyss', 'Short-sleeve henley', 'm', .45, .05, .98, .16, .08, 0, 0, 0, 0, 0], ['dolman', 'Dolman top', 'f', .85, -.04, .98, .1, .14, 0, 0, .016, .02, 0],
+  ['shirtdress', 'Shirt dress', 'u', 1, .0, .98, .08, .08, .4, 0, .004, .03, 0], ['polol', 'Long-sleeve polo', 'u', 1, .04, .98, .1, .1, 0, 0, 0, 0, 0],
+  ['kimonotop', 'Kimono top', 'u', .85, -.06, .99, .18, .08, .08, 0, .014, .05, 0],
 ];
 // jackets: [id, name, g, sleeveEnd, hem, neckTop, openHalfW, openTop, dressLen, hood/collar(turtle), loose, flare]
 export const JACKETS = [
@@ -74,6 +87,10 @@ export const JACKETS = [
   ['parka', 'Parka', 'u', 1, -.12, 1.0, .05, .0, .2, 1, .016, .02], ['windbreaker', 'Windbreaker', 'u', 1, .04, .98, .05, .0, 0, 0, .012, 0], ['zip', 'Zip hoodie', 'u', 1, .0, 1.0, .04, .0, 0, 1, .011, 0], ['varsity', 'Varsity', 'u', 1, .06, .98, .06, .0, 0, 0, .01, 0],
   ['cropjacket', 'Cropped jacket', 'f', 1, .3, .98, .06, .0, 0, 0, .007, 0], ['cropzip', 'Cropped zip hoodie', 'f', 1, .36, .97, .0, .0, 0, 0, .013, 0], ['longcoat', 'Long coat', 'u', 1, -.3, .98, .06, .0, .75, 0, .009, .04], ['shacket', 'Shirt jacket', 'u', 1, -.02, .98, .06, .0, 0, 0, .009, 0], ['poncho', 'Poncho', 'u', .8, -.1, .99, .0, .0, .1, 0, .018, .06],
   ['robe', 'Belted robe', 'u', 1, -.25, .98, .08, .0, .72, 0, .01, .07],
+  ['fleece', 'Fleece jacket', 'u', 1, .02, 1.0, .05, .0, 0, 1, .014, 0], ['peacoat', 'Peacoat', 'u', 1, -.14, .98, .05, .0, .2, 0, .01, .015],
+  ['raincoat', 'Raincoat', 'u', 1, -.16, 1.0, .04, .0, .28, 1, .012, .02], ['puffervest', 'Puffer vest', 'u', 0, .0, 1.0, .05, .0, 0, 1, .02, 0],
+  ['moto', 'Cropped moto', 'f', 1, .28, .98, .07, .0, 0, 0, .007, 0], ['overshirt', 'Overshirt', 'u', 1, -.04, .98, .06, .0, 0, 0, .01, 0],
+  ['kimono', 'Kimono jacket', 'u', .85, -.12, .99, .16, .0, .15, 0, .016, .06], ['duster', 'Duster coat', 'u', 1, -.36, .98, .07, .0, .85, 0, .01, .05],
 ];
 // pants / skirts: [id, name, g, legEnd, waist, loose, flare]  (flare is per-leg radial offset, k = x + y * s)
 export const PANTS = [
@@ -81,6 +98,11 @@ export const PANTS = [
   ['wide', 'Wide-leg', 'u', 1, .06, .007, .02, .028], ['bootcut', 'Bootcut', 'u', 1, .0, .005, .01, .014], ['shorts', 'Shorts', 'u', .42, .02, .007, 0, .004], ['bermuda', 'Bermuda shorts', 'm', .62, .02, .009, 0, .004], ['capri', 'Capri', 'f', .72, .02, .005, 0, 0],
   ['minishorts', 'Mini shorts', 'f', .22, .0, .004, 0, 0], ['leggings', 'Leggings', 'f', 1, .08, .002, 0, 0], ['highjeans', 'High-waist jeans', 'f', 1, .17, .005, 0, .004], ['miniskirt', 'Mini skirt', 'f', .2, .04, .006, .03, .09], ['midiskirt', 'Midi skirt', 'f', .5, .05, .006, .02, .13],
   ['longskirt', 'Long skirt', 'f', .9, .05, .006, .02, .15], ['trackpants', 'Track pants', 'u', 1, .03, .008, 0, .002], ['dresspants', 'Dress pants', 'u', 1, .05, .004, 0, .008], ['overalls', 'Overalls (shorts)', 'u', .42, .38, .01, 0, .004], ['kneeshorts', 'Cycling shorts', 'u', .4, .05, .002, 0, 0],
+  ['palazzo', 'Palazzo pants', 'f', 1, .06, .01, .03, .04], ['flarejeans', 'Flare jeans', 'u', 1, .02, .005, .016, .03],
+  ['pencilskirt', 'Pencil skirt', 'f', .48, .06, .003, .004, .02], ['wrapskirt', 'Wrap skirt', 'f', .52, .05, .006, .018, .11],
+  ['culottes', 'Culottes', 'f', .68, .05, .01, .016, .02], ['cargoshorts', 'Cargo shorts', 'u', .5, .0, .016, 0, .006],
+  ['pleatedskirt', 'Pleated skirt', 'f', .42, .05, .006, .024, .12], ['sweatpants', 'Sweatpants', 'u', 1, .03, .014, 0, -.001],
+  ['highwide', 'High-waist wide-leg', 'f', 1, .16, .008, .022, .03], ['skaterskirt', 'Skater skirt', 'f', .28, .04, .006, .04, .12],
 ];
 // shoes: [id, name, g, shaftStart(s), soleY, offset, toeCap, flareAnkle]
 export const SHOES = [
@@ -88,6 +110,10 @@ export const SHOES = [
   ['ankleboot', 'Ankle boots', 'u', .9, .02, .007, 0, 0], ['combat', 'Combat boots', 'u', .78, .03, .01, 0, 0], ['kneeboot', 'Knee boots', 'f', .5, .02, .007, 0, 0], ['thighboot', 'Thigh boots', 'f', .28, .02, .006, 0, 0], ['flat', 'Flats', 'f', .995, .008, .005, 0, 0],
   ['loafer', 'Loafers', 'u', .985, .012, .006, 0, 0], ['dress', 'Dress shoes', 'm', .985, .012, .006, 1, 0], ['chunky', 'Chunky sneakers', 'u', .97, .045, .012, 1, 0], ['work', 'Work boots', 'u', .8, .028, .011, 1, 0], ['rain', 'Rain boots', 'u', .6, .018, .01, 0, 0], ['socks', 'Socks only', 'u', .8, .004, .004, 0, 0], ['clog', 'Clogs', 'u', .975, .035, .02, 1, 0],
   ['kneesock', 'Knee socks', 'u', .52, .006, .004, 0, 0],
+  ['platform', 'Platform sneakers', 'u', .97, .06, .014, 1, 0], ['midtop', 'Mid-tops', 'u', .92, .024, .008, 1, 0],
+  ['chelsea', 'Chelsea boots', 'u', .86, .02, .007, 0, 0], ['hiking', 'Hiking boots', 'u', .74, .032, .012, 1, 0],
+  ['slides', 'Slides', 'u', .995, .028, .01, 0, 0], ['mule', 'Mules', 'u', .99, .022, .012, 1, 0],
+  ['desert', 'Desert boots', 'u', .84, .02, .008, 0, 0], ['maryjane', 'Mary Janes', 'f', .995, .01, .006, 1, 0],
 ];
 export const GLOVES = [['short', 'Gloves', .98, .005], ['long', 'Long gloves', .55, .005], ['elbow', 'Elbow gloves', .3, .005], ['work', 'Work gloves', .93, .012], ['fingerless', 'Wrist wraps', .93, .006], ['driving', 'Driving gloves', .97, .005], ['winter', 'Winter mitts', .9, .016]];
 export const OUTFIT_SLOTS = ['top', 'jacket', 'pants', 'shoes', 'gloves'];
