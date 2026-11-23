@@ -40,7 +40,7 @@ vec3 garment(vec3 p, vec3 n, vec4 R){
   float front = smoothstep(-0.03, 0.05, p.z - uN.w); float ang = atan(n.z, n.x * side); // 0 = outer side, pi/2 = front
   float h = 0.0; float rib = 0.0; float seam = 0.0;
   if (kind < 0.5 || (kind > 2.5 && kind < 3.5)) { // top / jacket
-    if (isArm && uG1.x < 0.05 && kind < 0.5) { /* v1.9.82: sleeveless tops use the same round armhole on arm-weighted skin too, so the cut no longer follows the jagged arm-weight contour at the armpit */ float eh = (uArmO.x - 0.04 - ax) + max(0.0, (uArmO.y - 0.08) - p.y) * 1.3; edge = min((t - uG1.y) * H, eh); vis = edge > 0.0 && as < 0.2 && handW < 0.5; }
+    if (isArm && uG1.x < 0.05 && kind < 0.5) { /* v1.9.83: sleeveless tops use the same round armhole on arm-weighted skin too, so the cut no longer follows the jagged arm-weight contour at the armpit */ float eh = (uArmO.x - 0.04 - ax) + max(0.0, (uArmO.y - 0.08) - p.y) * 1.3; edge = min((t - uG1.y) * H, eh); vis = edge > 0.0 && as < 0.2 && handW < 0.5; }
     else if (isArm) { edge = (uG1.x - as) * uArmD.w; vis = edge > 0.0 && handW < 0.5;
       h += 0.0013 * sin(as * 70.0 + 2.5 * sin(ang * 2.0 + as * 8.0)) * (0.4 + 0.6 * sin(ang * 2.0 + 0.5)) * band(as, 0.5, 0.1) * step(0.55, uG1.x); // elbow folds
       h += 0.0008 * sin(as * 130.0 + ang * 2.0 + sin(ang * 3.0) * 1.5) * smoothstep(uG1.x - 0.16, uG1.x - 0.05, as) * step(0.8, uG1.x); // cuff stacking
