@@ -54,7 +54,7 @@ export class Input {
     const pads = navigator.getGamepads ? navigator.getGamepads() : []; const p = pads && [...pads].find(q => q && q.connected); if (p) { const ax = p.axes, B = (i) => !!(p.buttons[i] && (p.buttons[i].pressed || p.buttons[i].value > .5)); const PD = this.padDead, PS = this.g.settings.padSens || 1, dz = v => Math.abs(v) < PD ? 0 : v;
       /* v1.9.86: a menu is up (pause, town panel, creator…) so the pad drives the menu (ui/padnav.js), not the game. After a gap (menu, cutscene,
          load) re-arm without edges so the A that pressed "Continue" doesn't also jump. */
-      const t = performance.now(), gap = t - (this.padT || 0) > 250; this.padT = t;
+      const t = performance.now(), gap = t - (this.padT || 0) > 800; this.padT = t;
       if (window.__padMenu || gap) { for (let i = 0; i < p.buttons.length; i++) this.prev[i] = B(i); this.prev.st = B(9); if (window.__padMenu) return; }
       if (Math.abs(ax[0]) > PD || Math.abs(ax[1]) > PD) this.move.set(dz(ax[0]), dz(ax[1])); this.look.x += dz(ax[2] || 0) * dt * 2.6 * PS * (this.g.settings.sens || 1); this.look.y += dz(ax[3] || 0) * dt * 2.0 * PS * (this.g.settings.sens || 1) * this.ys();
       /* standard mapping: A jump · B roll · X use/talk · Y reload · LB grenade · RB / d-pad ◀ ▶ switch weapon · LT aim · RT fire · L3 sprint (latched) ·

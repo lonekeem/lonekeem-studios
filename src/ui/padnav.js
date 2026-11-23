@@ -29,7 +29,7 @@ function onTop(el) { const r = el.getBoundingClientRect(), W = innerWidth, H = i
 export function candidates() { return [...document.querySelectorAll(CAND)].filter(el => !el.closest(HUD) && vis(el) && onTop(el)); }
 
 const rc = el => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, r }; };
-function pickDefault(list) { return list.find(e => e.matches('.pri, .primary, [autofocus], #btnContinue, #btnResume')) || list.slice().sort((a, b) => { const A = rc(a), B = rc(b); return (A.y - B.y) * 3 + (A.x - B.x) * .5; })[0]; }
+function pickDefault(list) { return list.find(e => e.matches('[autofocus], #btnContinue, #btnResume, #btnRetry, #btnEndNext, .tabs button.on')) || list.slice().sort((a, b) => { const A = rc(a), B = rc(b); return (A.y - B.y) * 3 + (A.x - B.x) * .5; })[0]; }
 function setFocus(el) { if (st.focus === el) return; if (st.focus) st.focus.classList.remove('padfocus'); st.focus = el; if (!el) return; el.classList.add('padfocus'); try { el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) { } }
 function move(dx, dy, list) { if (!st.focus || !list.includes(st.focus)) return setFocus(pickDefault(list));
   const a = rc(st.focus); let best = null, bs = 1e9;
