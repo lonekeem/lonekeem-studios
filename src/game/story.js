@@ -40,7 +40,7 @@ export const STORY = [
         g.cut = null; D.phase = 'gear'; g.objective('Gear up: backpack, bat, Dad\'s lockbox', 'Walk over the glowing items and press E / ✋. Collect all three.'); g.audio.beat(1); });
     },
     update(g) { const D = g.stepData; if (D.phase === 'gear') { const need = []; if (!g.save.items.includes('backpack')) need.push([19.5, 1, 40.2]); if (!g.save.owned.includes('bat')) need.push([13, 1, 44.3]); if (!g.save.owned.includes('pistol')) need.push([19.55, 1, 39.65]);
-        if (need.length) g.wpTarget = need[0]; else { D.phase = 'door'; g.objective('Pry the boards off the front door', 'Front door, by the living room. Swap weapons with Q / ⇄. Guns: right-click / ⌖ to aim.'); g.wpTarget = [12.7, 1.2, 36.8];
+        if (need.length) g.wpTarget = need[0]; else { D.phase = 'door'; g.objective('Pry the boards off the front door', 'Front door, by the living room. Swap weapons with Q / ⇄. Guns: right-click / ◎ to aim.'); g.wpTarget = [12.7, 1.2, 36.8];
           g.say([['keem', "Bat for the quiet ones. Pistol for the \"oh {shit|no}\" ones."], ['keem', "Mom would end me for this. If she… yeah. Later."]]);
           D.uses = [{ x: 12.8, z: 36.8, label: 'Pry the boards off the door', fn: (g) => { g.setDoor(true); g.audio.crash(); goto(g, 1); } }]; } } } },
 
