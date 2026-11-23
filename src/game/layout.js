@@ -75,17 +75,30 @@ export function clampHudMarker(x, y, hw = 32, hh = 28, pad = 10) {
     const L = x - hw, R = x + hw, T = y - hh, B = y + hh;
     return rects.find(u => L < u.r && R > u.l && T < u.b && B > u.t);
   };
-  for (let i = 0; i < 8; i++) {
+  const nHits = (nx, ny) => {
+    const L = nx - hw, R = nx + hw, T = ny - hh, B = ny + hh;
+    let n = 0; for (const u of rects) if (L < u.r && R > u.l && T < u.b && B > u.t) n++; return n;
+  };
+  for (let i = 0; i < 10; i++) {
     const u = hit(x, y); if (!u) break;
-    const opts = [[u.r + hw, y], [u.l - hw, y], [x, u.b + hh], [x, u.t - hh]]
+    const opts = [[u.r + hw, y], [u.l - hw, y], [x, u.b + hh], [x, u.t - hh],
+      [x + Math.sign(W / 2 - x) * (hw + pad * 2), y],
+      [x, y + Math.sign(H / 2 - y) * (hh + pad * 2)]]
       .map(([nx, ny]) => [clamp(nx, minX, maxX), clamp(ny, minY, maxY)]);
-    let best = opts[0], bestD = 1e9;
-    for (const [nx, ny] of opts) {
-      const d = Math.hypot(nx - x, ny - y);
-      if (d < bestD) { bestD = d; best = [nx, ny]; }
+    opts.sort((a, b) => (nHits(a[0], a[1]) - nHits(b[0], b[1])) || (Math.hypot(a[0] - x, a[1] - y) - Math.hypot(b[0] - x, b[1] - y)));
+    const best = opts[0];
+    if (Math.hypot(best[0] - x, best[1] - y) < .5 && nHits(best[0], best[1]) >= nHits(x, y)) {
+      x = clamp(x + Math.sign(W / 2 - x) * 8, minX, maxX);
+      y = clamp(y + Math.sign(H / 2 - y) * 4, minY, maxY);
+      continue;
     }
-    if (bestD < .5) break;
     x = best[0]; y = best[1];
   }
+  for (let i = 0; i < 24 && hit(x, y); i++) {
+    const ax = Math.abs(W / 2 - x), ay = Math.abs(H / 2 - y);
+    if (ax >= ay) x = clamp(x + Math.sign(W / 2 - x) * 8, minX, maxX);
+    else y = clamp(y + Math.sign(H / 2 - y) * 8, minY, maxY);
+  }
+
   return [x, y];
 }
