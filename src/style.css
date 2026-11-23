@@ -688,3 +688,13 @@ body.photo #hud,body.photo #touch,body.photo #wp,body.photo #prompt,body.photo #
   #cban button{min-height:36px}
   #cban .cban-head h2{font-size:14px}
 }
+
+#cban .cban-mode{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:none}
+#cban .cban-mode button{min-height:36px}
+#cban .cd-pickrow{margin:8px 0;font:13px system-ui;color:#cfe6d6}
+#cban .cd-pickrow input[type=color]{width:42px;height:28px;border:0;background:none;padding:0;vertical-align:middle;margin-left:8px}
+#cban canvas.cd-drawcan{cursor:crosshair;touch-action:none}
+#cban .cd-acts{margin-top:8px}
+#online .cban-safe{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+#online .cban-safe button{min-height:34px;font-size:12px}
+#online .cwarn{color:#f0c070}

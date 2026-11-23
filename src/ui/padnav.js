@@ -78,8 +78,9 @@ function frame() {
   const edge = i => { const v = B(i); const e = v && !st.prev[i]; st.prev[i] = v; return e; };
   // repeat for held directions
   const dir = (key, held) => { if (!held) { st.rep[key] = 0; return false; } const t = st.rep[key]; if (!t) { st.rep[key] = now + 380; return true; } if (now >= t) { st.rep[key] = now + 120; return true; } return false; };
+  const ateDraw = !!(window.__atqBannerPad && window.__atqBannerPad(p, { B, ax, edge, now }));
   const lx = ax[0] || 0, ly = ax[1] || 0;
-  const L = dir('l', B(14) || lx < -.55), R = dir('r', B(15) || lx > .55), U = dir('u', B(12) || ly < -.55), D = dir('d', B(13) || ly > .55);
+  const L = dir('l', B(14) || (!ateDraw && lx < -.55)), R = dir('r', B(15) || (!ateDraw && lx > .55)), U = dir('u', B(12) || (!ateDraw && ly < -.55)), D = dir('d', B(13) || (!ateDraw && ly > .55));
   const f = st.focus;
   if (f && f.matches('input[type=range]') && (L || R)) nudge(f, L ? -1 : 1);
   else if (f && f.matches('select') && (L || R)) cycle(f, L ? -1 : 1);
@@ -87,7 +88,8 @@ function frame() {
   if (U) move(0, -1, list); else if (D) move(0, 1, list);
   const ry = ax[3] || 0; if (Math.abs(ry) > .25) { const s = (f && scroller(f)) || document.querySelector('#mpc .body'); if (s) s.scrollTop += ry * 14; }
   const rx = ax[2] || 0; if (Math.abs(rx) > .3) { const cv = document.querySelector('#mpc .stage canvas'); if (cv && vis(cv)) { const r = cv.getBoundingClientRect(), y = r.top + r.height / 2, x = r.left + r.width / 2; const o = { bubbles: true, clientX: x, clientY: y, pointerId: 77, pointerType: 'mouse', isPrimary: true, buttons: 1 }; try { cv.dispatchEvent(new PointerEvent('pointerdown', o)); cv.dispatchEvent(new PointerEvent('pointermove', { ...o, clientX: x + rx * 9 })); cv.dispatchEvent(new PointerEvent('pointerup', { ...o, clientX: x + rx * 9, buttons: 0 })); } catch (e) { } } }
-  if (edge(0)) press(st.focus || pickDefault(list));
+  if (!ateDraw && edge(0)) press(st.focus || pickDefault(list));
+  if (ateDraw && edge(2)) press(st.focus || pickDefault(list)); // X activates the focused tool while the left stick draws
   if (edge(1)) back(list);
   if (edge(4)) tabs(-1); if (edge(5)) tabs(1);
   if (edge(9)) { const r = document.querySelector('#btnResume'); if (r && vis(r)) r.click(); else back(list); }

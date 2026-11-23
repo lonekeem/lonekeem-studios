@@ -2,10 +2,11 @@
 import {
   clanMine, clanSearch, clanBoard, clanCreate, clanUpdate, clanDisband, clanLeave, clanTransfer,
   clanKick, clanPromote, clanInviteByName, clanInviteRespond, clanInviteCancel, clanRequest,
-  clanRequestRespond, refreshMine, forgetMine, myClanBrief, cleanClanName, cleanClanTag, MAX_MEMBERS,
+  clanRequestRespond, clanReportBanner, clanAdminResetBanner, refreshMine, forgetMine, myClanBrief, cleanClanName, cleanClanTag, MAX_MEMBERS,
 } from './clans.js';
 import { SHAPES, PATTERNS, EMBLEMS, TRIMS, COLORS, DEFAULT_BANNER, cleanBanner, drawBanner, bannerCanvas } from './clanBanner.js';
-import { getUser, signInGoogle, googleEnabled } from './online.js';
+import { mountDrawTools } from './clanDraw.js';
+import { getUser, signInGoogle, googleEnabled, getRole } from './online.js';
 
 const el = (html) => { const d = document.createElement('div'); d.innerHTML = html; return d.firstElementChild; };
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -27,45 +28,93 @@ function paintPreview(canvas, banner) {
 
 export function openBannerBuilder({ banner, onSave, onClose } = {}) {
   let cur = cleanBanner(banner || DEFAULT_BANNER);
+  let mode = 'parts'; // parts | draw
+  let drawApi = null;
   const root = el(`<div id="cban" class="screen" role="dialog" aria-label="Banner builder">
     <div class="cban-panel">
       <div class="cban-head"><button type="button" class="wback cban-back" aria-label="Back">‹ Back</button><h2>BANNER</h2><button type="button" class="primary cban-save">Save</button></div>
+      <div class="wseg cban-mode" id="cbanMode"><button type="button" data-mode="parts" class="sel">Parts</button><button type="button" data-mode="draw">Draw</button></div>
       <div class="cban-body">
-        <div class="cban-prev"><canvas></canvas><div class="cban-hint">Live preview · parts only, no uploads</div></div>
-        <div class="cban-tools">
-          <div class="clbl">Shape</div><div class="cban-row" data-k="shape"></div>
+        <div class="cban-prev"><canvas id="cbanCan"></canvas><div class="cban-hint">Live preview · parts and drawing, no uploads</div></div>
+        <div class="cban-tools" id="cbanTools"></div>
+      </div>
+    </div>
+  </div>`);
+  document.body.append(root);
+  const canvas = root.querySelector('#cbanCan');
+  const tools = root.querySelector('#cbanTools');
+  const hint = root.querySelector('.cban-hint');
+  const setBanner = b => { cur = cleanBanner(b); };
+  const partsHTML = `<div class="clbl">Shape</div><div class="cban-row" data-k="shape"></div>
           <div class="clbl">Pattern</div><div class="cban-row" data-k="pattern"></div>
           <div class="clbl">Emblem</div><div class="cban-row" data-k="emblem"></div>
           <div class="clbl">Trim</div><div class="cban-row" data-k="trimStyle"></div>
           <div class="clbl">Background</div><div class="cswatches" data-k="bg"></div>
           <div class="clbl">Pattern color</div><div class="cswatches" data-k="bg2"></div>
           <div class="clbl">Emblem color</div><div class="cswatches" data-k="emblemColor"></div>
-          <div class="clbl">Trim color</div><div class="cswatches" data-k="trim"></div>
-        </div>
-      </div>
-    </div>
-  </div>`);
-  document.body.append(root);
-  const canvas = root.querySelector('canvas');
+          <div class="clbl">Trim color</div><div class="cswatches" data-k="trim"></div>`;
   const fillRows = () => {
     const rows = { shape: SHAPES, pattern: PATTERNS, emblem: EMBLEMS, trimStyle: TRIMS };
-    root.querySelectorAll('.cban-row').forEach(row => {
-      const k = row.dataset.k, opts = rows[k];
+    tools.querySelectorAll('.cban-row').forEach(row => {
+      const k = row.dataset.k, opts = rows[k]; if (!opts) return;
       row.innerHTML = opts.map(([id, lab]) => `<button type="button" data-v="${id}" class="${cur[k] === id ? 'sel' : ''}">${esc(lab)}</button>`).join('');
       row.querySelectorAll('button').forEach(b => b.onclick = () => { cur = cleanBanner({ ...cur, [k]: b.dataset.v }); fillRows(); paintPreview(canvas, cur); });
     });
-    root.querySelectorAll('.cswatches').forEach(row => {
+    tools.querySelectorAll('.cswatches').forEach(row => {
       const k = row.dataset.k;
       row.innerHTML = COLORS.map(c => `<button type="button" class="csw${cur[k] === c ? ' sel' : ''}" data-v="${c}" style="background:${c}" aria-label="${c}"></button>`).join('');
       row.querySelectorAll('button').forEach(b => b.onclick = () => { cur = cleanBanner({ ...cur, [k]: b.dataset.v }); fillRows(); paintPreview(canvas, cur); });
     });
   };
-  fillRows();
-  requestAnimationFrame(() => paintPreview(canvas, cur));
-  const close = () => { root.remove(); onClose && onClose(); };
+  const showMode = (m) => {
+    mode = m;
+    root.querySelectorAll('#cbanMode button').forEach(b => b.classList.toggle('sel', b.dataset.mode === m));
+    if (drawApi) { drawApi.dispose(); drawApi = null; }
+    if (m === 'draw') {
+      drawApi = mountDrawTools({ tools, canvas, getBanner: () => cur, setBanner, hint });
+    } else {
+      tools.innerHTML = partsHTML;
+      hint.textContent = 'Live preview · parts and drawing, no uploads';
+      fillRows();
+      requestAnimationFrame(() => paintPreview(canvas, cur));
+    }
+  };
+  root.querySelectorAll('#cbanMode button').forEach(b => b.onclick = () => showMode(b.dataset.mode));
+  showMode('parts');
+  const close = () => { if (drawApi) drawApi.dispose(); root.remove(); onClose && onClose(); };
   root.querySelector('.cban-back').onclick = close;
   root.querySelector('.cban-save').onclick = () => { onSave && onSave(cleanBanner(cur)); close(); };
   return { close, get: () => cleanBanner(cur) };
+}
+
+
+function bannerActions(c, role) {
+  const bits = [];
+  if (c && c.id) bits.push(`<button type="button" class="cReportBan" data-id="${c.id}">Report banner</button>`);
+  bits.push(`<button type="button" class="cAdminReset hidden" data-id="${c.id}">Reset banner</button>`);
+  return `<div class="cban-safe">${bits.join('')}</div>`;
+}
+function bindBannerActions(root, ctx) {
+  const flash = ctx.flash || (() => {});
+  root.querySelectorAll('.cReportBan').forEach(b => {
+    b.onclick = () => {
+      if (ctx.requireSignIn && !ctx._signed) { /* show() uses requireSignIn */ }
+      clanReportBanner(b.dataset.id).then(d => {
+        flash(d && d.hidden ? 'Thanks. That drawing was hidden pending review.' : 'Thanks, we got your report.');
+        ctx.reload && ctx.reload(true);
+      }).catch(e => flash(e.message || 'Could not send the report.'));
+    };
+  });
+  getRole().then(role => {
+    if (role !== 'admin') return;
+    root.querySelectorAll('.cAdminReset').forEach(b => {
+      b.classList.remove('hidden');
+      b.onclick = () => {
+        if (!confirm('Reset this clan banner to the default preset and clear reports?')) return;
+        clanAdminResetBanner(b.dataset.id).then(() => { flash('Banner reset.'); ctx.reload && ctx.reload(true); }).catch(e => flash(e.message || 'Could not reset.'));
+      };
+    });
+  }).catch(() => {});
 }
 
 export function attachClans(root, ctx) {
@@ -231,12 +280,15 @@ export function attachClans(root, ctx) {
           <span class="small">${c.members}/${MAX_MEMBERS} · ${c.join_mode === 'invite' ? 'Invite only' : 'Ask to join'} · ${c.score_kills || 0} clan kills</span></div>
       </div>
       ${canReq ? '<button type="button" id="cReq" class="primary">Ask to join</button>' : (!signed() ? needAuth('Sign in to request a join.') : (c.join_mode === 'invite' ? '<p class="small wsub">This clan is invite-only.</p>' : ''))}
+      ${c.banner_hidden ? '<p class="small wsub cwarn">This clan drawing is hidden pending review. The preset banner still shows.</p>' : ''}
+      ${bannerActions(c, null)}
       <div class="clbl">Members</div>
       <div class="clist">${members.map(m => memberRow(m, null)).join('') || '<div class="wempty small">No members listed.</div>'}</div>
     </div>`;
     q('#cBack').onclick = () => { view = 'browse'; render(); loadBrowse(q('#cFind') ? q('#cFind').value : ''); };
     const rq = q('#cReq'); if (rq) rq.onclick = () => act(() => clanRequest(c.id), 'Request sent.');
     const si = q('#cSignIn'); if (si) si.onclick = askSignIn;
+    bindBannerActions(main, { flash, reload });
   }
 
   function memberRow(m, role) {
@@ -264,8 +316,10 @@ export function attachClans(root, ctx) {
           <h3>${escX(c.name)} <span class="ctag">[${escX(c.tag)}]</span></h3>
           <span class="small">${c.members}/${MAX_MEMBERS} members · ${c.join_mode === 'invite' ? 'Invite only' : 'Ask to join'}</span>
           <div class="cstats"><span><b>${c.score_kills || 0}</b> kills</span><span><b>${c.score_wave || 0}</b> best wave</span><span><b>${c.score_hs || 0}</b> headshots</span></div>
+          ${c.banner_hidden ? '<p class="small wsub cwarn">Drawing hidden pending review. Edit the banner to submit a new one, or wait for a review.</p>' : ''}
         </div>
       </div>
+      ${bannerActions(c, role)}
       ${role === 'leader' ? `<div class="cform inline">
         <div class="wseg wsort" id="cJoinEdit"><button data-j="request"${c.join_mode !== 'invite' ? ' class="sel"' : ''}>Ask to join</button><button data-j="invite"${c.join_mode === 'invite' ? ' class="sel"' : ''}>Invite only</button></div>
       </div>` : ''}
@@ -304,6 +358,7 @@ export function attachClans(root, ctx) {
     const leave = q('#cLeave'); if (leave) leave.onclick = () => confirmAct('Leave this clan?', () => clanLeave(c.id), 'You left the clan.');
     const dis = q('#cDisband'); if (dis) dis.onclick = () => confirmAct('Disband this clan for everyone? This cannot be undone.', () => clanDisband(c.id), 'Clan disbanded.');
     q('#cToBoard').onclick = () => { view = 'board'; render(); loadClanBoard(); };
+    bindBannerActions(main, { flash, reload });
   }
 
   async function loadClanBoard() {

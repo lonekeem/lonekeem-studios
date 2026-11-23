@@ -23,6 +23,9 @@ const rpcErr = (error) => {
     [/player not found/i, 'No player with that name was found.'],
     [/cannot kick/i, "You can't kick that member."],
     [/too fast/i, 'Slow down a little and try again.'],
+    [/already reported/i, 'You already reported this banner.'],
+    [/own banner/i, "You can't report your own clan's banner. Edit or reset it instead."],
+    [/admin only/i, 'Only an admin can do that.'],
     [/no clan/i, 'That clan is gone.'],
   ];
   for (const [re, t] of map) if (re.test(m)) return t;
@@ -69,6 +72,8 @@ export async function clanInviteRespond(inviteId, accept) { return call('clan_in
 export async function clanInviteCancel(inviteId) { return call('clan_invite_cancel', { p_invite: inviteId }); }
 export async function clanRequest(id) { return call('clan_request', { p_id: id }); }
 export async function clanRequestRespond(requestId, accept) { return call('clan_request_respond', { p_request: requestId, p_accept: !!accept }); }
+export async function clanReportBanner(id) { return call('clan_report_banner', { p_id: id }); }
+export async function clanAdminResetBanner(id) { return call('clan_admin_reset_banner', { p_id: id }); }
 
 let cache = { at: 0, mine: null };
 export function cachedMine() { return cache.mine; }

@@ -27,10 +27,77 @@ export const DEFAULT_BANNER = { v: 1, shape: 'standard', bg: '#1e4d3a', bg2: '#d
 const setOf = a => new Set(a.map(x => x[0]));
 const SHAPE_IDS = setOf(SHAPES), PATTERN_IDS = setOf(PATTERNS), EMBLEM_IDS = setOf(EMBLEMS), TRIM_IDS = setOf(TRIMS);
 const HEX = /^#[0-9a-fA-F]{6}$/;
+export const DRAW_SHAPES = [
+  ['circle', 'Circle'], ['square', 'Square'], ['triangle', 'Triangle'],
+  ['star', 'Star'], ['heart', 'Heart'], ['line', 'Line'],
+];
+export const BRUSH_SIZES = [[0.018, 'S'], [0.032, 'M'], [0.055, 'L'], [0.09, 'XL']];
+export const MAX_DRAW_OPS = 80, MAX_STROKE_PTS = 160, MAX_DRAW_BYTES = 12000;
+const DRAW_SHAPE_IDS = setOf(DRAW_SHAPES);
+const q01 = n => Math.max(0, Math.min(1, Math.round((+n || 0) * 1000) / 1000));
+const qW = n => Math.max(0.01, Math.min(0.2, Math.round((+n || 0.032) * 1000) / 1000));
+function downsamplePts(arr) {
+  const out = [];
+  if (!Array.isArray(arr)) return out;
+  let lx = 99, ly = 99;
+  for (let i = 0; i + 1 < arr.length && out.length < MAX_STROKE_PTS * 2; i += 2) {
+    const x = q01(arr[i]), y = q01(arr[i + 1]);
+    if (out.length && Math.hypot(x - lx, y - ly) < 0.012) continue;
+    out.push(x, y); lx = x; ly = y;
+  }
+  if (arr.length >= 2) {
+    const x = q01(arr[arr.length - 2]), y = q01(arr[arr.length - 1]);
+    if (!out.length || out[out.length - 2] !== x || out[out.length - 1] !== y) { out.push(x, y); }
+  }
+  return out;
+}
+function cleanOp(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const t = raw.t;
+  if (t === 'stroke' || t === 'erase') {
+    const p = downsamplePts(raw.p);
+    if (p.length < 2) return null;
+    const o = { t, w: qW(raw.w), p };
+    if (t === 'stroke') { const c = HEX.test(raw.c) ? String(raw.c).toLowerCase() : '#f4f0e6'; o.c = c; }
+    return o;
+  }
+  if (t === 'fill') {
+    if (!HEX.test(raw.c)) return null;
+    return { t: 'fill', c: String(raw.c).toLowerCase(), x: q01(raw.x), y: q01(raw.y) };
+  }
+  if (t === 'shape') {
+    if (!DRAW_SHAPE_IDS.has(raw.k) || !HEX.test(raw.c)) return null;
+    return {
+      t: 'shape', k: raw.k, c: String(raw.c).toLowerCase(),
+      x: q01(raw.x), y: q01(raw.y),
+      s: Math.max(0.02, Math.min(1, Math.round((+raw.s || 0.18) * 1000) / 1000)),
+      r: Math.round(((+raw.r || 0) % (Math.PI * 2)) * 1000) / 1000,
+      fill: raw.fill !== false,
+      w: qW(raw.w || 0.025),
+    };
+  }
+  return null;
+}
+export function cleanDraw(d) {
+  if (!d || typeof d !== 'object') return null;
+  const ops = [];
+  const src = Array.isArray(d.ops) ? d.ops : [];
+  for (const raw of src) {
+    const op = cleanOp(raw); if (op) ops.push(op);
+    if (ops.length >= MAX_DRAW_OPS) break;
+  }
+  let out = ops.length ? { v: 1, ops } : null;
+  while (out && JSON.stringify(out).length > MAX_DRAW_BYTES) {
+    out.ops.shift();
+    if (!out.ops.length) out = null;
+  }
+  return out;
+}
 export function cleanBanner(b) {
   const o = (b && typeof b === 'object') ? b : {};
   const hex = (v, d) => (HEX.test(v) ? v.toLowerCase() : d);
-  return {
+  const draw = cleanDraw(o.draw);
+  const rec = {
     v: 1,
     shape: SHAPE_IDS.has(o.shape) ? o.shape : 'standard',
     bg: hex(o.bg, '#1e4d3a'),
@@ -41,6 +108,8 @@ export function cleanBanner(b) {
     trim: hex(o.trim, '#d9b44a'),
     trimStyle: TRIM_IDS.has(o.trimStyle) ? o.trimStyle : 'thin',
   };
+  if (draw) rec.draw = draw;
+  return rec;
 }
 
 function shapePath(g, w, h, shape) {
@@ -197,7 +266,80 @@ export function drawBanner(g, banner, w, h) {
   const cx = box.x + box.W * (b.shape === 'pennant' ? .38 : .5);
   const cy = box.y + box.H * (b.shape === 'swallowtail' ? .42 : b.shape === 'pennant' ? .5 : .46);
   drawEmblem(g, cx, cy, s, b.emblem, b.emblemColor);
+  if (b.draw && b.draw.ops && b.draw.ops.length) paintDraw(g, b.draw, w, h);
   g.restore();
+}
+
+function glyphPath(g, k, s) {
+  g.beginPath();
+  if (k === 'circle') g.arc(0, 0, s, 0, Math.PI * 2);
+  else if (k === 'square') { g.rect(-s, -s, s * 2, s * 2); }
+  else if (k === 'triangle') { g.moveTo(0, -s); g.lineTo(s, s); g.lineTo(-s, s); g.closePath(); }
+  else if (k === 'star') {
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + i * Math.PI * 2 / 5, b = a + Math.PI / 5;
+      const cmd = i ? g.lineTo.bind(g) : g.moveTo.bind(g);
+      cmd(Math.cos(a) * s, Math.sin(a) * s); g.lineTo(Math.cos(b) * s * .4, Math.sin(b) * s * .4);
+    }
+    g.closePath();
+  } else if (k === 'heart') {
+    const u = s * 1.05;
+    g.moveTo(0, u * .7);
+    g.bezierCurveTo(-u * 1.15, u * .05, -u * .55, -u * .85, 0, -u * .28);
+    g.bezierCurveTo(u * .55, -u * .85, u * 1.15, u * .05, 0, u * .7);
+    g.closePath();
+  } else if (k === 'line') { g.moveTo(-s, 0); g.lineTo(s, 0); }
+}
+
+function floodAt(g, w, h, nx, ny, hex) {
+  const x0 = Math.max(0, Math.min(w - 1, Math.round(nx * w)));
+  const y0 = Math.max(0, Math.min(h - 1, Math.round(ny * h)));
+  const img = g.getImageData(0, 0, w, h), d = img.data;
+  const i0 = (y0 * w + x0) * 4;
+  const tr = d[i0], tg = d[i0 + 1], tb = d[i0 + 2], ta = d[i0 + 3];
+  const n = parseInt(hex.slice(1), 16);
+  const fr = (n >> 16) & 255, fg = (n >> 8) & 255, fb = n & 255;
+  if (tr === fr && tg === fg && tb === fb && ta === 255) return;
+  const match = (i) => Math.abs(d[i] - tr) + Math.abs(d[i + 1] - tg) + Math.abs(d[i + 2] - tb) + Math.abs(d[i + 3] - ta) < 48;
+  const stack = [[x0, y0]], seen = new Uint8Array(w * h);
+  while (stack.length) {
+    const [x, y] = stack.pop();
+    if (x < 0 || y < 0 || x >= w || y >= h) continue;
+    const p = y * w + x; if (seen[p]) continue; seen[p] = 1;
+    const i = p * 4; if (!match(i)) continue;
+    d[i] = fr; d[i + 1] = fg; d[i + 2] = fb; d[i + 3] = 255;
+    stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+  }
+  g.putImageData(img, 0, 0);
+}
+
+export function paintDraw(g, draw, w, h) {
+  const ops = (draw && draw.ops) || [];
+  for (const op of ops) {
+    if (op.t === 'stroke' || op.t === 'erase') {
+      const p = op.p || []; if (p.length < 2) continue;
+      g.save();
+      g.lineJoin = 'round'; g.lineCap = 'round';
+      g.lineWidth = Math.max(1, (op.w || 0.032) * Math.min(w, h));
+      if (op.t === 'erase') { g.globalCompositeOperation = 'destination-out'; g.strokeStyle = '#000'; }
+      else g.strokeStyle = op.c || '#fff';
+      g.beginPath(); g.moveTo(p[0] * w, p[1] * h);
+      for (let i = 2; i + 1 < p.length; i += 2) g.lineTo(p[i] * w, p[i + 1] * h);
+      if (p.length === 2) g.lineTo(p[0] * w + 0.2, p[1] * h);
+      g.stroke(); g.restore();
+    } else if (op.t === 'fill') {
+      floodAt(g, w, h, op.x, op.y, op.c || '#f4f0e6');
+    } else if (op.t === 'shape') {
+      const s = (op.s || 0.18) * Math.min(w, h);
+      g.save(); g.translate(op.x * w, op.y * h); g.rotate(op.r || 0);
+      glyphPath(g, op.k, s);
+      if (op.k === 'line') {
+        g.strokeStyle = op.c; g.lineCap = 'round'; g.lineWidth = Math.max(1, (op.w || 0.025) * Math.min(w, h)); g.stroke();
+      } else if (op.fill !== false) { g.fillStyle = op.c; g.fill(); }
+      else { g.strokeStyle = op.c; g.lineWidth = Math.max(1, (op.w || 0.025) * Math.min(w, h)); g.stroke(); }
+      g.restore();
+    }
+  }
 }
 
 export function bannerCanvas(banner, w = 256, h = 320) {
