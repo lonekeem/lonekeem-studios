@@ -98,21 +98,21 @@ export const steps = [
     enter(g) {
       const D = g.stepData; g.openGate(true); D.lobster = false; cast(g, D, 0, -7108, ALL); giveHammer(D.dad, false); headlight(false);
       place(g.player, -.4, -7112, PI); place(D.dad, 1.5, -7111, PI); place(D.nia, -2, -7111.4, PI); place(D.mom, -3.2, -7110.4, PI); place(D.reyes, 2.8, -7109.8, PI); place(D.danny, 4.2, -7110.6, -PI * .8);
-      g.cut = { anim: 'Idle_Loop', cam: V(1.4, 1.65, -7116.2), look: V(-.2, 1.45, -7111.2), flash: false }; snap(g);
+      g.cut = { anim: 'Idle_Loop', cam: V(0.82, 1.62, -7114.4), look: V(-0.2, 1.45, -7111.2), flash: false }; snap(g);
       script(g, [
         (g) => { g.audio.staticBurst && g.audio.staticBurst(.8); },
         ['dube', "Porch light's on, Riverside. Tuck and me have the gym. Go get your doctor."],
-        (g) => { cam(g, V(3.2, 1.65, -7116), V(1.8, 1.5, -7111.2)); },
+        (g) => { cam(g, V(2.7, 1.63, -7114.27), V(1.8, 1.5, -7111.2)); },
         ['reyes', "The helicopter's dry and the coast road is a parking lot. This line runs straight to the Portland docks."],
-        (g) => { act(D.dad, 'hold', { sides: 'R', k: .6 }); cam(g, V(3.4, 1.7, -7117.4), V(1.5, 1.5, -7111)); },
+        (g) => { act(D.dad, 'hold', { sides: 'R', k: .6 }); cam(g, V(2.72, 1.67, -7115.1), V(1.5, 1.5, -7111)); },
         ['marcus', "Old Number Nine. I used to watch her go by with you on my shoulders, Keem."],
-        (g) => { act(D.dad, null); cam(g, V(-1.8, 1.65, -7116.6), V(-.4, 1.5, -7112)); },
+        (g) => { act(D.dad, null); cam(g, V(-1.3, 1.63, -7114.94), V(-0.4, 1.5, -7112)); },
         ['keem', "Then let's see if she still runs."],
-        (g) => { cam(g, V(5.6, 1.65, -7115.2), V(4.2, 1.5, -7110.6)); face(D.danny, -.4, -7112); },
+        (g) => { cam(g, V(5.1, 1.63, -7113.54), V(4.2, 1.5, -7110.6)); face(D.danny, -.4, -7112); },
         ['danny', "Good news, I can drive a train. Bad news, I learned on a video game."],
         ['dana', "Danny."],
         ['danny', "It was a very realistic video game!"],
-        (g) => { cam(g, V(-1.4, 1.15, -7115.6), V(-2, .95, -7111.4)); },
+        (g) => { cam(g, V(-1.62, 1.12, -7114.09), V(-2, 0.95, -7111.4)); },
         ['nia', "Biscuit's never been on a train. He's going to love it."],
         (g) => { g.cut = null; goto(g, 'c22_parts', 120); },
       ]);
@@ -159,9 +159,9 @@ export const steps = [
       script(g, [
         (g) => { horn(g); g.shake(.25); },
         ['yard', "All aboard."],
-        (g) => { cam(g, V(-1.4, 1.6, -7287.2), V(-.4, 1.45, -7290)); },
+        (g) => { cam(g, V(-1.04, 1.58, -7288.21), V(-0.4, 1.45, -7290)); },
         ['keem', "That's the guy who blew the horn."],
-        (g) => { cam(g, V(3.6, 1.6, -7287.6), V(1.6, 1.5, -7291)); },
+        (g) => { cam(g, V(2.88, 1.58, -7288.82), V(1.6, 1.5, -7291)); },
         ['marcus', "Mr. Pike. He ran this yard for forty years. Gave me a ride in the cab when I was ten."],
         ['marcus', "Sorry, Mr. Pike. We need your train."],
         (g) => { g.cut = null; b.st = 'chase'; D.on = true; followAll(g, D, FIGHT); },

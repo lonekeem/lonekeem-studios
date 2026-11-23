@@ -100,24 +100,24 @@ export const steps = [
     enter(g) {
       const D = g.stepData; g.openGate(true); dry(g); D.lobster = false; cast(g, D, 0, -7912, ALL); vance(g, D, 4.4, -7915); giveHammer(D.dad, false); D.dw = .25; dawn(g, .25);
       place(g.player, -.4, -7918, PI); place(D.dad, 1.5, -7917, PI); place(D.nia, -2, -7917.4, PI); place(D.mom, -3.2, -7916.4, PI); place(D.reyes, 2.8, -7915.8, PI); place(D.danny, 5.6, -7912.2, -PI * .7); place(D.vance, 4.2, -7916.8, PI * .9);
-      g.cut = { anim: 'Idle_Loop', cam: V(3.4, 1.7, -7922.6), look: V(3.8, 1.45, -7916.6), flash: false }; snap(g);
+      g.cut = { anim: 'Idle_Loop', cam: V(3.54, 1.66, -7920.44), look: V(3.8, 1.45, -7916.6), flash: false }; snap(g);
       script(g, [
         ['vance', "Six darts. Biscuit dose. It won't cure them, but it slows the gray long enough to hurt."],
-        (g) => { cam(g, V(3.2, 1.65, -7920.4), V(2.8, 1.5, -7915.8)); },
+        (g) => { cam(g, V(3.06, 1.63, -7918.74), V(2.8, 1.5, -7915.8)); },
         ['reyes', "And the moment this is over, the recipe goes on the radio."],
-        (g) => { act(D.dad, 'hold', { sides: 'R', k: .6 }); cam(g, V(.6, 1.7, -7921.8), V(1.5, 1.5, -7917)); face(D.dad, -.4, -7918); },
+        (g) => { act(D.dad, 'hold', { sides: 'R', k: .6 }); cam(g, V(0.92, 1.67, -7920.07), V(1.5, 1.5, -7917)); face(D.dad, -.4, -7918); },
         ['marcus', "Last time I was on this beach, I told you to run, son."],
-        (g) => { cam(g, V(1.2, 1.65, -7920.6), V(-.4, 1.5, -7918)); face(g.player, 1.5, -7917); },
+        (g) => { cam(g, V(0.62, 1.63, -7919.66), V(-0.4, 1.5, -7918)); face(g.player, 1.5, -7917); },
         ['keem', "I remember."],
-        (g) => { cam(g, V(.6, 1.7, -7921.8), V(1.5, 1.5, -7917)); },
+        (g) => { cam(g, V(0.92, 1.67, -7920.07), V(1.5, 1.5, -7917)); },
         ['marcus', "Don't. Not today. Today you stay right next to me."],
-        (g) => { act(D.dad, null); cam(g, V(-2, 1.65, -7921.4), V(-3.2, 1.5, -7916.4)); },
+        (g) => { act(D.dad, null); cam(g, V(-2.43, 1.63, -7919.6), V(-3.2, 1.5, -7916.4)); },
         ['dana', "We all do."],
-        (g) => { cam(g, V(4.4, 1.6, -7908.8), V(5.6, 1.45, -7912.2)); },
+        (g) => { cam(g, V(4.83, 1.58, -7910.02), V(5.6, 1.45, -7912.2)); },
         ['danny', "I'll guard the boat. Bravely. From inside the boat."],
-        (g) => { cam(g, V(-1.2, 1.15, -7920.2), V(-2, .95, -7917.4)); face(D.nia, -.4, -7918); },
+        (g) => { cam(g, V(-1.49, 1.12, -7919.19), V(-2, 0.95, -7917.4)); face(D.nia, -.4, -7918); },
         ['nia', "Biscuit says be careful. And come back."],
-        (g) => { cam(g, V(-2, 1.6, -7920.8), V(-.4, 1.5, -7918)); },
+        (g) => { cam(g, V(-1.42, 1.58, -7919.79), V(-0.4, 1.5, -7918)); },
         ['keem', "Tell him we always come back."],
         (g) => { g.cut = null; goto(g, 'c24_climb', 120); },
       ]);
@@ -160,11 +160,11 @@ export const steps = [
       g.cut = { anim: 'Idle_Loop', cam: V(3.8, 1.7, -8070.6), look: V(8, 2, -8086), flash: false }; snap(g);
       script(g, [
         ['hale', "You've cost me a ship, a Bosun, and a perfectly good morning."],
-        (g) => { cam(g, V(.4, 1.65, -8070.4), V(1.6, 1.5, -8066)); },
+        (g) => { cam(g, V(0.83, 1.63, -8068.82), V(1.6, 1.5, -8066)); },
         ['keem', "You were going to gas the whole coast."],
         (g) => { cam(g, V(3.8, 1.7, -8070.6), V(8, 2, -8086)); },
         ['hale', "I was going to decide the coast. There's a difference."],
-        (g) => { act(D.dad, 'hold', { sides: 'R', k: .7 }); cam(g, V(5.2, 1.65, -8068.6), V(3.4, 1.5, -8065)); },
+        (g) => { act(D.dad, 'hold', { sides: 'R', k: .7 }); cam(g, V(4.55, 1.63, -8067.3), V(3.4, 1.5, -8065)); },
         ['marcus', "Not to us there isn't."],
         (g) => { act(D.dad, null); g.cut = null; b.st = 'chase'; D.guards.forEach(r => { r.st = 'chase'; }); D.on = true; followAll(g, D, ['dad', 'reyes']); },
       ]);
@@ -181,14 +181,14 @@ export const steps = [
       const D = g.stepData; g.openGate(true); dry(g); cast(g, D, 0, -8100, ['dad', 'reyes', 'mom']); vance(g, D, 2.6, -8101); giveHammer(D.dad, false); D.dw = .66; dawn(g, .66);
       place(g.player, -.4, -8104, PI * .9); place(D.dad, 1.4, -8103.4, PI * .9); place(D.reyes, -2.4, -8102.6, PI); place(D.mom, -3.4, -8101.6, PI * .9); place(D.vance, 2.8, -8101.6, PI);
       const h = D.h = spawnAuth(g, -3, -8111, { hp: 9999, shield: false }); paintAuth(h, '#1e2a44', '#1a1e28'); helmOn(h, '#e8e8e2'); h.st = 'script'; h.root.scale.setScalar(1.05); h.root.rotation.y = PI * .7; h.play && h.play('Fixing_Kneeling');
-      g.cut = { anim: 'Idle_Loop', cam: V(-.6, 1.4, -8107), look: V(-3, 1, -8111.4), flash: false }; snap(g);
+      g.cut = { anim: 'Idle_Loop', cam: V(-1.46, 1.34, -8108.58), look: V(-3, 1, -8111.4), flash: false }; snap(g);
       script(g, [
         ['hale', "If I can't decide the coast… then let her decide."],
-        (g) => { if (A.cageDoor) A.cageDoor.position.y = 4.6; g.audio.thud && g.audio.thud(); g.shake(.4); g.audio.roar && g.audio.roar(); cam(g, V(1.2, 1.6, -8099.8), V(-.4, 1.5, -8104)); },
+        (g) => { if (A.cageDoor) A.cageDoor.position.y = 4.6; g.audio.thud && g.audio.thud(); g.shake(.4); g.audio.roar && g.audio.roar(); cam(g, V(0.62, 1.58, -8101.31), V(-0.4, 1.5, -8104)); },
         ['vance', "That's the first carrier. The Director's own test subject. Everything gray started with her."],
-        (g) => { h.root.visible = false; g.audio.scream && g.audio.scream(.5); g.shake(.6); cam(g, V(2.8, 1.65, -8099.4), V(1.4, 1.5, -8103.4)); },
+        (g) => { h.root.visible = false; g.audio.scream && g.audio.scream(.5); g.shake(.6); cam(g, V(2.3, 1.63, -8100.84), V(1.4, 1.5, -8103.4)); },
         ['marcus', "Don't look, baby. Don't look."],
-        (g) => { cam(g, V(-1.6, 1.65, -8101), V(-.4, 1.5, -8104)); },
+        (g) => { cam(g, V(-1.17, 1.63, -8102.08), V(-0.4, 1.5, -8104)); },
         ['keem', "Vance. How many darts?"],
         ['vance', "Enough if you make them count."],
         (g) => { g.cut = null; goto(g, 'c24_gray', 200); },
@@ -205,7 +205,7 @@ export const steps = [
       script(g, [
         (g) => { g.audio.roar && g.audio.roar(b); g.shake(.5); },
         ['reyes', "Bullets won't do it alone. Wait for the dart!"],
-        (g) => { act(D.dad, 'hold', { sides: 'R', k: .8 }); cam(g, V(3.6, 1.6, -8101.6), V(1.6, 1.5, -8099)); },
+        (g) => { act(D.dad, 'hold', { sides: 'R', k: .8 }); cam(g, V(2.88, 1.58, -8100.66), V(1.6, 1.5, -8099)); },
         ['marcus', "Hey! Over here! You don't get my son."],
         (g) => { act(D.dad, null); g.cut = null; b.st = 'chase'; D.on = true; followAll(g, D, ['dad', 'reyes']); },
       ]);
@@ -231,27 +231,27 @@ export const steps = [
       g.cut = { anim: 'Idle_Loop', cam: V(18.2, 1.8, -8128.6), look: V(23, 1.4, -8123), flash: false }; snap(g);
       script(g, [
         ['vance', "It's over. Every tank. Every dart."],
-        (g) => { cam(g, V(18.6, 1.65, -8119), V(19.6, 1.5, -8121.4)); },
+        (g) => { cam(g, V(18.89, 1.63, -8119.69), V(19.6, 1.5, -8121.4)); },
         ['reyes', "The Biscuit dose goes on the air in ten minutes. Every town that made the first cure can make this one."],
-        (g) => { cam(g, V(22.6, 1.15, -8128.4), V(21.2, .95, -8125.8)); face(D.nia, 20.4, -8126.6); },
+        (g) => { cam(g, V(22.1, 1.12, -8127.46), V(21.2, 0.95, -8125.8)); face(D.nia, 20.4, -8126.6); },
         ['nia', "Can I read it again? On the radio?"],
-        (g) => { cam(g, V(22.2, 1.6, -8129.2), V(20.4, 1.45, -8126.6)); face(D.mom, 21.2, -8125.8); },
+        (g) => { cam(g, V(21.55, 1.58, -8128.26), V(20.4, 1.45, -8126.6)); face(D.mom, 21.2, -8125.8); },
         ['dana', "Who else, baby?"],
-        (g) => { cam(g, V(17, 1.65, -8121.4), V(18.6, 1.5, -8123.6)); },
+        (g) => { cam(g, V(17.51, 1.63, -8122.1), V(18.6, 1.5, -8123.6)); },
         ['danny', "For the record, I guarded that boat extremely well."],
         (g) => { face(D.nia, 30, -8124); face(D.mom, 30, -8124); act(D.dad, 'hold', { sides: 'R', k: .6 }); cam(g, V(18.4, 2.2, -8124), V(40, 4, -8120)); },
         ['marcus', "Keem. Look at that."],
         (g) => { act(D.dad, null); cam(g, V(24.6, 1.65, -8121.2), V(22.6, 1.5, -8122.2)); face(g.player, 22.6, -8122.2); face(D.dad, 22, -8124); },
         ['keem', "Last time we stood here, I thought I lost you."],
-        (g) => { cam(g, V(24.4, 1.65, -8126.4), V(22, 1.5, -8124)); },
+        (g) => { cam(g, V(23.54, 1.63, -8125.54), V(22, 1.5, -8124)); },
         ['marcus', "You didn't. You won't. I'm right here."],
-        (g) => { cam(g, V(23.4, .7, -8129.4), V(21.8, .3, -8126.8)); hopTo(D.B, 22.6, -8125.6, 0); },
+        (g) => { cam(g, V(22.82, 0.64, -8128.46), V(21.8, 0.3, -8126.8)); hopTo(D.B, 22.6, -8125.6, 0); },
         ['nia', "Biscuit saved everybody. Again."],
-        (g) => { cam(g, V(18.6, 1.65, -8117.6), V(20.6, 1.5, -8119.8)); },
+        (g) => { cam(g, V(19.32, 1.63, -8118.39), V(20.6, 1.5, -8119.8)); },
         ['vance', "He was always my best subject. Don't tell him."],
-        (g) => { cam(g, V(20.2, 1.7, -8130.4), V(22, 1.5, -8124)); face(g.player, 30, -8124); face(D.dad, 30, -8124); },
+        (g) => { cam(g, V(20.85, 1.67, -8128.1), V(22, 1.5, -8124)); face(g.player, 30, -8124); face(D.dad, 30, -8124); },
         ['keem', "After the quiet. The good kind."],
-        (g) => { cam(g, V(24, .6, -8127.8), V(22.6, .35, -8125.6)); },
+        (g) => { cam(g, V(23.59, 0.56, -8127.16), V(22.6, 0.35, -8125.6)); },
         ['nia', "He's a very good bunny."],
         (g) => { cam(g, V(10, 6, -8112), V(26, 2, -8126)); card('THE END', 5600, 'AFTER THE QUIET · A LONE KEEM STUDIOS GAME'); { const tok = g.stepTok; setTimeout(() => { hideCard(); if (g.stepTok === tok) g.onComplete && g.onComplete(24); }, 6000); } },
       ]);
