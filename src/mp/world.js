@@ -15,6 +15,8 @@ const MAX_PLAYERS = 8;
 const esc = t => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = (crypto.getRandomValues(new Uint8Array(1))[0] & 15); return (c === 'x' ? r : (r & 3) | 8).toString(16); }));
 const MOCK = () => /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has('worldmock'); // screenshot hook, localhost only
+const isModFail = e => /Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module|Unable to preload/i.test((e && e.message) || String(e || ''));
+const reloadIfStale = e => { if (!isModFail(e)) return false; try { return !!(window.__atqReloadStale && window.__atqReloadStale()); } catch (x) { return false; } };
 const isLocal = () => /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 export const isTestRoom = (room, meta) => !!(meta && meta.test) || /^(w-test-|test-)/i.test(String(room || ''));
 
@@ -105,7 +107,7 @@ async function joinRoom(room, title, ui, opts = {}) {
     }
     const tw = await import('./town/town.js');
     await tw.enterTown({ look, room, local: test, mission: opts.mission || null, onExit: () => { try { L && L.ch.untrack(); } catch (e) { /* ignore */ } back(); } });
-  } catch (e) { console.warn('[world] join failed:', e && e.message); back("Couldn't start the game. " + (e && e.message ? e.message : 'Please try again.')); }
+  } catch (e) { if (reloadIfStale(e)) return; console.warn('[world] join failed:', e && e.message); back("Couldn't start the game. " + (e && e.message ? e.message : 'Please try again.')); }
 }
 
 // ---------- UI ----------
@@ -251,7 +253,10 @@ function buildUI() {
     const roomsEl = q('#wRooms'); if (roomsEl) roomsEl.innerHTML = '<div class="wempty small">Connecting…</div>';
     if (MOCK()) { rooms = MOCK_ROOMS; net.textContent = '● Online · 23 players'; net.classList.add('on'); renderRooms(rooms); return; }
     try {
-      const L = await lobbyChannel();
+      const L = await Promise.race([
+        lobbyChannel(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('lobby timed out')), 12000))
+      ]);
       L.onChange = () => { rooms = L.rooms; const n = L.people || 0; net.textContent = n ? ('● Online · ' + n + ' player' + (n === 1 ? '' : 's')) : '● Online · no one else yet'; net.classList.add('on'); renderRooms(rooms); };
       try {
         await Promise.race([
@@ -261,7 +266,7 @@ function buildUI() {
       } catch (te) { /* subscribed but presence track hung or failed — still show the lobby */ }
       L.onChange();
     }
-    catch (e) { net.textContent = '○ Offline'; net.classList.remove('on'); q('#wRooms').innerHTML = `<div class="wempty">Can't reach the online lobby.<br><span class="small">${esc(e.message || 'Check your connection and try again.')}</span><br><button id="wRetry">Retry</button></div>`; const rb = q('#wRetry'); if (rb) rb.onclick = connect; }
+    catch (e) { if (reloadIfStale(e)) return; net.textContent = '○ Offline'; net.classList.remove('on'); q('#wRooms').innerHTML = `<div class="wempty">Can't reach the online lobby.<br><span class="small">${esc(e.message || 'Check your connection and try again.')}</span><br><button id="wRetry">Retry</button></div>`; const rb = q('#wRetry'); if (rb) rb.onclick = connect; }
   }
   q('#btnCreateGame').onclick = async () => { const pick = await pickMode({ title: 'Create Game' }); if (!pick) return; const p = await profile(); const mi = pick.mission ? missionLabel(pick.mission).replace(/^.*· /, '') : ''; joinRoom('w-' + Math.random().toString(36).slice(2, 8), (p.name || 'Survivor') + "'s " + (mi || 'game'), ui, { mission: pick.mission }); };
   q('#btnQuickJoin').onclick = async () => { const open = rooms.filter(r => r.players.length < roomMax(r)); if (open.length) { const r = open[0]; joinRoom(r.room, r.title, ui, { mission: r.mission }); } else { const p = await profile(); joinRoom('w-' + Math.random().toString(36).slice(2, 8), (p.name || 'Survivor') + "'s game", ui); } };
@@ -271,7 +276,7 @@ function buildUI() {
     const picked = await chooseLook(); if (!picked) return;
     const p = PR.getProfile(); ui.hide(); $('#title').classList.add('hidden');
     try { const tw = await import('./town/town.js'); await tw.enterTown({ look: Object.assign({}, picked.look, { name: (picked.look && picked.look.name) || (p && p.name) || 'Survivor' }), solo: true, room: pick.mission ? 'practice-' + pick.mission : 'town', mission: pick.mission, onExit: () => { $('#title').classList.remove('hidden'); ui.open('games'); } }); }
-    catch (e) { $('#title').classList.remove('hidden'); ui.open('games'); const s = q('#wGamesInfo'); if (s) { s.textContent = "Couldn't start practice. " + (e.message || 'Please try again.'); s.classList.add('warn'); } }
+    catch (e) { if (reloadIfStale(e)) return; $('#title').classList.remove('hidden'); ui.open('games'); const s = q('#wGamesInfo'); if (s) { s.textContent = "Couldn't start practice. " + (e.message || 'Please try again.'); s.classList.add('warn'); } }
   };
   async function loadBoard() {
     root.querySelectorAll('.wsort button').forEach(b => b.classList.toggle('sel', b.dataset.s === sort));
