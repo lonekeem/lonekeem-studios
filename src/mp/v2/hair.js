@@ -74,7 +74,7 @@ export const STYLES = {
   dreads: S({ T: .008, top: .007, side: .95, line: 'low', ears: false, locsN: 46, ex: [['locs', .3]] }),
   twists: S({ T: .007, top: .004, side: .9, line: 'std', locsN: 44, ex: [['locs', .07]] }),
   // New styles (original cartoon shapes, not copies of a brand). Long / ear-covering ones hide ears and earrings.
-  mullet: S({ T: .009, top: .016, side: .35, front: .01, locks: 16, lockAmp: 0.0028, tips: .4, line: 'std', drop: { front: 105, end: -0.3, flare: .022, curve: .22 } }),
+  mullet: S({ T: .008, top: .018, side: .2, front: .008, locks: 14, lockAmp: 0.0028, tips: .35, line: 'high', fade: .55, drop: { front: 88, end: -0.34, flare: .024, curve: .2 } }),
   shag: S({ T: .012, top: .018, side: .9, locks: 11, lockAmp: 0.0042, tips: .9, bangs: .55, line: 'fem', ears: false, part: 1, drop: { front: 52, end: -0.17, flare: .026, curve: .42, tipTurn: .01 } }),
   wolf: S({ T: .013, top: .024, side: .95, locks: 11, lockAmp: 0.0045, tips: 1, bangs: .7, line: 'fem', ears: false, part: 1, drop: { sh: .02, front: 48, end: -0.32, flare: .032, curve: .34 } }),
   halfup: S({ T: .011, top: .01, side: .95, locks: 16, lockAmp: 0.0024, line: 'fem', ears: false, part: 3, drop: { sh: .03, front: 58, end: -0.38, flare: .02, curve: .2 }, ex: [['bun', 'crown', .03]] }),

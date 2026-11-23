@@ -99,7 +99,7 @@ export const PANTS = [
   ['minishorts', 'Mini shorts', 'f', .22, .0, .004, 0, 0], ['leggings', 'Leggings', 'f', 1, .08, .002, 0, 0], ['highjeans', 'High-waist jeans', 'f', 1, .17, .005, 0, .004], ['miniskirt', 'Mini skirt', 'f', .2, .04, .006, .03, .09], ['midiskirt', 'Midi skirt', 'f', .5, .05, .006, .02, .13],
   ['longskirt', 'Long skirt', 'f', .9, .05, .006, .02, .15], ['trackpants', 'Track pants', 'u', 1, .03, .008, 0, .002], ['dresspants', 'Dress pants', 'u', 1, .05, .004, 0, .008], ['overalls', 'Overalls (shorts)', 'u', .42, .38, .01, 0, .004], ['kneeshorts', 'Cycling shorts', 'u', .4, .05, .002, 0, 0],
   ['palazzo', 'Palazzo pants', 'f', 1, .06, .01, .03, .04], ['flarejeans', 'Flare jeans', 'u', 1, .02, .005, .016, .03],
-  ['pencilskirt', 'Pencil skirt', 'f', .48, .06, .003, .004, .02], ['wrapskirt', 'Wrap skirt', 'f', .52, .05, .006, .018, .11],
+  ['wrapskirt', 'Wrap skirt', 'f', .52, .05, .006, .018, .11],
   ['culottes', 'Culottes', 'f', .68, .05, .01, .016, .02], ['cargoshorts', 'Cargo shorts', 'u', .5, .0, .016, 0, .006],
   ['pleatedskirt', 'Pleated skirt', 'f', .42, .05, .006, .024, .12], ['sweatpants', 'Sweatpants', 'u', 1, .03, .014, 0, -.001],
   ['highwide', 'High-waist wide-leg', 'f', 1, .16, .008, .022, .03], ['skaterskirt', 'Skater skirt', 'f', .28, .04, .006, .04, .12],
