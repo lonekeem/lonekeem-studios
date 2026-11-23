@@ -111,7 +111,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
       if (!near) continue; const det = near.crouch ? 7 : 14;
       if (z.st === 'look') { if (near && nd < det && (nd < 5 || col.los(pp.x, pp.z, near.x, near.z))) { z.st = 'chase'; z.lose = 0; onEvent && onEvent('notice', z); } else if ((z.lookT -= dt) <= 0 || Math.hypot(z.look[0] - pp.x, z.look[1] - pp.z) < 1.5) { z.st = 'wander'; z.node = -1; } }
       if (z.st === 'wander') { if (near && nd < det && (nd < 5 || col.los(pp.x, pp.z, near.x, near.z))) { z.st = 'chase'; z.lose = 0; onEvent && onEvent('notice', z); } }
-      else if (z.st === 'chase') { if (nd > det * 2.2) { z.lose += dt; if (z.lose > 3) { z.st = 'wander'; z.node = -1; pickNode(z); } } else z.lose = 0; }
+      else if (z.st === 'chase') { if (nd > det * (z.mission ? 6 : 2.2)) { z.lose += dt; if (z.lose > 3) { z.st = 'wander'; z.node = -1; pickNode(z); } } else z.lose = 0; }
       let dx, dz, sp = z.speed, move = true;
       if (z.st === 'chase') {
         const tx = near.x - pp.x, tz = near.z - pp.z; let d = nd;
@@ -145,5 +145,8 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
   function wound(z, dir, head) { if (!z.skin || !dir) return; const a = z.root.rotation.y; let wx = -dir.x, wz = -dir.z; const l = Math.hypot(wx, wz) || 1; wx /= l; wz /= l; const c = Math.cos(-a), sn = Math.sin(-a), lx = wx * c + wz * sn, lz = -wx * sn + wz * c; const side = lx > 0 ? 'L' : 'R', r = Math.random();
     const part = head ? 'head' : r < .3 ? 'chest' : r < .45 ? 'belly' : r < .7 ? (Math.random() < .5 ? 'uarm' : 'farm') + side : r < .85 ? 'thigh' + side : r < .95 ? 'shin' + side : 'neck'; addWound(z, { kind: 'bullet', part, nx: lx * .9, nz: lz * .9 || .1, size: .045 * R(.9, 1.2), run: R(.12, .3) }); }
   out.wound = wound;
+  // co-op missions: spawn a zombie at a spot (already chasing) and change how many roam the town
+  out.spawnAt = (x, z, o = {}) => { if (col.hit(x, z, .4)) return null; const c = make(x, z, o); c.node = -1; pickNode(c); if (o.chase !== false) { c.st = 'chase'; c.lose = 0; } c.mission = o.mission || null; return c; };
+  out.setTarget = n => { target = n; out.target = n; };
   out.update = update; return out;
 }

@@ -7,6 +7,8 @@ import { sb, getUser, signInGoogle, signOut, googleEnabled, installNativeAuth } 
 import { onlineAllowed, showKidsOnlineBlock } from '../ui/gate.js';
 import { profiles, openProfileScreen, syncOnSignIn, signedOut, onSyncStatus, watchTitle } from './cloud.js';
 import { getActiveId, getPlayLook, getChar, KEEM_ID } from './chars.js';
+import { pickMode, missionLabel, COOP_MAX } from './coop/picker.js';
+const roomMax = r => (r && r.mission ? COOP_MAX : MAX_PLAYERS);
 const $ = s => document.querySelector(s);
 const LS = (() => { try { localStorage.setItem('__w', 1); localStorage.removeItem('__w'); return localStorage; } catch (e) { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; } })();
 const MAX_PLAYERS = 8;
@@ -69,7 +71,7 @@ async function lobbyChannel() {
       if (isTestRoom(m.room, m)) continue;
       people++; if (!m.room) continue;
       const r = rooms.get(m.room) || { room: m.room, players: [], at: Infinity, host: '', avatar: null };
-      r.players.push(m.name || 'Survivor'); if ((m.at || 0) < r.at) { r.at = m.at || 0; r.host = m.name || 'Survivor'; r.avatar = m.avatar || null; r.title = m.title || ''; }
+      r.players.push(m.name || 'Survivor'); if ((m.at || 0) < r.at) { r.at = m.at || 0; r.host = m.name || 'Survivor'; r.avatar = m.avatar || null; r.title = m.title || ''; r.mission = m.mission || null; }
       rooms.set(m.room, r);
     }
     L.rooms = [...rooms.values()].sort((a, b) => b.players.length - a.players.length || a.at - b.at); L.people = people; L.onChange && L.onChange();
@@ -99,10 +101,10 @@ async function joinRoom(room, title, ui, opts = {}) {
     const p = PR.getProfile(); const look = Object.assign({}, picked.look, { name: (picked.look && picked.look.name) || (p && p.name) || 'Survivor' });
     let L = null;
     if (!test) {
-      try { L = await lobbyChannel(); await L.ch.track({ room, title: title || (p.name + "'s game"), name: p.name, char: look.name, avatar: p.avatarUrl || null, at: Date.now() }); } catch (e) { console.warn('[world] could not list this game in the lobby:', e.message); }
+      try { L = await lobbyChannel(); await L.ch.track({ room, title: title || (p.name + "'s game"), name: p.name, char: look.name, avatar: p.avatarUrl || null, at: Date.now(), mission: opts.mission || null }); } catch (e) { console.warn('[world] could not list this game in the lobby:', e.message); }
     }
     const tw = await import('./town/town.js');
-    await tw.enterTown({ look, room, local: test, onExit: () => { try { L && L.ch.untrack(); } catch (e) { /* ignore */ } back(); } });
+    await tw.enterTown({ look, room, local: test, mission: opts.mission || null, onExit: () => { try { L && L.ch.untrack(); } catch (e) { /* ignore */ } back(); } });
   } catch (e) { console.warn('[world] join failed:', e && e.message); back("Couldn't start the game. " + (e && e.message ? e.message : 'Please try again.')); }
 }
 
@@ -240,8 +242,8 @@ function buildUI() {
   function renderRooms(rooms) {
     const el = q('#wRooms');
     if (!rooms.length) { el.innerHTML = `<div class="wempty">No open games right now.<br><span class="small">Tap <b>Create Game</b> and others can join you.</span></div>`; return; }
-    el.innerHTML = rooms.map(r => { const n = r.players.length, full = n >= MAX_PLAYERS; return `<div class="wroom">${avatarHTML(r.host, r.avatar)}<div class="wrn"><b>${esc(r.title || r.host + "'s game")}</b><span class="small">Quiet Falls · free roam</span></div><span class="wcnt${full ? ' full' : ''}">${n}/${MAX_PLAYERS}</span><button data-room="${esc(r.room)}" ${full ? 'disabled' : ''}>${full ? 'Full' : 'Join'}</button></div>`; }).join('');
-    el.querySelectorAll('button[data-room]').forEach(b => b.onclick = () => { const r = rooms.find(x => x.room === b.dataset.room); joinRoom(r.room, r.title, ui); });
+    el.innerHTML = rooms.map(r => { const n = r.players.length, mx = roomMax(r), full = n >= mx; return `<div class="wroom">${avatarHTML(r.host, r.avatar)}<div class="wrn"><b>${esc(r.title || r.host + "'s game")}</b><span class="small">${esc(missionLabel(r.mission))}</span></div><span class="wcnt${full ? ' full' : ''}">${n}/${mx}</span><button data-room="${esc(r.room)}" ${full ? 'disabled' : ''}>${full ? 'Full' : 'Join'}</button></div>`; }).join('');
+    el.querySelectorAll('button[data-room]').forEach(b => b.onclick = () => { const r = rooms.find(x => x.room === b.dataset.room); joinRoom(r.room, r.title, ui, { mission: r.mission }); });
   }
   let rooms = [];
   async function connect() {
@@ -261,13 +263,14 @@ function buildUI() {
     }
     catch (e) { net.textContent = '○ Offline'; net.classList.remove('on'); q('#wRooms').innerHTML = `<div class="wempty">Can't reach the online lobby.<br><span class="small">${esc(e.message || 'Check your connection and try again.')}</span><br><button id="wRetry">Retry</button></div>`; const rb = q('#wRetry'); if (rb) rb.onclick = connect; }
   }
-  q('#btnCreateGame').onclick = async () => { const p = await profile(); joinRoom('w-' + Math.random().toString(36).slice(2, 8), (p.name || 'Survivor') + "'s game", ui); };
-  q('#btnQuickJoin').onclick = async () => { const open = rooms.filter(r => r.players.length < MAX_PLAYERS); if (open.length) { const r = open[0]; joinRoom(r.room, r.title, ui); } else { const p = await profile(); joinRoom('w-' + Math.random().toString(36).slice(2, 8), (p.name || 'Survivor') + "'s game", ui); } };
+  q('#btnCreateGame').onclick = async () => { const pick = await pickMode({ title: 'Create Game' }); if (!pick) return; const p = await profile(); const mi = pick.mission ? missionLabel(pick.mission).replace(/^.*· /, '') : ''; joinRoom('w-' + Math.random().toString(36).slice(2, 8), (p.name || 'Survivor') + "'s " + (mi || 'game'), ui, { mission: pick.mission }); };
+  q('#btnQuickJoin').onclick = async () => { const open = rooms.filter(r => r.players.length < roomMax(r)); if (open.length) { const r = open[0]; joinRoom(r.room, r.title, ui, { mission: r.mission }); } else { const p = await profile(); joinRoom('w-' + Math.random().toString(36).slice(2, 8), (p.name || 'Survivor') + "'s game", ui); } };
   q('#btnPractice').onclick = async () => {
+    const pick = await pickMode({ title: 'Practice Alone', practice: true }); if (!pick) return;
     const PR = await profiles(); if (!PR.hasProfile()) { ui.hide(); const made = await openProfileScreen('auto'); if (!made) { $('#title').classList.remove('hidden'); ui.open('games'); return; } ui.show(); }
     const picked = await chooseLook(); if (!picked) return;
     const p = PR.getProfile(); ui.hide(); $('#title').classList.add('hidden');
-    try { const tw = await import('./town/town.js'); await tw.enterTown({ look: Object.assign({}, picked.look, { name: (picked.look && picked.look.name) || (p && p.name) || 'Survivor' }), solo: true, onExit: () => { $('#title').classList.remove('hidden'); ui.open('games'); } }); }
+    try { const tw = await import('./town/town.js'); await tw.enterTown({ look: Object.assign({}, picked.look, { name: (picked.look && picked.look.name) || (p && p.name) || 'Survivor' }), solo: true, room: pick.mission ? 'practice-' + pick.mission : 'town', mission: pick.mission, onExit: () => { $('#title').classList.remove('hidden'); ui.open('games'); } }); }
     catch (e) { $('#title').classList.remove('hidden'); ui.open('games'); const s = q('#wGamesInfo'); if (s) { s.textContent = "Couldn't start practice. " + (e.message || 'Please try again.'); s.classList.add('warn'); } }
   };
   async function loadBoard() {
@@ -288,7 +291,7 @@ function installHook(ui) {
   if (typeof window === 'undefined' || !isLocal()) return;
   window.__atqWorld = Object.assign(window.__atqWorld || {}, {
     openOnline, joinRoom, topPlayers, isTestRoom, ui,
-    joinTestRoom: (room, title) => { if (!UI) UI = buildUI(); return joinRoom(room, title || 'Test game', UI, { test: true }); },
+    joinTestRoom: (room, title, mission) => { if (!UI) UI = buildUI(); return joinRoom(room, title || 'Test game', UI, { test: true, mission: mission || null }); },
   });
 }
 
