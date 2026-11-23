@@ -13,8 +13,8 @@ android {
         applicationId "com.lonekeemstudios.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 126
-        versionName "1.9.98-debug"
+        versionCode 127
+        versionName "1.9.99-debug"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
