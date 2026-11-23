@@ -80,7 +80,7 @@ The old cinematic movie version is preserved at tag `cinematic-final`.
 - Multiplayer upgrade: new Bitmoji-style characters (full 360 creator spin), story controls/moves/driving (working reverse), story sounds (not Keem's voice), all story guns + grenades with story-style explosions, bat/pan in hand, hit flinch, iPhone audio unlock, Google sign-in in the multiplayer menu (admin unlocks Play as Keem), store moved off the road, minimap.
 
 ### v1.9.19
-- Chapters 12 (Sublevel B) and 13 (Biscuit Goes Rogue) go live: fully voiced (114 new lines), the Mom/Nia reunion hug, Doreen the lunch lady boss, the Biscuit chase through the children's ward and cafeteria, and a "To be continued" end card after chapter 13. Chapters 14-16 stay hidden. Multiplayer (Beta), first-person, gore and town NPCs unchanged.
+- Chapters 12 (Sublevel B) and 13 (Biscuit Goes Rogue) go live: fully voiced (114 new lines), the Mom/Nia reunion hug, Doreen the lunch lady boss, the Biscuit chase through the children's ward and cafeteria, and Chapter 14 (Every Bite) continues the story after the cafeteria alarm, with a new research-lab set, Harbor Authority troopers, and a new boss. Chapters 15-16 stay hidden. Multiplayer (Beta), first-person, gore and town NPCs unchanged.
 
 ### v1.9.18
 - Multiplayer (Beta) goes live: Title > Multiplayer (Beta) > creator > Quiet Falls free-roam town (houses without doors until you buy one, gas station, KL cars with fuel, loot, roaming zombies, shop + bag). Guests play online now via Realtime rooms (falls back to solo); Google sign-in shows "coming soon" until it is set up. The story game is unchanged.

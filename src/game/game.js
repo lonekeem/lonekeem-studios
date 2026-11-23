@@ -518,7 +518,7 @@ export class Game {
     const pd = this.player.root.position.distanceTo(pos); if (pd < R * 0.6 && !this.truck.driving) this.hurt(40 * (1 - pd / R), pos); }
 
   // ---------- combat ----------
-  hurt(n, from) { if (this.dying || this.state.roll > 0 || this.god || this.grace > 0 || this.dlgCur && this.cut) return; this.hp -= n; this.audio.hurt(); this.flashScreen('hit'); this.shake(0.35); this.lastHurt = this.t;
+  hurt(n, from) { if (this.dying || this.state.roll > 0 || this.god || this.grace > 0 || this.dlgCur && this.cut) return; if (n > 0 && this.save) this.save.bites = (this.save.bites || 0) + 1; this.hp -= n; this.audio.hurt(); this.flashScreen('hit'); this.shake(0.35); this.lastHurt = this.t;
     if (this.settings.gore && Math.random() < .5) this.screenSplat(); const p = this.player.root.position.clone(); p.y = 1.2; this.blood(p, V3(0, .3, 0), 8, 2); if (this.settings.gore && n >= 5) this.woundFrom(this.player, from, 'melee');
     if (this.hp <= 0) { this.hp = 0; this.die(from); } else if (n > 15) { this.player.play('Hit_Chest', { once: true, cb: () => { this.player.curName = ''; } }); this.state.stun = 0.35; } }
   die(from) { const P = this.player; this.dying = { t: 0, t0: performance.now() }; this.dlgQ = []; this.dlgCur = null; endDialogueFace(this); $('#dlg').classList.remove('on'); this.audio.beat(0); this.audio.scream(0.15); P.play('Death01', { once: true });

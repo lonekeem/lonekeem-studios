@@ -7,7 +7,7 @@ import { buildUpper } from './ch12_hospital.js';
 import { act } from './ch12_acting.js';
 import { spawnBiscuit, tickBiscuit, hopTo } from './ch13_rabbit.js';
 
-export const meta = { n: 13, title: 'Biscuit Goes Rogue', endQuote: '“He\'s sitting on the soup.”', nextTeaser: 'To be continued — Chapter 14 coming soon.' };
+export const meta = { n: 13, title: 'Biscuit Goes Rogue', endQuote: '“He\'s sitting on the soup.”' };
 export const speakers = { doreen: 'Lunch Lady Doreen' };
 export const Z0 = -3300;
 let API = null, DOORS = null;

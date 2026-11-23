@@ -40,5 +40,13 @@ Under Mass General, Vance's intercom guides the family through the morgue (sleep
 New cast: Dana Pell (Mom), The Night Orderly.
 
 ## Chapter 13 — Biscuit Goes Rogue
-Biscuit bolts the moment someone says "soup". Chase him up through the pack room, gift shop (a runaway gurney gag), the children's ward (two locked room fights, kill-count clears) and into the cafeteria. Boss: Lunch Lady Doreen ("Lunch is served." / "Seconds?"), slow soup puddles, ladle slams. Finale: Biscuit is sitting on the soup kettle; Keem picks him up. Vance: "…the alarm was not false." Card shows "To be continued — Chapter 14 coming soon."
+Biscuit bolts the moment someone says "soup". Chase him up through the pack room, gift shop (a runaway gurney gag), the children's ward (two locked room fights, kill-count clears) and into the cafeteria. Boss: Lunch Lady Doreen ("Lunch is served." / "Seconds?"), slow soup puddles, ladle slams. Finale: Biscuit is sitting on the soup kettle; Keem picks him up. Vance: "…the alarm was not false."
 New cast: Lunch Lady Doreen.
+
+## Chapter 14 — Every Bite
+Minutes after the cafeteria. The alarm is real. The family brings Biscuit to Vance's Level 9 research lab, where Reyes is already waiting. Vance runs three samples — Keem, Mom, and Biscuit — and the analyzer plays back every bite Keem has taken tonight. The first result stops the room: Keem is immune. Mom confesses she has always known, because she carried the virus without turning and it passed to him. That is why she was at Mass General, and why Subject One failed.
+
+Then a second result lands. Biscuit has the same marker. Vance pulls a year-one animal-trial file: Subject R-07, "failed to turn," signed out of the building by D. Pell. Mom brought the rabbit home when Nia was four and told them he was from the shop on Elm. The soup chase suddenly has a second meaning: Biscuit knew these halls. Vance wanted the rabbit because he is the first proof the immunity can live in something that is not a Pell.
+
+The Harbor Authority storms the lab for "the boy and the animal." Vance, who once said "I could. I won't," comes down and fights with a tranq rifle. Boss: the Warden, a riot-armored trooper who wants them alive — containment snares, and a grab for Biscuit. Vance stays behind to burn the samples and holds the lift. "Every single bite. Do not waste them." Card shows "To be continued — Chapter 15 coming soon."
+New cast: The Warden. Captain Riverside #23: "The Boy Who Wouldn't Turn".
