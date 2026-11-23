@@ -113,7 +113,7 @@ function loft(av, sd, st) {
   const heelHalf = (heelB.x1 - heelB.x0) / 2;
   const sect = (k) => {
     const b = B[k]; const u = (k + .5) / NU;
-    const pad = .01 + st.bulk * .45;
+    const pad = .014 + st.bulk * .5;
     let x0 = b.x0 - pad, x1 = b.x1 + pad;
     const toeK = Math.max(0, (u - .7) / .3); const extra = st.bulk * Math.sin(Math.min(1, u * 1.4) * Math.PI * .5);
     x0 -= extra * .4; x1 += extra * .4;
@@ -135,22 +135,21 @@ function loft(av, sd, st) {
     } else if (st.col >= 0) {
       top = Math.min(top, ank.y + .028 + st.col + .04 * ss(.22, .42, u) * (1 - ss(.55, .8, u)));
     } else {
-      // Scoop the ankle opening so flats/pumps/loafers read as shoes, not booties.
-      // Keep the vamp above the instep so skin never shows through.
-      const cover = b.y1 + .01 + instep * .008;
-      const collar = Math.max(ground + st.sole + .02, ank.y + Math.min(st.col, -0.004));
-      const open = 1 - ss(.05, .42, u);
+      // Low, level U-shaped opening around the ankle; rise only over the vamp.
+      const cover = b.y1 + .012 + instep * .01;
+      const collar = Math.max(ground + st.sole + .018, ank.y - 0.022 + Math.min(st.col, 0) * 0.5);
+      const open = 1 - ss(.26, .60, u);
       top = cover * (1 - open) + collar * open;
-      if (open < 0.92) top = Math.max(top, cover);
+      if (open < 0.45) top = Math.max(top, cover);
     }
     // Wedges fill the arch; post heels keep a thin sole so the heel reads as a separate piece.
     const drop = st.wedge ? heelDrop(st, u) : 0;
     const y0 = ground - .003 - drop;
     if (st.col >= 0) {
       top = Math.max(top, ground + st.sole + .025 * (1 - toeK * .6));
-      top = Math.max(top, b.y1 + .008);
-    } else if (u > 0.22) {
-      top = Math.max(top, b.y1 + .01 + instep * .006);
+      top = Math.max(top, b.y1 + .01);
+    } else if (u > 0.48) {
+      top = Math.max(top, b.y1 + .012 + instep * .008);
     }
     if (st.puffy && st.col < .06) { x0 -= .006; x1 += .006; top += .006; }
     const soleLip = y0 + st.sole + drop + .006;
@@ -163,7 +162,7 @@ function loft(av, sd, st) {
       if (st.openToe) { const cut = ss(.52, .74, u); top = soleLip + (top - soleLip) * (1 - cut); }
       if (st.openHeel) { const cut = 1 - ss(.16, .40, u); top = soleLip + (top - soleLip) * (1 - cut * .96); }
     }
-    return { x0, x1, y0, y1: top, z: z0 + u * len, u };
+    return { x0, x1, y0, y1: top, z: z0 + u * len, u, bx0: b.x0, bx1: b.x1, by1: b.y1 };
   };
   for (let k = 0; k < NU; k++) rings.push(sect(k));
   for (let it = 0; it < 4; it++) {
@@ -183,7 +182,18 @@ function loft(av, sd, st) {
   for (let c = 1; c <= capN; c++) { const a = c / capN * Math.PI / 2; const f = Math.cos(a); const r = { ...toe }; const hw = (toe.x1 - toe.x0) / 2, xc = (toe.x1 + toe.x0) / 2; const wf = Math.max(.12, Math.pow(f, .6 + (1 - tr) * .8)); r.x0 = xc - hw * wf; r.x1 = xc + hw * wf; r.y1 = toe.y0 + (toe.y1 - toe.y0) * Math.max(.25, Math.pow(f, .5)); if (st.openToe || st.slide) r.y1 = toeLip + Math.max(0, f) * (st.thong ? .002 : .005); r.z = toe.z + (.012 + st.bulk * .8 + (1 - tr) * .02) * Math.sin(a); r.u = 1; out.push(r); }
   const N = out.length;
   for (let k = 0; k < N; k++) { const r = out[k]; const xc = (r.x0 + r.x1) / 2, hw = (r.x1 - r.x0) / 2, yc = (r.y0 + r.y1) / 2, hh = (r.y1 - r.y0) / 2;
-    for (let j = 0; j <= NV; j++) { const th = j / NV * Math.PI * 2; const c = Math.cos(th), s = Math.sin(th); const e = s < 0 ? 5 : 4.2; const x = xc + hw * Math.sign(c) * Math.pow(Math.abs(c), 2 / e), y = yc + hh * Math.sign(s) * Math.pow(Math.abs(s), 2 / (s < 0 ? 6 : 3.2));
+    const fx0 = (r.bx0 != null ? r.bx0 : r.x0 + .004) - .006, fx1 = (r.bx1 != null ? r.bx1 : r.x1 - .004) + .006, fy1 = (r.by1 != null ? r.by1 : r.y1) + .006, fy0 = r.y0 + .002;
+    for (let j = 0; j <= NV; j++) { const th = j / NV * Math.PI * 2; const c = Math.cos(th), s = Math.sin(th);
+      const nX = s < 0 ? 6 : 8, nY = s < 0 ? 6 : 8;
+      let x = xc + hw * Math.sign(c) * Math.pow(Math.abs(c), 2 / nX), y = yc + hh * Math.sign(s) * Math.pow(Math.abs(s), 2 / nY);
+      if (x > fx0 && x < fx1 && y > fy0 && y < fy1) {
+        const dx = x - xc, dy = y - yc; let t = 1e9;
+        if (dx > 1e-6) t = Math.min(t, (fx1 - xc) / dx);
+        if (dx < -1e-6) t = Math.min(t, (fx0 - xc) / dx);
+        if (dy > 1e-6) t = Math.min(t, (fy1 - yc) / dy);
+        if (dy < -1e-6) t = Math.min(t, (fy0 - yc) / dy);
+        if (t < 1e8) { x = xc + dx * t; y = yc + dy * t; }
+      }
       pos.push(x, y, r.z); uv.push(k / (N - 1), j / NV, (y - r.y0) / Math.max(.001, r.y1 - r.y0), (x - xc) / Math.max(.001, hw)); } }
   for (let k = 0; k < N - 1; k++) for (let j = 0; j < NV; j++) { const a = k * (NV + 1) + j, b = a + NV + 1; idx.push(a, a + 1, b, a + 1, b + 1, b); }
   const cap = (k, flip) => { const c0 = pos.length / 3; const r = out[k]; pos.push((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2, r.z); uv.push(k / (N - 1), .25, .5, 0); for (let j = 0; j < NV; j++) { const a = k * (NV + 1) + j; flip ? idx.push(c0, a + 1, a) : idx.push(c0, a, a + 1); } };
@@ -206,7 +216,7 @@ function vampAt(av, sd, st, L, u, thick) {
   const k = Math.min(NU - 1, Math.max(0, Math.floor(NU * u)));
   const b = B[k]; const xc = (b.x0 + b.x1) / 2, hw = Math.max(0.02, (b.x1 - b.x0) / 2 + 0.006);
   const z = z0 + len * u;
-  const y0 = ground + st.sole + 0.003, y1 = b.y1 + (st.slide ? 0.016 : 0.009);
+  const y0 = ground + st.sole + 0.003, y1 = b.y1 + (st.slide ? 0.016 : 0.014);
   const pts = [];
   for (let i = 0; i <= 16; i++) { const a = Math.PI * (i / 16); pts.push(new THREE.Vector3(xc + Math.cos(a) * hw, y0 + Math.pow(Math.sin(a), 1.35) * (y1 - y0), z)); }
   const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, thick, 8, false); return tagTube(g, u, .25, .7);
@@ -281,11 +291,11 @@ function tasselDrops(av, sd, st, L) {
   const { z0, len } = L; const { B } = footBins(av, sd);
   const k = Math.min(NU - 1, Math.floor(NU * 0.52));
   const b = B[k]; const xc = (b.x0 + b.x1) / 2, z = z0 + len * 0.52;
-  const y = b.y1 + 0.002;
+  const y = b.y1 + 0.01;
   const geos = [];
   for (const s of [-1, 1]) {
     const g = new THREE.SphereGeometry(0.006, 10, 8);
-    g.scale(0.7, 2.4, 0.7); g.translate(xc + s * 0.011, y - 0.012, z + 0.01);
+    g.scale(0.7, 2.1, 0.7); g.translate(xc + s * 0.013, y - 0.006, z + 0.014);
     geos.push(tagTube(g, 0.52, 0.25, 0.85));
   }
   return geos;
