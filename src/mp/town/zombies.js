@@ -37,6 +37,7 @@ function settleCorpse(z) { try { z.root.updateMatrixWorld(true); const ys = []; 
   if (minY < 1e8) { z.root.position.y = Math.max(-.05, Math.min(.35, z.root.position.y + (.02 - minY))); z.root.updateMatrixWorld(true); } } catch (e) { /* ignore */ } }
 const nd0 = z => { const g = window.__mpTown; return g && g.me ? Math.hypot(z.root.position.x - g.me.x, z.root.position.z - g.me.z) : 0; };
 export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer, onNoise, models, bodies = [], fogFar = 105, target = 14, seed = 7, deadVisible = 120, onEvent }) {
+  let nightMul = 1; // v1.9.51: set by the day/night cycle (1 by day, up to 1.35 at night)
   if (!models || !models.lib) models = await loadZombieModels();
   const lib = models.lib, col = W.col, nav = W.nav, rnd = mulberry(seed * 7919 + 1), graph = roadGraph();
   const zs = []; const pools = []; const S = { alive: 0, dead: 0, spawned: 0, killed: 0, rendered: 0 }; const out = { zombies: zs, stats: () => S, target };
@@ -53,7 +54,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     const c = new Char(lib, look, ks.scale); c.root.position.set(x, 0, z); c.root.rotation.y = R(0, 6.28); scene.add(c.root);
     const runner = !!ks.runner;
     c.zvo = zVoiceAssign(look, { kind });
-    Object.assign(c, { z: true, kind: ks.kind, hp: ks.hp, maxHp: ks.maxHp, runner, tank: !!ks.tank, spitter: !!ks.spitter, armor: ks.armor, speed: ks.speed, st: 'wander', cd: R(0, 1), dead: false, deadT: 0, id: R(0, 10), vel: new THREE.Vector3(), off: [R(-2.6, 2.6), R(-2.6, 2.6)], node: -1, prev: -1, tgt: null, hitAt: 0, hitCd: 0, tgT: 0, hurtT: 0, noHead: false, hp0: ks.hp });
+    Object.assign(c, { z: true, kind: ks.kind, hp: Math.round(ks.hp * nightMul), maxHp: Math.round(ks.maxHp * nightMul), runner, tank: !!ks.tank, spitter: !!ks.spitter, armor: ks.armor, speed: ks.speed * (1 + (nightMul - 1) * .4), st: 'wander', cd: R(0, 1), dead: false, deadT: 0, id: R(0, 10), vel: new THREE.Vector3(), off: [R(-2.6, 2.6), R(-2.6, 2.6)], node: -1, prev: -1, tgt: null, hitAt: 0, hitCd: 0, tgT: 0, hurtT: 0, noHead: false, hp0: Math.round(ks.hp * nightMul) });
     dressKind(c, kind);
     c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.2 : (c.tank ? .48 : .62) }); const a = c.act(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop') || c.act('Walk_Loop'); if (a) a.time = R(0, a.getClip().duration);
     try { c.mixer.update(0); zBones(c); } catch (e) { /* first pose */ }
@@ -148,7 +149,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     }
     S.alive = alive; S.dead = dead;
     // keep the count up: spawn at a road end when nobody can see it
-    if (alive < target && (spawnT -= dt) <= 0) { spawnT = 3; edgeSpawn(); }
+    if (alive < Math.round(target * nightMul) && (spawnT -= dt) <= 0) { spawnT = 3; edgeSpawn(); }
     // bodies stay; only draw the nearest `deadVisible`
     if ((deadT -= dt) <= 0) { deadT = 1; const ds = zs.filter(z => z.dead); if (ds.length > deadVisible) { ds.forEach(z => { z._d = Math.hypot(z.root.position.x - p0.x, z.root.position.z - p0.z); }); ds.sort((a, b) => a._d - b._d); ds.forEach((z, k) => { z.root.visible = k < deadVisible; if (z.pool) z.pool.visible = k < deadVisible; }); } S.rendered = Math.min(ds.length, deadVisible); }
   }
@@ -161,6 +162,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
   out.wound = wound;
   // co-op missions: spawn a zombie at a spot (already chasing) and change how many roam the town
   out.spawnAt = (x, z, o = {}) => { if (col.hit(x, z, .4)) return null; const c = make(x, z, o); c.node = -1; pickNode(c); if (o.chase !== false) { c.st = 'chase'; c.lose = 0; } c.mission = o.mission || null; return c; };
+  out.setNight = k => { nightMul = k; };
   out.setTarget = n => { target = n; out.target = n; };
   out.update = update; return out;
 }

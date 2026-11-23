@@ -26,6 +26,7 @@ import { AudioSys } from '../../audio.js';
 import { weaponMesh } from '../../game/chars.js';
 import { WEAPONS, writeSave } from '../../game/data.js';
 import { onAppLeave, onAppReturn } from '../../bgPause.js';
+import { townDayNight } from './townNight.js';
 
 function nameTag(text) { const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#000a'; g.roundRect ? g.roundRect(8, 10, 240, 44, 14) : g.rect(8, 10, 240, 44); g.fill(); g.fillStyle = '#fff'; g.font = '600 28px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text.slice(0, 16), 128, 33); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true })); s.scale.set(.5, .125, 1); s.renderOrder = 20; return s; }
 
@@ -54,13 +55,9 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   root.append(canvas, vig, gaugeC, panel, pausePanel, dead); stage.append(root);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true }); renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05; renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const scene = new THREE.Scene(); const FOG_FAR = 105; scene.background = new THREE.Color('#aab5b8'); scene.fog = new THREE.Fog('#aab5b8', 28, FOG_FAR);
-  scene.add(new THREE.HemisphereLight('#dfe8f0', '#59614a', 1.25)); const sun = new THREE.DirectionalLight('#ffeccc', 2.1); sun.position.set(36, 60, 28); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = sc.bottom = -34; sc.right = sc.top = 34; sc.near = 5; sc.far = 160; sun.shadow.bias = -.0006; sun.shadow.normalBias = .04; scene.add(sun, sun.target);
+  const hemi = new THREE.HemisphereLight('#dfe8f0', '#59614a', 1.25); scene.add(hemi); const sun = new THREE.DirectionalLight('#ffeccc', 2.1); sun.position.set(36, 60, 28); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = sc.bottom = -34; sc.right = sc.top = 34; sc.near = 5; sc.far = 160; sun.shadow.bias = -.0006; sun.shadow.normalBias = .04; scene.add(sun, sun.target);
   const cam = new THREE.PerspectiveCamera(58, 1, .1, 320);
-  // v1.9.50: gradient sky dome (hazy horizon that matches the fog -> soft blue zenith, warm glow toward the sun) instead of a flat grey backdrop; quality scales pixel ratio + shadow map on phones
-  { const sd = new THREE.Mesh(new THREE.SphereGeometry(300, 24, 12), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { uSun: { value: new THREE.Vector3(36, 60, 28).normalize() } },
-      vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); vec4 p = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * p; gl_Position.z = gl_Position.w * .9999; }',
-      fragmentShader: 'uniform vec3 uSun; varying vec3 vD; void main(){ float h = clamp(vD.y, 0.0, 1.0); vec3 hor = vec3(.667, .71, .722), zen = vec3(.36, .55, .76); vec3 c = mix(hor, zen, pow(h, .55)); float s = max(dot(normalize(vD), uSun), 0.0); c += vec3(1.0, .86, .62) * (pow(s, 24.0) * .35 + pow(s, 400.0) * .9); c = mix(c, hor, smoothstep(.06, -.02, vD.y)); gl_FragColor = vec4(pow(c, vec3(2.2)), 1.0);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}' }));
-    sd.frustumCulled = false; sd.renderOrder = -10; sd.onBeforeRender = () => sd.position.copy(cam.position); scene.add(sd); }
+  // v1.9.51: the sky dome now lives in townNight.js (day/night cycle)
   try { const qs = JSON.parse(localStorage.getItem('atq3.settings') || '{}').qual; const coarse = matchMedia('(pointer:coarse)').matches; const q = qs && qs !== 'auto' ? qs : (coarse ? 'low' : 'high');
     if (q === 'low') { renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5)); sun.shadow.mapSize.set(1024, 1024); } else if (q === 'med') renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75)); } catch (e) { /* defaults */ }
   // ---- world ----
@@ -118,6 +115,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   const Z = await createZombies({ scene, W, camera: cam, bodies: BODIES, fogFar: 105, deadVisible: 90, target: 12, getPlayers: () => [{ x: me.x, z: me.z, ry: me.ry, drv: !!me.drv, id: 'me', crouch: false }, ...[...remotes.values()].filter(r => r.av).map(r => ({ x: r.x, z: r.z, id: r.id, drv: false }))], onHitPlayer: (dmg, from) => { if (!from || from.id === 'me') hurt(dmg); }, onEvent: (ev, z) => zEvent(ev, z) });
   // ---- toasts / hurt ----
   let toastTm = 0; const toast = (m, sec = 1.8, kind) => { const e = $q('#toast'); if (!e) return; e.textContent = m; e.classList.toggle('wep', kind === 'wep'); e.classList.add('on'); clearTimeout(toastTm); toastTm = setTimeout(() => { e.classList.remove('on'); e.classList.remove('wep'); }, sec * 1000); };
+  const DN = townDayNight({ scene, renderer, sun, hemi, cam, W, Z, toast, fogFar: FOG_FAR, getMe: () => me }); // v1.9.51 day/night (wall clock = same sky for everyone online)
   const hurt = (dmg) => { if (me.dead > 0 || me.prot > 0 || S.roll > 0) return; me.hp = Math.max(0, me.hp - dmg); try { aud.hurt(); } catch (e) { /* ignore */ } vig.style.opacity = 1; setTimeout(() => vig.style.opacity = 0, 180); if (me.hp <= 0) die(); else if (dmg >= 8 && !me.drv) { S.stun = .25; const P = me.av && me.av.motion; if (P && P.play && !fp) P.play('Hit_Chest', { once: true, force: true, speed: 1.6, cb: () => { P.curName = ''; } }); } };
   // death -> countdown -> respawn. me.dead is the countdown in seconds (>0 only while dead; it is ALWAYS reset to exactly 0 on respawn: a negative leftover is truthy and used to block hurt/fire/use forever).
   const RESPAWN_T = 3.2, PROT_T = 2;
@@ -324,7 +322,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
     for (const [id, p] of net.peers) { const r = remotes.get(id); if (!r || !r.av || !p.s) continue; const s = p.s; r.x += (s.x - r.x) * Math.min(1, dt * 10); r.z += (s.z - r.z) * Math.min(1, dt * 10); r.ry += angDiff(r.ry, s.ry) * Math.min(1, dt * 10); r.sp += ((s.sp || 0) - r.sp) * Math.min(1, dt * 8); r.av.root.visible = !s.drv; r.av.root.position.set(r.x, 0, r.z); r.av.root.rotation.y = r.ry; if (r.av.motion) { r.spd = (r.spd || 0) + ((s.spd ?? (s.sp || 0) * 3.1) - (r.spd || 0)) * Math.min(1, dt * 8); if ((s.g || 0) !== (r.g || 0) || (s.g && !r.gm)) { r.g = s.g || 0; r.gm = mountGun(r.av.motion, r.g, r.gm, r.av); } driveRemote(r.av.motion, dt, { spd: r.spd, f: s.f, g: s.g }); stepSnd(r.av.motion, r.x, r.z, .3, 'n'); } else animate(r.av, t + id.length, r.sp); r.tag.position.set(r.x, 1.95, r.z); r.tag.visible = !s.drv; }
     stAcc += dt; if (stAcc > .08) { stAcc = 0; net.state({ x: me.x, z: me.z, ry: me.ry, sp: me.sp, spd: +(S.spd || 0).toFixed(2), f: (S.crouch ? 1 : 0) | (S.roll > 0 ? 2 : 0) | (S.y > .05 ? 4 : 0) | (S.atk > 0 ? 8 : 0) | (S.atk > 0 && bag.best().name !== 'fists' ? 16 : 0) | (S.stun > 0 ? 32 : 0) | (me.dead > 0 ? 64 : 0), drv: c ? 1 : 0, g: GS.shown || 0 }); }
     // zombies / nav
-    navAcc += dt; if (navAcc > .45) { navAcc = 0; W.nav.field(me.x, me.z); } try { if (aud.ctx && aud.listen) aud.listen(cam, false); } catch (e) { /* ignore */ } perfLOD(dt); if (Z) { Z.update(dt, t); zombieLOD(); } updateLoot(W, dt);
+    navAcc += dt; if (navAcc > .45) { navAcc = 0; W.nav.field(me.x, me.z); } try { if (aud.ctx && aud.listen) aud.listen(cam, false); } catch (e) { /* ignore */ } perfLOD(dt); DN.update(dt); if (Z) { Z.update(dt, t); zombieLOD(); } updateLoot(W, dt);
     // roofs + camera
     const inb = insideB(me.x, me.z); for (const b of W.buildings) if (b.roof) b.roof.visible = b !== inb; W.closed.update(me.x, me.z);
     { const wantNear = fp && !c ? .06 : .1; if (cam.near !== wantNear) { cam.near = wantNear; cam.updateProjectionMatrix(); } } // first person: tight near plane, own avatar (head/hair/hat/face) is hidden above

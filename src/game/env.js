@@ -85,20 +85,20 @@ diffuseColor.rgb *= col;`); };
 
   // ---------- sky dome + nicer fog colours
   const SKY_H = new THREE.Color('#34454c'), SKY_Z = new THREE.Color('#0a121c');
-  const skyU = { uTime: { value: 0 }, uHor: { value: SKY_H }, uZen: { value: SKY_Z }, uMoon: { value: new V3(-30, 50, 20).normalize() }, uClouds: { value: low ? 0 : 1 } };
+  const skyU = { uTime: { value: 0 }, uHor: { value: SKY_H }, uZen: { value: SKY_Z }, uMoon: { value: new V3(-30, 50, 20).normalize() }, uClouds: { value: low ? 0 : 1 }, uDay: { value: 0 } }; // v1.9.51 uDay: Survival day/night
   const sky = new THREE.Mesh(new THREE.SphereGeometry(200, 24, 12), new THREE.ShaderMaterial({ uniforms: skyU, side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false,
     vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
-    fragmentShader: `varying vec3 vD; uniform float uTime, uClouds; uniform vec3 uHor, uZen, uMoon;
+    fragmentShader: `varying vec3 vD; uniform float uTime, uClouds, uDay; uniform vec3 uHor, uZen, uMoon;
 float h21(vec2 p){ p = fract(p*vec2(123.34,456.21)); p += dot(p,p+45.32); return fract(p.x*p.y); }
 float vn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f); return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y); }
 float fbm(vec2 p){ float a=.5, s=0.; for(int i=0;i<4;i++){ s+=a*vn(p); p=p*2.03+7.1; a*=.5; } return s; }
 void main(){ vec3 d = normalize(vD); float y = max(d.y, 0.);
  vec3 c = mix(uHor, uZen, pow(y, .55));
  c += uHor * .35 * exp(-y*9.);                 // haze band on the horizon
- float md = max(dot(d, uMoon), 0.); c += vec3(.55,.62,.75) * (pow(md, 900.) * 1.6 + pow(md, 40.) * .16 + pow(md, 6.) * .05);
+ float md = max(dot(d, uMoon), 0.); c += mix(vec3(.55,.62,.75), vec3(1.,.85,.6) * 1.6, uDay) * (pow(md, 900.) * 1.6 + pow(md, 40.) * .16 + pow(md, 6.) * .05);
  if (uClouds > .5 && d.y > -.02) { vec2 cp = d.xz / (d.y + .22) * 1.1 + vec2(uTime*.006, uTime*.0025); float n = fbm(cp); float cl = smoothstep(.42, .78, n) * smoothstep(-.02,.18,d.y);
-   vec3 cc = mix(vec3(.05,.07,.09), vec3(.22,.27,.33), pow(md,2.)*.9 + .25*n); c = mix(c, cc, cl*.8); }
- else { float st = step(.9965, h21(floor(d.xz/(d.y+.3)*90.))) * smoothstep(.15,.5,d.y) * .5; c += vec3(st); }
+   vec3 cc = mix(vec3(.05,.07,.09), vec3(.22,.27,.33), pow(md,2.)*.9 + .25*n); cc = mix(cc, mix(vec3(.42,.46,.5), vec3(.85,.86,.88), n), uDay); c = mix(c, cc, cl*.8); }
+ else { float st = step(.9965, h21(floor(d.xz/(d.y+.3)*90.))) * smoothstep(.15,.5,d.y) * .5; c += vec3(st) * (1. - uDay); }
  gl_FragColor = vec4(c, 1.); 
  #include <tonemapping_fragment>
  #include <colorspace_fragment>

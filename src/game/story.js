@@ -387,10 +387,10 @@ export const STORY = [
     update(g, dt) { const D = g.stepData; const al = g.alive().length; const PTS = [[-6, -212], [6, -214], [-20, -222], [18, -220], [0, -200], [-14, -250], [14, -252]];
       if (D.left > 0) { D.sp -= dt; if (D.sp <= 0 && al < 18) { D.sp = 1.6; const n = Math.min(D.left, 4); D.left -= n; for (let i = 0; i < n; i++) { const p = PTS[(Math.random() * PTS.length) | 0];
           if (D.wave >= 5 && Math.random() < .12) g.spawnZ(p[0] + rnd(-3, 3), p[1] + rnd(-3, 3), { raider: true, hp: 90 + D.wave * 6, aggro: 99, gun: Math.random() < .5 ? 'smg' : 'rifle' });
-          else g.spawnZ(p[0] + rnd(-3, 3), p[1] + rnd(-3, 3), { aggro: 99, kind: mixSurvivalKind(D.wave), wave: D.wave }); } } }
+          else { const zz = g.spawnZ(p[0] + rnd(-3, 3), p[1] + rnd(-3, 3), { aggro: 99, kind: mixSurvivalKind(D.wave), wave: D.wave }); if (zz && g.dnNight) { zz.maxHp = Math.round((zz.maxHp || zz.hp) * 1.25); zz.hp = Math.round(zz.hp * 1.25); } } } } } // v1.9.52: tougher at night
       if (D.wave > 0 && D.left <= 0 && al === 0 && !D.clear) { D.clear = true; D.gap = 8; const bonus = 20 + D.wave * 15; g.addCash(bonus); g.floatText('Wave ' + D.wave + ' cleared · +$' + bonus, '#9f9');
         if (D.wave > D.best) { D.best = D.wave; g.LS.setItem('atq3.survBest', String(D.wave)); g.toast('New best: wave ' + D.wave + '!', 2); } g.checkpoint(); }
-      if (D.left <= 0 && al === 0 && (D.wave === 0 || D.clear)) { D.gap -= dt; if (D.gap <= 0) { D.wave++; D.clear = false; D.left = 5 + D.wave * 3; D.sp = 0; g.zombies = g.zombies.filter(z => { if (z.dead) g.scene.remove(z.root); return !z.dead; }); g.audio.roar && g.audio.roar(); } }
+      if (D.left <= 0 && al === 0 && (D.wave === 0 || D.clear)) { D.gap -= dt; if (D.gap <= 0) { D.wave++; D.clear = false; D.left = Math.round((5 + D.wave * 3) * (g.dnNight ? 1.3 : 1)); if (g.dnNight) g.toast('Night wave: more of them, and tougher.', 2.4); D.sp = 0; g.zombies = g.zombies.filter(z => { if (z.dead) g.scene.remove(z.root); return !z.dead; }); g.audio.roar && g.audio.roar(); } }
       const txt = 'Survival · Wave ' + D.wave + ' · ' + (D.wave && !D.clear ? (al + D.left) + ' left' : 'next wave in ' + Math.ceil(Math.max(0, D.gap)) + 's') + ' · Best ' + D.best; if (txt !== D.lt) { D.lt = txt; g.objective(txt, 'Pause → Armory to buy guns, ammo & upgrades with your cash.'); } } },
 ];
 

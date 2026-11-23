@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { survivalDN } from './daynight.js';
 import { partnerEnter, partnerUpdate, ventUse } from './partner.js';
 import { glowUpdate, keyModel, cardModel } from './glow.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -881,7 +882,7 @@ export class Game {
     const fpT = fpOn && !(T && T.driving); if (fpT) { fpos.copy(cam.position); const rgt = V3(Math.cos(C.yaw), 0, -Math.sin(C.yaw)); fpos.addScaledVector(rgt, .02); fpos.y -= .04; } const wd = fpT ? this._fpWallD || 99 : 99; this._flI = lerp(this._flI == null ? 17 : this._flI, 17 * clamp(Math.pow(Math.max(wd, .05) / 2.5, 1.6) * (wd < 1.2 ? Math.pow(wd / 1.2, .85) : 1), .002, 1), Math.min(1, rdt * 30)); fl.intensity = this._flI; fl.angle = lerp(.42, .85, clamp((1.4 - wd) / 1.2, 0, 1));
     fl.position.copy(fpos).addScaledVector(fdir, fpT ? 0 : .3); fl.target.position.copy(fpos).addScaledVector(fdir, 10); fl.visible = !this.cut || this.cut.flash;
     // moon shadow follows
-    const mp = P.root.position; this.moon.position.set(mp.x - 20, 40, mp.z + 14); this.moon.target.position.copy(mp);
+    const mp = P.root.position; this.moon.position.set(mp.x - 20, 40, mp.z + 14); this.moon.target.position.copy(mp); survivalDN(this, rdt || 0); // v1.9.51 Survival day/night (moves the sun/moon, sky, fog, lamps, torch)
     if (this.player && this.scene) { if (!this.faceL) { this.faceL = new THREE.PointLight('#ffe6cc', 0, 4.5, 1.6); this.faceL.castShadow = false; this.scene.add(this.faceL); } this.faceL.visible = true; this.faceL.intensity = this.cut ? 0.7 : 0; /* v1.9.10: face fill only in cutscenes (made the player glow white in play); keep the light in the scene so shaders are not recompiled */ const hp = this.cut && this.cut.look ? this.cut.look : this.player.root.position, hy = this.cut && this.cut.look ? hp.y + .25 : hp.y + 1.7, cp = cam.position; this.faceL.position.set(hp.x + (cp.x - hp.x) * .45, hy, hp.z + (cp.z - hp.z) * .45); }
     if (this.audio.listen) { const K = this.world && this.world.KH, c = cam.position; this.audio.listen(cam, !!((this.world.flags && this.world.flags.indoor) || (K && c.x > K.x0 && c.x < K.x1 && c.z > K.z0 && c.z < K.z1))); }
     try { glowUpdate(this); } catch (e) { if (!this._glowErr) { this._glowErr = 1; console.warn('glow', e); } }
