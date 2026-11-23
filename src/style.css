@@ -771,3 +771,8 @@ kbd.kk{display:inline-block;min-width:1.5em;padding:1px 6px;margin:0 2px;border-
   #online .stacts button{min-height:34px;font-size:12px}
 }
 
+#cban canvas.cd-drawcan.cd-move{cursor:grab}
+#cban canvas.cd-drawcan.cd-move:active{cursor:grabbing}
+#cban .cd-selacts{display:none;flex-wrap:wrap;gap:6px;margin-top:4px}
+#cban .cd-selacts.show{display:flex}
+#cban .cd-selacts button:disabled{opacity:.4}

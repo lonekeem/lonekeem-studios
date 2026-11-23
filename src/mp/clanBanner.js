@@ -35,6 +35,7 @@ export const BRUSH_SIZES = [[0.018, 'S'], [0.032, 'M'], [0.055, 'L'], [0.09, 'XL
 export const MAX_DRAW_OPS = 80, MAX_STROKE_PTS = 160, MAX_DRAW_BYTES = 12000;
 const DRAW_SHAPE_IDS = setOf(DRAW_SHAPES);
 const q01 = n => Math.max(0, Math.min(1, Math.round((+n || 0) * 1000) / 1000));
+const qS = n => { const v = Math.round((+n || 1) * 1000) / 1000; return Math.max(0.2, Math.min(5, v)); };
 const qW = n => Math.max(0.01, Math.min(0.2, Math.round((+n || 0.032) * 1000) / 1000));
 function downsamplePts(arr) {
   const out = [];
@@ -67,7 +68,7 @@ function cleanOp(raw) {
   }
   if (t === 'shape') {
     if (!DRAW_SHAPE_IDS.has(raw.k) || !HEX.test(raw.c)) return null;
-    return {
+    const o = {
       t: 'shape', k: raw.k, c: String(raw.c).toLowerCase(),
       x: q01(raw.x), y: q01(raw.y),
       s: Math.max(0.02, Math.min(1, Math.round((+raw.s || 0.18) * 1000) / 1000)),
@@ -75,6 +76,10 @@ function cleanOp(raw) {
       fill: raw.fill !== false,
       w: qW(raw.w || 0.025),
     };
+    const sx = qS(raw.sx), sy = qS(raw.sy);
+    if (sx !== 1) o.sx = sx;
+    if (sy !== 1) o.sy = sy;
+    return o;
   }
   return null;
 }
@@ -108,6 +113,13 @@ export function cleanBanner(b) {
     trim: hex(o.trim, '#d9b44a'),
     trimStyle: TRIM_IDS.has(o.trimStyle) ? o.trimStyle : 'thin',
   };
+  // optional emblem placement (moved/resized/rotated in Draw > Select)
+  const num = (v, lo, hi) => { const n = +v; return Number.isFinite(n) ? Math.max(lo, Math.min(hi, Math.round(n * 1000) / 1000)) : null; };
+  const ex = num(o.ex, 0, 1), ey = num(o.ey, 0, 1), er = num(o.er, -7, 7), ew = num(o.ew, 0.2, 4), eh = num(o.eh, 0.2, 4);
+  if (ex !== null && ey !== null) { rec.ex = ex; rec.ey = ey; }
+  if (er !== null && er !== 0) rec.er = er;
+  if (ew !== null && ew !== 1) rec.ew = ew;
+  if (eh !== null && eh !== 1) rec.eh = eh;
   if (draw) rec.draw = draw;
   return rec;
 }
@@ -243,8 +255,15 @@ function shade(hex, f) {
   return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
 }
 
-export function drawBanner(g, banner, w, h) {
+export function drawBanner(g, banner, w, h, opts) {
   const b = cleanBanner(banner);
+  if (opts && opts.live && banner && typeof banner === 'object') {
+    if (banner.draw && Array.isArray(banner.draw.ops)) b.draw = banner.draw;
+    if (banner.ex != null && banner.ey != null) { b.ex = banner.ex; b.ey = banner.ey; }
+    if (banner.er != null) b.er = banner.er;
+    if (banner.ew != null) b.ew = banner.ew;
+    if (banner.eh != null) b.eh = banner.eh;
+  }
   g.clearRect(0, 0, w, h);
   const box = shapePath(g, w, h, b.shape);
   fillPattern(g, box, b);
@@ -262,15 +281,25 @@ export function drawBanner(g, banner, w, h) {
   }
   // emblem
   g.save(); shapePath(g, w, h, b.shape); g.clip();
-  const s = Math.min(box.W, box.H) * (b.shape === 'pennant' ? .28 : .32);
-  const cx = box.x + box.W * (b.shape === 'pennant' ? .38 : .5);
-  const cy = box.y + box.H * (b.shape === 'swallowtail' ? .42 : b.shape === 'pennant' ? .5 : .46);
-  drawEmblem(g, cx, cy, s, b.emblem, b.emblemColor);
+  const E = emblemGeom(b, w, h);
+  g.save(); g.translate(E.cx, E.cy); g.rotate(E.r); g.scale(E.ew, E.eh);
+  drawEmblem(g, 0, 0, E.s, b.emblem, b.emblemColor);
+  g.restore();
   if (b.draw && b.draw.ops && b.draw.ops.length) paintDraw(g, b.draw, w, h);
   g.restore();
 }
 
-function glyphPath(g, k, s) {
+// Emblem centre, base size, rotation and stretch in canvas pixels.
+export function emblemGeom(b, w, h) {
+  const m = Math.max(2, Math.min(w, h) * .04), W = w - m * 2, H = h - m * 2;
+  const s = Math.min(W, H) * (b.shape === 'pennant' ? .28 : .32);
+  let cx = m + W * (b.shape === 'pennant' ? .38 : .5);
+  let cy = m + H * (b.shape === 'swallowtail' ? .42 : b.shape === 'pennant' ? .5 : .46);
+  if (b.ex != null && b.ey != null) { cx = b.ex * w; cy = b.ey * h; }
+  return { cx, cy, s, r: b.er || 0, ew: b.ew || 1, eh: b.eh || 1, half: s * .72 };
+}
+
+export function glyphPath(g, k, s) {
   g.beginPath();
   if (k === 'circle') g.arc(0, 0, s, 0, Math.PI * 2);
   else if (k === 'square') { g.rect(-s, -s, s * 2, s * 2); }
@@ -331,8 +360,10 @@ export function paintDraw(g, draw, w, h) {
       floodAt(g, w, h, op.x, op.y, op.c || '#f4f0e6');
     } else if (op.t === 'shape') {
       const s = (op.s || 0.18) * Math.min(w, h);
-      g.save(); g.translate(op.x * w, op.y * h); g.rotate(op.r || 0);
+      g.save();
+      g.save(); g.translate(op.x * w, op.y * h); g.rotate(op.r || 0); g.scale(op.sx || 1, op.sy || 1);
       glyphPath(g, op.k, s);
+      g.restore();
       if (op.k === 'line') {
         g.strokeStyle = op.c; g.lineCap = 'round'; g.lineWidth = Math.max(1, (op.w || 0.025) * Math.min(w, h)); g.stroke();
       } else if (op.fill !== false) { g.fillStyle = op.c; g.fill(); }

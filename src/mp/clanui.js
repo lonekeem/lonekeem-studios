@@ -44,7 +44,7 @@ export function openBannerBuilder({ banner, onSave, onClose } = {}) {
   const canvas = root.querySelector('#cbanCan');
   const tools = root.querySelector('#cbanTools');
   const hint = root.querySelector('.cban-hint');
-  const setBanner = b => { cur = cleanBanner(b); };
+  const setBanner = (b, live) => { cur = live ? b : cleanBanner(b); };
   const partsHTML = `<div class="clbl">Shape</div><div class="cban-row" data-k="shape"></div>
           <div class="clbl">Pattern</div><div class="cban-row" data-k="pattern"></div>
           <div class="clbl">Emblem</div><div class="cban-row" data-k="emblem"></div>
