@@ -1,2 +1,35 @@
-{ "name": "After the Quiet", "short_name": "After the Quiet", "description": "Mature 18+ horror action shooter by Lone Keem Studios. Fight out of Riverside, Maine as Keem.", "start_url": "./", "scope": "./", "display": "fullscreen", "orientation": "landscape", "background_color": "#050b08", "theme_color": "#050b08",
-  "icons": [ { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }, { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }, { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" } ] }
+{
+  "name": "After the Quiet",
+  "short_name": "After the Quiet",
+  "description": "Mature 18+ horror action shooter by Lone Keem Studios. Fight out of Riverside, Maine as Keem.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#050b08",
+  "theme_color": "#050b08",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
