@@ -29,8 +29,8 @@ export function townDayNight({ scene, renderer, sun, hemi, cam, W, Z, toast, fog
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uWin; varying vec3 vWinP;').replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
 #if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA )
 { vec3 vc = vColor.rgb; float isWin = step(max(max(vc.r, vc.g), vc.b), .05) * step(vc.r * 1.35, vc.b); vec3 cell = floor(vWinP * vec3(.7, .5, .7)); float on = step(.42, fract(sin(dot(cell, vec3(12.9898, 78.233, 37.719))) * 43758.5453));
-  totalEmissiveRadiance += isWin * on * uWin * vec3(.95, .42, .1) * (.28 + .16 * fract(cell.x * 7.13 + cell.z * 3.7)); // warm, dim lamp-lit glass (not a white sheet) }
-#endif`); }; sid.customProgramCacheKey = () => 'atqWin1'; sid.needsUpdate = true; }
+  totalEmissiveRadiance += isWin * on * uWin * vec3(.95, .42, .1) * (.28 + .16 * fract(cell.x * 7.13 + cell.z * 3.7)); } // warm, dim lamp-lit glass (not a white sheet)
+#endif`); }; sid.customProgramCacheKey = () => 'atqWin2'; sid.needsUpdate = true; }
   const warn = dnWatcher((m) => toast && toast(m, 3.2));
   const fwd = new THREE.Vector3(); let acc = 1;
   const update = (dt) => {
