@@ -49,6 +49,8 @@ export function normalize(look) { // fill missing fields from the defaults (forw
   if (o.beard && !C.BEARDS.some(h => h[0] === o.beard.id)) o.beard.id = ({ anchor: 'goatee', vandyke: 'circle', jawline: 'strap' })[o.beard.id] || 'none';
   if (o.stache && !C.STACHES.some(h => h[0] === o.stache.id)) o.stache.id = ({ toothbrush: 'pencil', fumanchu: 'horseshoe', imperial: 'handlebar', painter: 'chevron' })[o.stache.id] || 'none';
   if (o.mask && !C.MASKS.some(m => m[0] === o.mask.id)) o.mask = null;
+  // Hijab was removed from the creator; existing looks fall back to hair.
+  if (o.acc && o.acc.hat && o.acc.hat.id === 'hijab') o.acc.hat = null;
   return o;
 }
 const KEY = 'atq.mp.look.v1', FAV = 'atq.mp.fav.v1', SLOTS = 'atq.mp.slots.v1';

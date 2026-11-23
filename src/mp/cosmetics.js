@@ -8,7 +8,7 @@ export const FREE = new Set([
   'vest', 'cardigan', 'zip', 'overshirt',
   'jeans', 'joggers', 'shorts', 'leggings', 'midiskirt', 'sweatpants',
   'sneaker', 'lowtop', 'loafer', 'ankleboot', 'flat', 'socks', 'kneesock', 'slides', 'midtop',
-  'capflat', 'beanie', 'bandana', 'headband', 'hijab', 'wrap',
+  'capflat', 'beanie', 'bandana', 'headband', 'wrap',
   'squareclear', 'roundclear', 'thinclear',
   'studTiny', 'studSmall', 'hoopTiny', 'hoopSmall', 'hoopMedium',
   'nose', 'noseR',

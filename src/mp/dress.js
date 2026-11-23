@@ -114,7 +114,7 @@ export function dress(av, look) {
     let base = pOff; for (const nm of ['top', 'jacket']) { const l = av.layers[nm]; if (!l) continue; const o = l.material.userData.off.value; const G = l.material.userData.U.uG1.value; if (l.visible && pOff && G.y > pWa - .04 && G.y < .14) G.y = pWa - .04; /* regular-length hems reach past the waistband */ const ex = l.visible && pOff ? Math.max(0, base + .003 - o) : 0; l.material.userData.U.uOver.value.set(ex, pWa, 0, 0); if (l.visible) base = Math.max(base, o + ex); } }
   buildHead(av, look); const ctx = headCtx(av, makeCtx(av)); av._ctx = ctx; const A = look.acc;
   // ---- hair / beard / mustache / mask shells (+ volumetric extras)
-  const hat = A.hat && C.HATS.find(h => h[0] === A.hat.id); const hatFam = hat ? hat[2] : null; const covers = hat && !['headband', 'visor', 'crown'].includes(hatFam);
+  const hat = A.hat && A.hat.id !== 'hijab' && C.HATS.find(h => h[0] === A.hat.id); const hatFam = hat ? hat[2] : null; const covers = hat && !['headband', 'visor', 'crown'].includes(hatFam);
   buildHairMesh(av, look, { hatCut: covers ? (['hardhat', 'helmet', 'hood', 'beanie', 'bandana', 'hijab', 'wrap'].includes(hatFam) ? 2 : 1) : 0, hide: ['hijab', 'wrap', 'helmet'].includes(hatFam) }); buildFacialHair(av, look); // hatCut 2 = full-cover headgear: hair pressed flat under it
   const mi = look.mask && C.MASKS.find(x => x[0] === look.mask.id); buildMask(av, mi ? look.mask : null); if (av._fh) av._fh.visible = !mi; // a face mask goes over the beard (the beard is tucked under it)
   // ---- rigid accessories
