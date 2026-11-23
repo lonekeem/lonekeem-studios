@@ -230,7 +230,7 @@ export const steps = [
         ['keem', "After the quiet. The good kind."],
         (g) => { cam(g, V(24, .6, -8127.8), V(22.6, .35, -8125.6)); },
         ['nia', "He's a very good bunny."],
-        (g) => { cam(g, V(10, 6, -8112), V(26, 2, -8126)); card('THE END', 5600, 'AFTER THE QUIET · A LONE KEEM STUDIOS GAME'); setTimeout(() => { hideCard(); g.onComplete && g.onComplete(24); }, 6000); },
+        (g) => { cam(g, V(10, 6, -8112), V(26, 2, -8126)); card('THE END', 5600, 'AFTER THE QUIET · A LONE KEEM STUDIOS GAME'); { const tok = g.stepTok; setTimeout(() => { hideCard(); if (g.stepTok === tok) g.onComplete && g.onComplete(24); }, 6000); } },
       ]);
     },
     update(g, dt) { const D = g.stepData; tickMv(g, D, dt); D.dw = Math.min(1, D.dw + dt * .01); dawn(g, D.dw); if (D.B) { const B = D.B; if (B.st === 'hop') { const p = B.grp.position; B.hop += dt * 4.6 / Math.max(.1, B.hd); const k = Math.min(1, B.hop); p.set(B.sx + (B.tx - B.sx) * k, Math.abs(Math.sin(k * B.hn * PI)) * .28, B.sz + (B.tz - B.sz) * k); if (k >= 1) { B.st = 'sit'; p.y = 0; } } else if (B.r && B.r.head) B.r.head.rotation.x = Math.max(0, Math.sin(g.t * 7)) * .3 - .05; } } },

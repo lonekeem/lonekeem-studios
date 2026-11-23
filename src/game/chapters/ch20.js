@@ -178,7 +178,7 @@ export const steps = [
         ['keem', "After the quiet, we get to start over."],
         (g) => { walk(D, D.dad, -11.6, -5035.6, { sp: 1.1, face: PI / 2 }); cam(g, V(-9, 1.6, -5034), V(-11.2, 1.5, -5035.8)); },
         ['marcus', "Right behind you, son."],
-        (g) => { cam(g, V(-2, 5, -5026), V(-11, 1.2, -5036)); card('END OF PART ONE', 5200, 'AFTER THE QUIET · A LONE KEEM STUDIOS GAME'); setTimeout(() => { hideCard(); g.onComplete && g.onComplete(20); }, 5600); },
+        (g) => { cam(g, V(-2, 5, -5026), V(-11, 1.2, -5036)); card('END OF PART ONE', 5200, 'AFTER THE QUIET · A LONE KEEM STUDIOS GAME'); { const tok = g.stepTok; setTimeout(() => { hideCard(); if (g.stepTok === tok) g.onComplete && g.onComplete(20); }, 5600); } },
       ]);
     },
     update(g, dt) { const D = g.stepData; tickMv(g, D, dt); dawn(g, 1); if (D.h && D.h.tick) D.h.tick(dt); } },

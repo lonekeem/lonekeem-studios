@@ -224,7 +224,7 @@ export const steps = [
         ['keem', "This time, nobody runs."],
         (g) => { cam(g, V(0.2, 1.65, -7721.4), V(2.4, 1.5, -7724)); },
         ['danny', "There's a lifeboat on this side. I can drive a boat. I learned on… you know what, don't ask."],
-        (g) => { cam(g, V(9.6, 4.6, -7728), V(60, 8, -7850)); setTimeout(() => { g.audio.engine && g.audio.engine(false); g.onComplete && g.onComplete(23); }, 1800); },
+        (g) => { cam(g, V(9.6, 4.6, -7728), V(60, 8, -7850)); const tok = g.stepTok; setTimeout(() => { g.audio.engine && g.audio.engine(false); if (g.stepTok === tok) g.onComplete && g.onComplete(23); }, 1800); },
       ]);
     },
     update(g, dt) { const D = g.stepData; tickMv(g, D, dt); if (D.go && D.lb) { D.lb.position.x += dt * 4.2; D.lb.position.z -= dt * 4.2; } } },

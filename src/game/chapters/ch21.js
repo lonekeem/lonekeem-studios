@@ -207,7 +207,7 @@ export const steps = [
         ['nia', "…R-07? That's Biscuit."],
         (g) => { g.audio.staticBurst && g.audio.staticBurst(1); cam(g, V(10.1, 1.3, -6874.5), V(9.2, 1.0, -6876)); },
         ['vance', "Bring the rabbit."],
-        (g) => { radio(false); setTimeout(() => g.onComplete && g.onComplete(21), 900); },
+        (g) => { radio(false); { const tok = g.stepTok; setTimeout(() => { if (g.stepTok === tok) g.onComplete && g.onComplete(21); }, 900); } },
       ]);
     },
     update(g, dt) { tickMv(g, g.stepData, dt); } },

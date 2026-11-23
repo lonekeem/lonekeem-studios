@@ -207,7 +207,7 @@ export const steps = [
         sh(6), ['nia', "He's not a cure. He's my bunny."],
         sh(7), ['marcus', "He can be both, baby girl."],
         sh(8), ['danny', "Portland, next stop! I've always wanted to say that."],
-        sh(9), (g) => { setTimeout(() => { g.audio.engine && g.audio.engine(false); g.player.root.visible = true; g.onComplete && g.onComplete(22); }, 2600); },
+        sh(9), (g) => { const tok = g.stepTok; setTimeout(() => { g.audio.engine && g.audio.engine(false); g.player.root.visible = true; if (g.stepTok === tok) g.onComplete && g.onComplete(22); }, 2600); },
       ]);
     },
     update(g, dt) { const D = g.stepData; if (!D.SH) return; if (D.roll) { D.v = Math.min(D.shot >= 9 ? 9 : 3.2, D.v + dt * .6); D.o = Math.max(-74, D.o - D.v * dt); }
