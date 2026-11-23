@@ -22,6 +22,7 @@ async function page({ w = 844, h = 390, kills = 40, wave = 6, save = true, rewar
     if (wave) localStorage.setItem('atq3.survBest', String(wave));
     if (save) localStorage.setItem('atq3_save', JSON.stringify({ v: 3, step: 7, played: true, cash: 80, xp: 0, level: 1, kills, owned: ['fists', 'bat', 'pistol'], outfits: ['classic'] }));
     if (rewards) localStorage.setItem('atq.rewards.v1', JSON.stringify(rewards));
+    localStorage.setItem('atq.gate', JSON.stringify({ birthYear: 1990, agreedVersion: 1 }));
   }, { kills, wave, save, rewards });
   const p = await ctx.newPage();
   p.setDefaultTimeout(20000);
@@ -30,9 +31,11 @@ async function page({ w = 844, h = 390, kills = 40, wave = 6, save = true, rewar
   await p.waitForFunction(() => window.__atqBooted && window.__atqRewards, null, { timeout: 20000 });
   // Skip the warning button so ensureGame() never starts (that 3D load freezes headless Chrome).
   await p.evaluate(() => {
-    const w = document.getElementById('warning'); if (w) w.classList.add('hidden');
+    ['warning','gateAge','gateAgree','gateKids','gateIntro','studio'].forEach(id => {
+      const n = document.getElementById(id); if (n) n.classList.add('hidden');
+    });
+    document.body.classList.remove('atq-gating');
     const t = document.getElementById('title'); if (t) t.classList.remove('hidden');
-    const st = document.getElementById('studio'); if (st) st.classList.add('hidden');
   });
   await p.waitForSelector('#title:not(.hidden)', { timeout: 10000 });
   await p.waitForTimeout(300);
