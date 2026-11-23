@@ -40,13 +40,14 @@ vec3 garment(vec3 p, vec3 n, vec4 R){
   float front = smoothstep(-0.03, 0.05, p.z - uN.w); float ang = atan(n.z, n.x * side); // 0 = outer side, pi/2 = front
   float h = 0.0; float rib = 0.0; float seam = 0.0;
   if (kind < 0.5 || (kind > 2.5 && kind < 3.5)) { // top / jacket
-    if (isArm) { edge = (uG1.x - as) * uArmD.w; vis = edge > 0.0 && handW < 0.5;
+    if (isArm && uG1.x < 0.05 && kind < 0.5) { /* v1.9.82: sleeveless tops use the same round armhole on arm-weighted skin too, so the cut no longer follows the jagged arm-weight contour at the armpit */ float eh = (uArmO.x - 0.04 - ax) + max(0.0, (uArmO.y - 0.08) - p.y) * 1.3; edge = min((t - uG1.y) * H, eh); vis = edge > 0.0 && as < 0.2 && handW < 0.5; }
+    else if (isArm) { edge = (uG1.x - as) * uArmD.w; vis = edge > 0.0 && handW < 0.5;
       h += 0.0013 * sin(as * 70.0 + 2.5 * sin(ang * 2.0 + as * 8.0)) * (0.4 + 0.6 * sin(ang * 2.0 + 0.5)) * band(as, 0.5, 0.1) * step(0.55, uG1.x); // elbow folds
       h += 0.0008 * sin(as * 130.0 + ang * 2.0 + sin(ang * 3.0) * 1.5) * smoothstep(uG1.x - 0.16, uG1.x - 0.05, as) * step(0.8, uG1.x); // cuff stacking
       seam = max(seam, band(as * uArmD.w, 0.035, 0.0018) * step(0.1, uG1.x)); // shoulder seam
       if (uG1.x > 0.8 || kind > 2.5) rib = smoothstep(0.035, 0.0, edge); }
     else { float e1 = (t - uG1.y) * H; edge = uG2.x > 0.0 ? 1.0 : e1; vis = e1 > 0.0;
-      if (uG1.x < 0.05) { float eh = (uArmO.x - 0.04 - ax) + max(0.0, (uArmO.y - 0.09) - p.y) * 1.2; edge = min(edge, eh); vis = vis && eh > 0.0; } // sleeveless: round armhole
+      if (uG1.x < 0.05) { float eh = (uArmO.x - 0.04 - ax) + max(0.0, (uArmO.y - 0.08) - p.y) * 1.3; edge = min(edge, eh); vis = vis && eh > 0.0; } // sleeveless: round armhole
       if (uG2.x > 0.0 && (legW > 0.5 || e1 < 0.0)) { vis = ls < uG2.x; edge = (uG2.x - ls) * LL; }
       { float dep = uN.y * H * 0.7 * smoothstep(0.0, 0.1, uN.z); vec2 q = vec2(p.x / uNk.z, (p.z - uNk.y) / (p.z > uNk.y ? uNk.w + dep : uNk.w * 0.9)); float dn = length(q);
         float en = (dn - 1.0) * uNk.z; float scoop = uNk.x > 0.001 ? uNk.x : 0.11; if (p.y < uLm.y - scoop - dep * 0.6) en = 1.0; if (uG2.w > 0.5) en = (uLm.y - 0.012 - p.y);

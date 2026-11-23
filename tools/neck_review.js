@@ -39,7 +39,7 @@ async function start() {
       cam.fov = 26; cam.aspect = 1; cam.updateProjectionMatrix(); cam.position.set(0, y + .02, +(new URLSearchParams(location.search).get("z") || .9)); cam.lookAt(0, y - .08, 0);
       renderer.render(scene, cam); window.__SHOTS[`${base}-${top}-${tag}`] = view.toDataURL('image/png');
     }
-    if (new URLSearchParams(location.search).get('probe')) { const ms = []; av.root.traverse(o => { if (o.isMesh && o.visible) ms.push(o); }); window.__MS = ms.map((o, i) => i + ' ' + o.type + ' ' + (o.name || '') + ' v' + o.geometry.attributes.position.count + ' ro' + o.renderOrder + ' ' + (o.material.type || '') + ' ' + (o.material.name || '')); av.root.rotation.y = .12; av.root.updateMatrixWorld(true);
+    if (new URLSearchParams(location.search).get('probe')) { const ms = []; av.root.traverse(o => { if (o.isMesh && o.visible) ms.push(o); }); window.__MS = ms.map((o, i) => i + ' ' + o.type + ' ' + (o.name || '') + ' v' + o.geometry.attributes.position.count + ' ro' + o.renderOrder + ' ' + (o.material.type || '') + ' ' + (o.material.name || '')); av.root.rotation.y = +(new URLSearchParams(location.search).get('py') || .12); av.root.updateMatrixWorld(true);
       for (let i = 0; i < ms.length; i++) { ms[i].visible = false; renderer.render(scene, cam); window.__SHOTS[`hide${i}-${top}`] = view.toDataURL('image/png'); ms[i].visible = true; } }
     scene.remove(av.root);
   }

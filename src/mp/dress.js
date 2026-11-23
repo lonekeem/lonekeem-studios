@@ -107,7 +107,7 @@ export function dress(av, look) {
   const sx = look.skinx; U.uMk2.value.set(sx.freckles / 3, sx.moles, sx.age, 0); U.uScar.value.set(sx.scar, sx.scarSide, 0, 0); U.uTat.value.set(sx.tattoo, sx.scarSide, 0, 0); U.uTatCol.value.set(sx.tattooCol);
   const bd = look.beard; U.uStub.value.set(bd.id === 'stubble' ? .55 + .3 * bd.len : 0, 1, 0, 0);
   // ---- clothes
-  const w = look.worn; setUnder(av, f); setGarment(av, 'top', 0, w.top, C.TOPS); setGarment(av, 'jacket', 3, w.jacket, C.JACKETS); setGarment(av, 'pants', 1, w.pants, C.PANTS); setGarment(av, 'shoes', 2, w.shoes, C.SHOES); buildShoes(av, w.shoes); { const hp = (w.jacket && HOODED.has(w.jacket.id)) ? w.jacket : (w.top && HOODED.has(w.top.id) ? w.top : null); buildHood(av, hp, hp ? hoodMat(hp.c) : null); } setGarment(av, 'gloves', 4, w.gloves, C.GLOVES);
+  const w = look.worn; setUnder(av, f && !(w.top && C.TOPS.some(t => t[0] === w.top.id))); /* v1.9.82: no bra band under a worn top (it showed through tank armholes as a dark jagged patch) */ setGarment(av, 'top', 0, w.top, C.TOPS); setGarment(av, 'jacket', 3, w.jacket, C.JACKETS); setGarment(av, 'pants', 1, w.pants, C.PANTS); setGarment(av, 'shoes', 2, w.shoes, C.SHOES); buildShoes(av, w.shoes); { const hp = (w.jacket && HOODED.has(w.jacket.id)) ? w.jacket : (w.top && HOODED.has(w.top.id) ? w.top : null); buildHood(av, hp, hp ? hoodMat(hp.c) : null); } setGarment(av, 'gloves', 4, w.gloves, C.GLOVES);
   if (av.hands) tintHands(av, w.gloves ? (w.gloves.c || '#1c1c1f') : sk);
   { // tops / jackets ride over the pants waistband (never tucked under a looser pant)
     const pl = av.layers.pants, pOff = pl && pl.visible ? pl.material.userData.off.value : 0, pWa = pl && pl.visible ? pl.material.userData.U.uG1.value.y : 0;
