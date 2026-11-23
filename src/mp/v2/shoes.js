@@ -37,7 +37,7 @@ export const SHOE_STYLE = {
   dadshoe: { sole: .044, toe: 1, bulk: .022, col: .01, d: 1, line: 1 },
   court: { sole: .01, toe: .9, bulk: .005, col: .0, d: 3, line: 1 },
   sockrun: { sole: .018, toe: .9, bulk: .004, col: .006, d: 6 },
-  cowboy: { sole: .014, toe: .18, bulk: .006, col: .22, d: 6, heel: .045 },
+  cowboy: { sole: .014, toe: .16, bulk: .006, col: .24, d: 6, heel: .05, cowboyV: 1 },
   snowboot: { sole: .036, toe: 1, bulk: .028, col: .22, d: 6, puffy: 1 },
   welly: { sole: .016, toe: .9, bulk: .015, col: .3, d: 6 },
   shearling: { sole: .022, toe: 1, bulk: .024, col: .18, d: 6, puffy: 1 },
@@ -109,20 +109,51 @@ function loft(av, sd, st) {
   const P = av.tpl.P, ank = P[(sd > 0 ? 'Left' : 'Right') + 'Foot'];
   const pos = [], uv = [], idx = [];
   const rings = []; const capN = 5;
+  const heelB = B[Math.min(2, NU - 1)];
+  const heelHalf = (heelB.x1 - heelB.x0) / 2;
   const sect = (k) => {
-    const b = B[k]; const u = (k + .5) / NU; let x0 = b.x0 - m, x1 = b.x1 + m;
+    const b = B[k]; const u = (k + .5) / NU;
+    const pad = .01 + st.bulk * .45;
+    let x0 = b.x0 - pad, x1 = b.x1 + pad;
     const toeK = Math.max(0, (u - .7) / .3); const extra = st.bulk * Math.sin(Math.min(1, u * 1.4) * Math.PI * .5);
     x0 -= extra * .4; x1 += extra * .4;
-    let top = b.y1 + m + extra * .6;
-    if (st.col > .06) { const shaft = ank.y + .02 + st.col; const heel = 1 - ss(.08, .4, u); top = Math.max(top, shaft * heel + top * (1 - heel)); let widen = .006 * heel * Math.min(1, st.col / .16); if (st.puffy) widen += .012 * heel; x0 -= widen; x1 += widen; }
-    else if (st.col >= 0) top = Math.min(top, ank.y + .03 + st.col + .045 * ss(.22, .42, u) * (1 - ss(.55, .8, u)));
-    else { const lo = Math.max(b.y1 + .003, ank.y + st.col); const open = 1 - ss(.10, .50, u); top = top * (1 - open * .4) + lo * (open * .4); top = Math.max(top, b.y1 + .004); }
-    const drop = heelDrop(st, u);
+    const instep = Math.sin(Math.PI * ss(.16, .28, u) * (1 - ss(.58, .8, u)));
+    let top = b.y1 + pad + extra * .6 + instep * .01;
+    if (st.col > .06) {
+      const shaft = ank.y + .02 + st.col;
+      const fade0 = st.cowboyV ? .12 : .08, fade1 = st.cowboyV ? .52 : .42;
+      const heel = 1 - ss(fade0, fade1, u);
+      let shaftTop = shaft;
+      if (st.cowboyV) shaftTop = shaft - 0.042 * ss(.16, .48, u);
+      top = Math.max(top, shaftTop * heel + top * (1 - heel));
+      const xc = (x0 + x1) / 2;
+      const footHalf = (x1 - x0) / 2;
+      let shaftHalf = heelHalf + pad + .005 + (st.puffy ? .016 : 0);
+      shaftHalf += (st.cowboyV ? .01 : .004) * heel * ss(.55, 1, (shaftTop - (b.y1 + pad)) / Math.max(.04, st.col));
+      const half = footHalf * (1 - heel) + shaftHalf * heel;
+      x0 = xc - half; x1 = xc + half;
+    } else if (st.col >= 0) {
+      top = Math.min(top, ank.y + .028 + st.col + .04 * ss(.22, .42, u) * (1 - ss(.55, .8, u)));
+    } else {
+      // Scoop the ankle opening so flats/pumps/loafers read as shoes, not booties.
+      // Keep the vamp above the instep so skin never shows through.
+      const cover = b.y1 + .01 + instep * .008;
+      const collar = Math.max(ground + st.sole + .02, ank.y + Math.min(st.col, -0.004));
+      const open = 1 - ss(.05, .42, u);
+      top = cover * (1 - open) + collar * open;
+      if (open < 0.92) top = Math.max(top, cover);
+    }
+    // Wedges fill the arch; post heels keep a thin sole so the heel reads as a separate piece.
+    const drop = st.wedge ? heelDrop(st, u) : 0;
     const y0 = ground - .003 - drop;
-    top = Math.max(top, ground + st.sole + .025 * (1 - toeK * .6));
-    top = Math.max(top, b.y1 + .004);
+    if (st.col >= 0) {
+      top = Math.max(top, ground + st.sole + .025 * (1 - toeK * .6));
+      top = Math.max(top, b.y1 + .008);
+    } else if (u > 0.22) {
+      top = Math.max(top, b.y1 + .01 + instep * .006);
+    }
     if (st.puffy && st.col < .06) { x0 -= .006; x1 += .006; top += .006; }
-    const soleLip = y0 + st.sole + drop + .006; // lip sits at the foot, not at the bottom of a tall heel
+    const soleLip = y0 + st.sole + drop + .006;
     if (st.thong || (st.straps && st.openToe)) {
       top = soleLip + (st.thong ? .002 : .005);
     } else if (st.slide) {
@@ -134,16 +165,25 @@ function loft(av, sd, st) {
     }
     return { x0, x1, y0, y1: top, z: z0 + u * len, u };
   };
-  for (let k = 0; k < NU; k++) rings.push(sect(k)); if (st.col >= 0) for (let k = 1; k < NU; k++) { const r = rings[k], pr = rings[k - 1]; const drop = (st.col > .06 ? .9 : 1.3) * (r.z - pr.z); r.y1 = Math.max(r.y1, Math.min(pr.y1, pr.y1 - drop)); }
+  for (let k = 0; k < NU; k++) rings.push(sect(k));
+  for (let it = 0; it < 4; it++) {
+    const y = rings.map(r => r.y1), x0s = rings.map(r => r.x0), x1s = rings.map(r => r.x1);
+    for (let k = 1; k < NU - 1; k++) {
+      rings[k].y1 = (y[k - 1] + 2 * y[k] + y[k + 1]) / 4;
+      rings[k].x0 = (x0s[k - 1] + 2 * x0s[k] + x0s[k + 1]) / 4;
+      rings[k].x1 = (x1s[k - 1] + 2 * x1s[k] + x1s[k + 1]) / 4;
+    }
+  }
+  if (st.col >= 0) for (let k = 1; k < NU; k++) { const r = rings[k], pr = rings[k - 1]; const drop = (st.col > .06 ? .9 : 1.3) * (r.z - pr.z); r.y1 = Math.max(r.y1, Math.min(pr.y1, pr.y1 - drop)); }
   const heel = rings[0], toe = rings[NU - 1]; const out = [];
   const heelLip = heel.y0 + st.sole + .008;
   for (let c = capN; c >= 1; c--) { const a = c / capN * Math.PI / 2; const f = Math.cos(a); const r = { ...heel }; const hw = (heel.x1 - heel.x0) / 2, xc = (heel.x1 + heel.x0) / 2; r.x0 = xc - hw * Math.max(.15, f); r.x1 = xc + hw * Math.max(.15, f); r.y1 = heel.y0 + (heel.y1 - heel.y0) * Math.max(.3, .3 + .7 * f); if (st.openHeel || st.slide) r.y1 = heelLip + Math.max(0, f) * .006; r.z = heel.z - .028 * Math.sin(a) - m * .3; r.u = 0; out.push(r); }
   rings.forEach((r, k) => { r.u = (k + .5) / NU; out.push(r); });
   const tr = st.toe; const toeLip = toe.y0 + st.sole + .008;
-  for (let c = 1; c <= capN; c++) { const a = c / capN * Math.PI / 2; const f = Math.cos(a); const r = { ...toe }; const hw = (toe.x1 - toe.x0) / 2, xc = (toe.x1 + toe.x0) / 2; const wf = Math.max(.12, Math.pow(f, .6 + (1 - tr) * .8)); r.x0 = xc - hw * wf; r.x1 = xc + hw * wf; r.y1 = toe.y0 + (toe.y1 - toe.y0) * Math.max(.25, Math.pow(f, .5)); if (st.openToe || st.slide) r.y1 = toeLip + Math.max(0, f) * .008; r.z = toe.z + (.012 + st.bulk * .8 + (1 - tr) * .02) * Math.sin(a); r.u = 1; out.push(r); }
+  for (let c = 1; c <= capN; c++) { const a = c / capN * Math.PI / 2; const f = Math.cos(a); const r = { ...toe }; const hw = (toe.x1 - toe.x0) / 2, xc = (toe.x1 + toe.x0) / 2; const wf = Math.max(.12, Math.pow(f, .6 + (1 - tr) * .8)); r.x0 = xc - hw * wf; r.x1 = xc + hw * wf; r.y1 = toe.y0 + (toe.y1 - toe.y0) * Math.max(.25, Math.pow(f, .5)); if (st.openToe || st.slide) r.y1 = toeLip + Math.max(0, f) * (st.thong ? .002 : .005); r.z = toe.z + (.012 + st.bulk * .8 + (1 - tr) * .02) * Math.sin(a); r.u = 1; out.push(r); }
   const N = out.length;
   for (let k = 0; k < N; k++) { const r = out[k]; const xc = (r.x0 + r.x1) / 2, hw = (r.x1 - r.x0) / 2, yc = (r.y0 + r.y1) / 2, hh = (r.y1 - r.y0) / 2;
-    for (let j = 0; j <= NV; j++) { const th = j / NV * Math.PI * 2; const c = Math.cos(th), s = Math.sin(th); const e = s < 0 ? 4 : 2.6; const x = xc + hw * Math.sign(c) * Math.pow(Math.abs(c), 2 / e), y = yc + hh * Math.sign(s) * Math.pow(Math.abs(s), 2 / (s < 0 ? 6 : 2.4));
+    for (let j = 0; j <= NV; j++) { const th = j / NV * Math.PI * 2; const c = Math.cos(th), s = Math.sin(th); const e = s < 0 ? 5 : 4.2; const x = xc + hw * Math.sign(c) * Math.pow(Math.abs(c), 2 / e), y = yc + hh * Math.sign(s) * Math.pow(Math.abs(s), 2 / (s < 0 ? 6 : 3.2));
       pos.push(x, y, r.z); uv.push(k / (N - 1), j / NV, (y - r.y0) / Math.max(.001, r.y1 - r.y0), (x - xc) / Math.max(.001, hw)); } }
   for (let k = 0; k < N - 1; k++) for (let j = 0; j < NV; j++) { const a = k * (NV + 1) + j, b = a + NV + 1; idx.push(a, a + 1, b, a + 1, b + 1, b); }
   const cap = (k, flip) => { const c0 = pos.length / 3; const r = out[k]; pos.push((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2, r.z); uv.push(k / (N - 1), .25, .5, 0); for (let j = 0; j < NV; j++) { const a = k * (NV + 1) + j; flip ? idx.push(c0, a + 1, a) : idx.push(c0, a, a + 1); } };
@@ -199,9 +239,11 @@ function thong(av, sd, st, L) {
   return [tagTube(g1, .8, .25, .8), tagTube(g2, .5, .25, .75), tagTube(g3, .5, .25, .75)];
 }
 function ankleRing(av, sd, st, L) {
-  const { ank } = L; const r = 0.042 + (st.bulk || 0) * 0.3;
-  const pts = []; for (let i = 0; i <= 20; i++) { const a = (i / 20) * Math.PI * 2; pts.push(new THREE.Vector3(ank.x + Math.cos(a) * r, ank.y + .01, ank.z + Math.sin(a) * r * 0.85)); }
-  const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.0045, 6, true); return tagTube(g, .15, .25, .7);
+  const { ank } = L; const { B } = footBins(av, sd);
+  const hb = B[Math.min(3, NU - 1)];
+  const r = Math.max(0.026, (hb.x1 - hb.x0) / 2 + 0.008);
+  const pts = []; for (let i = 0; i <= 20; i++) { const a = (i / 20) * Math.PI * 2; pts.push(new THREE.Vector3(ank.x + Math.cos(a) * r, ank.y + .006, ank.z + Math.sin(a) * r * 0.7)); }
+  const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.0042, 6, true); return tagTube(g, .15, .25, .7);
 }
 function heelPost(av, sd, st, L) {
   const { z0, len, ground } = L; const { B } = footBins(av, sd);
@@ -210,8 +252,8 @@ function heelPost(av, sd, st, L) {
   const y1 = ground + 0.001;
   const y0 = ground - (st.heel || 0) - 0.002;
   const h = Math.max(0.012, y1 - y0);
-  const topR = st.block ? 0.014 : (st.spike ? 0.0045 : 0.008);
-  const botR = st.block ? 0.016 : (st.spike ? 0.007 : 0.01);
+  const topR = st.block ? 0.015 : (st.spike ? 0.0038 : (st.cowboyV ? 0.009 : 0.007));
+  const botR = st.block ? 0.017 : (st.spike ? 0.0065 : (st.cowboyV ? 0.012 : 0.0095));
   const g = new THREE.CylinderGeometry(topR, botR, h, st.spike ? 8 : 12);
   g.translate(xc, (y0 + y1) / 2, z);
   return tagTube(g, 0.08, 0.75, 0.05);
@@ -236,15 +278,15 @@ function cleatStuds(av, sd, st, L) {
   return geos;
 }
 function tasselDrops(av, sd, st, L) {
-  const { z0, len, ground } = L; const { B } = footBins(av, sd);
-  const k = Math.min(NU - 1, Math.floor(NU * 0.55));
-  const b = B[k]; const xc = (b.x0 + b.x1) / 2, z = z0 + len * 0.55;
-  const y = b.y1 + 0.016;
+  const { z0, len } = L; const { B } = footBins(av, sd);
+  const k = Math.min(NU - 1, Math.floor(NU * 0.52));
+  const b = B[k]; const xc = (b.x0 + b.x1) / 2, z = z0 + len * 0.52;
+  const y = b.y1 + 0.002;
   const geos = [];
   for (const s of [-1, 1]) {
-    const g = new THREE.SphereGeometry(0.007, 10, 8);
-    g.scale(1, 1.6, 0.85); g.translate(xc + s * 0.012, y, z + 0.012);
-    geos.push(tagTube(g, 0.55, 0.25, 0.85));
+    const g = new THREE.SphereGeometry(0.006, 10, 8);
+    g.scale(0.7, 2.4, 0.7); g.translate(xc + s * 0.011, y - 0.012, z + 0.01);
+    geos.push(tagTube(g, 0.52, 0.25, 0.85));
   }
   return geos;
 }
@@ -360,7 +402,7 @@ export function buildShoes(av, piece, pants) {
     if (st.thong) geos.push(...thong(av, sd, st, L));
     if (st.straps) for (const u of st.straps) geos.push(vampAt(av, sd, st, L, u, 0.0048));
     if (st.ankleRing) geos.push(ankleRing(av, sd, st, L));
-    if ((st.heel || 0) > 0.024 && !st.wedge) geos.push(heelPost(av, sd, st, L));
+    if ((st.heel || 0) > 0.016 && !st.wedge) geos.push(heelPost(av, sd, st, L));
     if (st.cleats) geos.push(...cleatStuds(av, sd, st, L));
     if (st.tassel) geos.push(...tasselDrops(av, sd, st, L));
     const toe = P[S + 'ToeBase'];
