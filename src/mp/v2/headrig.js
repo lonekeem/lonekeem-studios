@@ -40,7 +40,7 @@ float beardMask(vec3 p){ float ax = abs(p.x); float cy = -.08 + .068 * smoothste
   float mx = p.x / .048, my = (p.y + .084) / .0208; float mh = smoothstep(.85, 1.15, mx * mx + my * my); return up * fl * fr * mh; }
 `.replace(/\n/g, ' ');
 export function skinMaterial(U, faceTex, plain = false) { // plain: the neck tube — lit exactly like the body skin (no extra self-light) so there is no tone step where it meets the chest
-  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: plain ? .62 : .46, metalness: 0 });
+  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .48, metalness: 0 });
   m.userData.face = { value: faceTex || null }; m.userData.beard = { value: new THREE.Vector4(0, 0, 0, 0) }; m.userData.beardCol = { value: new THREE.Color('#6b4e36') };
   m.onBeforeCompile = sh => {
     sh.uniforms.uBeard = m.userData.beard; sh.uniforms.uBeardCol = m.userData.beardCol; sh.uniforms.uSkin = U.uSkin; sh.uniforms.uFace = m.userData.face; sh.uniforms.uHasFace = { value: faceTex ? 1 : 0 }; sh.uniforms.uJawY = { value: -0.102 }; sh.uniforms.uPlain = { value: plain ? 1 : 0 };
@@ -53,12 +53,12 @@ export function skinMaterial(U, faceTex, plain = false) { // plain: the neck tub
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         { vec3 N = normalize(vNormal); vec3 V = normalize(vViewPosition); float ndv = clamp(dot(N, V), 0.0, 1.0);
           float wrap = pow(1.0 - ndv, 1.55); float rimF = pow(1.0 - ndv, 2.7);
-          float fade = uPlain > .5 ? vF : smoothstep(uJawY - 0.048, uJawY + 0.02, vL.y);
-          float k = uPlain > .5 ? 0.58 : 1.0;
+          float fade = uPlain > .5 ? vF : smoothstep(uJawY - 0.06, uJawY + 0.03, vL.y);
+          float k = uPlain > .5 ? 0.92 : 1.0;
           /* wrap/rim fade out at the jaw so the neck tube meets the face with no tone step */
           totalEmissiveRadiance += fade * k * (diffuseColor.rgb * (0.06 + wrap * 0.18) + vec3(0.22, 0.08, 0.05) * wrap * 0.55 + vec3(0.55, 0.74, 0.95) * rimF * 0.32); }`);
   };
-  m.customProgramCacheKey = () => 'v2skin4' + (faceTex ? 'f' : '') + (plain ? 'p' : ''); return m;
+  m.customProgramCacheKey = () => 'v2skin5' + (faceTex ? 'f' : '') + (plain ? 'p' : ''); return m;
 }
 
 

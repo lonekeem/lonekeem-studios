@@ -6,7 +6,7 @@ import { PATTERNS } from './garments.js';
 function makeALine(yTop, len, waistRx, waistRz, hemRx, hemRz, nu = 56, nv = 14) {
   const pos = [], nrm = [], uv = [], idx = [];
   for (let j = 0; j <= nv; j++) {
-    const v = j / nv, along = v * v * (3 - 2 * v); // ease toward the hem
+    const v = j / nv, along = v < 0.42 ? 0 : Math.pow((v - 0.42) / 0.58, 1.35); // stay slim past the hands, then flare
     const y = yTop - len * v;
     const rx = waistRx + (hemRx - waistRx) * along;
     const rz = waistRz + (hemRz - waistRz) * along;
@@ -25,12 +25,12 @@ function makeALine(yTop, len, waistRx, waistRz, hemRx, hemRz, nu = 56, nv = 14) 
     idx.push(a, b, a + 1, a + 1, b, b + 1);
   }
   // waistband + closed top so crop tops don't show a black tube
-  const band = 0.012, bRx = waistRx * 1.015, bRz = waistRz * 1.015, b0 = pos.length / 3;
+  const band = 0.01, bRx = waistRx * 1.01, bRz = waistRz * 1.01, b0 = pos.length / 3;
   for (let k = 0; k <= 1; k++) for (let i = 0; i <= nu; i++) {
     const a = i / nu * Math.PI * 2, y = yTop + (k ? band : 0);
     pos.push(Math.sin(a) * bRx, y, Math.cos(a) * bRz);
     nrm.push(Math.sin(a), k ? 1 : 0.2, Math.cos(a));
-    uv.push(i / nu * 2, 0.35 + k * 0.08);
+    uv.push(i / nu, 1 + k * 0.04);
   }
   for (let i = 0; i < nu; i++) {
     const a = b0 + i, b = a + nu + 1;
@@ -101,10 +101,10 @@ export function mountSkirt(av, piece, row) {
   const leg = Math.max(0.4, P.Hips.y - ((P.LeftFoot && P.LeftFoot.y) || 0.08));
   const len = Math.max(0.18, leg * (0.22 + (le || 0.4) * 0.62));
   const hips = (av._morph && av._morph.hips) || 0;
-  const waistRx = 0.118 + hips * 0.035 + (loose || 0) * 1.6;
+  const waistRx = 0.110 + hips * 0.03 + (loose || 0) * 1.4;
   const waistRz = waistRx * 0.72;
-  const flare = Math.max(fl || 0, (kb || 0) * 0.45, 0.045) * (le > 0.4 ? 1.2 : 1.05);
-  const hemRx = waistRx + flare + 0.018, hemRz = waistRz + flare * 0.65 + 0.012;
+  const flare = Math.max(fl || 0, (kb || 0) * 0.45, 0.045) * (le > 0.4 ? 1.15 : 1.0);
+  const hemRx = waistRx + flare * 0.55 + 0.01, hemRz = waistRz + flare * 0.95 + 0.016;
   const geo = makeALine(yTop, len, waistRx, waistRz, hemRx, hemRz);
   skinTo(av, geo, () => [['Hips', 1]]);
   const mesh = new THREE.SkinnedMesh(geo, skirtMat(piece));

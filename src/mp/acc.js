@@ -91,10 +91,11 @@ export const HAT = {
   helmet(B, c) { hemi(B, 'a', 0, c.crownY - .04, c.zc, c.rx * 1.12, c.ry * 1.18, c.rz * 1.1, 1.18); B.add(new THREE.CylinderGeometry(c.rz * 1.16, c.rz * 1.16, .05, 24, 1, true, -1.05, 2.1), 'k', [0, c.eyeY + .025, c.zc], [0, 0, 0], [c.rx / c.rz, 1, 1]); },
   // Original hijab: cloth crown and a drape around the jaw, neck and shoulders, with a smooth face opening. Not a copy of any brand.
   hijab(B, c) {
-    // Tight head covering with a full-face oval, cloth that tucks under the chin and hugs the
-    // neck, and a shoulder drape on the sides and back only (no hanging front bib).
-    const NU = 96, NV = 56, pos = [], inside = [];
-    const zc = c.zc, hw = c.hw || c.rx, faceZ = (x, y) => (c.faceZ ? c.faceZ(x, y) : (c.front || (zc + c.rz)));
+    // Head covering with a full-face oval, a U-wrap under the chin (always in front of the neck,
+    // so there is no gap from the front), and a modest shoulder drape at the sides and back.
+    const NU = 96, NV = 58, pos = [], inside = [];
+    const zc = c.zc, hw = c.hw || c.rx;
+    const faceZ = (x, y) => (c.faceZ ? c.faceZ(x, y) : (c.front || (zc + c.rz)));
     const torsoZ = (y) => (c.torsoZ ? c.torsoZ(y) : zc);
     const browY = c.eyeY + 0.034;
     const lipY = (c.mouthY || (c.chinY + 0.04)) - 0.012;
@@ -103,53 +104,53 @@ export const HAT = {
     const openW = hw * 0.82;
     const hcy = c.crownY - c.ry * 0.08;
     const neckY = (c.P && c.P.neck ? c.P.neck.y : c.chinY - 0.08);
-    const hemY = neckY - 0.08;
-    const neckRx = hw * 0.38;
+    const hemY = neckY - 0.09;
+    const neckRx = hw * 0.42;
     for (let j = 0; j <= NV; j++) {
       const v = j / NV;
       for (let i = 0; i <= NU; i++) {
         const a = i / NU * Math.PI * 2;
         const front = Math.max(0, Math.cos(a)), back = Math.max(0, -Math.cos(a)), side = Math.abs(Math.sin(a));
         let y, x, z, rx, rz;
-        if (v <= 0.58) {
-          const th = (v / 0.58) * Math.PI * 0.78;
+        if (v <= 0.56) {
+          const th = (v / 0.56) * Math.PI * 0.78;
           y = hcy + Math.cos(th) * (c.ry * 1.06 + 0.004);
           rx = Math.max(0.001, Math.sin(th) * c.rx * 1.08);
           rz = Math.max(0.001, Math.sin(th) * c.rz * 1.08);
           x = Math.sin(a) * rx; z = zc + Math.cos(a) * rz;
         } else {
-          const tt = (v - 0.58) / 0.42, s = tt * tt * (3 - 2 * tt);
+          const tt = (v - 0.56) / 0.44, s = tt * tt * (3 - 2 * tt);
           const th = Math.PI * 0.78;
           const yJaw = hcy + Math.cos(th) * (c.ry * 1.06 + 0.004);
           const rxJaw = Math.sin(th) * c.rx * 1.08, rzJaw = Math.sin(th) * c.rz * 1.08;
           const w = front + side + back || 1;
-          const yFront = neckY - 0.015, ySide = hemY, yBack = hemY - 0.015;
+          // front panel continues down onto the upper chest so it covers the neckline
+          const yFront = neckY - 0.07, ySide = hemY, yBack = hemY - 0.02;
           y = yJaw + (((front * yFront + side * ySide + back * yBack) / w) - yJaw) * s;
-          const flare = Math.max(0, (tt - 0.2) / 0.8);
+          const flare = Math.max(0, (tt - 0.25) / 0.75);
           const fk = flare * flare * (3 - 2 * flare);
-          // front shrinks to the neck; only sides and back flare onto the shoulders
-          const rxFront = neckRx + (yFront - y) * 0.15;
-          const flareAmt = (0.0 * front + 0.24 * side + 0.14 * back) * fk;
-          rx = (rxJaw * (1 - front) + Math.max(neckRx, rxFront) * front) + c.rx * flareAmt;
-          rz = rzJaw * (1 - 0.55 * front * s) + c.rz * flareAmt * 0.4;
+          const flareAmt = (0.02 * front + 0.22 * side + 0.14 * back) * fk;
+          // front stays wide enough under the jaw, then eases to a neck-width chest panel — always connected at x=0
+          const rxFront = neckRx * (1.15 - 0.15 * s) + (rxJaw - neckRx) * (1 - s) * 0.35;
+          rx = rxJaw * (1 - front) + rxFront * front + c.rx * flareAmt;
+          rz = rzJaw * (1 - 0.4 * front * s) + c.rz * flareAmt * 0.35;
           x = Math.sin(a) * rx;
-          const zLip = faceZ(0, lipY) + 0.006;
-          const zChin = faceZ(0, c.chinY) - 0.01;
-          const zNeck = torsoZ(y) + 0.018;
-          let zu = zLip;
-          if (s < 0.25) zu = zLip + (zChin - zLip) * (s / 0.25);
-          else zu = zChin + (zNeck - zChin) * Math.min(1, (s - 0.25) / 0.75);
+          const zLip = faceZ(0, lipY) + 0.007;
+          const zChin = faceZ(0, c.chinY) + 0.006; // stay in front of the chin, not under it
+          const zNeck = torsoZ(y) + 0.022;
+          let zu;
+          if (s < 0.22) zu = zLip + (zChin - zLip) * (s / 0.22);
+          else zu = zChin + (zNeck - zChin) * Math.min(1, (s - 0.22) / 0.78);
           const zShell = zc + Math.cos(a) * rz;
-          z = zShell + (zu - zShell) * Math.min(1, front / 0.7);
+          z = zShell + (zu - zShell) * Math.min(1, front / 0.65);
         }
         const nx = x / Math.max(openW, 1e-4), nyv = (y - openCy) / Math.max(openH, 1e-4);
         const ell = nx * nx + nyv * nyv;
         const isFront = z > zc + c.rz * 0.02;
-        const inHole = isFront && ell < 1 && y < openCy + openH * 1.06 && y > openCy - openH * 1.06 && v <= 0.72;
+        const inHole = isFront && ell < 1 && y < openCy + openH * 1.06 && y > openCy - openH * 1.06 && v <= 0.62;
         if (inHole) {
           const len = Math.sqrt(ell) || 1e-4, k = 1 / len;
           x *= k; y = openCy + (y - openCy) * k;
-          // keep shell z so the rim doesn't cut a crease into the face
         }
         inside.push(inHole ? 1 : 0);
         pos.push(x, y, z);
@@ -165,7 +166,6 @@ export const HAT = {
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setIndex(idx); g.computeVertexNormals();
     B.add(g, 'a');
-
   },
   // Original head wrap / turban: stacked cloth bands on the crown with a side fold. Covers the hair.
   wrap(B, c) {

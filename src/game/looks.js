@@ -278,7 +278,9 @@ export function buildAcc(P, L, o) { const acc = (o.acc || []).slice(); if (L.pac
       P.add('DEF-head', cap(1.35), c, mat(H.x, H.y + .012, H.z, H.rx * 1.1, H.ry * 1.06, H.rz * 1.1)); P.add('DEF-head', CYL, c, mat(0, 1.647, .085, .07, .005, .06)); }
     if (a === 'cap_back') { const c = '#26272b'; // backwards snapback: crown, inner liner, seams, button, brim over the nape
       P.add('DEF-head', cap(1.22), c, mat(H.x, H.y + .02, H.z - .01, H.rx * 1.09, H.ry * 1.075, H.rz * 1.1, -.62, 0, 0));
-      P.add('DEF-head', new THREE.SphereGeometry(1, 22, 10, 0, Math.PI * 2, 1.16, Math.PI - 1.16), '#141416', mat(H.x, H.y + .02, H.z - .01, H.rx * 1.02, H.ry * 1.01, H.rz * 1.03, -.62, 0, 0));
+      P.add('DEF-head', new THREE.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 1.18, Math.PI - 1.18), '#161619', mat(H.x, H.y + .02, H.z - .01, H.rx * 1.05, H.ry * 1.035, H.rz * 1.06, -.62, 0, 0));
+      { const disc = new THREE.CircleGeometry(Math.sin(1.22) * 0.98, 24); disc.rotateX(-Math.PI / 2); disc.translate(0, Math.cos(1.22), 0);
+        P.add('DEF-head', disc, '#121214', mat(H.x, H.y + .02, H.z - .01, H.rx * 1.09, H.ry * 1.075, H.rz * 1.1, -.62, 0, 0)); }
       P.add('DEF-head', SPHL, '#2a2a2e', mat(0, H.y + .108, H.z - .012, .008, .005, .008));
       P.add('DEF-head', new THREE.CylinderGeometry(1, 1, 1, 18, 1, false, Math.PI / 2, Math.PI), c, mat(0, 1.612, -.092, .082, .0038, .112, -.12, 0, 0)); P.add('DEF-head', new THREE.CylinderGeometry(1, 1, 1, 18, 1, false, Math.PI / 2, Math.PI), '#26262a', mat(0, 1.6095, -.094, .075, .0016, .105, -.12, 0, 0)); }
     if (a === 'beanie') P.add('DEF-head', cap(1.5), '#7a2a2a', mat(H.x, H.y + .012, H.z, H.rx * 1.12, H.ry * 1.12, H.rz * 1.12, -.2));

@@ -49,7 +49,7 @@ vec3 garment(vec3 p, vec3 n, vec4 R){
       if (uG1.x < 0.05) { float eh = (uArmO.x - 0.04 - ax) + max(0.0, (uArmO.y - 0.09) - p.y) * 1.2; edge = min(edge, eh); vis = vis && eh > 0.0; } // sleeveless: round armhole
       if (uG2.x > 0.0 && (legW > 0.5 || e1 < 0.0)) { vis = ls < uG2.x; edge = (uG2.x - ls) * LL; }
       { float dep = uN.y * H * 0.7 * smoothstep(0.0, 0.1, uN.z); vec2 q = vec2(p.x / uNk.z, (p.z - uNk.y) / (p.z > uNk.y ? uNk.w + dep : uNk.w * 0.9)); float dn = length(q);
-        float en = (dn - 1.0) * uNk.z; if (p.y < uLm.y - 0.11 - dep * 0.6) en = 1.0; if (uG2.w > 0.5) en = (uLm.y - 0.012 - p.y);
+        float en = (dn - 1.0) * uNk.z; float scoop = uNk.x > 0.001 ? uNk.x : 0.11; if (p.y < uLm.y - scoop - dep * 0.6) en = 1.0; if (uG2.w > 0.5) en = (uLm.y - 0.012 - p.y);
         edge = min(edge, en); rib = max(rib, smoothstep(0.014, 0.0, en) * 0.8); h += 0.0012 * smoothstep(0.012, 0.004, en) * smoothstep(0.0, 0.003, en); }
       if (kind > 2.5) { float eo = ax - uG2.y; if (front > 0.5) edge = min(edge, max(eo, (uG2.z - t) * H)); }
       if (kind > 2.5 && uDet.x > 0.5 && front > 0.5) { seam = max(seam, band(ax, 0.0, 0.004)); h += 0.0008 * band(ax, 0.0, 0.006); } // zipper
@@ -110,12 +110,12 @@ export function garmentMaterial(kind) {
         }
         if ((uKind < 0.5 || (uKind > 2.5 && uKind < 3.5)) && gr > 4.5 && gr < 5.5) { k += uShape.w * smoothstep(0.0, 0.55, rs);
           if (uG2.x > 0.0) { float inner = smoothstep(0.1, -0.5, nn.x * sdx) * (1.0 - smoothstep(uG2.x * 0.9, uG2.x * 1.05, rs)); transformed.x = mix(transformed.x, sdx * 0.003, inner * 0.9); } }
-        if (uKind > 2.5 && uKind < 3.5 && uDet.w > 0.5 && gr > 1.5 && gr < 2.5) { float waist = exp(-pow((vR.z - 0.16) / 0.11, 2.0)); k -= 0.016 * waist; } // belted robe: cinch at the waist
+        if (uKind > 2.5 && uKind < 3.5 && uDet.w > 0.5 && gr > 1.5 && gr < 2.5) { float waist = exp(-pow((vR.z - 0.16) / 0.11, 2.0)); k -= 0.007 * waist; } // belted robe: gentle cinch, belt mesh covers the waist
         if ((uKind < 0.5 || (uKind > 2.5 && uKind < 3.5)) && ((gr > 1.5 && gr < 2.5) || (gr > 4.5 && gr < 5.5))) k += uOver.x * (gr > 4.5 ? 1.0 : smoothstep(uOver.y + 0.16, uOver.y + 0.03, vR.z));
         if ((uKind < 0.5 || (uKind > 2.5 && uKind < 3.5)) && gr > 2.5 && gr < 3.5) { k += uShape.x + uShape.y * min(rs, 0.6) * 1.2; if (uDet.y > 0.5 || uKind > 2.5) k *= 1.0 - 0.85 * smoothstep(uG1.x - 0.14, uG1.x - 0.02, rs); }
         if (uKind > 1.5 && uKind < 2.5 && gr > 5.5) k = uShape.x + (position.y < 0.05 ? uShape.z : 0.0);
         transformed.xz += normalize(normal.xz + vec2(1e-5)) * k; }`, 'uniform float uKind; uniform vec4 uShape; uniform vec4 uG1; uniform vec4 uG2; uniform vec4 uDet; uniform vec4 uOver;\n');
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\n' + GLSL_COMMON + FRAG).replace('#include <color_fragment>', '#include <color_fragment>\n diffuseColor.rgb = garment(vRest, normalize(vRestN), vR); diffuseColor.a = gA; if (gA < 0.02) discard;').replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\n normal = bumpN(-vViewPosition, normal, gH, 1.0);'); };
-  m.customProgramCacheKey = () => 'mpgarm7';
+  m.customProgramCacheKey = () => 'mpgarm8';
   return m;
 }
