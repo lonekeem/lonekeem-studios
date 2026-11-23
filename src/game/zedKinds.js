@@ -15,11 +15,11 @@ const COL = {
 let _mats = null;
 function mats() {
   if (_mats) return _mats;
-  const armor = new THREE.MeshStandardMaterial({ color: '#4a515a', metalness: .74, roughness: .36 });
+  const armor = new THREE.MeshStandardMaterial({ color: '#9aa3ae', metalness: .88, roughness: .26, emissive: '#1c242c', emissiveIntensity: .18 });
   armor.customProgramCacheKey = () => 'zedArmor';
-  const rust = new THREE.MeshStandardMaterial({ color: '#6a3a22', metalness: .45, roughness: .62 });
+  const rust = new THREE.MeshStandardMaterial({ color: '#8a4a28', metalness: .55, roughness: .48, emissive: '#2a1208', emissiveIntensity: .1 });
   rust.customProgramCacheKey = () => 'zedRust';
-  const belly = new THREE.MeshStandardMaterial({ color: '#7a8a52', emissive: '#2a3a10', emissiveIntensity: .2, roughness: .92, metalness: 0 });
+  const belly = new THREE.MeshStandardMaterial({ color: '#6a6e48', emissive: '#1a2410', emissiveIntensity: .1, roughness: .96, metalness: 0 });
   belly.customProgramCacheKey = () => 'zedBelly';
   const glob = new THREE.MeshStandardMaterial({ color: '#8fe24a', emissive: '#5aa818', emissiveIntensity: 1.1, roughness: .35, metalness: 0, transparent: true, opacity: .92 });
   glob.customProgramCacheKey = () => 'zedGlob';
@@ -253,16 +253,17 @@ export function dressKind(z, kind) {
   const M = mats();
   const x = look.zedExtras || {};
   if (kind === 'tank') {
-    addPlate(z, 'DEF-spine003', M.plate, M.armor, [0, .02, .1], [0.15, 0, 0], [1.15, 1.25, 1]);
-    addPlate(z, 'DEF-spine002', M.plate, x.helm === false ? M.rust : M.armor, [0, .02, .09], [0.05, 0, 0], [1.05, .9, 1]);
-    if (x.pauldronL !== false) addPlate(z, 'DEF-upper_arm.L', M.pauldron, M.armor, [0, .08, 0], [0, 0, .4], [1, 1, 1]);
-    if (x.pauldronR !== false) addPlate(z, 'DEF-upper_arm.R', M.pauldron, M.armor, [0, .08, 0], [0, 0, -.4], [1, 1, 1]);
-    addPlate(z, 'DEF-forearm.L', M.bracer, M.rust, [0, .04, 0], [0, 0, 0], [1, 1, 1]);
-    addPlate(z, 'DEF-forearm.R', M.bracer, M.rust, [0, .04, 0], [0, 0, 0], [1, 1, 1]);
-    if (x.helm !== false) addPlate(z, 'DEF-head', M.helm, M.armor, [0, .06, 0], [0.15, 0, 0], [1.15, .7, 1.1]);
+    addPlate(z, 'DEF-spine003', M.plate, M.armor, [0, .04, .2], [0.2, 0, 0], [1.7, 1.85, 1.55]);
+    addPlate(z, 'DEF-spine002', M.plate, x.helm === false ? M.rust : M.armor, [0, .02, .18], [0.08, 0, 0], [1.45, 1.2, 1.4]);
+    if (x.pauldronL !== false) addPlate(z, 'DEF-upper_arm.L', M.pauldron, M.armor, [0.02, .12, .04], [0, 0, .5], [1.55, 1.45, 1.5]);
+    if (x.pauldronR !== false) addPlate(z, 'DEF-upper_arm.R', M.pauldron, M.armor, [-0.02, .12, .04], [0, 0, -.5], [1.55, 1.45, 1.5]);
+    addPlate(z, 'DEF-forearm.L', M.bracer, M.rust, [0, .05, 0], [0, 0, 0], [1.35, 1.15, 1.35]);
+    addPlate(z, 'DEF-forearm.R', M.bracer, M.rust, [0, .05, 0], [0, 0, 0], [1.35, 1.15, 1.35]);
+    if (x.helm !== false) addPlate(z, 'DEF-head', M.helm, M.armor, [0, .12, .02], [0.2, 0, 0], [1.45, .95, 1.4]);
   } else if (kind === 'spitter') {
     const bs = look.bellyS || 1;
-    const belly = addPlate(z, 'DEF-spine.001', M.bellyGeo, M.belly, [0, .03, .1], [0.18, 0, 0], [1.2 * bs, .62 * bs, .88 * bs]);
+    const belly = addPlate(z, 'DEF-spine.001', M.bellyGeo, M.belly, [0, .05, .05], [0.42, 0, 0], [1.45 * bs, .36 * bs, .62 * bs]);
+    addPlate(z, 'DEF-spine.001', M.bellyGeo, M.belly, [0, -.02, .07], [0.55, 0, 0], [1.15 * bs, .28 * bs, .5 * bs]);
     z._belly = belly;
     const spr = new THREE.Sprite(M.flare.clone()); spr.scale.set(.22, .22, .22); spr.position.set(0, .04, .14); spr.visible = true;
     attachPart(z, 'DEF-head', spr); z._mouthGlow = spr; (z._kindMesh = z._kindMesh || []).push(spr);
@@ -336,7 +337,10 @@ export function tickKindFx(scene, dt, playerPos, onHurt, audio, driving) {
     }
     if (hit || g.life <= 0) {
       g.m.visible = false;
-      if (g.life > -1) dropPuddle(fx, p.x, p.z, audio);
+      if (g.life > -1) {
+        if (audio && audio.acidSplat) audio.at ? audio.at(p).acidSplat(.7) : audio.acidSplat(.7);
+        dropPuddle(fx, p.x, p.z, audio);
+      }
       if (hit === 'player' && onHurt) onHurt(10, p);
     }
   }
@@ -399,6 +403,8 @@ export function tickSpecialZed(z, dt, ctx) {
     }
     if (z.mode === 'charge') {
       z.mt -= dt;
+      z._stompT = (z._stompT || 0) - dt;
+      if (z._stompT <= 0) { z._stompT = .32; if (audio && audio.tankStomp) audio.tankStomp(.7); }
       const f = V3(Math.sin(z.root.rotation.y), 0, Math.cos(z.root.rotation.y));
       const hit = moveCollide(f.x * 7.4 * dt, f.z * 7.4 * dt, .5);
       if (hit) {

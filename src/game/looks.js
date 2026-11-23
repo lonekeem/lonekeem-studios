@@ -107,6 +107,16 @@ export function lookIsFem(look) {
   if (look.beard && look.beard !== 'none') return false;
   return FEM_HAIR.has(look.hair);
 }
+export const ZVO_POOLS = {
+  fem: ['rasp_f', 'gut_f', 'moan_f', 'wet_f', 'shriek_f', 'wheeze_f'],
+  fem_young: ['young_f', 'shriek_f', 'wheeze_f', 'moan_f'],
+  fem_old: ['old_f', 'wheeze_f', 'moan_f', 'wet_f'],
+  male: ['rasp_m', 'gut_m', 'moan_m', 'wet_m', 'shriek_m', 'hollow_m', 'hag_m', 'bark_m'],
+  male_young: ['young_m', 'shriek_m', 'rasp_m', 'moan_m'],
+  male_old: ['old_m', 'hag_m', 'hollow_m', 'moan_m'],
+  heavy: ['gut_m', 'bark_m', 'rasp_m', 'hag_m'],
+  wet: ['wet_m', 'wet_f', 'wheeze_f', 'hollow_m'],
+};
 export function zVoiceProfile(look, o = {}) {
   const fem = o.fem != null ? !!o.fem : lookIsFem(look);
   const rig = (look && look.rig) || null;
@@ -116,32 +126,38 @@ export function zVoiceProfile(look, o = {}) {
   if (!boss && kind === 'tank') return 'tank';
   if (!boss && kind === 'spitter') return 'spitter';
   if (boss) return (fem || rig === 'zombie_office') ? 'boss_f' : 'boss_m';
-  if (rig === 'zombie_big') return 'brute';
-  if (rig === 'zombie_elder') return 'elder';
-  if (rig === 'zombie_male' || rig === 'zombie_cop' || rig === 'zombie_worker') return 'male';
-  if (rig === 'zombie_office') return fem ? 'female' : 'gurgler';
   const build = (look && look.build) || 1, height = (look && look.height) || 1, seed = (look && look.seed) || 0;
-  if (fem) return (build < .96 || height < .96) ? 'teen_f' : 'female';
-  if (build > 1.15) return 'brute';
-  if (build < .95 || height < .96) return 'teen_m';
-  if (seed % 5 === 0) return 'gurgler';
-  return 'male';
+  const grey = !!(look && look.grey);
+  let pool;
+  if (fem) {
+    if (rig === 'zombie_elder' || grey) pool = ZVO_POOLS.fem_old;
+    else if (build < .96 || height < .96) pool = ZVO_POOLS.fem_young;
+    else pool = ZVO_POOLS.fem;
+  } else if (rig === 'zombie_elder' || grey) pool = ZVO_POOLS.male_old;
+  else if (build > 1.15 || rig === 'zombie_big') pool = ZVO_POOLS.heavy;
+  else if (build < .95 || height < .96) pool = ZVO_POOLS.male_young;
+  else if (seed % 5 === 0 || rig === 'zombie_office') pool = ZVO_POOLS.wet;
+  else pool = ZVO_POOLS.male;
+  const r = mulberry(seed * 9137 + 91 + pool.length * 7);
+  return pool[Math.floor(r() * pool.length)];
 }
 export function zVoiceAssign(look, o = {}) {
   const profile = zVoiceProfile(look, o);
   const r = mulberry(((look && look.seed) || 1) * 9137 + 17 + (profile.length * 13));
   let lo = .92, hi = 1.08;
-  if (profile === 'runner') { lo = 1.06; hi = 1.18; }
-  else if (profile === 'tank') { lo = .78; hi = .90; }
-  else if (profile === 'spitter') { lo = .88; hi = 1.04; }
-  else if (profile === 'brute' || profile === 'boss_m') { lo = .86; hi = .98; }
-  else if (profile === 'elder') { lo = .88; hi = 1.02; }
-  else if (profile === 'teen_f') { lo = 1.02; hi = 1.14; }
-  else if (profile === 'teen_m') { lo = .98; hi = 1.10; }
+  if (profile === 'runner' || profile === 'shriek_m' || profile === 'shriek_f' || profile === 'young_m' || profile === 'young_f') { lo = 1.04; hi = 1.18; }
+  else if (profile === 'tank' || profile === 'gut_m' || profile === 'bark_m') { lo = .78; hi = .92; }
+  else if (profile === 'spitter' || profile === 'wet_m' || profile === 'wet_f' || profile === 'wheeze_f') { lo = .88; hi = 1.04; }
+  else if (profile === 'brute' || profile === 'boss_m' || profile === 'hag_m' || profile === 'hollow_m') { lo = .84; hi = .98; }
+  else if (profile === 'elder' || profile === 'old_m' || profile === 'old_f') { lo = .88; hi = 1.02; }
+  else if (profile === 'teen_f' || profile === 'rasp_f' || profile === 'moan_f' || profile === 'gut_f') { lo = .96; hi = 1.12; }
+  else if (profile === 'teen_m' || profile === 'rasp_m' || profile === 'moan_m') { lo = .94; hi = 1.08; }
   else if (profile === 'female' || profile === 'boss_f') { lo = .96; hi = 1.10; }
   else if (profile === 'gurgler') { lo = .90; hi = 1.06; }
   if (look && look.rig === 'zombie_cop') { lo = .97; hi = 1.07; }
   if (look && look.rig === 'zombie_worker') { lo = .88; hi = 1.00; }
+  if (profile === 'runner') { lo = 1.06; hi = 1.18; }
+  if (profile === 'tank') { lo = .78; hi = .90; }
   const pitch = lo + r() * (hi - lo);
   return { profile, pitch, fem: !!(o.fem != null ? o.fem : lookIsFem(look)) };
 }
