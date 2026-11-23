@@ -56,6 +56,13 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   const scene = new THREE.Scene(); const FOG_FAR = 105; scene.background = new THREE.Color('#aab5b8'); scene.fog = new THREE.Fog('#aab5b8', 28, FOG_FAR);
   scene.add(new THREE.HemisphereLight('#dfe8f0', '#59614a', 1.25)); const sun = new THREE.DirectionalLight('#ffeccc', 2.1); sun.position.set(36, 60, 28); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = sc.bottom = -34; sc.right = sc.top = 34; sc.near = 5; sc.far = 160; sun.shadow.bias = -.0006; sun.shadow.normalBias = .04; scene.add(sun, sun.target);
   const cam = new THREE.PerspectiveCamera(58, 1, .1, 320);
+  // v1.9.50: gradient sky dome (hazy horizon that matches the fog -> soft blue zenith, warm glow toward the sun) instead of a flat grey backdrop; quality scales pixel ratio + shadow map on phones
+  { const sd = new THREE.Mesh(new THREE.SphereGeometry(300, 24, 12), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false, uniforms: { uSun: { value: new THREE.Vector3(36, 60, 28).normalize() } },
+      vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); vec4 p = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * p; gl_Position.z = gl_Position.w * .9999; }',
+      fragmentShader: 'uniform vec3 uSun; varying vec3 vD; void main(){ float h = clamp(vD.y, 0.0, 1.0); vec3 hor = vec3(.667, .71, .722), zen = vec3(.36, .55, .76); vec3 c = mix(hor, zen, pow(h, .55)); float s = max(dot(normalize(vD), uSun), 0.0); c += vec3(1.0, .86, .62) * (pow(s, 24.0) * .35 + pow(s, 400.0) * .9); c = mix(c, hor, smoothstep(.06, -.02, vD.y)); gl_FragColor = vec4(pow(c, vec3(2.2)), 1.0);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}' }));
+    sd.frustumCulled = false; sd.renderOrder = -10; sd.onBeforeRender = () => sd.position.copy(cam.position); scene.add(sd); }
+  try { const qs = JSON.parse(localStorage.getItem('atq3.settings') || '{}').qual; const coarse = matchMedia('(pointer:coarse)').matches; const q = qs && qs !== 'auto' ? qs : (coarse ? 'low' : 'high');
+    if (q === 'low') { renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5)); sun.shadow.mapSize.set(1024, 1024); } else if (q === 'med') renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75)); } catch (e) { /* defaults */ }
   // ---- world ----
   const W = buildTown(scene, { hooks: [addGas, addLoot] }); const col = W.col; const bag = new Bag(26); bag.add('water', 1); bag.pref = 'fists'; // weapons + cash come from the shared Survival/story save via seedLoadout()
   // v1.9.28 shared wallet: town cash IS the story/Survival cash (window.__atq.save), so loot earned anywhere pays for doors, guns and My Character items
@@ -99,6 +106,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   window.__mpAud = aud; if (!window.__mpAudHooked) { window.__mpAudHooked = 1; const ul = () => { try { if (window.__mpAud && !window.__mpAud._bgSuspended) window.__mpAud.unlock(true); } catch (e) { /* ignore */ } }; ['touchend', 'click', 'keydown', 'pointerup'].forEach(ev => addEventListener(ev, ul, { capture: true, passive: true })); }
   try { aud.stopGameplay && aud.stopGameplay(); } catch (e) { /* ignore */ }
   try { aud.beginSession && aud.beginSession('town'); } catch (e) { /* ignore */ }
+  try { aud.bedsFor && aud.bedsFor({ indoor: false, mood: 'day' }); } catch (e) { /* ambience only */ } // v1.9.50: outdoor town bed (light crickets + far horde)
   try { aud.rain && aud.rain(false); aud.beat && aud.beat(0); } catch (e) { /* ignore */ }
   // ---- cheap draw-call LOD: container/furniture lids only near the player, cars hidden far away, no shadows from small bits ----
   let perfAcc = 0; for (const c of W.containers) if (c.lid && c.lid.parent) c.lid.parent.traverse(o => { if (o.isMesh) o.castShadow = false; }); for (const c of cars) c.g.traverse(o => { if (o.isMesh && /wheel/.test(o.name)) o.castShadow = false; });

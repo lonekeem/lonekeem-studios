@@ -327,7 +327,7 @@ P.play = function (name, o = {}) { if (!this.ctx) return null; let n = name; if 
     if (d > 14) { const f = this.ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = Math.max(700, 16000 / (1 + (d - 14) * .25)); out.connect(f); out = f; }
     out.connect(p); out = p; s.panner = p; }
   else if (o.pan && this.ctx.createStereoPanner) { const p = this.ctx.createStereoPanner(); p.pan.value = o.pan; g.connect(p); out = p; }
-  out.connect(o.bus || this.sfx); if (o.verb || d > 20) g.connect(this.verb); if (!o.loop) { this.nAct++; s.onended = () => { this.nAct--; }; }
+  out.connect(o.bus || this.sfx); if (o.verb || d > 20) g.connect(this.verb); else if (this.indoors && !o.loop && !o.flat && o.bus !== this.voiceBus && this.verb) { if (!this._roomSend) { this._roomSend = this.ctx.createGain(); this._roomSend.gain.value = .45; this._roomSend.connect(this.verb); } g.connect(this._roomSend); } // v1.9.50: interiors get a room reverb send if (!o.loop) { this.nAct++; s.onended = () => { this.nAct--; }; }
   s.start(this.ctx.currentTime + (o.delay || 0)); s.g = g; s._atqName = n; s._atqLoop = !!o.loop;
   if (o.loop) { this._loops = this._loops || new Set(); this._loops.add(s); const prev = s.onended; s.onended = () => { this._loops && this._loops.delete(s); if (typeof prev === 'function') prev(); }; }
   return s; };
@@ -508,3 +508,18 @@ P.audit = function () {
     storyPlaying: !!(this.rainSrc || this._bt || this._dr || this._en || this.truckSrc || this.tireSrc || this.vSrc || (this._loops && this._loops.size) || this.rainOn || (this._held && this._held.size)),
   };
 };
+
+// ---- v1.9.50 ambient beds (crickets / distant horde / indoor room tone) on the ambience bus, crossfaded per area ----
+const BEDS = { crickets: 'amb_crickets_loop', horde: 'amb_horde_loop', room: 'amb_room_loop' };
+P.beds = function (want = {}) { if (!this.ctx) return; this._bedWant = want; this._beds = this._beds || {}; const t = this.ctx.currentTime;
+  for (const k in BEDS) { const v = want[k] || 0; let s = this._beds[k]; const alive = s && this._loops && this._loops.has(s);
+    if (!alive) { this._beds[k] = s = null; if (v > 0) { const b = this.bufs && this.bufs[BEDS[k]]; if (b) { s = this._beds[k] = this.play(BEDS[k], { loop: true, vol: 0, bus: this.amb, jit: 0, flat: true }); if (s && s.dummy) s = this._beds[k] = null; } else { this.load(BEDS[k]).then(() => { if (this._bedWant === want) this.beds(want); }); } } }
+    if (s && s.g) s.g.gain.setTargetAtTime(v, t, 1.6); } };
+/** pick beds for a story step / survival: outdoors at night = crickets + far horde, interiors = room tone (+ a muffled horde in tense beats) */
+P.bedsFor = function ({ indoor = false, mood = 'night', rain = false, survival = false } = {}) {
+  const tense = mood === 'tense' || survival; const day = mood === 'day';
+  this.beds(indoor ? { room: .5, horde: tense ? .14 : .05 } : { crickets: rain || tense ? 0 : day ? .08 : .3, horde: tense ? .42 : .2 });
+};
+P.bedsOff = function () { this.beds({}); };
+/** soft UI sounds for menus: kind = tap | confirm | back */
+P.ui = function (kind = 'tap') { if (!this.ctx || this.ctx.state !== 'running') return; const now = performance.now(); if (now - (this._uiT || 0) < 45) return; this._uiT = now; this.play('ui_' + kind, { vol: kind === 'tap' ? .35 : .45, jit: .03, flat: true }); };

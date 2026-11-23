@@ -397,8 +397,8 @@ const CSS = `
 #rewards .rwact button{min-height:40px;min-width:72px;padding:6px 10px;font:700 13px system-ui,sans-serif;border-radius:10px}
 #rewards .rwact .lockn{font:11px system-ui,sans-serif;opacity:.7;text-align:center;max-width:80px}
 #rewards .back{flex-shrink:0}
-#rwToast{position:fixed;left:max(10px,env(safe-area-inset-left));right:auto;top:max(10px,env(safe-area-inset-top));bottom:auto;transform:translateY(-8px);z-index:90;background:rgba(8,22,14,.96);border:1px solid #c9a227;color:#f4ead4;padding:8px 12px;border-radius:12px;font:700 13px system-ui,sans-serif;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;max-width:min(46vw,260px);text-align:left;box-shadow:0 8px 28px #0008}
-#rwToast.on{opacity:1;transform:translateY(0)}
+#rwToast{position:fixed;left:50%;right:auto;top:auto;bottom:max(12px,env(safe-area-inset-bottom));transform:translate(-50%,10px);z-index:90;background:rgba(8,22,14,.96);border:1px solid #c9a227;color:#f4ead4;padding:8px 12px;border-radius:12px;font:700 13px system-ui,sans-serif;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;max-width:min(60vw,300px);text-align:center;box-shadow:0 8px 28px #0008}
+#rwToast.on{opacity:1;transform:translate(-50%,0)}
 #rwToast small{display:block;font:600 11px system-ui,sans-serif;opacity:.8;margin-top:2px;letter-spacing:.04em;text-transform:uppercase;color:#c9a227}
 #title #btnRewards{position:relative}
 #title .mpane #btnDailies,#title .mpane #btnRewards{grid-column:auto}

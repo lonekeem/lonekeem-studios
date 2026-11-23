@@ -128,7 +128,7 @@ function helm(b) {
 
 // ---------- steps ----------
 export const steps = [
-  { id: 'c14_arrive', ch: 14, cp: [0, -3708, PI], obj: '', hint: '', mood: 'night', beat: 0, rain: false, light: 'ward',
+  { id: 'c14_arrive', ch: 14, cp: [0, -3708, PI], obj: '', hint: '', mood: 'night', beat: 0, rain: false, light: 'lab',
     enter(g) {
       const D = g.stepData, A = API; g.openGate(true); A.setAlarm(true); A.setScreen('STANDBY', 'Awaiting samples.');
       const { dad, nia, mom } = placeFam(g, D, 0, -3708);
@@ -161,7 +161,7 @@ export const steps = [
     },
     update(g, dt) { tickMv(g, g.stepData, dt); } },
 
-  { id: 'c14_draw', ch: 14, cp: [-11, -3764, PI], obj: 'Give 3 samples (0/3)', hint: 'Walk to a glowing vial stand and press USE.', mood: 'night', beat: 1, rain: false, light: 'ward',
+  { id: 'c14_draw', ch: 14, cp: [-11, -3764, PI], obj: 'Give 3 samples (0/3)', hint: 'Walk to a glowing vial stand and press USE.', mood: 'night', beat: 1, rain: false, light: 'lab',
     enter(g) {
       const D = g.stepData, A = API; g.openGate(true);
       if (!D.dad) placeFam(g, D, -11, -3762);
@@ -195,7 +195,7 @@ export const steps = [
     },
     update(g, dt) { dadTick(g, g.stepData, dt); } },
 
-  { id: 'c14_result', ch: 14, cp: [-11, -3768, PI], obj: '', hint: '', mood: 'night', beat: 0, rain: false, light: 'ward',
+  { id: 'c14_result', ch: 14, cp: [-11, -3768, PI], obj: '', hint: '', mood: 'night', beat: 0, rain: false, light: 'lab',
     enter(g) {
       const D = g.stepData, A = API; g.openGate(true);
       if (!D.dad) placeFam(g, D, -11, -3764);
@@ -232,7 +232,7 @@ export const steps = [
         else { hideMont(); D.mont.phase = 'talk'; afterMontage(g, D, A); } }
     } },
 
-  { id: 'c14_breach', ch: 14, cp: [-4, -3778, PI], obj: 'Hold the lab', hint: 'Authority troopers want you alive. Use cover. Dad and Vance have your back.', mood: 'tense', beat: 3, rain: false, light: 'ward',
+  { id: 'c14_breach', ch: 14, cp: [-4, -3778, PI], obj: 'Hold the lab', hint: 'Authority troopers want you alive. Use cover. Dad and Vance have your back.', mood: 'tense', beat: 3, rain: false, light: 'lab',
     enter(g) {
       const D = g.stepData, A = API; g.openGate(true); A.setAlarm(true);
       if (!D.dad) placeFam(g, D, -4, -3776);
@@ -260,7 +260,7 @@ export const steps = [
       if (D.wave >= 1 && left === 0) clearThen(g, D, 'c14_warden', 220, 'Get to the evacuation lift');
     } },
 
-  { id: 'c14_warden', ch: 14, cp: [0, -3856, PI], obj: 'Stop the Warden', hint: 'Visor shots only. Break snares. Protect Biscuit.', mood: 'tense', beat: 3, rain: false, light: 'ward',
+  { id: 'c14_warden', ch: 14, cp: [0, -3856, PI], obj: 'Stop the Warden', hint: 'Visor shots only. Break snares. Protect Biscuit.', mood: 'tense', beat: 3, rain: false, light: 'lab',
     enter(g) {
       const D = g.stepData, A = API; g.openGate(true); A.setAlarm(true);
       if (!D.dad) placeFam(g, D, 0, -3856);
@@ -310,12 +310,12 @@ export const steps = [
         const dx = np.x - p.x, dz = np.z - p.z, d = Math.hypot(dx, dz);
         if (d > .8) { const s = Math.min(d, 3.4 * dt); p.x += dx / d * s; p.z += dz / d * s; b.root.rotation.y = Math.atan2(dx, dz); b.play('Jog_Fwd_Loop'); }
         const dmg = (D.hurt0 || b.hp) - b.hp; // damage taken during the grab
-        if (dmg > 280) { D.mode = 'fight'; D.cd = 5; g.toast('You broke his grab', 1.6); D.hurt0 = b.hp; }
+        if (dmg > 280) { D.mode = 'fight'; D.cd = 5; g.toast('You broke her grab', 1.6); D.hurt0 = b.hp; }
         else if (d < 1.6 && D.gt > .6) { boxBiscuit(g, D); D.mode = 'fight'; D.cd = 8; D.hurt0 = b.hp; }
       }
     } },
 
-  { id: 'c14_end', ch: 14, cp: [0, -3894, PI], obj: '', hint: '', mood: 'sad', beat: 0, rain: false, light: 'ward',
+  { id: 'c14_end', ch: 14, cp: [0, -3894, PI], obj: '', hint: '', mood: 'sad', beat: 0, rain: false, light: 'lab',
     enter(g) {
       const D = g.stepData, A = API; g.openGate(true); A.setAlarm(true); hideMont();
       if (!D.dad) placeFam(g, D, 0, -3890);
@@ -392,8 +392,8 @@ function afterMontage(g, D, A) {
 
 function startGrab(g, D, b) {
   D.mode = 'grab'; D.gt = 0; D.hurt0 = b.hp; D.cd = 99;
-  g.toast('He is going for Biscuit!', 2.2);
-  g.objective('Stop the Warden', 'Hit him before he reaches Nia.');
+  g.toast('She is going for Biscuit!', 2.2);
+  g.objective('Stop the Warden', 'Hit her before she reaches Nia.');
   g.audio.roar && g.audio.roar(b);
 }
 function boxBiscuit(g, D) {
@@ -404,7 +404,7 @@ function boxBiscuit(g, D) {
   D.crate = { m, x: np.x, z: np.z, hp: 3 };
   D.nia.play('Idle_Loop'); act(D.nia, 'clutch', { k: 1 });
   g.objective('Free Biscuit', 'Smash the crate — shoot it or get close and fire.');
-  g.toast('He boxed Biscuit!', 2);
+  g.toast('She boxed Biscuit!', 2);
   D.uses = [{ x: np.x, z: np.z, r: 2.2, label: 'Smash the crate', fn: (g) => { if (D.crate) { D.crate.hp = 0; } } }];
 }
 function hideCrate(g, D) {

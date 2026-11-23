@@ -6,9 +6,13 @@ import { mats, floor, wallX, wallZ, room, lamp, slabDoor, prop, table, shelfUnit
 export function buildCh14Lab(ctx, { x = 0, z = -3704 } = {}) {
   const K = mats(ctx), T = ctx.THREE, H = 4.1, A = { benches: [], lamps: [], cover: [], alarms: [] };
   const M = (c, o = {}) => new T.MeshStandardMaterial({ color: c, roughness: .85, ...o });
-  const tile = M('#cfd6d8', { roughness: .42, metalness: .08, polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -8 });
-  const tile2 = M('#b7c0c4', { roughness: .5, polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -8 });
-  const wallW = M('#e8ecee', { roughness: .7 });
+  // v1.9.50: the floor, walls and ceiling each get their own look so the room never reads upside down
+  // (light checkered vinyl floor, walls that darken toward the top, a dark drop ceiling with recessed light panels)
+  const PO = { polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -8 };
+  const tile = floorMat(ctx, 'vinyl', 42, 68, PO), tile2 = floorMat(ctx, 'sealed', 22, 60, PO);
+  const tileA = floorMat(ctx, 'vinyl', 18, 18, PO), tileR = floorMat(ctx, 'vinyl', 36, 54, PO);
+  const wallW = new T.MeshStandardMaterial({ map: wallGrad(ctx, ['#3c464c', '#b4bec3', '#a3aeb4', '#566168']), roughness: .72 });
+  const wallHall = new T.MeshStandardMaterial({ map: wallGrad(ctx, ['#23292c', '#5a6468', '#4c5559', '#262c30']), roughness: .8 });
   const glowBlue = new T.MeshStandardMaterial({ color: '#9fd4ff', emissive: '#3aa7ff', emissiveIntensity: 1.4, roughness: .25, metalness: .2 });
   const glowRed = new T.MeshStandardMaterial({ color: '#ff6a4a', emissive: '#ff2810', emissiveIntensity: 1.8, roughness: .3 });
   const glowGreen = new T.MeshStandardMaterial({ color: '#8affb0', emissive: '#1ad86a', emissiveIntensity: 1.3, roughness: .3 });
@@ -22,10 +26,10 @@ export function buildCh14Lab(ctx, { x = 0, z = -3704 } = {}) {
   const ARENA_S = HALL_S - 54; // -3904
   const antC = N - 9, labC = ANT_S - 34, hallC = LAB_S - 30, arC = HALL_S - 27;
 
-  floor(ctx, x, antC, 18, 18, tile, .08);
+  floor(ctx, x, antC, 18, 18, tileA, .08);
   floor(ctx, x, labC, 42, 68, tile, .08);
   floor(ctx, x, hallC, 22, 60, tile2, .08);
-  floor(ctx, x, arC, 36, 54, tile, .08);
+  floor(ctx, x, arC, 36, 54, tileR, .08);
   prop(ctx, .18, .02, 64, glowBlue, x, .05, labC, false);
 
   // ---------- antechamber ----------
@@ -115,7 +119,7 @@ export function buildCh14Lab(ctx, { x = 0, z = -3704 } = {}) {
   A.incinerator = [ix, iz];
 
   // ---------- breach hall ----------
-  room(ctx, { x, z: hallC, w: 22, d: 60, h: H, mat: K.wallDark, doors: { n: [x], s: [x] }, doorW: 3.4 });
+  room(ctx, { x, z: hallC, w: 22, d: 60, h: H, mat: wallHall, doors: { n: [x], s: [x] }, doorW: 3.4 });
   ctx.sign(['SERVICE CORRIDOR', 'ROOF  ·  PARKING'], x, 3.1, LAB_S - .35, Math.PI, 4.6, .7, '#1a2a3a');
   [[-6, 18], [6, 8], [-5.5, -2], [6.2, -14], [-6, -22], [5, 2]].forEach(([dx, ddz]) => {
     crate(ctx, x + dx, hallC + ddz, 1.15 + (Math.abs(dx) % .4), K.steelDark, dx * .08);
@@ -172,27 +176,68 @@ export function buildCh14Lab(ctx, { x = 0, z = -3704 } = {}) {
   return A;
 }
 
+// light vinyl floor: 2x2 tiles of 0.6 m per repeat, two alternating shades, dark joints, scuffs. 'sealed' = darker speckled service-corridor floor.
+function floorMat(ctx, kind, w, d, extra) {
+  const key = '_ch14F_' + kind;
+  if (!ctx[key]) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 256; const g = cv.getContext('2d');
+    if (kind === 'vinyl') {
+      const A = ['#a9afa6', '#8d948c'];
+      for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) { g.fillStyle = A[(i + j) % 2]; g.fillRect(i * 128, j * 128, 128, 128); }
+      for (let n = 0; n < 900; n++) { g.fillStyle = `rgba(${Math.random() < .5 ? '40,44,40' : '255,255,250'},${Math.random() * .09})`; g.fillRect(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 3, 1 + Math.random() * 2); }
+      for (let n = 0; n < 14; n++) { g.strokeStyle = `rgba(40,40,36,${.05 + Math.random() * .07})`; g.lineWidth = 1 + Math.random() * 2; g.beginPath(); const sx = Math.random() * 256, sy = Math.random() * 256; g.moveTo(sx, sy); g.quadraticCurveTo(sx + 20, sy + 10, sx + 30 + Math.random() * 40, sy + Math.random() * 20 - 10); g.stroke(); }
+      g.fillStyle = '#5d635c'; [0, 127].forEach(o => { g.fillRect(0, o, 256, 3); g.fillRect(o, 0, 3, 256); }); g.fillRect(0, 254, 256, 2); g.fillRect(254, 0, 2, 256);
+    } else {
+      g.fillStyle = '#5b6468'; g.fillRect(0, 0, 256, 256);
+      for (let n = 0; n < 2400; n++) { g.fillStyle = `rgba(${Math.random() < .5 ? '20,24,26' : '200,210,214'},${Math.random() * .14})`; g.fillRect(Math.random() * 256, Math.random() * 256, 1.5, 1.5); }
+      for (let n = 0; n < 8; n++) { g.fillStyle = `rgba(20,24,26,${.05 + Math.random() * .06})`; g.beginPath(); g.ellipse(Math.random() * 256, Math.random() * 256, 20 + Math.random() * 40, 10 + Math.random() * 25, Math.random() * 3, 0, 7); g.fill(); }
+      g.fillStyle = '#3a4246'; g.fillRect(0, 0, 256, 3); g.fillRect(0, 0, 3, 256);
+    }
+    const t = new ctx.THREE.CanvasTexture(cv); t.wrapS = t.wrapT = ctx.THREE.RepeatWrapping; t.colorSpace = ctx.THREE.SRGBColorSpace; t.anisotropy = 4; ctx[key] = t;
+  }
+  const t = ctx[key].clone(); const rep = kind === 'vinyl' ? 1.2 : 3; t.repeat.set(w / rep, d / rep);
+  return new ctx.THREE.MeshStandardMaterial(Object.assign({ map: t, roughness: kind === 'vinyl' ? .38 : .7, metalness: .04 }, extra));
+}
+// vertical wall gradient (box side UVs run v=0 at the floor to v=1 at the ceiling): [baseboard, lower, upper, top]
+function wallGrad(ctx, [base, lo, hi, top]) {
+  const cv = document.createElement('canvas'); cv.width = 4; cv.height = 256; const g = cv.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, top); gr.addColorStop(.3, hi); gr.addColorStop(.85, lo); gr.addColorStop(.95, lo); gr.addColorStop(.955, base); gr.addColorStop(1, base);
+  g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
+  const t = new ctx.THREE.CanvasTexture(cv); t.colorSpace = ctx.THREE.SRGBColorSpace; return t;
+}
+// dark drop ceiling: 0.6 m mineral tiles (fissured, mid-dark grey) in a pale metal T-bar grid; no checker so it can never pass for the floor
 function ceilTex(ctx, w, d) {
   if (!ctx._ch14Ceil) {
     const cv = document.createElement('canvas'); cv.width = 128; cv.height = 128;
     const g = cv.getContext('2d');
-    g.fillStyle = '#9aa4aa'; g.fillRect(0, 0, 128, 128);
-    g.strokeStyle = '#5e686e'; g.lineWidth = 4;
-    g.beginPath(); g.moveTo(0, 0); g.lineTo(128, 0); g.moveTo(0, 0); g.lineTo(0, 128); g.stroke();
-    g.fillStyle = 'rgba(255,255,255,.18)';
-    for (let i = 0; i < 90; i++) g.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+    g.fillStyle = '#4b5257'; g.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 420; i++) { g.fillStyle = `rgba(${Math.random() < .6 ? '18,20,22' : '150,158,162'},${Math.random() * .22})`; g.fillRect(Math.random() * 128, Math.random() * 128, 1 + Math.random() * 2.5, 1); }
+    const sh = g.createLinearGradient(0, 0, 0, 128); sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(.5, 'rgba(0,0,0,.12)'); sh.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = sh; g.fillRect(0, 0, 128, 128);
+    g.fillStyle = '#9aa3a8'; g.fillRect(0, 0, 128, 5); g.fillRect(0, 0, 5, 128);
+    g.fillStyle = '#2a2f33'; g.fillRect(0, 5, 128, 2); g.fillRect(5, 0, 2, 128);
     const tex = new ctx.THREE.CanvasTexture(cv); tex.wrapS = tex.wrapT = ctx.THREE.RepeatWrapping; tex.colorSpace = ctx.THREE.SRGBColorSpace; tex.anisotropy = 4;
     ctx._ch14Ceil = tex;
   }
-  const tex = ctx._ch14Ceil.clone(); tex.repeat.set(Math.max(.5, w / 1.2), Math.max(.5, d / 1.2));
-  return new ctx.THREE.MeshStandardMaterial({ map: tex, color: '#e4e8ea', roughness: .92, metalness: 0, emissive: '#2c3338', emissiveMap: tex, emissiveIntensity: .4, side: ctx.THREE.FrontSide });
+  const tex = ctx._ch14Ceil.clone(); tex.repeat.set(Math.max(.5, w / .6), Math.max(.5, d / .6));
+  return new ctx.THREE.MeshStandardMaterial({ map: tex, color: '#ffffff', roughness: .95, metalness: 0, emissive: '#1a1f22', emissiveMap: tex, emissiveIntensity: .35, side: ctx.THREE.FrontSide });
 }
 function addCeil(ctx, x, z, w, d, h) {
   const T = ctx.THREE, m = new T.Mesh(new T.PlaneGeometry(w, d), ceilTex(ctx, w, d));
   m.rotation.x = Math.PI / 2; m.position.set(x, h, z); ctx.scene.add(m);
-  const trim = new T.MeshStandardMaterial({ color: '#3a4348', roughness: .85 });
-  const put = (cx, cz, lw, ld) => { const t = new T.Mesh(new T.BoxGeometry(lw, .18, ld), trim); t.position.set(cx, h - .09, cz); ctx.scene.add(t); };
-  put(x, z + d / 2, w, .14); put(x, z - d / 2, w, .14); put(x - w / 2, z, .14, d); put(x + w / 2, z, .14, d);
+  const trim = ctx._ch14Trim || (ctx._ch14Trim = new T.MeshStandardMaterial({ color: '#1e2326', roughness: .85 }));
+  const put = (cx, cz, lw, ld) => { const t = new T.Mesh(new T.BoxGeometry(lw, .3, ld), trim); t.position.set(cx, h - .15, cz); ctx.scene.add(t); };
+  put(x, z + d / 2, w, .2); put(x, z - d / 2, w, .2); put(x - w / 2, z, .2, d); put(x + w / 2, z, .2, d);
+  // recessed light troffers on a regular grid (emissive only, no extra real lights): a dark recess box + a glowing diffuser just inside it
+  const rec = ctx._ch14Rec || (ctx._ch14Rec = new T.MeshStandardMaterial({ color: '#15191b', roughness: .9 }));
+  const dif = ctx._ch14Dif || (ctx._ch14Dif = new T.MeshStandardMaterial({ color: '#dfeeff', emissive: '#d4e8ff', emissiveIntensity: 1.6, roughness: .4 }));
+  const nx = Math.max(1, Math.floor(w / 7.2)), nz = Math.max(1, Math.floor(d / 6)), n = nx * nz;
+  const R = new T.InstancedMesh(new T.BoxGeometry(1.32, .05, .72), rec, n), L = new T.InstancedMesh(new T.BoxGeometry(1.2, .04, .6), dif, n), q = new T.Object3D();
+  let k = 0; for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++, k++) {
+    const px = x - w / 2 + (i + .5) * w / nx, pz = z - d / 2 + (j + .5) * d / nz;
+    q.position.set(px, h - .025, pz); q.updateMatrix(); R.setMatrixAt(k, q.matrix);
+    q.position.set(px, h - .06, pz); q.updateMatrix(); L.setMatrixAt(k, q.matrix);
+  }
+  R.computeBoundingSphere(); L.computeBoundingSphere(); ctx.scene.add(R, L);
 }
 function stripeTex(ctx) {
   if (ctx._ch14Stripe) return ctx._ch14Stripe;
@@ -214,7 +259,7 @@ function mesh(ctx, geo, mat, x, y, z, rx = 0, ry = 0, rz = 0) {
 }
 function dressLab(ctx, A, B) {
   const T = ctx.THREE, K = mats(ctx), { x, H, ANT_S, LAB_S, HALL_S, ARENA_S, antC, labC, hallC, arC } = B;
-  const waist = new T.MeshStandardMaterial({ color: '#c5ced3', roughness: .75 });
+  const waist = new T.MeshStandardMaterial({ color: '#4f7f8a', roughness: .55, metalness: .05 }); // v1.9.50: teal wainscot panels give the white lab some contrast
   const base = new T.MeshStandardMaterial({ color: '#8a949a', roughness: .7 });
   const pipeM = new T.MeshStandardMaterial({ color: '#7a848c', metalness: .7, roughness: .35 });
   const pipeB = new T.MeshStandardMaterial({ color: '#3a7a9a', metalness: .55, roughness: .4 });
@@ -314,12 +359,6 @@ function dressLab(ctx, A, B) {
   prop(ctx, .5, .32, .4, K.black, x - 14.6, 1.1, arC + 18);
   prop(ctx, .28, .4, .28, K.lampCold, x - 13.2, 1.2, arC + 18);
   prop(ctx, .5, .32, .4, K.black, x + 13.4, 1.1, arC + 18);
-
-  const panel = (px, pz, w = 2.2, d = .7) => { mesh(ctx, new T.BoxGeometry(w, .05, d), K.lampCold, px, H - .06, pz); };
-  panel(x, antC + 4); panel(x, antC - 4);
-  panel(x - 10, ANT_S - 22); panel(x + 10, ANT_S - 34); panel(x - 10, ANT_S - 52); panel(x + 4, ANT_S - 62);
-  panel(x, hallC + 22, 1.8, .55); panel(x, hallC - 4, 1.8, .55); panel(x, hallC - 24, 1.8, .55);
-  panel(x - 8, arC + 16); panel(x + 8, arC + 2); panel(x - 6, arC - 16); panel(x + 6, arC - 22);
 
   mesh(ctx, new T.BoxGeometry(1.2, .08, 50), K.steelDark, x, H - .7, labC);
   mesh(ctx, new T.BoxGeometry(1.05, .04, 50), pipeM, x, H - .64, labC);

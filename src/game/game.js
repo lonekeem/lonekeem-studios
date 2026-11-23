@@ -3,11 +3,6 @@ import { partnerEnter, partnerUpdate, ventUse } from './partner.js';
 import { glowUpdate, keyModel, cardModel } from './glow.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { townUpdate, townReset } from './townlife.js';
 import { buildWorld } from './world.js';
 import { CAST, randomLook, raiderLook, DEFAULT_LOOK, zVoiceAssign } from './looks.js';
@@ -26,6 +21,7 @@ import { onDialogueLine, tickDialogueFace, endDialogueFace, resetDialogueFace } 
 import { hitChar, capsOf, updateAimPose, placeShotFx, muzzleWorld, stepAimAssist } from './aim.js';
 import { attachGameWeaponBar, syncWeaponBar } from '../ui/weaponBar.js';
 import { yieldPaint, yieldOnce, yieldIfNeeded, resetBudget } from '../ui/loading.js';
+import { setupPost, initGfxFx, tickGfx, impactFx, ejectCasing, levelLook } from './gfx.js';
 
 const $ = (s) => document.querySelector(s);
 export const PRESETS = {
@@ -115,11 +111,10 @@ export class Game {
     this.vm = new THREE.Group(); cam.add(this.vm); this.vm.position.set(0.22, -0.2, -0.45);
     this.weaponMeshes = {}; WEAPON_ORDER.forEach(id => { const m = weaponMesh(id); this.weaponMeshes[id] = m; });
     // FX pools
-    this.initFX(); this.input = new Input(this); attachGameWeaponBar(this);
+    this.initFX(); initGfxFx(this); this.input = new Input(this); attachGameWeaponBar(this);
     this.zombies = []; this.npcs = {}; this.pickups = []; this.props = [];
     // post
-    if (Q.post) { try { const c = this.composer = new EffectComposer(r); c.addPass(new RenderPass(scene, cam)); const ao = new GTAOPass(scene, cam, innerWidth, innerHeight); ao.blendIntensity = 0.8; c.addPass(ao);
-      c.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.22, 0.18, 0.93)); c.addPass(new OutputPass()); } catch (e) { this.composer = null; } }
+    setupPost(this, Q); // v1.9.50: medium = bloom + grade, high = + GTAO; low = no post (CSS vignette)
     addEventListener('resize', () => this.resize()); this.resize();
     this.cam = { yaw: Math.PI / 2, pitch: -0.12, dist: CAM.dist, fp: !!S.fp, shake: V3() };
     this.fpsAcc = 0; this.fpsN = 0; this.fpsT = 0;
@@ -129,7 +124,7 @@ export class Game {
     progress && progress(1);
     try { if (this.audio) { this.audio._sfxHold = false; this.audio._pumpSfx && this.audio._pumpSfx(); } } catch (e) { /* ignore */ }
   }
-  resize() { const w = innerWidth, h = innerHeight; this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); if (this.composer) this.composer.setSize(w, h); this._xh = null; }
+  resize() { const w = innerWidth, h = innerHeight; this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); if (this.composer) this.composer.setSize(w, h); if (this._grade) this._grade.uniforms.uAsp.value = w / Math.max(1, h); this._xh = null; }
 
   // ---------- run state ----------
   makePlayer() { const L = playerLook(), old = this.player; this._lookKey = JSON.stringify(L);
@@ -202,7 +197,8 @@ export class Game {
     const o = this._L0, ind = !!mode; if (f) f.indoor = ind; if (sky) sky.visible = !ind; this.moon.visible = !ind; this.moon.intensity = ind ? 0 : o.moon;
     if (!ind) { this.hemi.intensity = o.hemi; this.hemi.color.copy(o.hc); this.hemi.groundColor.copy(o.hg); S.environmentIntensity = o.env; S.fog.density = o.fog; S.fog.color.copy(o.fc); S.background = this.world.env && sky ? null : S.background; return; }
     if (mode === 'dark') { this.hemi.intensity = 1.0; this.hemi.color.set('#5a7a78'); this.hemi.groundColor.set('#2a3634'); S.environmentIntensity = .1; S.fog.density = o.fog * .55; S.fog.color.set('#0a1214'); }
-    else { this.hemi.intensity = 1.5; this.hemi.color.set('#e8f2f4'); this.hemi.groundColor.set('#a89a86'); S.environmentIntensity = .25; S.fog.density = o.fog * .22; S.fog.color.set('#cdd6d4'); }
+    else if (mode === 'lab') { this.hemi.intensity = .5; this.hemi.color.set('#cfe2ee'); this.hemi.groundColor.set('#3e3a36'); S.environmentIntensity = .2; S.fog.density = o.fog * .3; S.fog.color.set('#1a2226'); } // v1.9.50: Level 9 lab: darker fill so the ceiling lights and lamps carry the room
+    else { this.hemi.intensity = 1.25; this.hemi.color.set('#e8f2f4'); this.hemi.groundColor.set('#7a6e60'); S.environmentIntensity = .28; S.fog.density = o.fog * .22; S.fog.color.set('#c4ceca'); }
     S.background = new THREE.Color(S.fog.color); }
   async loadStep(i, opts = {}) {
     const overlay = !!opts.overlay;
@@ -222,7 +218,7 @@ export class Game {
     this.world.frontDoor.rotation.y = i >= 3 ? -1.6 : 0; this.setDoor(i >= 3);
     this.setTruck(i);
     if (!(await yn(0.45))) return;
-    this.slowMul = 1; this.setLight(st.light || null); st.enter(this); this.objective(st.obj, st.hint);
+    this.slowMul = 1; this.setLight(st.light || null); try { levelLook(this, st); this.audio && this.audio.bedsFor && this.audio.bedsFor({ indoor: !!st.light, mood: st.mood, rain: !!st.rain, survival: !!st.survival }); } catch (e) { /* look + ambience only */ } st.enter(this); this.objective(st.obj, st.hint);
     try { this.audio.beginSession && this.audio.beginSession('story'); } catch (e) { /* ignore */ }
     this.audio.setMood(st.mood || 'night'); this.audio.rain && this.audio.rain(st.rain !== false && st.mood !== 'day'); this.audio.beat(st.beat || 0);
     partnerEnter(this); this.checkpoint(); this.grace = 1.5;
@@ -581,7 +577,7 @@ export class Game {
     if ((this.save.mags[id] || 0) <= 0) { this.audio.click(id); if ((this.save.ammo[w.ammo] || 0) <= 0) this.audio.shout && this.audio.shout('keem_empty'); s.fireCd = .25; if ((this.save.ammo[w.ammo] || 0) > 0) this.reload(); else this.toast('Out of ammo — loot or buy more'); return; }
     this.save.mags[id]--; s.fireCd = w.rate; this.audio.shot(id); this.shake(id === 'shotgun' || id === 'sniper' ? .28 : .1); this.cam.pitch += (id === 'sniper' ? .05 : .015) * (s.aim ? .5 : 1); this.cam.yaw += rnd(-.006, .006); s.shotT = .5;
     const mz = muzzleWorld(this, V3()); // v1.9.28: re-glued to the barrel tip every frame after the aim pose (placeShotFx)
-    this.muzzle.position.copy(mz); this.muzzle.visible = true; this.muzzle.material.rotation = rnd(0, 6); this.mLight.position.copy(mz); this.mLight.color.set('#ffc070'); this.mLight.intensity = 6; this.mT = 0.05;
+    this.muzzle.position.copy(mz); this.muzzle.visible = true; this.muzzle.material.rotation = rnd(0, 6); this.mLight.position.copy(mz); this.mLight.color.set('#ffc070'); this.mLight.intensity = 9; this.mT = 0.05; ejectCasing(this, mz, id);
     if (!this.cam.fp && (this.player.curName.startsWith('Pistol') || this.player.curName === 'Idle_Loop')) this.player.play('Pistol_Shoot', { once: true, force: true, speed: 2, cb: () => { this.player.curName = ''; } });
     if (w.gl) { const ray = this.aimRay(); const nr = ray.near || 0; const rc = this._wallRc || (this._wallRc = new THREE.Raycaster()); rc.set(ray.at(nr, this._wallFrom || (this._wallFrom = V3())), ray.direction); rc.near = 0; rc.far = ws.range; const wh = rc.intersectObjects(this.shotWalls(), false)[0]; let bd = (wh ? wh.distance : ws.range) + nr;
       this.alive().forEach(z => { const a = z.root.position.clone().setY(.2), b = z.root.position.clone().setY(1.8 * z.scale), pr = V3(); const d2 = ray.distanceSqToSegment(a, b, pr); const t = pr.sub(ray.origin).dot(ray.direction); const rr = .6 * z.scale; if (t > 0 && t < bd && d2 < rr * rr) bd = t; }); this.explode(ray.at(Math.max(nr + 1.5, bd), V3()), 5.5, 220 * (ws.dmg / w.dmg)); return; }
@@ -603,7 +599,7 @@ export class Game {
       end = ray.at(bd, V3());
       if (best && best.z) { const dmg = ws.dmg * (best.head ? (2.5 * (perk(this.save, 8) ? 1.5 : 1)) * (best.z.boss ? .6 : 1) : 1); this.damageZ(best.z, dmg, ray.direction.clone().setY(0).normalize(), { head: best.head, pellets: pellets > 1 }); this.hitMark(best.head); }
       else if (best && best.tanker) { this.stepData.tankerHP -= ws.dmg * pellets / pellets; this.blood(end, V3(0, 1, 0), 3, 1); if (this.stepData.tankerHP <= 0) this.stepData.tankerBoom = true; }
-      else if (end) { this.pMat.color.set('#3a3a34'); } }
+      else if (end) { this.pMat.color.set('#3a3a34'); if (wh || end.y < .25) impactFx(this, end, ray.direction, !!(wh && wh.object && wh.object.material && wh.object.material.metalness > .4)); } }
     const tp = this.tracer.geometry.attributes.position; tp.setXYZ(0, mz.x, mz.y, mz.z); tp.setXYZ(1, end.x, end.y, end.z); tp.needsUpdate = true; this.tracer.visible = true; this.trT = 0.04; this._trEnd = (this._trEnd || V3()).copy(end); }
   hitMark(head) { const x = $('#xhair'); x.style.color = head ? '#f44' : '#fc8'; clearTimeout(this._hm); this._hm = setTimeout(() => x.style.color = '#fff', 120); }
   reload() { const id = this.save.cur, w = WEAPONS[id]; if (w.type !== 'gun' || this.state.reload > 0) return; const need = this.ws.mag - (this.save.mags[id] || 0); if (need <= 0 || !(this.save.ammo[w.ammo] > 0)) return;
@@ -657,7 +653,7 @@ export class Game {
     // dialog
     if (this.dlgCur) { this.dlgCur.t += rdt; if (this.dlgCur.t > this.dlgCur.dur && (this.settings.auto !== false || !this.cut)) this.nextLine(); }
     if (this.dying) { this.updateDying(dt); if (this.boss && !this.boss.propped) { this.boss.propped = 1; bossProp(this, this.boss, document.querySelector('#bossn')?.textContent); }
-    this.updateZ(dt); this.updateFX(dt); tickPools(this, dt); return; }
+    this.updateZ(dt); this.updateFX(dt); tickPools(this, dt); tickGfx(this, dt); return; }
     // cutscene camera
     if (this.pro) this.pro.tick(rdt); const st = STORY[this.step]; st.update && st.update(this, dt); partnerUpdate(this, dt); this.failsafe(dt);
     if (s.fireCd > 0) s.fireCd -= dt; if (s.reload > 0) { s.reload -= dt; if (s.reload <= 0) this.finishReload(); }
@@ -672,7 +668,7 @@ export class Game {
     const pDt = meleeOs ? Math.max(dt, rdt * 0.7) : dt;
     P.mixer.update(pDt); if (!T.driving) updateAimPose(this, dt); placeShotFx(this); this.ensureHeldWeapon(); // v1.9.28: upper body + gun on the crosshair, flash on the barrel
     if (!this.truck.driving) this.stepTrack(this.player, this.player.root.position, 'p'); this.chatter(dt);
-    tickPools(this, dt); this.updateZ(dt); for (const k in this.npcs) { const n = this.npcs[k]; n.update && n.update(dt); n.mixer.update(dt); this.victimStruggle(n, dt); this.stepTrack(n, n.root.position, 'n'); if (n.bleed && Math.random() < dt * 3) { const p = n.root.position.clone(); p.y = .3; this.blood(p, V3(0, .6, 0), 3, 1.2); } } tickDialogueFace(this, dt);
+    tickPools(this, dt); tickGfx(this, dt); this.updateZ(dt); for (const k in this.npcs) { const n = this.npcs[k]; n.update && n.update(dt); n.mixer.update(dt); this.victimStruggle(n, dt); this.stepTrack(n, n.root.position, 'n'); if (n.bleed && Math.random() < dt * 3) { const p = n.root.position.clone(); p.y = .3; this.blood(p, V3(0, .6, 0), 3, 1.2); } } tickDialogueFace(this, dt);
     townUpdate(this, dt);
     // pickups
     for (let i = this.pickups.length - 1; i >= 0; i--) { const p = this.pickups[i]; if (p.l.drop && (p.l.drop -= dt) <= 0) this.killPickup(p); }
@@ -803,12 +799,12 @@ export class Game {
     const ty = this.torsoMinY(n); if (ty < 8 && Math.abs(ty - (gy + .03)) > .01) { n.root.position.y += (gy + .03) - ty; n.root.updateMatrixWorld(true); }
     n.screamT -= dt; if (n.screamT <= 0 && n.struggle > .35 && L > .5) { n.screamT = rnd(1.8, 3.5); const dd = n.root.position.distanceTo(this.player.root.position); if (dd < 30) { this.audio.at(n.root.position); if (Math.random() < .5) this.audio.shout(Math.random() < .5 ? 'npcf_scream' : 'npcm_scream', true, n.root.position); else this.audio.scream(.15); } } }
   // animation-synced footsteps (two footfalls per walk/jog/sprint cycle), surface by location, positional
-  surfaceAt(x, z) { const K = this.world && this.world.KH; if (K && x > K.x0 && x < K.x1 && z > K.z0 && z < K.z1) return 'wood'; if (this.stepData && this.stepData.surface === 'wood') return 'wood';
+  surfaceAt(x, z) { const K = this.world && this.world.KH; if (K && x > K.x0 && x < K.x1 && z > K.z0 && z < K.z1) return 'wood'; if (this.stepData && this.stepData.surface === 'wood') return 'wood'; if (this.world && this.world.flags && this.world.flags.indoor) return 'concrete'; // v1.9.50: hospital / lab floors
     if (Math.abs(x) < 7.8) return 'asphalt'; const M = this.world && this.world.mud; if (M) for (const m of M) { if ((x - m[0]) ** 2 + (z - m[1]) ** 2 < m[2]) return 'mud'; } return 'grass'; }
   stepTrack(c, pos, who) { const a = c.cur; if (!a || !/Walk|Jog|Sprint|Run|Crouch_Fwd|Shuffle/.test(c.curName)) { c._ph = -1; return; } const cl = a.getClip(); const ph = (a.time / cl.duration) % 1; const prev = c._ph ?? -1; c._ph = ph;
     if (prev < 0) return; const hit = (prev < .02 && ph >= .02) || (prev < .52 && ph >= .52) || (ph < prev && ph >= .02); if (!hit) return;
     if (who !== 'p' && this.audio.dist(pos) > 28) return; const surf = this.surfaceAt(pos.x, pos.z); const run = /Jog|Sprint|Run/.test(c.curName);
-    this.audio.footstep(surf === 'wood' ? 'wood' : surf === 'grass' ? 'grass' : surf === 'mud' ? 'mud' : 'asphalt', pos, who === 'p' ? (this.state.crouch ? .14 : run ? .5 : .32) : who === 'z' ? .4 : .3, who); }
+    this.audio.footstep(surf === 'wood' ? 'wood' : surf === 'grass' ? 'grass' : surf === 'mud' ? 'mud' : surf === 'concrete' ? 'concrete' : 'asphalt', pos, who === 'p' ? (this.state.crouch ? .14 : run ? .5 : .32) : who === 'z' ? .4 : .3, who); }
   carAlarm(p) { if (this.alarm || !this.audio.loopAt) return; const q = { x: p.x, y: 1, z: p.z }; const s = this.audio.loopAt('alarm_loop', q, .55, { ref: 4, maxD: 80 }); if (!s) return; this.alarm = s; setTimeout(() => { try { s.stop(); } catch {} this.alarm = null; }, 9000); }
   chatter(dt) { if (this.cut || this.dying || !this.audio.ctx) return; this.chatT = (this.chatT ?? 8) - dt; if (this.chatT > 0) return; this.chatT = rnd(9, 18);
     if (this.audio.ctx.currentTime < (this.audio.vEnd || 0)) return; const pp = this.player.root.position; const near = this.alive().filter(z => z.st === 'chase' && z.root.position.distanceTo(pp) < 12).length;
@@ -887,7 +883,7 @@ export class Game {
     // moon shadow follows
     const mp = P.root.position; this.moon.position.set(mp.x - 20, 40, mp.z + 14); this.moon.target.position.copy(mp);
     if (this.player && this.scene) { if (!this.faceL) { this.faceL = new THREE.PointLight('#ffe6cc', 0, 4.5, 1.6); this.faceL.castShadow = false; this.scene.add(this.faceL); } this.faceL.visible = true; this.faceL.intensity = this.cut ? 0.7 : 0; /* v1.9.10: face fill only in cutscenes (made the player glow white in play); keep the light in the scene so shaders are not recompiled */ const hp = this.cut && this.cut.look ? this.cut.look : this.player.root.position, hy = this.cut && this.cut.look ? hp.y + .25 : hp.y + 1.7, cp = cam.position; this.faceL.position.set(hp.x + (cp.x - hp.x) * .45, hy, hp.z + (cp.z - hp.z) * .45); }
-    if (this.audio.listen) { const K = this.world && this.world.KH, c = cam.position; this.audio.listen(cam, !!(K && c.x > K.x0 && c.x < K.x1 && c.z > K.z0 && c.z < K.z1)); }
+    if (this.audio.listen) { const K = this.world && this.world.KH, c = cam.position; this.audio.listen(cam, !!((this.world.flags && this.world.flags.indoor) || (K && c.x > K.x0 && c.x < K.x1 && c.z > K.z0 && c.z < K.z1))); }
     try { glowUpdate(this); } catch (e) { if (!this._glowErr) { this._glowErr = 1; console.warn('glow', e); } }
     if (this.composer) this.composer.render(); else this.renderer.render(this.scene, cam);
     if (this.running && !this.paused) this.hud(); }
