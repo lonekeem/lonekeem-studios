@@ -275,7 +275,8 @@ function renderInv() { const s = save; const need = xpFor(s.level);
   add(`<b>Collectibles</b><div class="st">${s.pages.length ? s.pages.length + ' Captain Riverside comic pages found' : 'Find the ' + TOTAL_PAGES + ' Captain Riverside comic pages hidden around the story.'}</div>`); }
 
 // ---------- buttons ----------
-$$('.back').forEach(b => b.onclick = () => { if (shopOverlay || ($('#shop') && $('#shop').classList.contains('town-overlay'))) { closeTownShop(); return; } if (state === 'custom' && back === '#shop') { openShop(); return; } if (back === '#pause') { state = 'paused'; showScreen('#pause'); return; } state = 'title'; showScreen('#title'); });
+let subFrom = null; // v1.9.73: Controls / Credits opened from Settings go back to Settings, not the title
+$$('.back').forEach(b => b.onclick = () => { const scr = b.closest('.screen'); if (subFrom && scr && (scr.id === 'controls' || scr.id === 'credits')) { const f = subFrom; subFrom = null; showScreen(f); return; } subFrom = null; if (shopOverlay || ($('#shop') && $('#shop').classList.contains('town-overlay'))) { closeTownShop(); return; } if (state === 'custom' && back === '#shop') { openShop(); return; } if (back === '#pause') { state = 'paused'; showScreen('#pause'); return; } state = 'title'; showScreen('#title'); });
 $('#btnWarn').onclick = async () => {
   try { audio.init(); audio.unlock && audio.unlock(); } catch (e) {}
   showScreen(null); const st = $('#studio'); st.classList.remove('hidden'); fadeIn();
@@ -308,7 +309,7 @@ $('#btnContinue').onclick = () => { save = loadSave(LS) || defaultSave(); play(s
 $('#btnCustom').textContent = 'My Character'; $('#btnCustom').onclick = () => openCustom('#title'); $('#btnShopCustom').onclick = () => openCustom(back === '#pause' ? '#pause' : '#shop');
 $('#btnArmory').onclick = () => { back = '#title'; openShop(); }; $('#btnInvT').onclick = () => { back = '#title'; openInv(); };
 $('#btnPShop').onclick = () => { back = '#pause'; openShop(); }; $('#btnPInv').onclick = () => { back = '#pause'; openInv(); };
-$('#btnSettings').onclick = () => { back = '#title'; state = 'settings'; showScreen('#settings'); }; $('#btnControls').onclick = () => showScreen('#controls'); $('#btnCredits').onclick = () => showScreen('#credits');
+$('#btnSettings').onclick = () => { back = '#title'; state = 'settings'; showScreen('#settings'); }; $('#btnControls').onclick = () => { subFrom = '#settings'; showScreen('#controls'); }; $('#btnCredits').onclick = () => { subFrom = '#settings'; showScreen('#credits'); };
 $('#btnPauseSettings').onclick = () => { back = '#pause'; state = 'settings'; showScreen('#settings'); };
 $('#btnResume').onclick = resume; $('#btnPause').onclick = e => { e.stopPropagation(); pause(); };
 $('#skipObj').onclick = () => game && game.skipObjective();

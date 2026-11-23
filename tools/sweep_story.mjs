@@ -22,7 +22,8 @@ async function tap(sel) { await p.waitForFunction(() => { const l = document.get
 const tick = (n = 30, dt = 1 / 30) => p.evaluate(([n, dt]) => { const g = window.__atq.game; const was = g.paused; g.paused = true; for (let i = 0; i < n; i++) { try { g.update(dt, dt); } catch (e) { console.error('tick ' + e.message); break; } } g.paused = was; }, [n, dt]);
 const heap = () => p.evaluate(() => { try { window.gc && window.gc(); } catch (e) {} return performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null; });
 const R = [];
-for (let c = c0; c <= c1; c++) { errs = []; nf = []; const t0 = Date.now(); const rec = { ch: c };
+const LIST = process.env.LIST ? process.env.LIST.split(',').map(Number) : Array.from({ length: c1 - c0 + 1 }, (_, i) => c0 + i);
+for (const c of LIST) { errs = []; nf = []; const t0 = Date.now(); const rec = { ch: c };
   try {
     if (!(await vis('#btnChapters'))) await tap('#btnStory'); await tap('#btnChapters'); await tap('#btnCh' + c);
     await p.waitForFunction(() => window.__atq.state === 'play' && window.__atq.game && window.__atq.game.running, null, { timeout: 240000 });

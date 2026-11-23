@@ -244,7 +244,7 @@ export class Game {
     const sk = document.getElementById('skipObj'); if (sk) sk.classList.toggle('hidden', !(this.stuckT > 180)); }
   skipObjective() { const D = this.stepData, P = this.player.root.position; this.stuckT = 120; this.toast && this.toast('Objective skipped');
     const sp = this.pickups.find(p => p.l.story); if (sp) { P.x = sp.mesh.position.x; P.z = sp.mesh.position.z; this.takePickup(sp); return; }
-    if (D.uses && D.uses.length) { const u = D.uses[0]; P.x = u.x; P.z = u.z + .5; u.fn(this); return; }
+    const u = D.uses && D.uses.find(x => !/lever|trap|chicken|squeeze/i.test(x.label || '')); if (u) { P.x = u.x; P.z = u.z + .5; u.fn(this); return; } // v1.9.73: optional trap levers / gags are not the objective
     if (D.trig && D.tankerHP > 0 && !D.tankerBoom) { D.tankerBoom = true; return; }
     const T = this.truck; if (D.canDrive && T && !T.driving && !D.drove) { D.drove = true; this.enterTruck(); return; }
     if (T && T.driving && this.wpTarget) { T.g.position.x = this.wpTarget[0]; T.g.position.z = this.wpTarget[2]; return; }

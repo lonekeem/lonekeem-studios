@@ -21,14 +21,15 @@ const must = async (id, want = true) => { for (let i = 0; i < 30; i++) { if (awa
 const back = async id => { await tap(`#${id} .back, #${id} .back2`); await must(id, false); await must('title'); };
 const shot = n => p.screenshot({ path: `${OUT}/${n}.png` });
 const tick = (n = 30, dt = 1 / 30) => p.evaluate(([n, dt]) => { const g = window.__atq.game; for (let i = 0; i < n; i++) { try { g.update(dt, dt); } catch (e) { console.error('tick ' + e.message); break; } } }, [n, dt]);
-await shot('00-title');
+await p.waitForTimeout(1500); await shot('00-title');
+await step('tut-offer-skip', async () => { if (await p.evaluate(() => !!document.querySelector('#tutSkip')?.offsetParent)) { await tap('#tutSkip'); if (await p.evaluate(() => !!document.querySelector('#tutSkip')?.offsetParent)) throw new Error('tutorial offer did not close'); } });
 await step('settings', async () => { await tap('#btnSettings'); await must('settings'); await shot('01-settings');
   // change every select/range once through the DOM (input event), verify persisted
   const r = await p.evaluate(() => { const out = []; document.querySelectorAll('#settings select, #settings input').forEach(el => { try { if (el.type === 'range') { el.value = el.min || 0; el.dispatchEvent(new Event('input', { bubbles: true })); el.value = el.max || 1; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); } else if (el.tagName === 'SELECT') { const o = el.selectedIndex; el.selectedIndex = (o + 1) % el.options.length; el.dispatchEvent(new Event('change', { bubbles: true })); el.selectedIndex = o; el.dispatchEvent(new Event('change', { bubbles: true })); } else if (el.type === 'checkbox') { el.click(); el.click(); } out.push(el.id); } catch (e) { out.push(el.id + ':' + e.message); } }); return out; });
   log.push(['settings-controls', r.join(',')]);
-  await tap('#btnControls'); await must('controls'); await shot('02-controls'); await tap('#controls .back, #controls .back2'); await must('controls', false);
+  await tap('#btnControls'); await must('controls'); await shot('02-controls'); await tap('#controls .back, #controls .back2'); await must('controls', false); await must('settings');
   await tap('#btnCtlSet'); await must('ctlset'); await shot('03-ctlset'); await tap('#ctlset .back, #ctlset .back2'); await must('ctlset', false);
-  await tap('#btnCredits'); await must('credits'); await shot('04-credits'); await tap('#credits .back, #credits .back2'); await must('credits', false);
+  await tap('#btnCredits'); await must('credits'); await shot('04-credits'); await tap('#credits .back, #credits .back2'); await must('credits', false); await must('settings');
   if (await shown('settings')) await back('settings'); });
 await step('dailies', async () => { await tap('#btnOnline').catch(() => {}); await tap('#btnDailies'); await must('dailies'); await shot('05-dailies'); await back('dailies'); });
 await step('board-offline', async () => { if (!(await p.evaluate(() => !!document.querySelector('#btnBoard')?.offsetParent))) await tap('#btnOnline'); await tap('#btnBoard'); await p.waitForTimeout(2500); await shot('06-board'); const open = await p.evaluate(() => [...document.querySelectorAll('.screen, [id]')].filter(e => !e.classList.contains('hidden') && getComputedStyle(e).position === 'fixed' && e.offsetWidth > 300).map(e => e.id || e.className).slice(0, 6)); log.push(['board-open', open]);
@@ -41,8 +42,8 @@ await step('survival', async () => { await tap('#btnStory').catch(() => {}); awa
   await shot('11-survival-waves'); });
 await step('pause-shop-inv', async () => { await tap('#btnPause'); await must('pause'); await shot('12-pause'); await tap('#btnPShop'); await must('shop'); await shot('13-shop');
   const tabs = await p.evaluate(() => document.querySelectorAll('#shopTabs button').length); for (let t = 0; t < tabs; t++) { await tap('#shopTabs button', t); }
-  const before = await p.evaluate(() => document.querySelector('#shopCash')?.textContent);
-  const buy = await p.evaluate(() => { const bs = [...document.querySelectorAll('#shopList button')].filter(b => b.offsetParent && !b.disabled); bs.forEach((b, i) => b.setAttribute('data-buy', i)); return bs.map(b => b.textContent.trim()).slice(0, 5); });
+  await tap('#shopTabs button', 0); const before = await p.evaluate(() => document.querySelector('#shopCash')?.textContent);
+  const buy = await p.evaluate(() => { const bs = [...document.querySelectorAll('#shopList button')].filter(b => b.offsetParent && !b.disabled && /buy|\$/i.test(b.textContent)); bs.forEach((b, i) => b.setAttribute('data-buy', i)); return bs.map(b => b.textContent.trim()).slice(0, 5); });
   if (buy.length) { await tap('[data-buy="0"]'); } const after = await p.evaluate(() => document.querySelector('#shopCash')?.textContent); log.push(['shop', { tabs, buy, before, after }]); await shot('14-shop-bought');
   await tap('#shop .back, #shop .back2'); await must('shop', false); await must('pause'); await tap('#btnPInv'); await must('inv'); await shot('15-inv'); await tap('#inv .back, #inv .back2'); await must('inv', false); await must('pause');
   await tap('#btnPauseSettings'); await must('settings'); await tap('#settings .back, #settings .back2'); await must('settings', false); await must('pause'); await tap('#btnResume'); await must('pause', false);
