@@ -55,8 +55,9 @@ export function initLayout(S, saveS, closeTo) {
   return { open() { if (!root) build(); sel = null; root.querySelector('#leName').textContent = 'Tap a button'; root.querySelector('#leSize').disabled = true; root.classList.remove('hidden'); refresh(); }, refresh: () => applyLayout(S) };
 }
 
-// Keep off-screen objective markers off the touch buttons and HUD chrome (v1.9.91).
-const MARKER_HUD = '#touch .rb, #stickBase, #stickZone, #mini, #pfp, #obj, #hudr, #hpTxt, #ammoTxt, #wbar.on, #budCue, #boss, #prompt, #skipObj, #rld';
+// Keep off-screen objective markers off visible touch buttons and HUD, still on that screen side (v1.9.92).
+// #stickZone is a large invisible hit pad, not a drawn control — only #stickBase is avoided.
+const MARKER_HUD = '#touch .rb, #stickBase, #mini, #pfp, #obj, #hudr, #hpTxt, #ammoTxt, #wbar.on, #budCue, #boss, #prompt, #skipObj, #rld';
 export function clampHudMarker(x, y, hw = 32, hh = 28, pad = 10) {
   const W = innerWidth, H = innerHeight;
   const minX = hw + pad, maxX = Math.max(minX, W - hw - pad);
@@ -71,34 +72,51 @@ export function clampHudMarker(x, y, hw = 32, hh = 28, pad = 10) {
     if (r.width < 4 || r.height < 4) continue;
     rects.push({ l: r.left - pad, r: r.right + pad, t: r.top - pad, b: r.bottom + pad });
   }
-  const hit = (x, y) => {
-    const L = x - hw, R = x + hw, T = y - hh, B = y + hh;
-    return rects.find(u => L < u.r && R > u.l && T < u.b && B > u.t);
-  };
   const nHits = (nx, ny) => {
     const L = nx - hw, R = nx + hw, T = ny - hh, B = ny + hh;
     let n = 0; for (const u of rects) if (L < u.r && R > u.l && T < u.b && B > u.t) n++; return n;
   };
-  for (let i = 0; i < 10; i++) {
-    const u = hit(x, y); if (!u) break;
-    const opts = [[u.r + hw, y], [u.l - hw, y], [x, u.b + hh], [x, u.t - hh],
-      [x + Math.sign(W / 2 - x) * (hw + pad * 2), y],
-      [x, y + Math.sign(H / 2 - y) * (hh + pad * 2)]]
-      .map(([nx, ny]) => [clamp(nx, minX, maxX), clamp(ny, minY, maxY)]);
-    opts.sort((a, b) => (nHits(a[0], a[1]) - nHits(b[0], b[1])) || (Math.hypot(a[0] - x, a[1] - y) - Math.hypot(b[0] - x, b[1] - y)));
-    const best = opts[0];
-    if (Math.hypot(best[0] - x, best[1] - y) < .5 && nHits(best[0], best[1]) >= nHits(x, y)) {
-      x = clamp(x + Math.sign(W / 2 - x) * 8, minX, maxX);
-      y = clamp(y + Math.sign(H / 2 - y) * 4, minY, maxY);
-      continue;
+  if (!nHits(x, y)) return [x, y];
+  const ox = x, oy = y;
+  const leftD = ox - minX, rightD = maxX - ox, topD = oy - minY, botD = maxY - oy;
+  const edge = (leftD <= rightD && leftD <= topD && leftD <= botD) ? 'left'
+    : (rightD <= topD && rightD <= botD) ? 'right'
+    : (topD <= botD) ? 'top' : 'bottom';
+  const STEPS = 32;
+  const cands = [];
+  const push = (side, nx, ny) => cands.push([side, clamp(nx, minX, maxX), clamp(ny, minY, maxY)]);
+  for (let i = 0; i <= STEPS; i++) {
+    const ty = minY + (maxY - minY) * (i / STEPS);
+    const tx = minX + (maxX - minX) * (i / STEPS);
+    push('left', minX, ty); push('right', maxX, ty); push('top', tx, minY); push('bottom', tx, maxY);
+  }
+  // If the literal edge is covered (RUN/CRCH), search a shallow inset on that same side.
+  const inset = Math.min(160, W * 0.28);
+  for (let k = 8; k <= inset; k += 8) {
+    for (let i = 0; i <= STEPS; i++) {
+      const ty = minY + (maxY - minY) * (i / STEPS);
+      const tx = minX + (maxX - minX) * (i / STEPS);
+      if (edge === 'left') push('left', minX + k, ty);
+      else if (edge === 'right') push('right', maxX - k, ty);
+      else if (edge === 'top') push('top', tx, minY + k);
+      else push('bottom', tx, maxY - k);
     }
-    x = best[0]; y = best[1];
   }
-  for (let i = 0; i < 24 && hit(x, y); i++) {
-    const ax = Math.abs(W / 2 - x), ay = Math.abs(H / 2 - y);
-    if (ax >= ay) x = clamp(x + Math.sign(W / 2 - x) * 8, minX, maxX);
-    else y = clamp(y + Math.sign(H / 2 - y) * 8, minY, maxY);
+  const clear = cands.filter(([, nx, ny]) => nHits(nx, ny) === 0);
+  if (clear.length) {
+    const same = clear.filter(c => c[0] === edge);
+    const pool = same.length ? same : clear;
+    pool.sort((a, b) => (Math.hypot(a[1] - ox, a[2] - oy) - Math.hypot(b[1] - ox, b[2] - oy))
+      || (Math.min(a[1] - minX, maxX - a[1], a[2] - minY, maxY - a[2]) - Math.min(b[1] - minX, maxX - b[1], b[2] - minY, maxY - b[2])));
+    return [pool[0][1], pool[0][2]];
   }
-
+  const dx = Math.sign(W / 2 - ox) || 1, dy = Math.sign(H / 2 - oy) || 1;
+  for (let i = 1; i <= 48; i++) {
+    const nx = clamp(ox + dx * 8 * i, minX, maxX);
+    const ny = clamp(oy + dy * 8 * i, minY, maxY);
+    if (!nHits(ox, ny)) return [ox, ny];
+    if (!nHits(nx, oy)) return [nx, oy];
+    if (!nHits(nx, ny)) return [nx, ny];
+  }
   return [x, y];
 }
