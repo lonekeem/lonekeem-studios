@@ -74,7 +74,9 @@ let cache = { at: 0, mine: null };
 export function cachedMine() { return cache.mine; }
 export async function refreshMine(force) {
   if (!force && cache.mine && Date.now() - cache.at < 8000) return cache.mine;
-  try { cache = { at: Date.now(), mine: await clanMine() }; } catch (e) { cache = { at: Date.now(), mine: { signed_in: false, clan: null, inbox: [], error: e.message } }; }
+  const u = await getUser().catch(() => null);
+  if (!u || !u.id) { cache = { at: Date.now(), mine: { signed_in: false, clan: null, inbox: [] } }; return cache.mine; }
+  try { cache = { at: Date.now(), mine: await clanMine() }; } catch (e) { cache = { at: Date.now(), mine: { signed_in: !!u, clan: null, inbox: [], error: e.message } }; }
   return cache.mine;
 }
 export function forgetMine() { cache = { at: 0, mine: null }; }

@@ -630,7 +630,7 @@ body.photo #hud,body.photo #touch,body.photo #wp,body.photo #prompt,body.photo #
 #online .cinvt,#online .cmeta{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
 #online .cintro{display:flex;gap:12px;align-items:center;padding:4px 2px}
 #online .cintro h3,#online .cmeta h3,#online .cclan-top h3{margin:0;font:700 18px system-ui;color:#eafff0}
-#online .cacts{margin-top:4px}
+#online .cacts{margin-top:4px;grid-template-columns:1fr 1fr 1fr}
 #online .cacts2{display:flex;gap:8px;flex-wrap:wrap}
 #online .cacts2 button,#online .cinviteform button{flex:1;min-width:120px}
 #online .cnote{padding:8px 10px;border-radius:10px;background:#1d3a28;font-size:14px}
@@ -641,7 +641,8 @@ body.photo #hud,body.photo #touch,body.photo #wp,body.photo #prompt,body.photo #
 #online .crole.officer{background:#1e3d6e;color:#cfe0ff}
 #online .csearch,#online .cinviteform{display:flex;gap:6px;align-items:center}
 #online .csearch input,#online .cinviteform input,#online .cform input{flex:1;min-width:0;font:16px system-ui;padding:10px;border-radius:10px;border:1px solid #1d3a28;background:#06140c;color:#eafff0}
-#online .cform{display:flex;flex-direction:column;gap:8px;min-width:0}
+#online .cform{display:flex;flex-direction:column;gap:8px;min-width:0;flex:1}
+#online .cfields{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:8px}
 #online .cform label{display:flex;flex-direction:column;gap:4px;font:600 13px system-ui;color:#a9c4b0}
 #online .cform.inline{flex:none}
 #online .ccreate,#online .cclan-top{display:flex;gap:12px;align-items:stretch}
@@ -662,6 +663,7 @@ body.photo #hud,body.photo #touch,body.photo #wp,body.photo #prompt,body.photo #
   #online .cban-prev canvas{width:100px;height:126px}
   #online .cban-prev.slim canvas{width:72px;height:90px}
   #online .cintro p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  #online .cform .cacts2{position:sticky;bottom:0;background:#08160e;padding-top:4px}
 }
 
 #cban{z-index:70;background:#050b08d8;display:flex;align-items:stretch;justify-content:center;padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom))}

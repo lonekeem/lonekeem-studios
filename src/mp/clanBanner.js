@@ -219,13 +219,13 @@ export function makeFlagMesh(THREE, banner) {
 export function attachClanBadge(av, clan, THREE) {
   if (!av) return;
   const drop = o => { if (!o) return; if (o.parent) o.parent.remove(o); o.traverse(m => { if (m.geometry) m.geometry.dispose(); if (m.material) { const ms = [].concat(m.material); ms.forEach(x => { x.map && x.map.dispose(); x.dispose && x.dispose(); }); } }); };
-  drop(av.root && av.root.getObjectByName('clanBadge'));
+  if (av.root) av.root.traverse(o => { if (o.name === 'clanBadge') drop(o); });
   if (av.bones) { for (const k in av.bones) { const b = av.bones[k]; const old = b && b.getObjectByName && b.getObjectByName('clanBadge'); if (old) drop(old); } }
-  if (!clan || !clan.banner) return null;
+  if (!clan || !clan.banner || !av.root) return null;
   const mesh = makeFlagMesh(THREE, clan.banner);
-  const bone = (av.bones && (av.bones.Spine02 || av.bones.Spine01 || av.bones.Spine || av.bones.Hips)) || null;
-  mesh.position.set(.11, .06, -.1); mesh.rotation.set(.15, .2, .15);
-  if (bone) bone.add(mesh); else if (av.root) { mesh.position.set(.12, 1.35, -.1); av.root.add(mesh); }
+  // Parent to the avatar root on the upper back (local -Z). Binding to Spine02 put the flag through the hat because of bind-pose axes.
+  mesh.position.set(.12, 1.16, -.14); mesh.rotation.set(.06, .3, .08); mesh.scale.setScalar(.78);
+  av.root.add(mesh);
   return mesh;
 }
 
@@ -234,17 +234,17 @@ export function drawNameTag(g, w, h, name, clan) {
   g.clearRect(0, 0, w, h);
   const tag = clan && String(clan.tag || '').slice(0, 5);
   const two = !!tag;
-  g.fillStyle = '#000a';
-  const y0 = two ? 6 : 10, hh = two ? h - 12 : 44, rr = 14;
-  if (g.roundRect) { g.beginPath(); g.roundRect(8, y0, w - 16, hh, rr); g.fill(); } else g.fillRect(8, y0, w - 16, hh);
   const nm = String(name || 'Player').slice(0, 16);
+  g.fillStyle = '#000c';
+  const y0 = two ? Math.max(4, (h - 70) / 2) : 10, hh = two ? 70 : 44, rr = 14;
+  if (g.roundRect) { g.beginPath(); g.roundRect(8, y0, w - 16, hh, rr); g.fill(); } else g.fillRect(8, y0, w - 16, hh);
   g.textAlign = 'center'; g.textBaseline = 'middle';
   if (two) {
     if (clan.banner) {
-      g.save(); const bw = 28, bh = 34; g.translate(22, y0 + 6); drawBanner(g, clan.banner, bw, bh); g.restore();
+      g.save(); g.translate(16, y0 + 10); drawBanner(g, clan.banner, 28, 36); g.restore();
     }
-    g.fillStyle = '#d9b44a'; g.font = '700 18px system-ui,sans-serif'; g.fillText('[' + tag + ']', w / 2 + 8, y0 + 16);
-    g.fillStyle = '#fff'; g.font = '600 24px system-ui,sans-serif'; g.fillText(nm, w / 2, y0 + hh - 16);
+    g.fillStyle = '#d9b44a'; g.font = '700 22px system-ui,sans-serif'; g.fillText('[' + tag + ']', w / 2 + 10, y0 + 24);
+    g.fillStyle = '#fff'; g.font = '600 26px system-ui,sans-serif'; g.fillText(nm, w / 2 + 10, y0 + 50);
   } else {
     g.fillStyle = '#fff'; g.font = '600 28px system-ui,sans-serif'; g.fillText(nm, w / 2, y0 + hh / 2 + 1);
   }
@@ -252,9 +252,9 @@ export function drawNameTag(g, w, h, name, clan) {
 
 export function nameTagSprite(THREE, name, clan) {
   const two = !!(clan && clan.tag);
-  const c = document.createElement('canvas'); c.width = 256; c.height = two ? 96 : 64;
+  const c = document.createElement('canvas'); c.width = 256; c.height = two ? 80 : 64;
   drawNameTag(c.getContext('2d'), c.width, c.height, name, clan);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true }));
-  s.scale.set(.5, two ? .1875 : .125, 1); s.renderOrder = 20; s.userData.clanTag = two; return s;
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+  s.scale.set(.55, two ? .172 : .125, 1); s.renderOrder = 20; s.userData.clanTag = two; return s;
 }

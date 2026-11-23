@@ -319,7 +319,7 @@ function installHook(ui) {
   if (typeof window === 'undefined' || !isLocal()) return;
   window.__atqWorld = Object.assign(window.__atqWorld || {}, {
     openOnline, joinRoom, topPlayers, isTestRoom, ui,
-    joinTestRoom: (room, title, mission) => { if (!UI) UI = buildUI(); return joinRoom(room, title || 'Test game', UI, { test: true, mission: mission || null }); },
+    joinTestRoom: (room, title, mission, extra = {}) => { if (!UI) UI = buildUI(); return joinRoom(room, title || 'Test game', UI, Object.assign({ test: true, mission: mission || null }, extra)); },
   });
 }
 

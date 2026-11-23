@@ -137,7 +137,7 @@ export function attachClans(root, ctx) {
       </div>
       ${(mine && mine.my_request) ? `<div class="cnote">Request pending for <b>${escX(mine.my_request.name)}</b> [${escX(mine.my_request.tag)}] <button type="button" id="cCancelReq">Cancel</button></div>` : ''}
       ${!signed() ? '<p class="wsub small">You can browse clans as a guest. Creating, joining and inviting needs a Google sign-in.</p>' : ''}`;
-    q('#cCreate').onclick = () => { if (!signed()) return askSignIn(); view = 'create'; render(); };
+    q('#cCreate').onclick = () => { view = 'create'; render(); };
     q('#cBrowse').onclick = () => { view = 'browse'; render(); loadBrowse(); };
     q('#cBoardBtn').onclick = () => { view = 'board'; render(); loadClanBoard(); };
     const cr = q('#cCancelReq'); if (cr) cr.onclick = () => act(() => clanRequestRespond(mine.my_request.id, false), 'Request cancelled.');
@@ -149,12 +149,14 @@ export function attachClans(root, ctx) {
     main.innerHTML = `<div class="ccreate">
       <div class="cban-prev slim"><canvas id="cDraftBan"></canvas><button type="button" id="cEditBan">Design banner</button></div>
       <div class="cform">
-        <label>Clan name<input id="cName" maxlength="24" placeholder="Quiet Falls Crew" autocomplete="off"></label>
-        <label>Tag (2–5 letters)<input id="cTag" maxlength="5" placeholder="QFC" autocomplete="off" class="ctagin"></label>
+        <div class="cfields">
+          <label>Clan name<input id="cName" maxlength="24" placeholder="Quiet Falls Crew" autocomplete="off"></label>
+          <label>Tag (2–5)<input id="cTag" maxlength="5" placeholder="QFC" autocomplete="off" class="ctagin"></label>
+        </div>
         <div class="clbl">Who can join</div>
         <div class="wseg wsort" id="cJoin"><button data-j="request" class="sel">Ask to join</button><button data-j="invite">Invite only</button></div>
         <div class="cacts2"><button type="button" id="cCreateGo" class="primary">Create clan</button><button type="button" id="cCreateBack">Cancel</button></div>
-        <p class="small wsub">Names and tags are unique. No uploaded pictures — banners are built from the game's own pieces.</p>
+        <p class="small wsub">Names and tags are unique. Banners use the game's own pieces — no uploads.</p>
       </div>
     </div>`;
     const name = q('#cName'), tag = q('#cTag'), cv = q('#cDraftBan');
@@ -371,9 +373,10 @@ export function attachClans(root, ctx) {
   }
 
   async function show() {
-    view = 'home';
+    if (view !== 'create' && view !== 'browse' && view !== 'board') view = 'home';
     q('#wClans') && q('#wClans').classList.remove('hidden');
-    try { await reload(true); } catch (e) { flash(e.message, true); render(); }
+    render();
+    try { await reload(false); } catch (e) { flash(e.message, true); render(); }
   }
 
   // Leaderboard tab: Players | Clans
