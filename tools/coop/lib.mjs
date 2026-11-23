@@ -40,7 +40,7 @@ export async function enter(p, { name = 'Ava', room = 'test-coop-1', mission = n
   }, { name, room, mission });
   await p.waitForFunction(() => !!window.__mpTown, null, { timeout: 240000 }); await p.waitForTimeout(800);
 }
-export const frames = (p, n) => p.evaluate(n => new Promise(r => { let k = 0; const f = () => { if (++k >= n) r(); else requestAnimationFrame(f); }; requestAnimationFrame(f); }), n);
+export const frames = (p, n) => p.evaluate(n => new Promise(r => { let k = 0; const f = () => { if (++k >= n) r(); else requestAnimationFrame(f); }; requestAnimationFrame(f); setTimeout(r, n * 120); /* a background tab gets no rAF: don't hang */ }), n);
 export async function freecam(p, pos, look) {
   await p.evaluate(([pos, look]) => { const T = window.__mpTown, cam = T.cam; if (!cam.__free) { cam.__free = 1; cam.__cp = cam.position.copy; cam.position.copy = function () { return this; }; cam.__la = cam.lookAt; cam.lookAt = function () {}; } cam.position.set(...pos); const V = cam.position.constructor; cam.up.set(0, 1, 0); const l = new V(...look); const m = new (cam.matrix.constructor)(); m.lookAt(cam.position, l, cam.up); cam.quaternion.setFromRotationMatrix(m); cam.updateProjectionMatrix(); }, [pos, look]);
 }
