@@ -193,8 +193,8 @@ export const steps = [
       const SH = D.SH = [
         [[4.6, 3.2, gz + 6], [-4, 2.2, gz - 2]], [[-1.6, 2.9, gz - 3.4], [-4.5, 2.3, gz - 1.6]], [[-2.4, 2.7, gz + 1.8], [-4.6, 1.95, gz - .2]], [[-1.8, 2.9, gz + 3], [-3.5, 2.5, gz + .4]],
         [[-1.4, 2.9, gz - 3.6], [-4.4, 2.5, gz - 1.6]], [[-1.6, 2.9, gz + 4.4], [-3.6, 2.5, gz + 2.2]], [[-2, 2.6, gz + 1.2], [-4.6, 1.9, gz - .2]], [[-1.4, 2.9, gz - 4.2], [-3.4, 2.5, gz - 2.4]],
-        [[-.6, 3.25, T0.z + 4.4], [-4, 2.95, T0.z + 4.2]], [[10, 6, gz + 22], [-4, 2, T0.z - 30]]];
-      g.cut = { anim: 'Idle_Loop', cam: V(...SH[0][0]), look: V(...SH[0][1]), flash: false }; snap(g);
+        [[-4.8, 2.9, T0.z + 2.8], [-4, 2.72, T0.z + 4.2]], [[10, 6, gz + 22], [-4, 2, T0.z - 30]]];
+      g.cut = { anim: 'Idle_Loop', cam: V(...SH[0][0]), look: V(...SH[0][1]), flash: false, noFrame: true }; snap(g);
       const sh = (i) => (g) => { D.shot = i; };
       script(g, [
         (g) => { horn(g); g.audio.engine && g.audio.engine(true, .5); D.roll = true; },

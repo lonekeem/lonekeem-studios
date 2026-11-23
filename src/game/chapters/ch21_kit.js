@@ -9,6 +9,17 @@ import { bodyFor, speakTarget } from '../dialogueFace.js';
 // close/medium shot of the group, re-aim it at the speaker's face from the same side, ~2 m away, swinging
 // around anyone standing in the way. Wide/establishing shots, Biscuit shots and radio voices are left alone.
 const _pts = (g) => { const a = [g.player]; for (const k in g.npcs) a.push(g.npcs[k]); return a.filter(c => c && c.root && c.root.visible !== false && c.root.parent); };
+const _rc = new THREE.Raycaster(), _ro = new THREE.Vector3(), _rd = new THREE.Vector3();
+function wallHit(g, x, y, z, cx, cy, cz, b) { // anything solid between the speaker's face and the camera spot (train walls, cabs, buildings)
+  _ro.set(x, y, z); _rd.set(cx - x, cy - y, cz - z); const L = _rd.length() + .35; _rd.normalize(); _rc.set(_ro, _rd); _rc.far = L; _rc.camera = g.camera; let hits; try { hits = _rc.intersectObjects(g.scene.children, true); } catch (e) { return false; }
+  const roots = new Set(_pts(g).map(c => c.root));
+  for (const h of hits) {
+    if (h.distance < .3) continue; let o = h.object, skip = !o.isMesh || o.isSkinnedMesh || o.visible === false || (o.material && (o.material.transparent || o.material.isPointsMaterial));
+    while (!skip && o) { if (roots.has(o) || o.visible === false) skip = true; o = o.parent; }
+    if (!skip) return true;
+  }
+  return false;
+}
 export function frameOn(g, who, text) {
   const C = g.cut; if (!C || !C.cam || !C.look || C.noFrame) return;
   if (C._ff) { C._ff = false; C.fov = 62; if (C._o) { C.cam = C._o.cam; C.look = C._o.look; } } // judge every line against the scripted shot, not the previous close-up
@@ -23,7 +34,7 @@ export function frameOn(g, who, text) {
   for (const a of cand) {
     const dx = Math.sin(a), dz = Math.cos(a), cx = p.x + dx * R, cz = p.z + dz * R;
     const hit = others.some(o => { const q = o.root.position, u = ((q.x - p.x) * dx + (q.z - p.z) * dz); if (u < .25 || u > R + .45) return false; return Math.hypot(q.x - (p.x + dx * u), q.z - (p.z + dz * u)) < .42; }) || others.some(o => Math.hypot(o.root.position.x - cx, o.root.position.z - cz) < .75);
-    if (hit) continue;
+    if (hit || wallHit(g, p.x, h, p.z, cx, h + .02, cz, b)) continue;
     C._o = { cam: C.cam, look: C.look }; C.look = new THREE.Vector3(p.x, h - .14, p.z); C.cam = new THREE.Vector3(cx, h + .02, cz); C.fov = innerHeight > innerWidth ? 66 : 46; C._ff = true; return;
   }
 }
