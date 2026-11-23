@@ -7,6 +7,7 @@
 // the whole story save (cash, weapons, outfits, progress), selections, character, name, photo and Survival best.
 import { sb, getUser } from './online.js';
 import { googleAllowed } from '../ui/gate.js';
+import { mergePayload } from './savemerge.js';
 const LSx = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }, del: k => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } } };
 const rd = k => { try { return JSON.parse(LSx.get(k) || 'null'); } catch (e) { return null; } }, wr = (k, v) => LSx.set(k, JSON.stringify(v));
 const META = 'atq.profile.v1', SEL = 'atq3.look', LOOK = 'atq.mp.look.v1', SAVE = 'atq3_save', BEST = 'atq3.survBest';
@@ -29,25 +30,36 @@ export function autoSync() { if (!googleAllowed()) return Promise.resolve({ stat
 // ---------- cloud hooks ----------
 const status = new Set(); export const onSyncStatus = fn => { status.add(fn); return () => status.delete(fn); };
 const emit = (w, d) => status.forEach(fn => { try { fn(w, d); } catch (e) { /* ignore */ } });
-const payload = () => ({ v: 1, save: rd(SAVE), sel: rd(SEL), survBest: +(LSx.get(BEST) || 0), stats: (rd(META) || {}).stats || {}, chars: exportRoster() });
-function applyCloudData(d) { if (!d) return; if (d.save && typeof d.save === 'object') { const j = JSON.stringify(d.save); LSx.set(SAVE, j); LSx.set(SAVE + '.bak', j); } if (d.sel) wr(SEL, d.sel); if (d.survBest) LSx.set(BEST, String(Math.max(+(LSx.get(BEST) || 0), d.survBest | 0))); if (d.chars) { try { importRoster(d.chars); } catch (e) { /* ignore */ } } try { window.__atq && window.__atq.reloadSave && window.__atq.reloadSave(); } catch (e) { /* ignore */ } }
+// v1.9.85: settings sync + safe merge (never lose progress) + offline queue. FP = what this device last synced; AT = when it first changed since.
+const SETS = 'atq3.settings', FP = 'atq.cloud.fp', AT = 'atq.cloud.at', PEND = 'atq.cloud.pending';
+const syncSets = () => { const s = rd(SETS); if (!s || typeof s !== 'object') return null; const o = Object.assign({}, s); delete o.qual; delete o.btnLay; return o; };
+const fp = () => [LSx.get(SAVE), LSx.get(SEL), LSx.get(BEST), JSON.stringify(syncSets())].join('|');
+function touch() { if (fp() !== LSx.get(FP)) { if (!LSx.get(AT)) LSx.set(AT, String(Date.now())); return true; } return false; }
+const synced = () => { LSx.set(FP, fp()); LSx.del(AT); LSx.del(PEND); };
+const localAt = () => +(LSx.get(AT) || 0);
+const payload = () => ({ v: 1, save: rd(SAVE), sel: rd(SEL), survBest: +(LSx.get(BEST) || 0), stats: (rd(META) || {}).stats || {}, chars: exportRoster(), settings: syncSets(), at: localAt() || Date.now() });
+function applyCloudData(d) { if (!d) return; if (d.save && typeof d.save === 'object') { const j = JSON.stringify(d.save); LSx.set(SAVE, j); LSx.set(SAVE + '.bak', j); } if (d.settings && typeof d.settings === 'object') { const cur = rd(SETS) || {}; wr(SETS, Object.assign({}, cur, d.settings, { qual: cur.qual, btnLay: cur.btnLay })); try { window.__atq && window.__atq.reloadSettings && window.__atq.reloadSettings(d.settings); } catch (e) { /* ignore */ } } if (d.sel) wr(SEL, d.sel); if (d.survBest) LSx.set(BEST, String(Math.max(+(LSx.get(BEST) || 0), d.survBest | 0))); if (d.chars) { try { importRoster(d.chars); } catch (e) { /* ignore */ } } try { window.__atq && window.__atq.reloadSave && window.__atq.reloadSave(); } catch (e) { /* ignore */ } }
 const gAvatar = u => { const m = (u && u.user_metadata) || {}; const a = m.avatar_url || m.picture || ''; return /^https:\/\//.test(a) ? a : null; };
 /** pull(user): the saved cloud profile for this Google account, or null when it has none yet. */
 async function pull(user) {
   const c = await sb(); const { data, error } = await c.rpc('profile_load'); if (error) throw new Error(error.message);
   if (!data || !data.exists) { LSx.set(revKey(user.id), '0'); return null; }
-  applyCloudData(data.data); LSx.set(revKey(user.id), String(data.rev || 0)); emit('loaded', data);
+  const dirty = touch() && rd(SAVE); const local = dirty ? payload() : null; const cloudAt = Math.max(+(data.data && data.data.at) || 0, Date.parse(data.updated_at || 0) || 0);
+  const use = dirty ? mergePayload(local, Object.assign({}, data.data, { at: cloudAt })) : data.data; applyCloudData(use); LSx.set(revKey(user.id), String(data.rev || 0));
+  if (dirty && JSON.stringify(use.save) !== JSON.stringify(data.data && data.data.save)) { LSx.set(AT, String(Date.now())); setTimeout(() => { const q = P && P.getProfile(); q && q.uid && push(q).catch(() => {}); }, 3000); } else synced();
+  emit('loaded', data);
   return { name: data.name || 'Survivor', uid: user.id, email: user.email || null, avatarUrl: data.avatar || gAvatar(user), look: data.look || null, sel: data.data.sel || null, stats: data.data.stats || {} };
 }
 let busy = false, again = false, pushT = 0;
 /** push(profile): save this device's profile to the cloud (newest wins: if another device saved first, its copy is loaded instead). */
 async function push(p) {
-  if (!p || !p.uid) return; const u = await getUser(); if (!u || u.id !== p.uid) return; if (busy) { again = true; return; } busy = true; emit('saving');
+  if (!p || !p.uid) return; touch(); if (typeof navigator !== 'undefined' && navigator.onLine === false) { LSx.set(PEND, '1'); armRetry(); return; } const u = await getUser().catch(() => null); if (!u || u.id !== p.uid) return; if (busy) { again = true; return; } busy = true; emit('saving');
   try {
     const c = await sb(); const { data, error } = await c.rpc('profile_save', { p_name: p.name || 'Survivor', p_avatar: p.avatarUrl || null, p_look: p.look || null, p_data: payload(), p_rev: +(LSx.get(revKey(u.id)) || 0), p_force: false });
     if (error) throw new Error(error.message);
-    if (data.conflict) { applyCloudData(data.data); LSx.set(revKey(u.id), String(data.rev)); emit('conflict', data); } else { LSx.set(revKey(u.id), String(data.rev)); emit('saved', data); }
-  } catch (e) { emit('error', e.message); if (/too fast/.test(e.message)) again = true; else throw e; }
+    if (data.conflict) { const cloudAt = Math.max(+(data.data && data.data.at) || 0, Date.parse(data.updated_at || 0) || 0); const m = mergePayload(payload(), Object.assign({}, data.data, { at: cloudAt })); applyCloudData(m); LSx.set(revKey(u.id), String(data.rev)); emit('conflict', data); again = true; }
+    else { if (data.adjusted && data.data) applyCloudData(data.data); LSx.set(revKey(u.id), String(data.rev)); synced(); emit('saved', data); }
+  } catch (e) { emit('error', e.message); if (/too fast/.test(e.message)) again = true; else { LSx.set(PEND, '1'); armRetry(); throw e; } }
   finally { busy = false; if (again) { again = false; clearTimeout(pushT); pushT = setTimeout(() => { const q = P && P.getProfile(); q && push(q).catch(() => {}); }, 2500); } }
 }
 /** After Google sign-in: load the saved profile ('loaded'), or tell the UI to create one ('new'). */
@@ -64,5 +76,13 @@ export async function signedOut() { try { localStorage.removeItem('atq.profile.o
 // push whenever the title screen comes back (after a run, the shop, the character screen) and something changed
 export function watchTitle() {
   const t = document.getElementById('title'); if (!t || t.__pw) return; t.__pw = true; let last = null;
-  new MutationObserver(async () => { if (t.classList.contains('hidden')) return; const s = (LSx.get(SAVE) || '') + (LSx.get(LOOK) || '') + (LSx.get(SEL) || '') + (LSx.get(BEST) || ''); if (last !== null && s !== last) { const PR = await ready; const p = PR.getProfile(); if (p && p.uid) push(p).catch(() => {}); } last = s; }).observe(t, { attributes: true, attributeFilter: ['class'] });
+  new MutationObserver(async () => { if (t.classList.contains('hidden')) return; const s = fp() + (LSx.get(LOOK) || ''); if (last !== null && s !== last) { const PR = await ready; const p = PR.getProfile(); if (p && p.uid) push(p).catch(() => {}); } last = s; }).observe(t, { attributes: true, attributeFilter: ['class'] });
 }
+
+// v1.9.85 offline queue: a save made offline (or that failed) is retried when the network comes back, the app returns to the
+// foreground, or every 60 s while something is pending. Guests (no uid) never sync.
+let retryArmed = false;
+function retryNow() { if (!LSx.get(PEND) && !touch()) return; if (typeof navigator !== 'undefined' && navigator.onLine === false) return; const q = P && P.getProfile(); if (q && q.uid) push(q).catch(() => {}); }
+function armRetry() { if (retryArmed || typeof window === 'undefined') return; retryArmed = true; window.addEventListener('online', retryNow); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') retryNow(); }); setInterval(() => { if (LSx.get(PEND)) retryNow(); }, 60000); }
+if (typeof window !== 'undefined') { armRetry(); if (LSx.get(PEND)) setTimeout(retryNow, 8000); }
+export const _cloudTest = { fp, touch, payload, applyCloudData, mergePayload, pending: () => !!LSx.get(PEND) };

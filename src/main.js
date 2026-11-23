@@ -23,7 +23,7 @@ const audio = new AudioSys(S);
 let save = loadSave(LS) || defaultSave(); let game = null, gamePromise = null; let state = 'boot', back = '#title';
 window.__atq = { get story() { return STORY; }, get audio() { return audio; }, get game() { return game; }, get state() { return state; }, get save() { return save; }, showLoading, hideLoading, setProgress,
   leaveApp, returnApp, isAway,
-  reloadSave: () => { save = loadSave(LS) || save; if (state === 'title') refreshTitleProgress(); }, openTownShop, closeTownShop }; // cloud sync: refresh in-memory save + Continue. Never call toTitle()/showScreen here — #online is a .screen, so that would hide the lobby and kick a signed-in player back to the menu.
+  reloadSave: () => { save = loadSave(LS) || save; if (state === 'title') refreshTitleProgress(); }, reloadSettings: o => { if (!o || typeof o !== 'object') return; const keep = { qual: S.qual, btnLay: S.btnLay, ctlRev: S.ctlRev }; Object.assign(S, o, keep); saveS(); }, /* v1.9.85 cloud saves: synced settings (quality + button layout stay per device) */ openTownShop, closeTownShop }; // cloud sync: refresh in-memory save + Continue. Never call toTitle()/showScreen here — #online is a .screen, so that would hide the lobby and kick a signed-in player back to the menu.
 try { audio.loadTracks(); } catch (e) { /* ignore */ }
 
 function showScreen(id) { $$('.screen').forEach(s => s.classList.add('hidden')); if (id) $(id).classList.remove('hidden'); }
