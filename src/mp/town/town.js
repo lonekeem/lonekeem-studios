@@ -24,6 +24,7 @@ import { hash } from './building.js';
 import { CSS, el, drawGauge } from './ui.js';
 import { AudioSys } from '../../audio.js';
 import { weaponMesh } from '../../game/chars.js';
+import { mountHeld } from '../../game/hands.js';
 import { WEAPONS, writeSave, ARMOR, armorAbsorb } from '../../game/data.js';
 import { onAppLeave, onAppReturn } from '../../bgPause.js';
 import { townDayNight } from './townNight.js';
@@ -232,14 +233,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   const GS = { mag: { pistol: 12 }, cd: 0, rl: 0, rlId: null, shown: null, mesh: null, tr: null, trT: 0, mf: 0, mT: 0, mz: null, mfl: null };
   const curGun = () => { const p = bag.pref; return p && ITEMS[p] && ITEMS[p].gun && bag.count(p) ? ITEMS[p].gun : null; };
   const ammoId = g => ITEMS[g].ammo; const ammoCount = g => bag.count(ammoId(g));
-  const MELEE_ROT = [0, 0, 0], MELEE_OFF = Object.fromEntries(Object.keys(ITEMS).filter(k => ITEMS[k] && ITEMS[k].melee).map(k => [k, 1])); // melee: handle across the fist, position auto-fitted to the avatar's own fist
-  const fitGrip = (av, h) => { try { const wrap = h.parent; if (!wrap || !av) return; let skin = null; av.obj.traverse(o => { if (o.isSkinnedMesh && !skin) skin = o; }); if (!skin) return; const bi = skin.skeleton.bones.findIndex(b => b.name === 'RightHand'); if (bi < 0) return; av.root.updateWorldMatrix(true, true); skin.skeleton.update(); const pos = skin.geometry.attributes.position, si = skin.geometry.attributes.skinIndex, sw = skin.geometry.attributes.skinWeight; const C = new THREE.Vector3(), v = new THREE.Vector3(); let n = 0;
-    for (let i = 0; i < pos.count; i++) { let w = 0; for (let k = 0; k < 4; k++) if (si.getComponent(i, k) === bi) w += sw.getComponent(i, k); if (w > .7) { v.fromBufferAttribute(pos, i); skin.applyBoneTransform(i, v); v.applyMatrix4(skin.matrixWorld); C.add(v); n++; } } if (!n) return; C.multiplyScalar(1 / n);
-    const m = h.children[0]; h.updateWorldMatrix(true, true); const mb = new THREE.Box3().setFromObject(m, true); const wsz = mb.getSize(new THREE.Vector3()); const gw = mb.getCenter(new THREE.Vector3());
-    // grip = .15 m (world) in from the handle end: the end of the longest axis that is closer to the mesh origin
-    const o = new THREE.Vector3(); m.getWorldPosition(o); const ax = wsz.x > wsz.y && wsz.x > wsz.z ? 'x' : wsz.y > wsz.z ? 'y' : 'z'; const sgn = Math.abs(mb.min[ax] - o[ax]) < Math.abs(mb.max[ax] - o[ax]) ? 1 : -1; gw[ax] = (sgn > 0 ? mb.min[ax] : mb.max[ax]) + sgn * .15;
-    wrap.updateWorldMatrix(true, false); h.position.add(wrap.worldToLocal(C.clone()).sub(wrap.worldToLocal(gw))); } catch (e) { /* keep the default offset */ } };
-  const mountGun = (P, g, old, av) => { if (old && old.parent) old.parent.remove(old); if (!g || !P) return null; const m = weaponMesh(g); try { window.__atqPaintWeapon && window.__atqPaintWeapon(m); } catch (e) { /* rewards finish, optional */ } const h = new THREE.Group(); h.add(m); if (MELEE_OFF[g]) h.rotation.set(...(window.__batRot || MELEE_ROT)); else { h.rotation.set(Math.PI / 2, 0, 0); h.position.set(0, .08, .02); } P.attach('DEF-hand.R', h); if (MELEE_OFF[g]) fitGrip(av, h); return h; };
+  const mountGun = (P, g, old, av) => { if (old && old.parent) old.parent.remove(old); if (!g || !P) return null; const m = weaponMesh(g); try { window.__atqPaintWeapon && window.__atqPaintWeapon(m); } catch (e) { /* rewards finish, optional */ } const h = new THREE.Group(); h.add(m); mountHeld(P, h, g); return h; };
   const heldId = () => { const g = curGun(); if (g) return g; const p = bag.pref; return p && p !== 'fists' && ITEMS[p] && ITEMS[p].melee && bag.count(p) ? p : null; };
   const equipVisual = () => { const g = heldId(); const P = me.av && me.av.motion; if (GS.shown === g && (GS.mesh || !g || !P)) return; GS.shown = g; GS.mesh = mountGun(P, g, GS.mesh, me.av); };
   const equipWeapon = (id) => { if (id !== 'fists' && !(meleeOrGun(id) && bag.count(id))) return; bag.pref = id; equipVisual(); const g = curGun(); toast(g ? WEAPONS[g].name : (id === 'fists' ? 'Fists' : (ITEMS[id] && ITEMS[id].n) || bag.best().name), 1.1, 'wep'); try { aud.play('cloth', { vol: .4 }); } catch (e) { /* ignore */ } try { syncWeaponBar(); } catch (e) { /* ignore */ } };

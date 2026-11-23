@@ -7,6 +7,7 @@ import { hookVertex, skinTone } from './shaders.js';
 import { FACE_UNIFORMS, FACE_FRAG_DECL } from './face.js';
 import { weldNormals } from './morph.js';
 import { spreadFingers } from './fingers.js';
+import { applyCartoonHands } from '../game/hands.js';
 
 const REG = { Head: 0, neck: 1, Spine: 2, Spine01: 2, Spine02: 2, Hips: 2, LeftShoulder: 3, LeftArm: 3, LeftForeArm: 3, RightShoulder: 3, RightArm: 3, RightForeArm: 3, LeftHand: 4, RightHand: 4,
   LeftUpLeg: 5, LeftLeg: 5, RightUpLeg: 5, RightLeg: 5, LeftFoot: 6, LeftToeBase: 6, RightFoot: 6, RightToeBase: 6 };
@@ -82,6 +83,7 @@ export class Avatar {
     skin.skeleton.bones.forEach(b => { this.restQ[b.name] = b.quaternion.clone(); b.parent.getWorldQuaternion(q); this.parentWQ[b.name] = q.clone(); });
     this.hipsRest = this.bones.Hips.position.clone(); this.t = 0; this.phase = 0;
     this.headFrame = tpl.lm; this.root.userData.avatar = this;
+    try { applyCartoonHands(this, { skin, bones: this.bones, pose: 'relax' }); } catch (e) { console.warn('hands', e); }
   }
   _skinMat() {
     const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .62, metalness: 0 }); const U = this.U;

@@ -54,6 +54,8 @@ const MELEE = {
   tomahawk(b) { b.cz('wood', .018, .5, 0, 0, .2, .015, 8); b.cz('tape', .02, .16, 0, 0, .02); b.box('steel', .05, .02, .08, .03, 0, .45); b.box('steel', .13, .012, .09, .09, 0, .48); b.box('gun', .02, .02, .08, 0, 0, .41); b.box('blood', .04, .014, .03, .11, 0, .5); },
   longsword(b) { b.cz('tape', .016, .24, 0, 0, .05, .016, 8); b.sph('steel', .024, 0, 0, -.08); b.box('steel', .26, .026, .03, 0, 0, .2); b.box('steel', .05, .008, 1.0, 0, 0, .73); b.box('gun', .01, .01, .9, 0, .006, .73); b.box('steel', .045, .008, .04, 0, 0, 1.24, 0, 0, 0); b.box('rust', .03, .01, .1, 0, .001, .55); },
   crowbar(b) { b.cz('steel', .012, .7, 0, 0, .3, .012, 8); b.cz('gun', .015, .18, 0, 0, .04, .015, 8); b.box('steel', .014, .014, .16, 0, .05, .72, .85, 0, 0); b.box('steel', .028, .01, .07, 0, .09, .82, .3); b.box('steel', .022, .008, .05, 0, 0, -.08); b.box('rust', .016, .01, .08, 0, .01, .5); },
+  hammer(b) { b.cz('wood', .015, .26, 0, 0, .12, .013, 8); b.cz('tape', .017, .08, 0, 0, .03, .017, 8); b.box('steel', .05, .05, .12, 0, 0, .30); b.box('steel', .08, .045, .045, .05, 0, .30); b.box('steel', .07, .018, .04, -.05, 0, .31, 0, 0, .5); b.box('steel', .04, .01, .03, -.08, 0, .32, 0, 0, .9); },
+  flashlight(b) { b.cz('poly', .018, .12, 0, 0, .07, .018, 10); b.cz('gun', .026, .05, 0, 0, .155, .022, 10); b.cz('lens', .02, .012, 0, 0, .185, .02, 10); b.cz('steel', .01, .02, 0, .0, .01, .01, 8); b.box('gun', .01, .02, .03, 0, .03, .08); },
 };
 const MEL_L = {};
 export function buildWeapon(id) { if (MELEE[id]) { const b = new B(); MELEE[id](b); return b.build(null); } if (GUNS[id]) { const b = new B(); const L = GUNS[id](b); return b.build(L); } return null; }
@@ -80,3 +82,5 @@ export function buildPickup(kind, drop) {
   return null;
 }
 function crossTex() { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#b01818'; g.fillRect(24, 6, 16, 52); g.fillRect(6, 24, 52, 16); for (let i = 0; i < 60; i++) { g.fillStyle = `rgba(60,10,10,${Math.random() * .5})`; g.fillRect(Math.random() * 64, Math.random() * 64, 3, 2); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; }
+
+if (typeof window !== 'undefined') window.__atqBuildWeapon = buildWeapon;

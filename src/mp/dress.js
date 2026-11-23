@@ -13,6 +13,7 @@ import { makeCtx, HAT, GLASSES, EAR, PIERCE, NECK, WRIST, RING, BAG, BELT } from
 import { buildHair } from './hairx.js';
 import { buildHead, buildHairMesh, buildFacialHair, headCtx, buildMask } from './v2/headrig.js';
 import * as C from './catalog.js';
+import { tintHands } from '../game/hands.js';
 import { MORPH_KEYS } from './look.js';
 
 const col = h => new THREE.Color(h);
@@ -31,7 +32,7 @@ function shell(av, key, kind, geo) {
 function addSkinned(av, mesh, order) { const s = av.skin; mesh.position.copy(s.position); mesh.quaternion.copy(s.quaternion); mesh.scale.copy(s.scale); s.parent.add(mesh); mesh.bind(s.skeleton, s.bindMatrix); mesh.frustumCulled = false; mesh.renderOrder = order || 0; mesh.castShadow = false; return mesh; }
 function setLm(av, mat) { const P = av.tpl.P, U = mat.userData.U; const A = P.LeftArm, Hd = P.LeftHand; const d = Hd.clone().sub(A), L = d.length(); d.normalize();
   U.uLm.value.set(P.Hips.y, P.neck.y, P.LeftUpLeg.y, (P.LeftFoot.y + P.RightFoot.y) / 2); U.uArmO.value.set(A.x, A.y, A.z, 0); { const h2 = av.head2; if (h2) { const r0 = (h2.g === 'f' ? .043 : .05) * h2.s; const kd = U.uKind.value, ex = kd === 3 ? .011 : kd === 0 ? .004 : 0; /* thicker shells: wider neck hole so the edge lies on the shoulders, not through the neck */ U.uNk.value.set(0, h2.C.z - .028 * h2.s, r0 + .012 + ex, r0 * .92 + .01 + ex * .8); } } U.uArmD.value.set(d.x, d.y, d.z, L); }
-const LAYER_REG = { under: [2, 5], top: [1, 2, 3, 5], jacket: [1, 2, 3, 5], pants: [2, 5], shoes: [5, 6], gloves: [3, 4] };
+const LAYER_REG = { under: [2, 5], top: [1, 2, 3, 5], jacket: [1, 2, 3, 5], pants: [2, 5], shoes: [5, 6], gloves: [3] }; // gloves: forearm only; fingers are the cartoon hands, tinted below
 function layerGeometry(av, name) { // perf: each garment shell only draws the body triangles it can ever cover (not the whole body)
   const regs = LAYER_REG[name], g = av.skin.geometry; if (!regs) return g; const W = av.tpl.aW, ix = g.index, out = [];
   const ok = i => { for (const r of regs) if (W[i * 8 + r] > .04) return true; return false; };
@@ -93,6 +94,7 @@ export function dress(av, look) {
   const bd = look.beard; U.uStub.value.set(bd.id === 'stubble' ? .55 + .3 * bd.len : 0, 1, 0, 0);
   // ---- clothes
   const w = look.worn; setUnder(av, f); setGarment(av, 'top', 0, w.top, C.TOPS); setGarment(av, 'jacket', 3, w.jacket, C.JACKETS); setGarment(av, 'pants', 1, w.pants, C.PANTS); setGarment(av, 'shoes', 2, w.shoes, C.SHOES); buildShoes(av, w.shoes); { const hp = (w.jacket && HOODED.has(w.jacket.id)) ? w.jacket : (w.top && HOODED.has(w.top.id) ? w.top : null); buildHood(av, hp, hp ? hoodMat(hp.c) : null); } setGarment(av, 'gloves', 4, w.gloves, C.GLOVES);
+  if (av.hands) tintHands(av, w.gloves ? (w.gloves.c || '#1c1c1f') : sk);
   { // tops / jackets ride over the pants waistband (never tucked under a looser pant)
     const pl = av.layers.pants, pOff = pl && pl.visible ? pl.material.userData.off.value : 0, pWa = pl && pl.visible ? pl.material.userData.U.uG1.value.y : 0;
     let base = pOff; for (const nm of ['top', 'jacket']) { const l = av.layers[nm]; if (!l) continue; const o = l.material.userData.off.value; const G = l.material.userData.U.uG1.value; if (l.visible && pOff && G.y > pWa - .04 && G.y < .14) G.y = pWa - .04; /* regular-length hems reach past the waistband */ const ex = l.visible && pOff ? Math.max(0, base + .003 - o) : 0; l.material.userData.U.uOver.value.set(ex, pWa, 0, 0); if (l.visible) base = Math.max(base, o + ex); } }

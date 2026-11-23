@@ -10,7 +10,8 @@ import { CAST, randomLook, raiderLook, DEFAULT_LOOK, zVoiceAssign } from './look
 import { resolveKind, applyKindLook, kindStats, dressKind, tickSpecialZed, tickKindFx, poseKindBones, kindMinimapColor, kindKillXP, knockFrom } from './zedKinds.js';
 import { bossProp, wrap, walkie } from './props.js';
 import { CharLib, Char, backpack, weaponMesh, makeDog, makeRabbit } from './chars.js';
-import { buildPickup } from './gear.js';
+import { mountHeld, getHold } from './hands.js';
+import { buildPickup, buildWeapon } from './gear.js';
 import { loadRigs, loadMoreRigs, RIG_CORE, RIG_REST } from './avatar.js';
 import { WEAPONS, WEAPON_ORDER, stat, perk, xpFor, PERKS, writeSave, armorAbsorb } from './data.js';
 import { V3, clamp, lerp, rnd, angLerp, bloodTex } from './util.js';
@@ -132,7 +133,7 @@ export class Game {
     const P = this.player = new Char(this.lib, L, 0.9); this.scene.add(P.root);
     if (old) { P.root.position.copy(old.root.position); P.root.rotation.y = old.root.rotation.y; this.scene.remove(old.root); }
     P.attach('DEF-spine.003', this.pack); this.pack.position.set(0, 0.12, -0.2); this.pack.rotation.set(0.1, 0, 0); if (P.skin) { this.pack.scale.setScalar(.6); this.pack.position.set(0, -0.03, -0.05); } else this.pack.scale.setScalar(1);
-    P.attach('DEF-hand.R', this.hand); this.hand.rotation.set(Math.PI / 2, 0, 0); this.hand.position.set(0, 0.08, 0.02);
+    mountHeld(P, this.hand, (this.save && this.save.cur) || 'fists');
     this.pack.visible = !!(P.wantsPack || (this.save && this.save.items.includes('backpack'))); return P; }
   async start(step, opts = {}) { if (this._lookKey !== JSON.stringify(playerLook())) this.makePlayer(); step = step || 0; if (!this.holdSave && !(STORY[step] && STORY[step].survival)) this.save.step = step; await this.loadStep(step, { overlay: opts.overlay !== false }); this.paused = !!(typeof window !== 'undefined' && window.__atq && window.__atq.isAway && window.__atq.isAway()); if (!this.running) { this.running = true; this.last = performance.now(); requestAnimationFrame((t) => this.frame(t)); } await yieldOnce(); }
   leave() {
@@ -263,15 +264,17 @@ export class Game {
     const m = this.weaponMeshes && this.weaponMeshes[id];
     if (!this.hand) return;
     this.hand.visible = true;
-    if (m && m.parent !== this.hand) { this.hand.clear(); this.hand.add(m); }
+    if (m && m.parent !== this.hand) { this.hand.clear(); this.hand.add(m); mountHeld(this.player, this.hand, id); }
     if (m) m.visible = true;
     const P = this.player; if (!P || !P.bone) return;
     for (const n of ['DEF-hand.R', 'DEF-handR', 'DEF-forearm.R', 'DEF-forearmR']) {
       const b = P.bone(n); if (b && b.scale && (b.scale.x < 0.5 || b.scale.y < 0.5 || b.scale.z < 0.5)) b.scale.set(1, 1, 1);
     }
   }
-  equip(id, silent) { if (!this.save.owned.includes(id)) id = 'fists'; this.save.cur = id; const w = WEAPONS[id];
-    this.hand.clear(); const m = this.weaponMeshes[id]; this.hand.add(m); this.vm.clear(); const vmm = m.clone(); this.vm.add(vmm); this.vmMesh = vmm;
+  equip(id, silent) { if (!this.save.owned.includes(id)) id = 'fists'; this.save.cur = id; const w = WEAPONS[id] || { name: id, type: 'melee' };
+    this.hand.clear(); const m = this.weaponMeshes[id] || (id !== 'fists' && buildWeapon(id)); if (m) { this.hand.add(m); if (!this.weaponMeshes[id]) this.weaponMeshes[id] = m; }
+    mountHeld(this.player, this.hand, id);
+    this.vm.clear(); if (m) { const vmm = m.clone(); const hold = getHold(id); const vg = new THREE.Group(); vg.add(vmm); if (hold.vmPos) vg.position.set(...hold.vmPos); if (hold.vmRot) vg.rotation.set(...hold.vmRot); this.vm.add(vg); this.vmMesh = vmm; }
     if (w.type === 'gun' && this.save.mags[id] == null) this.save.mags[id] = stat(this.save, id).mag;
     this.ws = stat(this.save, id); if (!silent) { this.toast(w.name, 1.1, 'wep'); this.audio.click(); } this.state && (this.state.reload = 0); this.rldSync && this.rldSync(); try { syncWeaponBar(); } catch (e) { /* ignore */ } }
   swap(dir = 1) { const o = WEAPON_ORDER.filter(k => this.save.owned.includes(k)); const i = o.indexOf(this.save.cur); this.equip(o[(i + dir + o.length) % o.length]); this.audio.play('cloth', { vol: .35, flat: true }); this.audio.play('reload_in', { vol: .4, delay: .18, rate: 1.2, flat: true }); }
@@ -404,7 +407,7 @@ export class Game {
     if (o.eat || o.still) c.play('Idle_Loop'); else c.play(runner ? 'Jog_Fwd_Loop' : (c.tank ? 'Walk_Loop' : 'Walk_Loop'), { speed: runner ? 1.2 : (c.tank ? .48 : 0.62) });
     if (c.act('Walk_Loop')) c.act('Walk_Loop').time = rnd(0, 1);
     if (!o.raider) c.zvo = zVoiceAssign(zl, { boss: !!o.boss, fem: zl.fem, kind });
-    if (o.raider) { c.raider = true; c.hp = c.maxHp = o.hp || 90; c.speed = 2.6; c.cd = rnd(1, 2.5); const h = new THREE.Group(); h.add(weaponMesh(o.gun || 'rifle')); h.rotation.set(Math.PI / 2, 0, 0); h.position.set(0, .08, .02); c.attach('DEF-hand.R', h); c.gunM = h; c.gunId = o.gun || 'rifle'; c.play('Pistol_Aim_Neutral'); if (c.mat && c.mat.userData.u && c.mat.userData.u.uShirt) if (o.shirt && c.mat.userData.u.uJacket) { c.mat.userData.u.uJacket.value.set(o.shirt); c.mat.userData.u.uShirt.value.set(o.shirt); } }
+    if (o.raider) { c.raider = true; c.hp = c.maxHp = o.hp || 90; c.speed = 2.6; c.cd = rnd(1, 2.5); const h = new THREE.Group(); h.add(weaponMesh(o.gun || 'rifle')); mountHeld(c, h, o.gun || 'rifle'); c.gunM = h; c.gunId = o.gun || 'rifle'; c.play('Pistol_Aim_Neutral'); if (c.mat && c.mat.userData.u && c.mat.userData.u.uShirt) if (o.shirt && c.mat.userData.u.uJacket) { c.mat.userData.u.uJacket.value.set(o.shirt); c.mat.userData.u.uShirt.value.set(o.shirt); } }
     // Pose immediately so a zombie that pops into view (e.g. during a melee-kill hitch / hitstop) is never left in bind T-pose.
     try { c.mixer.update(0); } catch (e) { /* first pose */ }
     this.zombies.push(c); return c; }
@@ -617,7 +620,10 @@ export class Game {
   roll() { const s = this.state; if (s.roll > 0 || this.truck.driving || this.cut) return; startRoll({ P: this.player, s, I: this.input, yaw: this.cam.yaw, audio: this.audio }); }
   jump() { const s = this.state; if (s.y > 0.01 || this.truck.driving || this.cut) return; startJump({ P: this.player, s, audio: this.audio }); }
   grenade() { if (this.save.grenades <= 0) { this.toast('No grenades'); return; } if (this.truck.driving || this.cut) return; this.save.grenades--; const P = this.player;
-    const m = new THREE.Mesh(this._grenG || new THREE.CylinderGeometry(.05, .05, .2, 8), this._grenM || new THREE.MeshStandardMaterial({ color: '#444' })); const p = P.root.position.clone(); p.y = 1.6; m.position.copy(p); this.scene.add(m);
+    const m = (buildPickup && buildPickup('grenade')) || new THREE.Mesh(this._grenG || new THREE.CylinderGeometry(.05, .05, .2, 8), this._grenM || new THREE.MeshStandardMaterial({ color: '#444' }));
+    const start = V3(); const grip = P.hands && P.hands.Right && P.hands.Right.userData && P.hands.Right.userData.grip;
+    if (grip) grip.getWorldPosition(start); else { start.copy(P.root.position); start.y += 1.6; }
+    m.position.copy(start); this.scene.add(m);
     const f = V3(); this.camera.getWorldDirection(f); this.grenadesLive.push({ m, v: f.multiplyScalar(13).add(V3(0, 4.5, 0)), t: 1.7 }); this.audio.swing(); }
   heal() { if (this.save.meds <= 0 || this.hp >= this.maxHp) return; this.save.meds--; this.hp = Math.min(this.maxHp, this.hp + 50); this.toast('+50 health'); this.audio.pickup(); }
   use() { if (this.dlgCur && this.cut) { this.skipLine(); return; } const P = this.player.root.position;

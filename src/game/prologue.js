@@ -4,6 +4,7 @@
 // lines in their in-game voices, score, SFX): public/music/atq-prologue.mp3. Timeline + subtitles: src/data/prologue.json.
 import * as THREE from 'three';
 import PD from '../data/prologue.json';
+import { giveHammer } from './hands.js';
 
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const PI = Math.PI;
@@ -48,6 +49,7 @@ function overlay() {
   document.body.appendChild(el); return el;
 }
 
+
 export function runPrologue(g, done) {
   const A = g.audio, S = g.settings || {}; const el = overlay(); document.body.classList.add('cine');
   const cap = el.querySelector('.cap'), place = el.querySelector('.place'), ttl = el.querySelector('.ttl'), blk = el.querySelector('.blk'), hint = el.querySelector('.hint');
@@ -81,6 +83,7 @@ export function runPrologue(g, done) {
       dad.root.visible = nia.root.visible = true; P0.root.visible = true; g.setDoor(false);
       dad.root.position.set(12.75, 0, 42.5); P.set(13.35, 0, 42.95); nia.root.position.set(15.6, 0, 42.3);
       face(nia, 13.2, 42.9); dad.play('Interact'); cut.anim = 'Idle_Loop'; face(P0, 12.3, 42.4); nia.play('Idle_Loop');
+      giveHammer(dad, id === 'board'); // hammer in his right hand; a spare board in the left only while he's nailing
       if (id === 'keemC') { cut.anim = 'Idle_Talking_Loop'; face(P0, 12.75, 42.5); }
       if (id === 'dadC') { face(dad, 13.45, 43.4); dad.play('Idle_Talking_Loop'); cut.anim = 'Idle_Loop'; face(P0, 12.75, 42.5); }
       if (id === 'niaC') { nia.play('Idle_Talking_Loop'); face(nia, 13.4, 43.0); cut.anim = 'Idle_Loop'; face(P0, 15.6, 42.3); face(dad, 15.6, 42.3); dad.play('Idle_Loop'); }
@@ -89,6 +92,7 @@ export function runPrologue(g, done) {
     if (id === 'horde') zs.forEach((z, i) => { z.root.position.z = [-40, -41.5, -43.5, -44.5, -45.5, -47][i]; });
     if (id === 'porch' || id === 'keemP' || id === 'niaP' || id === 'dadP' || id === 'leave') {
       dad.root.visible = nia.root.visible = true; P0.root.visible = true; g.setDoor(true);
+      if (dad._hammer) dad._hammer.visible = false; if (dad._plank) dad._plank.visible = false;
       if (id === 'porch') { P.set(11.6, 0, 36.85); dad.root.position.set(10.2, 0, 36.45); nia.root.position.set(10.3, 0, 37.45); }
       face(P0, 10.25, 36.95); face(dad, 11.6, 36.85); face(nia, 11.6, 36.85); cut.anim = 'Idle_Loop'; dad.play('Idle_Talking_Loop'); nia.play('Idle_Loop');
       if (id === 'keemP') { cut.anim = 'Idle_Talking_Loop'; dad.play('Idle_Loop'); }
