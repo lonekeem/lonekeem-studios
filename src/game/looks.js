@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { stylizeFrag } from './chars.js';
+import { attachStoryV2Head } from './storyHead.js';
 
 export const SKINS = ['#f3d2bd', '#e6b89a', '#d9a98c', '#c68e6a', '#ad7652', '#8d5a3b', '#73482e', '#5b3a26', '#4a2c1c', '#3b2417', '#2d1b11'];
 export const HAIR_COLORS = ['#0b0806', '#1d130c', '#3a2414', '#5a3a22', '#7a5a3a', '#a07a4a', '#c9a86a', '#8a3a1e', '#aaa69e', '#e8e4dc', '#f3f1ea', '#f4c2d4', '#d8d4cc', '#c9b8ff', '#6a2a6a', '#1e3a7a'];
@@ -16,7 +17,7 @@ export const FACES = {  // jaw width, jaw depth, nose width, lip size, brow tilt
   strong: { name: 'Strong jaw', jaw: 1.14, chin: 1.08, nose: 1.1, lips: 1, brow: -0.12, eye: .95 }, narrow: { name: 'Narrow', jaw: .88, chin: 1.05, nose: .85, lips: .9, brow: 0, eye: 1 },
   round: { name: 'Round', jaw: 1.1, chin: .9, nose: 1.05, lips: 1.1, brow: 0.08, eye: 1.05 }, sharp: { name: 'Sharp', jaw: .96, chin: 1.12, nose: .95, lips: .95, brow: -0.18, eye: .92 },
   elder: { name: 'Weathered', jaw: 1.02, chin: .98, nose: 1.12, lips: .9, brow: -0.04, eye: .9 } };
-const H = { x: 0, y: 1.588, z: -0.022, rx: .078, ry: .096, rz: .088 }; // head ellipsoid in bind space
+export const H = { x: 0, y: 1.588, z: -0.022, rx: .078, ry: .096, rz: .088 }; // head ellipsoid in bind space
 // ---------- outfits (shader colours + accessory meshes) ----------
 // jk: 0 none, 1 open jacket, 2 closed jacket/hoodie, 3 one-piece suit  · long: coat length 0..1 · camo 0/1 · boots 0/1
 export const OUTFITS = [
@@ -191,8 +192,19 @@ function curls(P, r, col, n, f) { for (let i = 0; i < n; i++) { const p = f(r); 
   P.add('DEF-head', ICO, c2, mat(p[0], p[1], p[2], s, s * (.85 + r() * .3), s, r() * 3, r() * 3, 0)); } }
 const onHead = (u, v, k) => [H.x + Math.sin(v) * Math.cos(u) * H.rx * k, H.y + Math.cos(v) * H.ry * k, H.z + Math.sin(v) * Math.sin(u) * H.rz * k];
 // ---------- head, face, hair ----------
-export function buildHead(P, L) { const r = mulberry((L.seed || 1) * 131 + 7); const F = FACES[L.face] || FACES.keem; const skin = L.zed ? zSkin(L.skin, L) : L.skin;
+function browArch() { // tapered arch, not a box
+  const nu = 11, nv = 4, pos = [], idx = [];
+  for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) {
+    const u = i / nu, v = j / nv, tt = u * 2 - 1, taper = 1 - Math.abs(tt) * 0.45;
+    pos.push(tt * 0.019, 0.0075 * (1 - tt * tt) + (v - 0.5) * 0.0072 * taper, (v - 0.5) * 0.008 * taper);
+  }
+  for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) { const a = j * (nu + 1) + i, b = a + nu + 1; idx.push(a, b, a + 1, a + 1, b, b + 1); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+export function buildHead(P, L, opt = {}) { const r = mulberry((L.seed || 1) * 131 + 7); const F = FACES[L.face] || FACES.keem; const skin = L.zed ? zSkin(L.skin, L) : L.skin; const skipFace = !!(opt.skipFace && !L.zed);
   const hc = L.grey ? mix(L.hairColor, '#9a968e', L.grey) : L.hairColor, hd = dark(hc, .8), B = 'DEF-head';
+  if (skipFace) P.add('DEF-neck', CYL, skin, mat(0, 1.49, -.03, .042, .1, .042));
+  if (!skipFace) {
   P.add(B, SPH, skin, mat(H.x, H.y, H.z, H.rx, H.ry, H.rz)); // cranium
   P.add(B, SPH, skin, mat(0, 1.537, -0.004, .061 * F.jaw, .052 * F.chin, .07)); // jaw/cheeks
   P.add(B, SPH, skin, mat(0, 1.512, .028, .03 * F.jaw, .022, .034)); // chin
@@ -207,7 +219,7 @@ export function buildHead(P, L) { const r = mulberry((L.seed || 1) * 131 + 7); c
     P.add(B, SPH, lidc, mat(ex, ey + es * .86, .0535, es * 1.12, es * .22, es * .62, -.06 * s)); // upper lash line
     P.add(B, SPH, dark(skin, .9), mat(ex, ey + es * 1.02, .0505, es * 1.15, es * .42, es * .68)); // lid
     const bt = L.zed ? '#2a2620' : dark(hd, .62), tilt = L.zed ? -s * .35 : s * F.brow * 1.4;
-    P.add(B, BOX, bt, mat(ex + s * .002, 1.6385, .0562, .034, .0078, .009, 0, 0, tilt)); P.add(B, BOX, bt, mat(ex - s * .012, 1.6355 - s * 0 + tilt * -.0, .0565, .012, .0075, .009, 0, 0, tilt * .5)); // brow
+    P.add(B, browArch(), bt, mat(ex + s * .002, 1.6385, .0562, 1, 1, 1, 0, 0, tilt)); // curved brow
     P.add(B, SPH, dark(skin, .82), mat(s * .0085, 1.575, .0745, .0085 * F.nose, .0065, .007)); }); // nostril wings
   P.add(B, SPH, skin, mat(0, 1.587, .066, .0085 * F.nose, .02, .013)); P.add(B, SPH, skin, mat(0, 1.5775, .0745, .0105 * F.nose, .0088, .0095)); // nose bridge + tip
   const lip = L.zed ? '#3a1a1a' : mix(dark(skin, .78), '#8a3a3a', .25);
@@ -215,6 +227,7 @@ export function buildHead(P, L) { const r = mulberry((L.seed || 1) * 131 + 7); c
     P.add(B, new THREE.TorusGeometry(1, .09, 5, 14, Math.PI * .8), dark(lip, .5), mat(0, 1.5535, .0645, .0235, .0085, .004, 0, 0, Math.PI * 1.1)); // smile
     [-1, 1].forEach(s => P.add(B, SPH, dark(skin, .93), mat(s * .0245, 1.5535, .0585, .0036, .0036, .003))); } // dimples
   else { P.add(B, SPH, '#240606', mat(0, 1.5405, .0585, .026, .0155, .011)); for (let i = -2; i <= 2; i++) { P.add(B, BOX, '#d8d2b4', mat(i * .0095, 1.5525, .063, .0058, .0075, .003)); if (Math.abs(i) < 2) P.add(B, BOX, '#cfc9ad', mat(i * .0095, 1.5285, .06, .005, .006, .003)); } }
+  }
   // beard
   const bc = L.zed ? '#2a2620' : hc; const bd = L.beard || 'none';
   if (bd === 'stubble') P.add(B, new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, 1.45, 1.4), mix(skin, bc, .4), mat(0, 1.545, -0.002, .0635 * F.jaw, .058 * F.chin, .073));
@@ -263,8 +276,9 @@ export function buildAcc(P, L, o) { const acc = (o.acc || []).slice(); if (L.pac
     if (a === 'gloves') { } // shader
     if (a === 'cap_tac' || a === 'cap_orange') { const c = a === 'cap_orange' ? '#e0601a' : '#2e3226';
       P.add('DEF-head', cap(1.35), c, mat(H.x, H.y + .012, H.z, H.rx * 1.1, H.ry * 1.06, H.rz * 1.1)); P.add('DEF-head', CYL, c, mat(0, 1.647, .085, .07, .005, .06)); }
-    if (a === 'cap_back') { const c = '#26272b'; // backwards snapback: crown, seams, button, brim over the nape
+    if (a === 'cap_back') { const c = '#26272b'; // backwards snapback: crown, inner liner, seams, button, brim over the nape
       P.add('DEF-head', cap(1.22), c, mat(H.x, H.y + .02, H.z - .01, H.rx * 1.09, H.ry * 1.075, H.rz * 1.1, -.62, 0, 0));
+      P.add('DEF-head', new THREE.SphereGeometry(1, 22, 10, 0, Math.PI * 2, 1.16, Math.PI - 1.16), '#141416', mat(H.x, H.y + .02, H.z - .01, H.rx * 1.02, H.ry * 1.01, H.rz * 1.03, -.62, 0, 0));
       P.add('DEF-head', SPHL, '#2a2a2e', mat(0, H.y + .108, H.z - .012, .008, .005, .008));
       P.add('DEF-head', new THREE.CylinderGeometry(1, 1, 1, 18, 1, false, Math.PI / 2, Math.PI), c, mat(0, 1.612, -.092, .082, .0038, .112, -.12, 0, 0)); P.add('DEF-head', new THREE.CylinderGeometry(1, 1, 1, 18, 1, false, Math.PI / 2, Math.PI), '#26262a', mat(0, 1.6095, -.094, .075, .0016, .105, -.12, 0, 0)); }
     if (a === 'beanie') P.add('DEF-head', cap(1.5), '#7a2a2a', mat(H.x, H.y + .012, H.z, H.rx * 1.12, H.ry * 1.12, H.rz * 1.12, -.2));
@@ -286,11 +300,12 @@ export function buildAcc(P, L, o) { const acc = (o.acc || []).slice(); if (L.pac
   }
 }
 // attach merged parts to bones of a Char (bind-space -> bone space)
-export function dressChar(c, L) { const P = new Parts(); const o = OUTFIT[L.outfit] || OUTFITS[0]; buildHead(P, L); buildAcc(P, L, o);
+export function dressChar(c, L) { const P = new Parts(); const o = OUTFIT[L.outfit] || OUTFITS[0]; const useV2 = !L.zed && /^(keem|nia|dad)$/.test(L.rig); buildHead(P, L, { skipFace: useV2 }); buildAcc(P, L, o);
   let sm; c.model.traverse(x => { if (x.isSkinnedMesh) sm = x; }); const sk = sm.skeleton; c.parts = [];
   const attachBag = (bag, mat) => { for (const bn in bag) { const nb = (n) => n.replace(/[.]/g, ''); const i = sk.bones.findIndex(b => nb(b.name) === nb(bn)); if (i < 0) continue; const geo = mergeGeometries(bag[bn]); geo.applyMatrix4(new M4().multiplyMatrices(sk.boneInverses[i], sm.bindMatrix)); geo.computeBoundingSphere();
     const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.frustumCulled = false; sk.bones[i].add(m); c.parts.push(m); } };
   attachBag(P.by, partsMat(o.gloss && 'gloss' || 'std')); attachBag(P.gloss, partsMat('eye'));
+  if (useV2) attachStoryV2Head(c, L, sk, sm);
   if (o.acc && o.acc.includes('pack') || L.pack) c.wantsPack = true;
   const b = L.build || 1, hgt = L.height || 1; c.model.scale.set(c.scale * b, c.scale * hgt, c.scale * (1 + (b - 1) * .8));
 }

@@ -43,20 +43,84 @@ export function skinMaterial(U, faceTex, plain = false) { // plain: the neck tub
   const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: plain ? .62 : .46, metalness: 0 });
   m.userData.face = { value: faceTex || null }; m.userData.beard = { value: new THREE.Vector4(0, 0, 0, 0) }; m.userData.beardCol = { value: new THREE.Color('#6b4e36') };
   m.onBeforeCompile = sh => {
-    sh.uniforms.uBeard = m.userData.beard; sh.uniforms.uBeardCol = m.userData.beardCol; sh.uniforms.uSkin = U.uSkin; sh.uniforms.uFace = m.userData.face; sh.uniforms.uHasFace = { value: faceTex ? 1 : 0 };
+    sh.uniforms.uBeard = m.userData.beard; sh.uniforms.uBeardCol = m.userData.beardCol; sh.uniforms.uSkin = U.uSkin; sh.uniforms.uFace = m.userData.face; sh.uniforms.uHasFace = { value: faceTex ? 1 : 0 }; sh.uniforms.uJawY = { value: -0.102 }; sh.uniforms.uPlain = { value: plain ? 1 : 0 };
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aF; attribute vec3 aL; varying vec2 vUv2; varying float vF; varying vec3 vL;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvUv2 = uv; vF = aF; vL = aL;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uSkin; uniform sampler2D uFace; uniform float uHasFace; varying vec2 vUv2; varying float vF; varying vec3 vL; uniform vec4 uBeard; uniform vec3 uBeardCol;' + BEARD_GLSL)
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uSkin; uniform sampler2D uFace; uniform float uHasFace; uniform float uJawY; uniform float uPlain; varying vec2 vUv2; varying float vF; varying vec3 vL; uniform vec4 uBeard; uniform vec3 uBeardCol;' + BEARD_GLSL)
       .replace('#include <color_fragment>', `#include <color_fragment>
         vec3 c = uSkin; if (uHasFace > .5 && vF > .001) { vec4 t = texture2D(uFace, vUv2); c = mix(c, t.rgb, t.a * vF); }
         if (uBeard.x > .5) { float bm = beardMask(vL); c = mix(c, uBeardCol, smoothstep(0.0, 1.0, bm) * .28 * uBeard.y); /* light underlay; volume comes from the beard mesh */ }
         diffuseColor.rgb = c;`)
-      .replace('#include <emissivemap_fragment>', plain ? '#include <emissivemap_fragment>' : `#include <emissivemap_fragment>
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         { vec3 N = normalize(vNormal); vec3 V = normalize(vViewPosition); float ndv = clamp(dot(N, V), 0.0, 1.0);
           float wrap = pow(1.0 - ndv, 1.55); float rimF = pow(1.0 - ndv, 2.7);
-          /* soft subsurface-like wrap + face rim, still cheap on phones */
-          totalEmissiveRadiance += diffuseColor.rgb * (0.06 + wrap * 0.18) + vec3(0.22, 0.08, 0.05) * wrap * 0.55 + vec3(0.55, 0.74, 0.95) * rimF * 0.32; }`);
+          float fade = uPlain > .5 ? vF : smoothstep(uJawY - 0.048, uJawY + 0.02, vL.y);
+          float k = uPlain > .5 ? 0.58 : 1.0;
+          /* wrap/rim fade out at the jaw so the neck tube meets the face with no tone step */
+          totalEmissiveRadiance += fade * k * (diffuseColor.rgb * (0.06 + wrap * 0.18) + vec3(0.22, 0.08, 0.05) * wrap * 0.55 + vec3(0.55, 0.74, 0.95) * rimF * 0.32); }`);
   };
-  m.customProgramCacheKey = () => 'v2skin3' + (faceTex ? 'f' : '') + (plain ? 'p' : ''); return m;
+  m.customProgramCacheKey = () => 'v2skin4' + (faceTex ? 'f' : '') + (plain ? 'p' : ''); return m;
+}
+
+
+function lipRibbon(w, y, z, thick, depth, smile, lift, dir, nu = 28, nv = 8) {
+  const pos = [], idx = [];
+  for (let j = 0; j <= nv; j++) {
+    const v = j / nv, rr = Math.sin(v * Math.PI);
+    for (let i = 0; i <= nu; i++) {
+      const t = i / nu * 2 - 1, taper = 1 - t * t * 0.58;
+      pos.push(t * w, y + smile * t * t + lift * (1 - t * t) + dir * thick * rr * taper, z + depth * rr * taper - 0.0018 * (1 - v));
+    }
+  }
+  for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+    const a = j * (nu + 1) + i, b = a + nu + 1;
+    idx.push(a, b, a + 1, a + 1, b, b + 1);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+function teethGeo(w, y, z, open) {
+  const g = new THREE.BoxGeometry(w * 0.86, 0.006 + open * 0.01, 0.007, 6, 1, 1);
+  g.translate(0, y, z - 0.002); return g;
+}
+export function buildMouthGeos(L, H, look, g) {
+  const mn = (C.MOUTHS[look.mouth && look.mouth.s || 0] || C.MOUTHS[0])[0];
+  const ms = MOUTH_SHAPES[mn] || MOUTH_SHAPES.Neutral; // [w, full, smile, open]
+  const w0 = (g === 'f' ? 0.026 : 0.028) * (1 + 0.25 * ((ms[0] || .054) / .054 - 1));
+  const full = ms[1] || .5, smile = (ms[2] || 0) * 0.007, open = Math.min(0.0024, (ms[3] || 0) * 0.0022);
+  const my = L.mouthY, mz = L.surfZ(0, my) + 0.0006;
+  const thick = 0.0036 + full * 0.0028, depth = 0.0032 + full * 0.0024;
+  const upper = lipRibbon(w0, my + 0.0016 + open * 0.2, mz, thick, depth, smile, 0.0008, 1);
+  const lower = lipRibbon(w0 * 0.96, my - 0.0024 - open, mz - 0.0002, thick * 1.06, depth * 1.02, smile * 0.7, -0.0004, -1);
+  const teeth = teethGeo(w0, my - 0.0008 - open * 0.2, mz, open);
+  return { upper, lower, teeth };
+}
+const _lipMats = new Map();
+function lipMat(col, kind) {
+  const k = kind + col;
+  if (_lipMats.has(k)) return _lipMats.get(k);
+  const m = new THREE.MeshStandardMaterial({
+    color: kind === 'teeth' ? '#f4f1ea' : col, roughness: kind === 'teeth' ? 0.28 : 0.44, metalness: 0,
+  });
+  _lipMats.set(k, m); return m;
+}
+function clearLips(av) {
+  if (!av._lips) return;
+  for (const m of av._lips) { m.parent && m.parent.remove(m); m.geometry && m.geometry.dispose(); }
+  av._lips = null;
+}
+function mountLips(av, look) {
+  clearLips(av);
+  const { L, H, C, s, g } = av.head2;
+  const fo = faceOpts(look, g, L, H);
+  const geos = buildMouthGeos(L, H, look, g);
+  const out = [];
+  for (const [geo, kind] of [[geos.upper, 'lip'], [geos.lower, 'lip'], [geos.teeth, 'teeth']]) {
+    geo.scale(s, s, s); geo.translate(C.x, C.y, C.z);
+    skinTo(av, geo, () => [['Head', 1]]);
+    out.push(bindMesh(av, new THREE.SkinnedMesh(geo, lipMat(fo.lipCol, kind)), 2));
+  }
+  av._lips = out;
 }
 
 export function buildHead(av, look) {
@@ -78,7 +142,8 @@ export function buildHead(av, look) {
         if (b && b.x > .02) { const w = y < cut - .004 ? 1 : 1 - Math.min(1, (y - (cut - .004)) / .035); const cz = (b.zf + b.zb) / 2, rz = (uz > 0 ? b.zf - cz : cz - b.zb); const grow = y < cut - .006 ? -.004 : .003;
           const bx = ux * (b.x + grow), bz = cz + uz * (rz + grow); const ww = w * w * (3 - 2 * w); x = x + (bx - x) * ww; z = z + (bz - z) * ww; }
         np.setXYZ(i, x, y, z); }
-      ng.deleteAttribute('uv'); ng.deleteAttribute('normal'); ng = mergeVertices(ng); ng.computeVertexNormals(); ng.setAttribute('aF', new THREE.BufferAttribute(new Float32Array(np.count), 1));
+      ng.deleteAttribute('uv'); ng.deleteAttribute('normal'); ng = mergeVertices(ng); ng.computeVertexNormals();
+      { const pp = ng.attributes.position, aFn = new Float32Array(pp.count); for (let i = 0; i < pp.count; i++) aFn[i] = Math.min(1, Math.max(0, (pp.getY(i) - y1) / (y0 - y1))); ng.setAttribute('aF', new THREE.BufferAttribute(aFn, 1)); }
       skinTo(av, ng, (i, x, y) => { const t = (y - y1) / (y0 - y1); return t > .7 ? [['Head', Math.min(1, (t - .7) / .3)], ['neck', 1 - Math.min(1, (t - .7) / .3)]] : t > .25 ? [['neck', 1]] : [['neck', t / .25], ['Spine', 1 - t / .25]]; });
       ears.push(ng); }
     if (av._headMesh) { av._headMesh.geometry.dispose(); av._headMesh.geometry = geo; av._ears.forEach((m, k) => { m.geometry.dispose(); m.geometry = ears[k]; }); }
@@ -87,6 +152,8 @@ export function buildHead(av, look) {
   }
   const fk = JSON.stringify([look.eyes, look.brows, look.mouth, look.makeup, look.skinx, look.beard && look.beard.id, look.beard && look.beard.c, look.hair && look.hair.c, look.skin, look.nose]);
   if (av._faceKey !== fk) { paintFace(faceOpts(look, g, L, H), av._faceTex); av._faceKey = fk; }
+  const lk = JSON.stringify([look.mouth, look.makeup && look.makeup.lip, look.makeup && look.makeup.lipCol, g, s]);
+  if (av._lipKey !== lk) { mountLips(av, look); av._lipKey = lk; }
   return av.head2;
 }
 
@@ -105,7 +172,7 @@ export function faceOpts(look, g, L, H) {
     w: es[0] * sz, h: es[1] * sz, tilt: es[2] + (look.eyes.tilt || 0) * .15, arch: es[3], flat: es[4], irisK: .9, eyeCol: look.eyes.col || '#4a2c17', lash: Math.max(look.eyes.lash || 0, f ? .5 : 0), liner: mk.liner || 0, shadow: mk.shadow || 0, shadowCol: mk.shadowCol || '#7a4a8a', wing: false,
     bArch: bs[0] + (look.brows.arch || 0) * .4, bTilt: bs[1], bTaper: bs[2], bThick: bs[3] * (1 + .5 * (look.brows.thick || 0)), bLen: bs[4], bSparse: bn === 'Sparse', unibrow: bn === 'Unibrow', browCol,
     mW: ms[0] * (1 + .2 * (look.mouth.width || 0)), mFull: Math.min(1, ms[1] + .3 * (look.mouth.full || 0)), mSmile: ms[2], mOpen: !!ms[3], mSmirk: mn === 'Smirk', lipCol,
-    freckles: look.skinx.freckles || 0, freckleCol: '#' + sk.clone().multiplyScalar(.6).lerp(new THREE.Color('#6a3a20'), .4).getHexString(), moles: look.skinx.moles || 0, blush: mk.blush || 0,
+    freckles: (look.skinx && look.skinx.freckles) || 0, freckleCol: '#' + sk.clone().multiplyScalar(.6).lerp(new THREE.Color('#6a3a20'), .4).getHexString(), moles: (look.skinx && look.skinx.moles) || 0, blush: mk.blush || 0,
     stubble: look.beard && look.beard.id === 'stubble', stubbleCol: (look.beard && look.beard.c) || hairC, skinDark,
     beardShade: look.beard && ['full', 'boxed', 'lumber', 'strap', 'curtain', 'mutton', 'circle'].includes(look.beard.id) ? 1 : 0 };
 }

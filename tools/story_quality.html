@@ -1,0 +1,86 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>story quality</title>
+<style>html,body{margin:0;background:#1a1d24;color:#fff;font:12px system-ui}</style>
+<script>window.__MP_BASE="/";</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { CharLib, Char } from '/src/game/chars.js';
+import { loadRigs, RIG_CORE } from '/src/game/avatar.js';
+import { CAST as LOOKS } from '/src/game/looks.js';
+
+const q = new URLSearchParams(location.search);
+const who = (q.get('who') || 'keem,nia,marcus').split(',');
+const W = +(q.get('w') || 1600), H = +(q.get('h') || 900);
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+r.setSize(W, H); r.setPixelRatio(2);
+r.outputColorSpace = THREE.SRGBColorSpace;
+r.toneMapping = THREE.ACESFilmicToneMapping;
+r.toneMappingExposure = 1.12;
+r.shadowMap.enabled = true;
+document.body.appendChild(r.domElement);
+
+const sc = new THREE.Scene();
+sc.background = new THREE.Color('#1c2430');
+sc.add(new THREE.HemisphereLight('#c9d6ee', '#3a322c', 0.85));
+const key = new THREE.DirectionalLight('#fff1d6', 2.35); key.position.set(2.2, 3.4, 3.2); key.castShadow = false; sc.add(key);
+const fill = new THREE.DirectionalLight('#a8c4ff', 0.7); fill.position.set(-2.4, 1.6, 1.2); sc.add(fill);
+const rim = new THREE.DirectionalLight('#7ec8ff', 1.15); rim.position.set(-1.6, 2.2, -2.8); sc.add(rim);
+const warm = new THREE.PointLight('#ffb066', 1.1, 8, 1.4); warm.position.set(1.6, 1.8, 1.4); sc.add(warm);
+const ground = new THREE.Mesh(new THREE.CircleGeometry(6, 48), new THREE.MeshStandardMaterial({ color: '#2a3038', roughness: 0.95 }));
+ground.rotation.x = -Math.PI / 2; sc.add(ground);
+
+const base = '/';
+const gltf = await new GLTFLoader().loadAsync(base + 'models/AnimationLibrary_Godot_Standard.gltf');
+const lib = new CharLib(gltf);
+lib.rigs = await loadRigs(base, ['keem', 'nia', 'dad']);
+
+const cam = new THREE.PerspectiveCamera(28, 1, 0.05, 40);
+r.setScissorTest(true);
+const cells = [];
+const cols = who.length;
+const cellW = Math.floor(W / cols), cellH = Math.floor(H / 2);
+const scales = { keem: 0.9, nia: 0.62, marcus: 0.95 };
+for (let i = 0; i < who.length; i++) {
+  const id = who[i];
+  const look = LOOKS[id] || LOOKS.keem;
+  const ch = new Char(lib, look, scales[id] || 0.9);
+  ch.root.position.set(0, 0, 0);
+  ch.root.rotation.y = 0.22;
+  try { ch.play && ch.play('Idle_Loop'); } catch (e) {}
+  sc.add(ch.root);
+  cells.push({ ch, id, col: i });
+}
+
+// layout: top row full body, bottom row face close-ups. Characters share one scene so we move the active one to origin and hide others.
+function hideAll() { for (const c of cells) c.ch.root.visible = false; }
+for (let i = 0; i < cells.length; i++) {
+  const { ch, id, col } = cells[i];
+  hideAll(); ch.root.visible = true; ch.root.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(ch.root);
+  const size = box.getSize(new THREE.Vector3());
+  const cen = box.getCenter(new THREE.Vector3());
+  // full body
+  r.setViewport(col * cellW, cellH, cellW, cellH);
+  r.setScissor(col * cellW, cellH, cellW, cellH);
+  cam.aspect = cellW / cellH; cam.updateProjectionMatrix();
+  cam.position.set(cen.x + 0.35, cen.y + 0.12, cen.z + Math.max(2.6, size.y * 2.15));
+  cam.lookAt(cen.x, cen.y + 0.05, cen.z);
+  r.render(sc, cam);
+  // face
+  const hd = ch.bone && (ch.bone('DEF-head') || ch.bone('DEFhead'));
+  const hp = new THREE.Vector3();
+  if (hd) hd.getWorldPosition(hp); else hp.set(cen.x, box.max.y - 0.12, cen.z);
+  r.setViewport(col * cellW, 0, cellW, cellH);
+  r.setScissor(col * cellW, 0, cellW, cellH);
+  cam.aspect = cellW / cellH; cam.updateProjectionMatrix();
+  cam.position.set(hp.x + 0.16, hp.y + 0.02, hp.z + 0.98);
+  cam.lookAt(hp.x, hp.y - 0.01, hp.z);
+  r.render(sc, cam);
+}
+hideAll();
+for (const c of cells) c.ch.root.visible = true;
+window.info = { who, looks: who.map(id => ({ id, outfit: (LOOKS[id] || {}).outfit, headK: (LOOKS[id] || {}).headK, eyeK: (LOOKS[id] || {}).eyeK })) };
+document.title = 'done';
+</script>
