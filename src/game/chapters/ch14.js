@@ -77,8 +77,8 @@ function vanceTick(g, D, dt) {
   g.audio.click && g.audio.click();
 }
 function ringAt(g, D, x, z, r = 2.1, color = '#ff3a28') {
-  const m = new THREE.Mesh(new THREE.RingGeometry(r * .82, r, 32), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .8, side: THREE.DoubleSide, depthWrite: false }));
-  m.rotation.x = -PI / 2; m.position.set(x, .08, z); g.scene.add(m);
+  const m = new THREE.Mesh(new THREE.RingGeometry(r * .72, r, 40), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .8, side: THREE.DoubleSide, depthWrite: false }));
+  m.rotation.x = -PI / 2; m.position.set(x, .16, z); g.scene.add(m);
   D.snare = { m, x, z, r, t: 0, life: 1.35 }; return m;
 }
 
@@ -108,17 +108,27 @@ function showMont(i, n) {
 function hideMont() { const el = document.getElementById('atqMont'); if (el) el.classList.remove('on'); }
 
 function helm(b) {
-  const T = THREE, m = new T.MeshStandardMaterial({ color: '#2c3238', metalness: .65, roughness: .32 });
-  const h = new T.Group();
-  h.add(new T.Mesh(new T.BoxGeometry(.38, .22, .42), m));
-  const vis = new T.Mesh(new T.BoxGeometry(.34, .12, .08), new T.MeshStandardMaterial({ color: '#111418', metalness: .4, roughness: .2, transparent: true, opacity: .7 }));
-  vis.position.set(0, -.08, .18); h.add(vis);
-  h.position.set(0, .12, .02); b.attach && b.attach('DEF-head', h); b.helm = h;
+  // Head-bone local units (same scale as the ch13 hairnet): a unit sphere scaled to ~0.1
+  // fits the skull. World-meter boxes parented to DEF-head read as giant floating slabs.
+  const T = THREE, h = new T.Group();
+  const shell = new T.MeshStandardMaterial({ color: '#2a3138', metalness: .72, roughness: .3 });
+  const rimM = new T.MeshStandardMaterial({ color: '#1a1e22', metalness: .65, roughness: .4 });
+  const visM = new T.MeshStandardMaterial({ color: '#081018', metalness: .25, roughness: .12, transparent: true, opacity: .78, emissive: '#153040', emissiveIntensity: .45 });
+  const cap = new T.Mesh(new T.SphereGeometry(1, 20, 14, 0, Math.PI * 2, 0, Math.PI * .64), shell);
+  cap.scale.set(.118, .092, .112); cap.position.set(0, -.012, .006); cap.rotation.x = -.32; h.add(cap);
+  const brow = new T.Mesh(new T.TorusGeometry(1, .07, 6, 22, Math.PI * 1.15), rimM);
+  brow.scale.set(.1, .055, .055); brow.rotation.set(1.2, 0, 0); brow.position.set(0, -.028, .055); h.add(brow);
+  const vis = new T.Mesh(new T.SphereGeometry(1, 18, 10, -0.9, 1.8, 0.52, 0.58), visM);
+  vis.scale.set(.112, .082, .108); vis.position.set(0, -.02, .018); vis.rotation.x = -.22; h.add(vis);
+  const hb = b.bone && b.bone('DEF-head');
+  if (hb) hb.add(h);
+  else if (b.attach) b.attach('DEF-head', h);
+  b.helm = h;
 }
 
 // ---------- steps ----------
 export const steps = [
-  { id: 'c14_arrive', ch: 14, cp: [0, -3708, PI], obj: '', hint: '', mood: 'night', beat: 0, rain: false,
+  { id: 'c14_arrive', ch: 14, cp: [0, -3708, PI], obj: '', hint: '', mood: 'night', beat: 0, rain: false, light: 'ward',
     enter(g) {
       const D = g.stepData, A = API; g.openGate(true); A.setAlarm(true); A.setScreen('STANDBY', 'Awaiting samples.');
       const { dad, nia, mom } = placeFam(g, D, 0, -3708);
@@ -151,7 +161,7 @@ export const steps = [
     },
     update(g, dt) { tickMv(g, g.stepData, dt); } },
 
-  { id: 'c14_draw', ch: 14, cp: [-11, -3764, PI], obj: 'Give 3 samples (0/3)', hint: 'Walk to a glowing vial stand and press USE.', mood: 'night', beat: 1, rain: false,
+  { id: 'c14_draw', ch: 14, cp: [-11, -3764, PI], obj: 'Give 3 samples (0/3)', hint: 'Walk to a glowing vial stand and press USE.', mood: 'night', beat: 1, rain: false, light: 'ward',
     enter(g) {
       const D = g.stepData, A = API; g.openGate(true);
       if (!D.dad) placeFam(g, D, -11, -3762);
@@ -185,7 +195,7 @@ export const steps = [
     },
     update(g, dt) { dadTick(g, g.stepData, dt); } },
 
-  { id: 'c14_result', ch: 14, cp: [-11, -3768, PI], obj: '', hint: '', mood: 'night', beat: 0, rain: false,
+  { id: 'c14_result', ch: 14, cp: [-11, -3768, PI], obj: '', hint: '', mood: 'night', beat: 0, rain: false, light: 'ward',
     enter(g) {
       const D = g.stepData, A = API; g.openGate(true);
       if (!D.dad) placeFam(g, D, -11, -3764);
@@ -222,7 +232,7 @@ export const steps = [
         else { hideMont(); D.mont.phase = 'talk'; afterMontage(g, D, A); } }
     } },
 
-  { id: 'c14_breach', ch: 14, cp: [-4, -3778, PI], obj: 'Hold the lab', hint: 'Authority troopers want you alive. Use cover. Dad and Vance have your back.', mood: 'tense', beat: 3, rain: false,
+  { id: 'c14_breach', ch: 14, cp: [-4, -3778, PI], obj: 'Hold the lab', hint: 'Authority troopers want you alive. Use cover. Dad and Vance have your back.', mood: 'tense', beat: 3, rain: false, light: 'ward',
     enter(g) {
       const D = g.stepData, A = API; g.openGate(true); A.setAlarm(true);
       if (!D.dad) placeFam(g, D, -4, -3776);
@@ -250,7 +260,7 @@ export const steps = [
       if (D.wave >= 1 && left === 0) clearThen(g, D, 'c14_warden', 220, 'Get to the evacuation lift');
     } },
 
-  { id: 'c14_warden', ch: 14, cp: [0, -3856, PI], obj: 'Stop the Warden', hint: 'Visor shots only. Break snares. Protect Biscuit.', mood: 'tense', beat: 3, rain: false,
+  { id: 'c14_warden', ch: 14, cp: [0, -3856, PI], obj: 'Stop the Warden', hint: 'Visor shots only. Break snares. Protect Biscuit.', mood: 'tense', beat: 3, rain: false, light: 'ward',
     enter(g) {
       const D = g.stepData, A = API; g.openGate(true); A.setAlarm(true);
       if (!D.dad) placeFam(g, D, 0, -3856);
@@ -305,7 +315,7 @@ export const steps = [
       }
     } },
 
-  { id: 'c14_end', ch: 14, cp: [0, -3894, PI], obj: '', hint: '', mood: 'sad', beat: 0, rain: false,
+  { id: 'c14_end', ch: 14, cp: [0, -3894, PI], obj: '', hint: '', mood: 'sad', beat: 0, rain: false, light: 'ward',
     enter(g) {
       const D = g.stepData, A = API; g.openGate(true); A.setAlarm(true); hideMont();
       if (!D.dad) placeFam(g, D, 0, -3890);
@@ -401,7 +411,7 @@ function hideCrate(g, D) {
   if (D.crate) { g.scene.remove(D.crate.m); D.crate = null; }
   if (D.nia) act(D.nia, null);
   D.uses = [];
-  if (!D.won) g.objective('Stop the Warden', 'Riot armor eats bullets. Go for the visor.');
+  if (!D.won) g.objective('Stop the Warden', 'Visor shots only. Break snares. Protect Biscuit.');
 }
 
 export const loot = [

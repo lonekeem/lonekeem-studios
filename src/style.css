@@ -560,3 +560,14 @@ body.driving #wbar{display:none!important}
   #shop.town-overlay .gi{padding:6px 8px}
   #shop.town-overlay .gi button{min-height:36px}
 }
+
+/* Stack the boss name/bar under the objective so long hints never overlap it, including phone landscape (844x390, 911x411, 1024x472). */
+#hudTop{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:7;display:flex;flex-direction:column;align-items:center;gap:5px;width:min(420px,52vw);max-width:calc(100vw - 220px);pointer-events:none}
+#hudTop #obj,#hudTop #boss{position:relative;top:auto;left:auto;transform:none;width:100%;max-width:none;margin:0}
+@media (max-height:430px){
+  #hudTop{top:6px;gap:3px;width:min(400px,54vw)}
+  #hudTop #obj{padding:4px 10px;font-size:12px}
+  #hudTop #obj b{font-size:9px}
+  #hudTop #obj small{font-size:10px;line-height:1.25}
+  #hudTop #bossn{font-size:11px;letter-spacing:.22em}
+}
