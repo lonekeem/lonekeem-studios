@@ -1,3 +1,4 @@
+import { googleAllowed } from '../ui/gate.js';
 // Online layer for multiplayer: Supabase Realtime (broadcast) as the Net transport + Google sign-in + role lookup.
 // Everything here is optional: if the project is unreachable or the network is off, the town falls back to solo (BroadcastChannel, same-browser tabs only).
 // The URL and publishable key are PUBLIC by design (they ship in every browser build); security is enforced by RLS (supabase/migrations/20261118_mp_phase1.sql).
@@ -45,6 +46,7 @@ export async function getUser() { const f = FAKE(); if (f) return f.email ? { id
 export const isNative = () => { try { return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (e) { return false; } };
 export const NATIVE_REDIRECT = 'com.lonekeemstudios.app://auth-callback';
 export async function signInGoogle(resume = 'mp') {
+  if (!googleAllowed()) throw new Error('Google sign-in is turned off with this age setting.');
   const c = await sb(); try { if (resume === 'online') localStorage.setItem('atq.online.resume', String(Date.now())); else sessionStorage.setItem('atq.mp.resume', '1'); } catch (e) { /* ignore */ }
   if (isNative()) {
     const { data, error } = await c.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: NATIVE_REDIRECT, skipBrowserRedirect: true, queryParams: { prompt: 'select_account' } } }); if (error) throw error;

@@ -7,6 +7,7 @@ import * as C from './catalog.js';
 import * as K from './look.js';
 import { MORPHS } from './morph.js';
 import { getRole, getUser, signInGoogle, signOut } from './online.js';
+import { googleAllowed } from '../ui/gate.js';
 
 const CSS = `
 #mpc{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:radial-gradient(120% 90% at 50% 30%,#3b4252 0%,#1c2029 70%);color:#eef0f4;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;touch-action:none;user-select:none}
@@ -144,7 +145,7 @@ export async function openCreator({ onClose, onPlay } = {}) {
   const refreshAcct = async () => { const u = await getUser().catch(() => null); const r = u ? await getRole().catch(() => null) : null; const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
     kb.style.display = (r === 'admin' || (local && window.__MP_FORCE_ADMIN)) ? '' : 'none'; acct.innerHTML = '';
     if (u) acct.append(el('span', {}, '● ' + ((u.user_metadata && u.user_metadata.name) || u.email || 'Signed in') + (r === 'admin' ? ' · admin' : '')), el('button', { on: { click: async () => { await signOut().catch(() => {}); refreshAcct(); } } }, 'Sign out'));
-    else acct.append(el('span', {}, 'Guest'), el('button', { cls: 'gsi', on: { click: async e => { e.target.disabled = true; e.target.textContent = 'Opening Google…'; try { await signInGoogle(); } catch (err) { e.target.disabled = false; e.target.textContent = 'Sign in with Google'; acct.append(el('span', { style: 'color:#f88' }, 'Sign-in unavailable: ' + (err.message || err))); } } } }, 'Sign in with Google')); };
+    else { acct.append(el('span', {}, 'Guest')); if (googleAllowed()) acct.append(el('button', { cls: 'gsi', on: { click: async e => { e.target.disabled = true; e.target.textContent = 'Opening Google…'; try { await signInGoogle(); } catch (err) { e.target.disabled = false; e.target.textContent = 'Sign in with Google'; acct.append(el('span', { style: 'color:#f88' }, 'Sign-in unavailable: ' + (err.message || err))); } } } }, 'Sign in with Google')); } };
   window.__mpRefreshAcct = refreshAcct; refreshAcct();
   function close(play) { running = false; renderer.dispose(); av && av.dispose(); root.remove(); (play === true ? onPlay : onClose)?.(look); }
   renderTabs(); await rebuild(look.base); renderBody(); setView('full'); requestAnimationFrame(frame);

@@ -1,3 +1,4 @@
+import { googleAllowed } from '../ui/gate.js';
 // v1.9.28 Profile + character creator screen. First time online: Sign in with Google (load a saved profile) or Create profile, then a
 // step-by-step creator (name -> skin & eyes -> face -> hair -> outfit -> extras) with a big rotating preview of the multiplayer avatar.
 // Later visits open the same screen in edit mode (steps become tabs). All data goes through profile.js (getProfile / saveProfile).
@@ -65,11 +66,11 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
 
     function welcome() { root.innerHTML = '';
       const w = el('div', { cls: 'welcome' }, el('h1', {}, 'Play online'), el('p', {}, 'Make a profile for your own survivor. Your character, cash and items save to it.'));
-      const gBtn = el('button', { cls: 'g', on: { click: async () => { gBtn.disabled = true; gBtn.textContent = 'Opening Google…'; try { if (onSignIn) await onSignIn(); else { const o = await import('./online.js'); await o.signInGoogle(); } } catch (e) { gBtn.disabled = false; gBtn.textContent = 'Sign in with Google'; note.textContent = 'Google sign-in is not available right now. You can still create a profile on this device.'; } } } }, 'Sign in with Google');
-      const note = el('div', { cls: 'note' }, 'Signed in: your profile loads on any phone or computer. Guest: it saves on this device only.');
-      w.append(gBtn, el('button', { cls: 'pri', on: { click: () => { mode = 'create'; build(); } } }, 'Create profile'), el('button', { on: { click: () => finish(null) } }, 'Not now'), note); root.append(w);
-      import('./online.js').then(async o => { const u = await o.getUser().catch(() => null); if (!u || !running) return; const p = await pullProfile(u).catch(() => null); if (p && running) { finish(p); return; }
-        gBtn.textContent = '✓ Signed in as ' + ((u.user_metadata && u.user_metadata.name) || u.email || 'Google'); gBtn.disabled = true; if (!name && u.user_metadata && u.user_metadata.name) name = String(u.user_metadata.name).split(' ')[0]; }).catch(() => {});
+      const gBtn = googleAllowed() ? el('button', { cls: 'g', on: { click: async () => { gBtn.disabled = true; gBtn.textContent = 'Opening Google…'; try { if (onSignIn) await onSignIn(); else { const o = await import('./online.js'); await o.signInGoogle(); } } catch (e) { gBtn.disabled = false; gBtn.textContent = 'Sign in with Google'; note.textContent = 'Google sign-in is not available right now. You can still create a profile on this device.'; } } } }, 'Sign in with Google') : null;
+      const note = el('div', { cls: 'note' }, googleAllowed() ? 'Signed in: your profile loads on any phone or computer. Guest: it saves on this device only.' : 'This profile saves on this device only.');
+      w.append(...[gBtn, el('button', { cls: 'pri', on: { click: () => { mode = 'create'; build(); } } }, 'Create profile'), el('button', { on: { click: () => finish(null) } }, 'Not now'), note].filter(Boolean)); root.append(w);
+      if (googleAllowed()) import('./online.js').then(async o => { const u = await o.getUser().catch(() => null); if (!u || !running) return; const p = await pullProfile(u).catch(() => null); if (p && running) { finish(p); return; }
+        if (gBtn) { gBtn.textContent = '✓ Signed in as ' + ((u.user_metadata && u.user_metadata.name) || u.email || 'Google'); gBtn.disabled = true; } if (!name && u.user_metadata && u.user_metadata.name) name = String(u.user_metadata.name).split(' ')[0]; }).catch(() => {});
     }
     if (mode === 'welcome') { welcome(); return; }
     build();

@@ -4,6 +4,7 @@ import { AudioSys } from './audio.js';
 import { initMenu, trackGame } from './ui/menu.js';
 import { initTutorial, offerTutorial, onGameReady as onTutReady } from './ui/tutorial.js';
 import { installHardwareBack } from './ui/hwBack.js';
+import { runLaunchFlow, playIntroThen, applySafeDefaults, installGateSettings, isUnder13 } from './ui/gate.js';
 import { initDailies, attachDailies, renderDailies } from './ui/dailies.js';
 import { SURVIVAL_STEP, chOf, CH_START, CHAPTERS, LAST_CH, LAST_STORY_STEP, TOTAL_PAGES } from './game/story.js';
 import { WEAPONS, WEAPON_ORDER, UPGRADES, upCost, AMMO_SHOP, PERKS, xpFor, defaultSave, loadSave, writeSave, clearSave, stat } from './game/data.js';
@@ -173,7 +174,7 @@ $('#btnWarn').onclick = async () => {
   await tracks.catch(() => {});
 };
 $('#btnNew').onclick = () => { if (loadSave(LS) && loadSave(LS).step > 0 && !confirm('Start a new game? Your current progress (level, cash, weapons) will be reset.')) return; clearSave(LS); save = defaultSave(); writeSave(LS, save); play(0); };
-$('#btnWatchIntro').onclick = () => playPrologueToMenu();
+$('#btnWatchIntro').onclick = () => { const ret = back === '#pause' ? '#pause' : '#settings'; showScreen(null); playIntroThen({ hasGesture: true, onDone: () => { if (ret === '#pause') { state = 'paused'; showScreen('#pause'); } else { state = 'settings'; showScreen('#settings'); } } }); };
 $('#btnEndNext').onclick = () => { save = loadSave(LS) || save; const nc = Math.min(LAST_CH, Math.max(2, save.ch || 2)); if (chOf(save.step || 0) !== nc) save.step = CH_START[nc]; writeSave(LS, save); play(save.step); };
 var CHN = CHAPTERS.map(c => (c ? c.title : '')), CHS = CHAPTERS.map(c => (c ? c.start : 0)); // derived from the chapter registry
 const unlockedCh = (s) => Math.max(s.maxCh || 1, s.done || (s.step || 0) >= 7 ? 2 : 1, s.done2 ? 3 : 1, CHS.findLastIndex(v => (s.step || 0) >= v) || 1);
@@ -202,6 +203,9 @@ function applyCtl() { try { layoutApi && layoutApi.refresh(); } catch (e) { } co
 function applyS(k) { applyCtl(); audio.applyVolumes(); document.body.classList.toggle('still', S.still); if (game && k === 'fp') game.cam.fp = S.fp; if (k === 'qual' && game) game.toast?.('Quality change applies after reloading the app', 2.5); if (k === 'playSubs' && game) { const d = document.getElementById('dlg'); if (d && game.dlgCur) { if (S.playSubs || game.cut) d.classList.add('on'); else d.classList.remove('on'); } const bk = document.getElementById('bark'); if (bk && !S.playSubs) bk.style.opacity = 0; } }
 bindS('#sVol', 'vol'); bindS('#sMusic', 'music'); bindS('#sSfx', 'sfxVol'); bindS('#sVoiceVol', 'voiceVol'); bindS('#sVoices', 'voices', 'chk'); bindS('#sPlaySubs', 'playSubs', 'chk'); bindS('#sText', 'text'); bindS('#sAuto', 'auto', 'chk'); bindS('#sGore', 'gore', 'chk'); bindS('#sQte', 'qteEasy', 'chk'); bindS('#sMotion', 'still', 'chk'); bindS('#sHints', 'hints', 'chk');
 bindS('#sQual', 'qual', 'sel'); bindS('#sLang', 'lang', 'sel'); bindS('#sSens', 'sens'); bindS('#sFP', 'fp', 'chk'); applyS();
+applySafeDefaults(S, saveS);
+installGateSettings();
+{ const langEl = $('#sLang'); if (langEl) { const prev = langEl.onchange; langEl.onchange = ev => { if (isUnder13()) { S.lang = 'clean'; langEl.value = 'clean'; saveS(); return; } prev && prev.call(langEl, ev); }; } }
 // control settings screen (scheme, joystick, layout, sensitivity)
 const CTL_BINDS = () => { bindS('#cCtl', 'ctl', 'sel'); bindS('#cAuto', 'autoFire', 'chk'); bindS('#cAssist', 'assist'); bindS('#cStick', 'stick', 'sel'); bindS('#cHand', 'hand', 'sel'); bindS('#cBtn', 'btnScale'); bindS('#cOp', 'btnOp'); bindS('#cSens', 'sens'); bindS('#cPad', 'padSens'); bindS('#cDead', 'padDead'); bindS('#cInv', 'invertY', 'chk'); bindS('#cHud', 'hudv2', 'chk'); bindS('#cSmooth', 'smoothMove', 'chk'); };
 CTL_BINDS();
@@ -220,6 +224,7 @@ document.body.dataset.dev = 'ontouchstart' in window ? 'touch' : 'kbd'; fadeIn()
 const qs = new URLSearchParams(location.search);
 if (qs.has('prologue')) { $('#warning').classList.add('hidden'); save = defaultSave(); play(0, { prologue: true }); }
 else if (qs.has('step')) { $('#warning').classList.add('hidden'); save = defaultSave(); if (qs.has('god')) Object.assign(save, { owned: ['fists', 'bat', 'pistol', 'rifle', 'shotgun'], items: ['backpack'], ammo: { light: 99, shell: 30, rifle: 200 }, grenades: 3, cash: 2000, cur: 'rifle' }); play(+qs.get('step')); }
+else { $('#warning').classList.add('hidden'); applySafeDefaults(S, saveS); runLaunchFlow({ audio, applySettings: () => applySafeDefaults(S, saveS), onDone: () => toTitle() }); }
 initMenu();
 initDailies();
 initTutorial({ play: () => play(SURVIVAL_STEP, { tutorial: true }), toTitle });

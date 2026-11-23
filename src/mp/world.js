@@ -4,6 +4,7 @@
 //  - Joining a game = entering the existing multiplayer town (src/mp/town/town.js) with that room id (Realtime broadcast room).
 //  - Leaderboard: public.lb_top / public.lb_submit (supabase/migrations/20261121_world_lobby_leaderboard.sql). Guests need no login.
 import { sb, getUser, signInGoogle, signOut, googleEnabled, installNativeAuth } from './online.js';
+import { onlineAllowed, showKidsOnlineBlock } from '../ui/gate.js';
 import { profiles, openProfileScreen, syncOnSignIn, signedOut, onSyncStatus, watchTitle } from './cloud.js';
 import { getActiveId, getPlayLook, getChar, KEEM_ID } from './chars.js';
 const $ = s => document.querySelector(s);
@@ -33,6 +34,7 @@ const avatarHTML = (name, url, cls = 'wav') => url ? `<img class="${cls}" src="$
 
 // ---------- leaderboard ----------
 export async function submitRun(run) {
+  if (!onlineAllowed()) return { skipped: true, reason: 'age' };
   const p = await profile(); if (!p.name && p.kind === 'guest') { const g = guest(); g.name = 'Survivor' + String(Math.abs([...g.id].reduce((a, c) => a * 31 + c.charCodeAt(0) | 0, 7)) % 10000).padStart(4, '0'); LS.setItem('atq.guest', JSON.stringify(g)); p.name = g.name; }
   const g = guest(); const c = await sb();
   const args = { p_guest: p.kind === 'guest' ? g.id : null, p_secret: p.kind === 'guest' ? g.secret : null, p_name: p.name, p_kills: run.kills | 0, p_wave: run.wave | 0, p_hs: run.hs | 0, p_secs: Math.round(run.secs || 0) };
@@ -106,7 +108,7 @@ async function joinRoom(room, title, ui, opts = {}) {
 
 // ---------- UI ----------
 let UI = null;
-export function openOnline(tab = 'games') { if (!UI) UI = buildUI(); UI.open(tab); watchTitle(); return UI; }
+export function openOnline(tab = 'games') { if (!onlineAllowed()) { showKidsOnlineBlock(); return null; } if (!UI) UI = buildUI(); UI.open(tab); watchTitle(); return UI; }
 function buildUI() {
   const root = document.createElement('div'); root.id = 'online'; root.className = 'screen hidden';
   root.innerHTML = `<div class="panel wpanel">
@@ -292,6 +294,7 @@ function installHook(ui) {
 
 // Called once at boot: Android sign-in return + reopen the Online screen after a Google redirect.
 export function bootOnline() {
+  if (!onlineAllowed()) return;
   watchTitle();
   installNativeAuth(() => { try { LS.removeItem('atq.online.resume'); } catch (e) { /* ignore */ } if (UI) UI.show(); else if (!$('#title').classList.contains('hidden')) openOnline(); }).catch(() => {});
   try { const t = +LS.getItem('atq.online.resume'); if (t) { LS.removeItem('atq.online.resume'); if (Date.now() - t < 10 * 60e3) { let n = 0; const iv = setInterval(() => { const ti = $('#title'); if (++n > 120) clearInterval(iv); if (ti && !ti.classList.contains('hidden')) { clearInterval(iv); openOnline(); } }, 500); } } } catch (e) { /* ignore */ }

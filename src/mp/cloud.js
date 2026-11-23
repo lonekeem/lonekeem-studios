@@ -6,6 +6,7 @@
 // Cloud: public.profile_load / public.profile_save (supabase/migrations/20261121_profile_sync.sql, own-row RLS). The cloud copy holds
 // the whole story save (cash, weapons, outfits, progress), selections, character, name, photo and Survival best.
 import { sb, getUser } from './online.js';
+import { googleAllowed } from '../ui/gate.js';
 const LSx = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }, del: k => { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } } };
 const rd = k => { try { return JSON.parse(LSx.get(k) || 'null'); } catch (e) { return null; } }, wr = (k, v) => LSx.set(k, JSON.stringify(v));
 const META = 'atq.profile.v1', SEL = 'atq3.look', LOOK = 'atq.mp.look.v1', SAVE = 'atq3_save', BEST = 'atq3.survBest';
@@ -20,10 +21,10 @@ const ready = Promise.resolve(PROFILE);
 export const profiles = () => ready;
 export const profileScreen = () => import('./profileui.js');
 /** The profile screen (welcome / create / edit) with Google sign-in that comes back to the Online tab. Resolves with the profile or null. */
-export async function openProfileScreen(mode = 'auto', opts = {}) { await autoSync().catch(() => {}); const { openProfile } = await import('./profileui.js'); return openProfile({ mode, slotId: opts.slotId, asNew: opts.asNew, onSignIn: async () => { const o = await import('./online.js'); await o.signInGoogle('online'); } }); }
+export async function openProfileScreen(mode = 'auto', opts = {}) { await autoSync().catch(() => {}); const { openProfile } = await import('./profileui.js'); return openProfile({ mode, slotId: opts.slotId, asNew: opts.asNew, onSignIn: googleAllowed() ? async () => { const o = await import('./online.js'); await o.signInGoogle('online'); } : null }); }
 /** Signed in with Google but this device has not loaded that account's profile yet (e.g. right after the redirect): do it now. */
 let autoP = null;
-export function autoSync() { if (autoP) return autoP; autoP = (async () => { const u = await getUser().catch(() => null); if (!u || !u.id) return { state: 'guest' }; const cur = PROFILE.getProfile(); if (cur && cur.uid === u.id) return { state: 'synced' }; return syncOnSignIn(); })().finally(() => { setTimeout(() => { autoP = null; }, 3000); }); return autoP; }
+export function autoSync() { if (!googleAllowed()) return Promise.resolve({ state: 'blocked' }); if (autoP) return autoP; autoP = (async () => { const u = await getUser().catch(() => null); if (!u || !u.id) return { state: 'guest' }; const cur = PROFILE.getProfile(); if (cur && cur.uid === u.id) return { state: 'synced' }; return syncOnSignIn(); })().finally(() => { setTimeout(() => { autoP = null; }, 3000); }); return autoP; }
 
 // ---------- cloud hooks ----------
 const status = new Set(); export const onSyncStatus = fn => { status.add(fn); return () => status.delete(fn); };

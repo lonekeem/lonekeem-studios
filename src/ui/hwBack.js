@@ -1,5 +1,6 @@
 // Android hardware back: close the top overlay instead of leaving the app.
 // Web has no hardware back; this is a no-op in the browser.
+import { handleGateBack } from './gate.js';
 
 const vis = (sel) => {
   const el = typeof sel === 'string' ? document.querySelector(sel) : sel;
@@ -20,6 +21,7 @@ const click = (sel) => {
 
 /** @returns true if the back press was consumed */
 export function handleHardwareBack() {
+  if (handleGateBack()) return true;
   // Highest overlays first.
   if (vis('#charSel')) return click('#charSelCancel');
   if (vis('#tutOffer')) return click('#tutSkip') || click('#tutMenu') || click('#tutStay') || click('#tutStart');
