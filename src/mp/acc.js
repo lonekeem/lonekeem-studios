@@ -304,45 +304,59 @@ export const PIERCE = {
   // Nostril stud sits on the ala surface (lifted by ~half the bead so it doesn't float or sink).
   nose(B, c, o) { const n = noseOf(c); if (!n) return; const s = o.side || 1; const r = o.gem ? .0032 : .0026; studAt(B, n.ala(s, r * .55, o.high ? .008 : 0), o); },
   noseHigh(B, c, o) { const n = noseOf(c); if (!n) return; const s = o.side || 1; const r = o.gem ? .003 : .0025; studAt(B, n.high(s, r * .55), o); },
-  // Hoop threads the nostril rim and hangs slightly down and forward.
+  // Hoop threads the ala and hangs down, tilted toward the camera so the ring reads as a hoop, not an edge.
   noseRing(B, c, o) {
     const n = noseOf(c); if (!n) return; const s = o.side || 1;
-    const R = .0058, t = .00135;
-    const hit = n.ala(s, 0, -.0015);
-    const p = hit.p.clone().addScaledVector(hit.n, t * .2);
-    p.y -= R * .42; p.z += R * .12;
-    // YZ ring, flared a little toward the cheek so it wraps the ala instead of sitting in front of it.
-    B.torus(R, t, xyz(p), 'm', [0.15, PI / 2, -s * 0.28]);
+    const R = .0064, t = .0014;
+    const hit = n.ala(s, t * .35, -.0012);
+    const p = hit.p;
+    const axis = new THREE.Vector3(s * .62, .06, .78).normalize();
+    const v = new THREE.Vector3(0, -1, .12);
+    v.addScaledVector(axis, -v.dot(axis)).normalize();
+    const u = new THREE.Vector3().crossVectors(v, axis).normalize();
+    const center = p.clone().addScaledVector(v, R * .82).addScaledVector(hit.n, t * .35);
+    const pts = []; const N = 22;
+    for (let i = 0; i <= N; i++) {
+      const a = i / N * PI * 2;
+      pts.push(xyz(center.clone().addScaledVector(u, Math.cos(a) * R).addScaledVector(v, Math.sin(a) * R)));
+    }
+    B.tube(pts, t, 'm', true, N, 6);
   },
-  // Closed captive ring hanging under the columella.
+  // Closed captive ring hanging under the columella, full circle visible from the front.
   septum(B, c) {
     const n = noseOf(c); if (!n) return;
-    const R = .0062, t = .0014;
+    const R = .0064, t = .0014;
     const hit = n.under(0);
-    const p = hit.p.clone(); p.y -= R * .38; p.z += R * .06;
+    const p = hit.p.clone();
+    p.x = (n.tip(0).p.x + p.x) * .5;
+    p.y -= R * .92;
+    p.z += R * .28;
     B.torus(R, t, xyz(p), 'm', [0, PI / 2, 0]);
   },
-  // Thicker horseshoe clicker with end beads, opening up into the septum.
+  // Thicker horseshoe clicker with end beads, U opening up into the septum.
   septumClick(B, c) {
     const n = noseOf(c); if (!n) return;
-    const R = .0066, t = .0017;
+    const R = .007, t = .0018;
     const hit = n.under(0);
-    const p = hit.p.clone(); p.y -= R * .4; p.z += R * .05;
-    // Arc is a U opening upward (into the nose) in the sagittal plane.
-    B.torus(R, t, xyz(p), 'm', [0, PI / 2, PI], PI * 1.35);
-    const open = PI * 1.35 / 2;
+    const cx = hit.p.x, cy = hit.p.y - R * .88, cz = hit.p.z + R * .22;
+    const a0 = -PI * .72, a1 = PI * .72, N = 16, pts = [];
+    for (let i = 0; i <= N; i++) {
+      const a = a0 + (a1 - a0) * (i / N);
+      pts.push([cx, cy - R * Math.cos(a), cz + R * Math.sin(a)]);
+    }
+    B.tube(pts, t, 'm', false, N, 6);
     for (const k of [-1, 1]) {
-      const a = PI + k * open;
-      B.sphere(t * 1.35, [p.x, p.y + R * Math.sin(a), p.z + R * Math.cos(a)], null, 'm');
+      const a = k * a1;
+      B.sphere(t * 1.45, [cx, cy - R * Math.cos(a), cz + R * Math.sin(a)], null, 'm');
     }
   },
-  // Horizontal barbell across the nasal bridge.
+  // Short horizontal barbell sitting on the upper nasal ridge, not the cheeks or tip.
   noseBridge(B, c) {
     const n = noseOf(c); if (!n) return;
-    const span = .0052 * n.nW;
-    const a = n.bridge(.0022, -span), b = n.bridge(.0022, span), m = n.bridge(.003, 0);
-    B.tube([xyz(a.p), xyz(m.p), xyz(b.p)], .00115, 'm', false, 10, 6);
-    B.sphere(.0024, xyz(a.p), null, 'm'); B.sphere(.0024, xyz(b.p), null, 'm');
+    const span = .0036;
+    const a = n.bridge(.0022, -span), m = n.bridge(.0026, 0), b = n.bridge(.0022, span);
+    B.tube([xyz(a.p), xyz(m.p), xyz(b.p)], .0011, 'm', false, 8, 6);
+    B.sphere(.0022, xyz(a.p), null, 'm'); B.sphere(.0022, xyz(b.p), null, 'm');
   },
   // One-tap both-nostril studs (people can also stack left+right themselves).
   noseDouble(B, c, o) { PIERCE.nose(B, c, { ...o, side: 1, gem: 0 }); PIERCE.nose(B, c, { ...o, side: -1, gem: 0 }); },

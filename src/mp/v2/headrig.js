@@ -257,14 +257,19 @@ export function headCtx(av, base) {
     return { p: new THREE.Vector3(C.x + x * s + _n.x * lift, C.y + y * s + _n.y * lift, C.z + z * s + _n.z * lift), n: _n.clone() };
   };
   const Hn = h.H, ty = L.noseY + .004 * Hn.noseTip, tz = Hn.D * .97 + .013 + .004 * Hn.noseTip, nW = Hn.noseW;
+  const front = (lx, ly, lift = 0) => project(lx, ly, L.surfZ(lx, ly), lift);
   const nose = {
     nW, ty, tz, s,
-    tip: (lift = 0) => project(0, ty, tz, lift),
-    ala: (sd, lift = 0, dy = 0) => project(sd * .0122 * nW, ty - .0028 + dy, tz - .003, lift),
-    high: (sd, lift = 0) => project(sd * .0104 * nW, ty + .0078, tz - .012, lift),
-    under: (lift = 0) => project(0, ty - .0105, tz - .006, lift),
-    bridge: (lift = 0, dx = 0) => project(dx, (L.eyeY + ty) * .5 - .001, tz - .024, lift),
-    project,
+    tip: (lift = 0) => front(0, ty, lift),
+    // Outer ala, slightly below the tip centre so a stud sits on the nostril wall.
+    ala: (sd, lift = 0, dy = 0) => front(sd * .0116 * nW, ty - .0022 + dy, lift),
+    // High nostril: upper ala, inward of the flare, below the inner eye.
+    high: (sd, lift = 0) => front(sd * .0088 * nW, ty + .0115, lift),
+    // Underside of the columella (seed just under the tip, slightly back).
+    under: (lift = 0) => project(0, ty - .0118, tz - .0025, lift),
+    // Upper bridge, just below the eyes, on the narrow ridge.
+    bridge: (lift = 0, dx = 0) => front(dx, L.eyeY - .0108, lift),
+    project, front,
   };
   return Object.assign({}, base, { hw, hs: s, eyeY: B(L.eyeY), mouthY: B(L.mouthY), noseY: B(L.noseY), zc: C.z + .0 * s, top, chinY: B(L.chin), front: C.z + L.front * s, back: C.z + L.back * s - hairT,
     faceZ, ears: [ear(1), ear(-1)], lobes: [lobe(1), lobe(-1)], earY: B(L.earY), skY: B(L.eyeY), crownY, ry: (top - crownY) + .006, rx: hw * 1.02 + hairT + .006, rz: (h.H.D * s) + hairT + .008, nose });
