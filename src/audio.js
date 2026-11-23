@@ -244,15 +244,18 @@ export class AudioSys {
 // Every method falls back to the synthesized version above if its sample has not loaded yet.
 export const vhash = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36); };
 const BASE = (import.meta.env && import.meta.env.BASE_URL || '/') + 'sfx/';
-const FAM = { thunder: 3, z_growl: 6, z_moan: 4, z_attack: 3, z_eat: 3, z_chew: 4, z_tear: 3, scream: 4,
+const FAM = { thunder: 3, z_growl: 6, z_moan: 4, z_attack: 3, z_eat: 3, z_chew: 4, z_tear: 3, scream: 4, acid_spit: 2, acid_sizzle: 2, tank_charge: 2,
   step_concrete: 5, step_grass: 5, step_wood: 5, punch: 5, bat: 5, flesh: 5, metal: 5, shell: 5, plank: 5, glass: 5, cloth: 2, step_mud: 5, step_asphalt: 5, z_shuffle: 4, breath: 4, jump: 2, land: 2, squelch: 3 };
 // Per-profile ElevenLabs zombie vocals (public/sfx/zvo_{profile}_{kind}{i}.mp3). Missing files fall back to the old synth banks.
 const ZVO_CIV = { idle: 3, alert: 2, attack: 3, hurt: 2, death: 2 };
 const ZVO_TEEN = { idle: 2, alert: 2, attack: 2, hurt: 2, death: 2 };
 const ZVO_BOSS = { idle: 2, alert: 2, attack: 3, hurt: 2, death: 2, roar: 3 };
+const ZVO_KIND = { idle: 2, alert: 2, attack: 2, hurt: 2, death: 2 };
 [['male', ZVO_CIV], ['female', ZVO_CIV], ['elder', ZVO_CIV], ['brute', ZVO_CIV], ['gurgler', ZVO_CIV],
   ['teen_m', ZVO_TEEN], ['teen_f', ZVO_TEEN], ['boss_m', ZVO_BOSS], ['boss_f', ZVO_BOSS],
+  ['runner', ZVO_KIND], ['tank', Object.assign({}, ZVO_KIND, { roar: 2 })], ['spitter', ZVO_KIND],
   ['feed', { eat: 3, chew: 3 }]].forEach(([p, cats]) => { for (const k in cats) FAM['zvo_' + p + '_' + k] = cats[k]; });
+const ZVO_FALLBACK = { runner: 'teen_m', tank: 'brute', spitter: 'gurgler' };
 const ZVO_CD = { idle: 3.4, alert: 3.8, attack: 1.15, hurt: .5, death: 0, eat: 2.2, chew: 1.7, roar: 3.2 };
 const ZVO_MAXD = { idle: 36, alert: 46, attack: 26, hurt: 24, death: 42, eat: 16, chew: 16, roar: 70 };
 const ZVO_CONCUR = { idle: 3, alert: 2, attack: 3, hurt: 3, death: 3, eat: 2, chew: 2, roar: 2 };
@@ -362,13 +365,18 @@ P.zVocal = function (kind, z, vol = .5, o = {}) {
   const info = this._zvoOf(z, kind);
   let prof = info.profile, pitch = info.pitch || 1;
   if (kind === 'eat' || kind === 'chew') prof = 'feed';
-  if (kind === 'roar' && prof !== 'boss_m' && prof !== 'boss_f') prof = info.fem ? 'boss_f' : 'boss_m';
-  const fam = 'zvo_' + prof + '_' + kind;
+  if (kind === 'roar' && prof !== 'boss_m' && prof !== 'boss_f' && prof !== 'tank') prof = info.fem ? 'boss_f' : 'boss_m';
+  let fam = 'zvo_' + prof + '_' + kind;
   if (z && kind !== 'death') { z._zvoCd = z._zvoCd || {}; if (z._zvoCd[kind] && now < z._zvoCd[kind]) return DUMMY; }
   this._zvoN = this._zvoN || {};
   if ((this._zvoN[kind] || 0) >= (ZVO_CONCUR[kind] || 2)) return DUMMY;
   const maxD = o.maxD || ZVO_MAXD[kind] || 40;
-  const s = this.play(fam, { vol: vol * (ZVO_VOL[kind] || 1), verb: kind !== 'idle' && kind !== 'eat', rate: pitch, jit: o.jit ?? .05, maxD, ref: kind === 'roar' ? 6 : 2.5, roll: kind === 'idle' ? 1.3 : 1.1 });
+  const opts = { vol: vol * (ZVO_VOL[kind] || 1), verb: kind !== 'idle' && kind !== 'eat', rate: pitch, jit: o.jit ?? .05, maxD, ref: kind === 'roar' ? 6 : 2.5, roll: kind === 'idle' ? 1.3 : 1.1 };
+  let s = this.play(fam, opts);
+  if (!s && ZVO_FALLBACK[prof]) {
+    const fbKind = (kind === 'roar') ? 'attack' : kind;
+    s = this.play('zvo_' + ZVO_FALLBACK[prof] + '_' + fbKind, opts);
+  }
   if (!s) return null;
   if (s.dummy) return s;
   if (z) (z._zvoCd = z._zvoCd || {})[kind] = now + (ZVO_CD[kind] || 2) * (.8 + Math.random() * .45);
@@ -387,6 +395,9 @@ P.groan = function (vol = .1, z) {
 };
 P.zAttack = function (vol = .5, z) { if (!this.zVocal('attack', z, vol)) this.play('z_attack', { vol, jit: .12, rate: (z && z.zvo && z.zvo.pitch) || 1 }); };
 P.roar = function (z) { if (!this.zVocal('roar', z || (typeof this.bossZ === 'function' ? this.bossZ() : null), 1)) { if (!this.play('boss_roar', { vol: 1, verb: true, rate: (z && z.zvo && z.zvo.pitch) || 1 })) O.groan.call(this, .3); } };
+P.acidSpit = function (vol = .8) { if (!this.play('acid_spit', { vol, jit: .1 })) { this.noise && this.noise(.2, 900, .4, 'bandpass'); this.splat && this.splat(); } };
+P.acidSizzle = function (vol = .45) { if (!this.play('acid_sizzle', { vol, jit: .12 })) this.squelch && this.squelch(vol); };
+P.tankCharge = function (z, vol = .85) { if (!this.play('tank_charge', { vol, jit: .08, verb: true })) this.roar(z); };
 P.zHurt = function (z, vol = .55) { return this.zVocal('hurt', z, vol); };
 P.zDeath = function (z, vol = .7) { return this.zVocal('death', z, vol); };
 P.thud = function () { O.thud.call(this); this.play('plank', { vol: .7, rate: .8 }); };

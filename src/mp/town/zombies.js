@@ -7,6 +7,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { CharLib, Char } from '../../game/chars.js';
 import { loadRigs } from '../../game/avatar.js';
 import { randomLook, zVoiceAssign } from '../../game/looks.js';
+import { mixTownKind, applyKindLook, kindStats, dressKind, tickSpecialZed, tickKindFx, poseKindBones } from '../../game/zedKinds.js';
 import { addWound, bloodyMouth, setHandBlood } from '../../game/gore.js'; // the story's wound / blood shader marks (rigged zombies)
 import { BASE, mulberry, bloodTex, angDiff } from './kit.js';
 import { CFG, BOUNDS } from './map.js';
@@ -45,12 +46,16 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     let m; if (pools.length >= BLOOD_MAX) { m = pools.shift(); } else { m = new THREE.Mesh(blood.g, blood.mt); m.renderOrder = 2; scene.add(m); } m.position.set(x, .045, z); m.rotation.y = R(0, 6.28); m.scale.setScalar(s); pools.push(m); return m; };
 
   function make(x, z, o = {}) {
-    const look = Object.assign(randomLook((zseed++ * 7919 + (seed * 104729)) | 0, true), { grime: 1, blood: R(.5, 1) }); if (o.rig !== undefined) look.rig = o.rig; /* same override as story spawnZ */ if (rnd() < .3) look.hair = 'balding';
-    const c = new Char(lib, look, o.scale || R(.9, 1.1)); c.root.position.set(x, 0, z); c.root.rotation.y = R(0, 6.28); scene.add(c.root);
-    const runner = o.runner ?? rnd() < .15;
-    c.zvo = zVoiceAssign(look, { runner });
-    Object.assign(c, { z: true, hp: runner ? 50 : 70, maxHp: runner ? 50 : 70, runner, speed: runner ? R(3.4, 4.2) : R(1.1, 1.6), st: 'wander', cd: R(0, 1), dead: false, deadT: 0, id: R(0, 10), vel: new THREE.Vector3(), off: [R(-2.6, 2.6), R(-2.6, 2.6)], node: -1, prev: -1, tgt: null, hitAt: 0, hitCd: 0, tgT: 0, hurtT: 0, noHead: false, hp0: runner ? 50 : 70 });
-    c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.1 : .62 }); const a = c.act(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop') || c.act('Walk_Loop'); if (a) a.time = R(0, a.getClip().duration);
+    const look = Object.assign(randomLook((zseed++ * 7919 + (seed * 104729)) | 0, true), { grime: 1, blood: R(.5, 1) }); if (o.rig !== undefined) look.rig = o.rig; /* same override as story spawnZ */
+    const kind = o.kind || (o.runner === true ? 'runner' : o.runner === false ? 'walker' : mixTownKind(rnd()));
+    applyKindLook(look, kind);
+    const ks = kindStats(kind, o, 0, look);
+    const c = new Char(lib, look, ks.scale); c.root.position.set(x, 0, z); c.root.rotation.y = R(0, 6.28); scene.add(c.root);
+    const runner = !!ks.runner;
+    c.zvo = zVoiceAssign(look, { kind });
+    Object.assign(c, { z: true, kind: ks.kind, hp: ks.hp, maxHp: ks.maxHp, runner, tank: !!ks.tank, spitter: !!ks.spitter, armor: ks.armor, speed: ks.speed, st: 'wander', cd: R(0, 1), dead: false, deadT: 0, id: R(0, 10), vel: new THREE.Vector3(), off: [R(-2.6, 2.6), R(-2.6, 2.6)], node: -1, prev: -1, tgt: null, hitAt: 0, hitCd: 0, tgT: 0, hurtT: 0, noHead: false, hp0: ks.hp });
+    dressKind(c, kind);
+    c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.2 : (c.tank ? .48 : .62) }); const a = c.act(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop') || c.act('Walk_Loop'); if (a) a.time = R(0, a.getClip().duration);
     try { c.mixer.update(0); zBones(c); } catch (e) { /* first pose */ }
     pickNode(c); zs.push(c); S.spawned++; return c;
   }
@@ -67,7 +72,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
   // -------- damage / death --------
   function kill(z, dir, o = {}) { if (z.dead) return; z.dead = true; z.st = 'dead'; z.deadT = 0; S.killed++; z.play('Death01', { once: true, force: true, speed: o.car ? 1.6 : 1.05, fade: .1 }); if (dir) z.vel.set(dir.x * (o.car ? 7 : 2.2), 0, dir.z * (o.car ? 7 : 2.2));
     z.pool = poolMesh(z.root.position.x, z.root.position.z, .5); z.poolGrow = 1; onEvent && onEvent('kill', z); }
-  function hurt(z, dmg, dir, o) { if (z.dead) return false; z.hp -= dmg; z.hurtT = .25; if (z.hp <= 0) { kill(z, dir, o); return true; } z.st = 'chase'; z.lose = 0; z.vel.set(dir.x * 1.8, 0, dir.z * 1.8); z.play(rnd() < .5 ? 'Hit_Chest' : 'Hit_Head', { once: true, force: true, speed: 1.7, fade: .08, cb: () => { z.curName = ''; } }); onEvent && onEvent('hurt', z); return false; }
+  function hurt(z, dmg, dir, o) { if (z.dead) return false; if (z.armor) dmg *= z.armor(o || {}); z.hp -= dmg; if (z.tank && !(o && o.head) && dmg < 20) { z.st = 'chase'; z.lose = 0; if (z.hp <= 0) { kill(z, dir, o); return true; } onEvent && onEvent('hurt', z); return false; } z.hurtT = z.tank ? .12 : .25; if (z.hp <= 0) { kill(z, dir, o); return true; } z.st = 'chase'; z.lose = 0; z.vel.set(dir.x * (z.tank ? .8 : 1.8), 0, dir.z * (z.tank ? .8 : 1.8)); z.play(rnd() < .5 ? 'Hit_Chest' : 'Hit_Head', { once: true, force: true, speed: 1.7, fade: .08, cb: () => { z.curName = ''; } }); onEvent && onEvent('hurt', z); return false; }
   out.hurt = (z, dmg, dir, o) => hurt(z, dmg, dir, o);
   out.alive = () => zs.filter(z => !z.dead);
   out.killNear = (x, z, r, dmg, dir0) => { let n = 0; for (const q of zs) { if (q.dead) continue; const p = q.root.position, dx = p.x - x, dz = p.z - z, d = Math.hypot(dx, dz); if (d < r) { const l = d || 1; hurt(q, dmg, dir0 || { x: dx / l, z: dz / l }); n++; } } return n; };
@@ -88,6 +93,8 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
   function update(dt) {
     dt = Math.min(dt, .1); t += dt; const P = getPlayers(); if (!P.length) return; const p0 = P[0];
     if ((navT -= dt) <= 0) { navT = .5; nav && nav.field(p0.x, p0.z); }
+    const aud = (typeof window !== 'undefined' && window.__atq && window.__atq.audio) || null;
+    tickKindFx(scene, dt, { x: p0.x, y: 0, z: p0.z }, (n, from) => { onHitPlayer && onHitPlayer(n, { x: from.x, z: from.z, id: 'me' }); }, aud, !!p0.drv);
     let alive = 0, dead = 0;
     for (let i = 0; i < zs.length; i++) { const z = zs[i], pp = z.root.position; if (z.hp < z.hp0) { { const vl = Math.hypot(z.vel.x, z.vel.z); if (vl > .05) wound(z, { x: z.vel.x / vl, z: z.vel.z / vl }, false); } z.hp0 = z.hp; if (z.hp > 0) z.mat.userData.u.uBlood.value = Math.min(1.3, z.mat.userData.u.uBlood.value + .15); }
       if (z.dead) { dead++; z.deadT += dt;
@@ -113,13 +120,21 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
       if (z.st === 'wander') { if (near && nd < det && (nd < 5 || col.los(pp.x, pp.z, near.x, near.z))) { z.st = 'chase'; z.lose = 0; onEvent && onEvent('notice', z); } }
       else if (z.st === 'chase') { if (nd > det * (z.mission ? 6 : 2.2)) { z.lose += dt; if (z.lose > 3) { z.st = 'wander'; z.node = -1; pickNode(z); } } else z.lose = 0; }
       let dx, dz, sp = z.speed, move = true;
+      if (z.st === 'chase' && (z.tank || z.spitter)) {
+        const toP = new THREE.Vector3(near.x - pp.x, 0, near.z - pp.z);
+        const handled = tickSpecialZed(z, dt, { d: nd, toP, zp: pp, pp: { x: near.x, y: 0, z: near.z }, driving: !!near.drv, scene, audio: aud,
+          moveCollide: (dx, dz, r) => { const q = col.push(pp.x + dx, pp.z + dz, r || .4); const hit = Math.abs(q[0] - (pp.x + dx)) + Math.abs(q[1] - (pp.z + dz)) > 1e-4; pp.x = q[0]; pp.z = q[1]; return hit; },
+          hurtPlayer: (n) => { onHitPlayer && onHitPlayer(n, { x: pp.x, z: pp.z, id: near.id }); },
+          knock: () => {}, toast: null, shake: null });
+        if (handled) { if (vis) { z.mixer.update(dt); zBones(z); } continue; }
+      }
       if (z.st === 'chase') {
         const tx = near.x - pp.x, tz = near.z - pp.z; let d = nd;
         if (d < 1.05) { move = false; if ((z.cd -= dt) <= 0 && !near.drv) { z.cd = R(1.2, 1.8); z.play('Punch_Jab', { once: true, force: true, speed: .9, cb: () => { z.curName = ''; } }); z.hitAt = .35; } z.root.rotation.y += angDiff(z.root.rotation.y, Math.atan2(tx, tz)) * Math.min(1, dt * 8); if (!z.oneShot) z.play('Idle_Loop'); }
         else { let dir = null; if (ni === 0 && nav && d > 2.5) dir = nav.dir(pp.x, pp.z); if (dir) { dx = dir[0]; dz = dir[1]; } else { dx = tx / d; dz = tz / d; } }
       } else if (z.st === 'look') { const ex = z.look[0] - pp.x, ez = z.look[1] - pp.z, d = Math.hypot(ex, ez) || 1; dx = ex / d; dz = ez / d; sp *= .8;
       } else { // wander along the road graph
-        if (z.node < 0) pickNode(z); const n = graph[z.node]; const wx = n.x + z.off[0], wz = n.z + z.off[1]; const ex = wx - pp.x, ez = wz - pp.z, d = Math.hypot(ex, ez); if (d < 2) { pickNode(z); } dx = ex / (d || 1); dz = ez / (d || 1); sp *= .7; if (z.runner) sp *= .4;
+        if (z.node < 0) pickNode(z); const n = graph[z.node]; const wx = n.x + z.off[0], wz = n.z + z.off[1]; const ex = wx - pp.x, ez = wz - pp.z, d = Math.hypot(ex, ez); if (d < 2) { pickNode(z); } dx = ex / (d || 1); dz = ez / (d || 1); sp *= z.tank ? .85 : .7; if (z.runner) sp *= .4;
       }
       if (z.hitAt > 0) { z.hitAt -= dt; if (z.hitAt <= 0 && nd < 1.5 && !near.drv) { onHitPlayer && onHitPlayer(11, { x: pp.x, z: pp.z, idx: ni, id: near.id }); } }
       if (move && !z.oneShot) {
@@ -127,7 +142,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
         let sx = dx * sp * dt, sz = dz * sp * dt; if (!far) for (let j = 0; j < zs.length; j++) { if (j === i) continue; const o = zs[j]; if (o.dead) continue; const q = o.root.position; const ex = pp.x - q.x, ez = pp.z - q.z, e2 = ex * ex + ez * ez; if (e2 < .5 && e2 > 1e-4) { sx += ex / e2 * dt * .25; sz += ez / e2 * dt * .25; } }
         let nx = pp.x + sx, nz = pp.z + sz; if (!far) { const r = col.push(nx, nz, .3); nx = r[0]; nz = r[1]; if (W.cars) for (const k of W.cars) { if (Math.abs(k.x - nx) > 4 || Math.abs(k.z - nz) > 4) continue; for (const [cx, cz] of k.circles()) { const ddx = nx - cx, ddz = nz - cz, rr = k.rad + .35, d2 = ddx * ddx + ddz * ddz; if (d2 < rr * rr) { const d = Math.sqrt(d2) || .01; nx = cx + ddx / d * rr; nz = cz + ddz / d * rr; } } } } pp.x = nx; pp.z = nz;
         const want = Math.atan2(dx, dz); z.root.rotation.y += angDiff(z.root.rotation.y, want) * Math.min(1, dt * 6);
-        z.play(z.st === 'chase' ? (z.runner ? 'Jog_Fwd_Loop' : 'Walk_Loop') : 'Walk_Loop', { speed: z.st === 'chase' ? (z.runner ? 1.1 : .62) : (z.runner ? .5 : .45), fade: appeared ? 0 : 0.18 });
+        z.play(z.st === 'chase' ? (z.runner ? 'Jog_Fwd_Loop' : 'Walk_Loop') : 'Walk_Loop', { speed: z.st === 'chase' ? (z.runner ? 1.2 : (z.tank ? .48 : .62)) : (z.runner ? .5 : (z.tank ? .4 : .45)), fade: appeared ? 0 : 0.18 });
       }
       if (vis) { if (appeared) { try { z.mixer.update(0); } catch (e) { /* seed */ } } z.mixer.update(dt); zBones(z); }
     }
@@ -137,8 +152,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     // bodies stay; only draw the nearest `deadVisible`
     if ((deadT -= dt) <= 0) { deadT = 1; const ds = zs.filter(z => z.dead); if (ds.length > deadVisible) { ds.forEach(z => { z._d = Math.hypot(z.root.position.x - p0.x, z.root.position.z - p0.z); }); ds.sort((a, b) => a._d - b._d); ds.forEach((z, k) => { z.root.visible = k < deadVisible; if (z.pool) z.pool.visible = k < deadVisible; }); } S.rendered = Math.min(ds.length, deadVisible); }
   }
-  function zBones(z) { const b = z.bones; if (z.dead) return; // reaching arms, lolling head (same pose as the story zombies; keep during punch/hit)
-    ['DEF-upper_arm.L', 'DEF-upper_arm.R'].forEach((n, k) => { const bn = b[n]; if (bn) { bn.rotateX(z.runner ? -.5 : -1.05); bn.rotateZ((k ? -1 : 1) * .12); } }); if (b['DEF-head']) b['DEF-head'].rotateZ(Math.sin(t * 1.3 + z.id) * .25 + .2); if (b['DEF-spine.002']) b['DEF-spine.002'].rotateX(.18); }
+  function zBones(z) { if (z.dead) return; poseKindBones(z, t); }
   // head hitbox, identical to story's shot test (game.js: z.worldOf('DEF-head') + .08*scale, radius .17 m; skip when z.noHead)
   const _hp = new THREE.Vector3(); out.HEAD_R = .17; out.headPos = (z, v = _hp) => { z.worldOf('DEF-head', v); v.y += .08 * z.scale; return v; };
   // story wound marks (gore.js addWound, same part picking as Game.woundFrom): a mark where a zombie was hit, on the rigged (skinned) zombie models

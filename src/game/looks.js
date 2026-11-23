@@ -82,11 +82,15 @@ export function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let
 export const ZED_RIGS = ['zombie2', 'zombie_male', 'zombie_office', 'zombie_elder', 'zombie_big', 'zombie_cop', 'zombie_worker'];
 function zedRig(seed) { const r = mulberry(seed * 31 + 3); const a = r(); if (a < .28) return null; return ZED_RIGS[Math.floor(r() * ZED_RIGS.length) % ZED_RIGS.length]; }
 export function randomLook(seed, zed) { const r = mulberry(seed * 9973 + 1); const fem = r() < .5;
-  const hairs = fem ? ['long', 'bun', 'ponytail', 'curls', 'braids', 'afro', 'locs', 'puffs', 'short'] : ['short', 'buzz', 'waves', 'curls', 'balding', 'bald', 'slick', 'locs', 'cornrows', 'afro', 'hightop'];
-  const casual = ['classic', 'hoodie', 'flannel', 'denim', 'track', 'scrubs', 'work', 'cardigan', 'blouse', 'button', 'chef', 'street', 'bomber', 'parka', 'overalls', 'pinkhood', 'survivor', 'denim'];
-  const hc = r() < .15 ? '#aaa69e' : pick(r, HAIR_COLORS.slice(0, 8));
+  const hairs = fem ? ['long', 'bun', 'ponytail', 'curls', 'braids', 'afro', 'locs', 'puffs', 'short', 'mohawk'] : ['short', 'buzz', 'waves', 'curls', 'balding', 'bald', 'slick', 'locs', 'cornrows', 'afro', 'hightop', 'mohawk'];
+  const casual = zed
+    ? ['classic', 'hoodie', 'flannel', 'denim', 'track', 'scrubs', 'work', 'cardigan', 'blouse', 'button', 'chef', 'street', 'bomber', 'parka', 'overalls', 'pinkhood', 'survivor', 'smock', 'camo', 'trench', 'hazmat', 'hunter', 'poncho', 'puffer', 'night', 'sheriff', 'fire']
+    : ['classic', 'hoodie', 'flannel', 'denim', 'track', 'scrubs', 'work', 'cardigan', 'blouse', 'button', 'chef', 'street', 'bomber', 'parka', 'overalls', 'pinkhood', 'survivor', 'denim'];
+  const hc = r() < .18 ? '#aaa69e' : r() < .08 ? '#c9a86a' : pick(r, HAIR_COLORS.slice(0, 8));
+  const builds = zed ? [{ build: .76, height: 1.05 }, { build: 1, height: 1 }, { build: 1.32, height: .97 }, { build: .88, height: 1.16 }, { build: 1.12, height: .86 }] : null;
+  const bd = builds ? pick(r, builds) : { build: .9 + r() * .3, height: .93 + r() * .12 };
   return { outfit: pick(r, casual), hair: pick(r, hairs), hairColor: hc, skin: pick(r, SKINS), face: pick(r, Object.keys(FACES)), eyes: pick(r, EYES), beard: fem ? 'none' : pick(r, ['none', 'none', 'stubble', 'mustache', 'goatee', 'full']),
-    glasses: r() < .15, build: .9 + r() * .3, height: .93 + r() * .12, seed: seed | 0, tint: [r(), r(), r()], fem, zed, rig: zed ? zedRig(seed) : (mulberry(seed * 17 + 5)() < .35 ? null : (fem ? 'genf' : 'genm')) }; // v1.9.12: zombies mix old procedural look + original + 6 new rigs; ~35% of townspeople/victims keep the original procedural look
+    glasses: r() < .15, build: bd.build, height: bd.height, seed: seed | 0, tint: [r(), r(), r()], fem, zed, rig: zed ? zedRig(seed) : (mulberry(seed * 17 + 5)() < .35 ? null : (fem ? 'genf' : 'genm')) }; // v1.9.12: zombies mix old procedural look + original + 6 new rigs; ~35% of townspeople/victims keep the original procedural look
 }
 // Voice profile for a zombie: matches the visible body (named rig, then gender/size).
 //   male / female / teen_m / teen_f / elder / brute / gurgler / boss_m / boss_f
@@ -107,6 +111,10 @@ export function zVoiceProfile(look, o = {}) {
   const fem = o.fem != null ? !!o.fem : lookIsFem(look);
   const rig = (look && look.rig) || null;
   const boss = !!(o.boss || (look && look.boss));
+  const kind = o.kind || (look && look.kind) || '';
+  if (!boss && kind === 'runner') return 'runner';
+  if (!boss && kind === 'tank') return 'tank';
+  if (!boss && kind === 'spitter') return 'spitter';
   if (boss) return (fem || rig === 'zombie_office') ? 'boss_f' : 'boss_m';
   if (rig === 'zombie_big') return 'brute';
   if (rig === 'zombie_elder') return 'elder';
@@ -123,7 +131,10 @@ export function zVoiceAssign(look, o = {}) {
   const profile = zVoiceProfile(look, o);
   const r = mulberry(((look && look.seed) || 1) * 9137 + 17 + (profile.length * 13));
   let lo = .92, hi = 1.08;
-  if (profile === 'brute' || profile === 'boss_m') { lo = .86; hi = .98; }
+  if (profile === 'runner') { lo = 1.06; hi = 1.18; }
+  else if (profile === 'tank') { lo = .78; hi = .90; }
+  else if (profile === 'spitter') { lo = .88; hi = 1.04; }
+  else if (profile === 'brute' || profile === 'boss_m') { lo = .86; hi = .98; }
   else if (profile === 'elder') { lo = .88; hi = 1.02; }
   else if (profile === 'teen_f') { lo = 1.02; hi = 1.14; }
   else if (profile === 'teen_m') { lo = .98; hi = 1.10; }
@@ -140,11 +151,11 @@ export function raiderLook(seed) { const r = mulberry(seed * 7331 + 5); const L 
 function tintC(hex, t, amt) { const c = new THREE.Color(hex); const hsl = {}; c.getHSL(hsl); c.setHSL((hsl.h + (t[0] - .5) * amt) % 1, Math.min(1, hsl.s * (.7 + t[1] * .6)), Math.min(.92, hsl.l * (.75 + t[2] * .5))); return '#' + c.getHexString(); }
 // shader look for bodyMat()
 export function bodyLook(L) { const o = OUTFIT[L.outfit] || OUTFITS[0]; const t = L.tint, k = t ? .25 : 0; const tc = (h) => (t ? tintC(h, t, k) : h);
-  const skin = L.zed ? zSkin(L.skin) : L.skin;
+  const skin = L.zed ? zSkin(L.skin, L) : L.skin;
   return { skin, shirt: tc(o.shirt), pants: tc(o.pants), shoes: o.shoes, hair: L.hairColor, sleeve: o.jk ? (o.jsl ?? .62) : (o.sleeve ?? .4), jk: o.jk || 0, jacket: tc(o.jacket || o.shirt), jsleeve: o.jsleeve ? tc(o.jsleeve) : null,
     long: o.long || 0, camo: o.camo || 0, boots: o.boots || 0, gloves: (o.acc || []).includes('gloves') ? 1 : 0, plaid: o.plaid || 0, stripe: o.stripe || o.reflect || 0, gloss: o.gloss || 0, grime: o.grimeK || 0, puff: o.puff || 0,
     baggy: o.baggy || 0, cargo: o.cargo || 0, sole: o.sole || 0, rib: o.rib || 0, decal: o.decal || null, decalTex: o.decalTex || null }; }
-export function zSkin(hex) { const c = new THREE.Color(hex); return '#' + c.lerp(new THREE.Color('#7f9f70'), .78).multiplyScalar(.9).getHexString(); }
+export function zSkin(hex, look) { const c = new THREE.Color(hex); const tint = (look && look.decayTint) || '#7f9f70'; const mix = look && look.decayMix != null ? look.decayMix : .78; return '#' + c.lerp(new THREE.Color(tint), mix).multiplyScalar(.88).getHexString(); }
 // ---------- geometry helpers ----------
 const M4 = THREE.Matrix4, V = THREE.Vector3, Q = THREE.Quaternion, E = THREE.Euler;
 const mat = (x, y, z, sx = 1, sy = sx, sz = sx, rx = 0, ry = 0, rz = 0) => new M4().compose(new V(x, y, z), new Q().setFromEuler(new E(rx, ry, rz)), new V(sx, sy, sz));
@@ -163,7 +174,7 @@ function curls(P, r, col, n, f) { for (let i = 0; i < n; i++) { const p = f(r); 
   P.add('DEF-head', ICO, c2, mat(p[0], p[1], p[2], s, s * (.85 + r() * .3), s, r() * 3, r() * 3, 0)); } }
 const onHead = (u, v, k) => [H.x + Math.sin(v) * Math.cos(u) * H.rx * k, H.y + Math.cos(v) * H.ry * k, H.z + Math.sin(v) * Math.sin(u) * H.rz * k];
 // ---------- head, face, hair ----------
-export function buildHead(P, L) { const r = mulberry((L.seed || 1) * 131 + 7); const F = FACES[L.face] || FACES.keem; const skin = L.zed ? zSkin(L.skin) : L.skin;
+export function buildHead(P, L) { const r = mulberry((L.seed || 1) * 131 + 7); const F = FACES[L.face] || FACES.keem; const skin = L.zed ? zSkin(L.skin, L) : L.skin;
   const hc = L.grey ? mix(L.hairColor, '#9a968e', L.grey) : L.hairColor, hd = dark(hc, .8), B = 'DEF-head';
   P.add(B, SPH, skin, mat(H.x, H.y, H.z, H.rx, H.ry, H.rz)); // cranium
   P.add(B, SPH, skin, mat(0, 1.537, -0.004, .061 * F.jaw, .052 * F.chin, .07)); // jaw/cheeks

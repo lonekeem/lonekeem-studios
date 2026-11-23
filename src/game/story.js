@@ -2,6 +2,16 @@ import * as THREE from 'three';
 import { V, PI, rnd, dist2, $q, follow, goto, afterBoss, clearThen, fam, dadGun, dadTick, boss, raiders, rnd2, bindStory } from './chapters/helpers.js';
 import { runPrologue } from './prologue.js';
 import { NEW_STEPS, NEW_LOOT, SPEAKER_NAMES as NEW_SPEAKERS, CHAPTER_LIST } from './chapters/index.js';
+import { mixSurvivalKind } from './zedKinds.js';
+
+// Later-chapter hordes: keep the same count, swap one walker/runner for a Spitter (wave 4) or Tank (wave 5+) so existing beats still close.
+function lateHorde(g, n, pts, o, wave) {
+  const spec = wave >= 5 ? 'tank' : wave >= 4 ? 'spitter' : null;
+  if (!spec) { g.horde(n, pts, o); return; }
+  g.horde(Math.max(0, n - 1), pts, o);
+  const p = pts[0];
+  g.spawnZ(p[0] + rnd(-3, 3), p[1] + rnd(-3, 3), Object.assign({}, o, { runner: false, kind: spec }));
+}
 
 // Chapter 1 — The Day Before … it ends. Opens at night in Keem's boarded-up house in Riverside, Maine.
 export const STORY = [
@@ -267,7 +277,7 @@ export const STORY = [
     enter(g) { const D = g.stepData; D.t = 0; D.wave = 0; D.len = 45; D.hordeAll = true; D.runners = .4; g.npc('tuck', null, 0, -1433, PI, 'Idle_Loop'); g.npc('reyes', null, 2, -1356, PI, 'Idle_Loop'); g.npc('nia', 'nia', -1.5, -1357, PI, 'Idle_Loop', .62);
       g.say([['tuck', 'Engine is cold. Give me forty-five seconds.'], ['reyes', "Keem, they're coming down the ramp!"]]); },
     update(g, dt) { const D = g.stepData; if (D.done) return; D.t += dt; const left = Math.max(0, Math.ceil(D.len - D.t)); if (left !== D.lastL) { D.lastL = left; g.objective('Hold the car deck: ' + left + 's', 'Protect Nia.'); }
-      if (D.t > D.wave * 8 && D.wave < 6) { D.wave++; g.horde(g.alive().length < 22 ? 5 + D.wave : 2, [[-8, -1310], [8, -1310], [0, -1300], [-10, -1325], [10, -1325]], { runner: D.wave > 2, aggro: 99 }); }
+      if (D.t > D.wave * 8 && D.wave < 6) { D.wave++; lateHorde(g, g.alive().length < 22 ? 5 + D.wave : 2, [[-8, -1310], [8, -1310], [0, -1300], [-10, -1325], [10, -1325]], { runner: D.wave > 2, aggro: 99 }, D.wave); }
       if (D.t >= D.len) { D.done = true; g.say([['tuck', "She's alive! Casting off!"], ['nia', "We're on a BOAT! This is bussin'! …Wait, something's moving downstairs."]], () => goto(g, 38, 400)); } } },
   { id: 'c8_boss', ch: 8, cp: [0, -1400, PI], obj: 'Kill the Deckhand', hint: 'He hits like a wave. Keep moving on the deck.', mood: 'tense', beat: 2,
     enter(g) { const D = g.stepData; fam(g, D, -1400, 0, true); const b = boss(g, 0, -1372, 2500, '#1a2a4a', 'THE DECKHAND — 30 years on the Peaks run'); b.speed = 2.3; g.horde(6, [[-8, -1380], [8, -1380]], { runner: true, aggro: 99 }); D.hordeAll = true;
@@ -326,7 +336,7 @@ export const STORY = [
     enter(g) { const D = g.stepData; g.openGate(true); D.t = 0; D.wave = 0; D.len = 45; const d = g.npc('marcus', 'marcus', 3, -2196, PI, 'Idle_Loop'); D.dad = d; dadGun(g, D); g.npc('nia', 'nia', 0, -2203, 0, 'Idle_Loop', .62); g.wpTarget = null; D.hordeAll = true;
       g.say([['nia', "I'm driving the swan! His name is Sir Honks. Don't ask."], ['keem', "I wasn't gonna ask. Just pedal."], ['marcus', "I'll take the left. You take the right. Like the yard, Keem."]]); },
     update(g, dt) { const D = g.stepData; dadTick(g, D, dt); if (D.done) return; D.t += dt; const left = Math.max(0, Math.ceil(D.len - D.t)); if (left !== D.lastL) { D.lastL = left; g.objective('Hold the dock: ' + left, 'Keep them off Nia. Dad has your back.'); }
-      if (D.t > D.wave * 8 && D.wave < 6) { D.wave++; g.horde(g.alive().length < 20 ? 5 + D.wave : 2, [[-16, -2172], [16, -2176], [-10, -2160], [12, -2162]], { runner: D.wave > 2, aggro: 99 }); if (D.wave === 4) g.say([['nia', "Pedaling! It's SO heavy! Swans are so heavy!"]]); }
+      if (D.t > D.wave * 8 && D.wave < 6) { D.wave++; lateHorde(g, g.alive().length < 20 ? 5 + D.wave : 2, [[-16, -2172], [16, -2176], [-10, -2160], [12, -2162]], { runner: D.wave > 2, aggro: 99 }, D.wave); if (D.wave === 4) g.say([['nia', "Pedaling! It's SO heavy! Swans are so heavy!"]]); }
       if (D.t >= D.len) { D.done = true; g.say([['nia', "Sir Honks is GO!"], ['keem', "Everybody in the swan. I can't believe I just said that."]], () => goto(g, 48, 300)); } } },
   { id: 'c10_boss', ch: 10, cp: [0, -2262, PI], obj: 'Kill the Swan Knight', hint: 'Plate armor eats bullets. Headshots, blades, fire or explosions get through.', mood: 'tense', beat: 3,
     enter(g) { const D = g.stepData; fam(g, D, -2262, 0); const b = boss(g, 0, -2290, 3400, '#6a6a72', 'THE SWAN KNIGHT — Medieval Faire, 2 for 1'); b.speed = 1.7; b.armor = (o) => (o.head || o.blade || o.boom || o.flame || o.sever) ? 1 : .35;
@@ -357,7 +367,7 @@ export const STORY = [
     enter(g) { const D = g.stepData; g.openGate(true); D.k0 = g.save.kills; const d = g.npc('marcus', 'marcus', 2, -2604, PI, 'Idle_Loop'); D.dad = d; dadGun(g, D); g.npc('nia', 'nia', -6, -2610, PI / 2, 'Idle_Loop', .62); D.hordeAll = true; D.w = 0;
       g.say([['vance', 'You made it. Impressive. The ER is overrun, so clear it and come up to the roof.'], ['keem', "You could come down and help."], ['vance', "I could. I won't."]]); },
     update(g, dt) { const D = g.stepData; dadTick(g, D, dt); if (D.done) return; const k = Math.min(20, g.save.kills - D.k0); if (k !== D.lk) { D.lk = k; g.objective('Clear the ER (' + k + '/20)', 'Fight with Dad.'); }
-      if (g.alive().length < 4 && D.w < 5) { D.w++; g.horde(6, [[-14, -2620], [14, -2622], [0, -2632]], { runner: D.w > 2, aggro: 99 }); if (D.w === 3) g.say([['marcus', "Twenty years of dad jokes and THIS is how you see me fight."], ['keem', "Honestly? You're kind of cold with it."]]); }
+      if (g.alive().length < 4 && D.w < 5) { D.w++; lateHorde(g, 6, [[-14, -2620], [14, -2622], [0, -2632]], { runner: D.w > 2, aggro: 99 }, D.w); if (D.w === 3) g.say([['marcus', "Twenty years of dad jokes and THIS is how you see me fight."], ['keem', "Honestly? You're kind of cold with it."]]); }
       if (k >= 20 || (D.w >= 5 && !g.alive().length)) { D.done = true; afterBoss(g, () => g.say([['marcus', "Roof. Let's end this."]], () => goto(g, 53, 300)), 2.5, false); } } },
   { id: 'c11_boss', ch: 11, cp: [0, -2640, PI], obj: 'Kill Subject One', hint: 'He is huge. Explosives and headshots. Roll when he leaps.', mood: 'tense', beat: 3,
     enter(g) { const D = g.stepData; fam(g, D, -2640, 0, true); const b = boss(g, 0, -2672, 5400, '#3a5a3a', 'SUBJECT ONE — the first volunteer'); b.root.scale.setScalar(2.4); b.speed = 2.4;
@@ -375,9 +385,9 @@ export const STORY = [
     enter(g) { const D = g.stepData; g.ch2Reset(g, 10); D.wave = 0; D.gap = 5; D.left = 0; D.sp = 0; D.hordeAll = true; D.best = +(g.LS.getItem('atq3.survBest') || 0);
       const nia = g.npc('nia', 'nia', -1.4, -238, 0, 'Idle_Loop', .62); follow(g, nia, [-1.2, -1]); D.nia = nia; g.wpTarget = null; g.toast('SURVIVAL — Best: wave ' + D.best, 2.5); },
     update(g, dt) { const D = g.stepData; const al = g.alive().length; const PTS = [[-6, -212], [6, -214], [-20, -222], [18, -220], [0, -200], [-14, -250], [14, -252]];
-      if (D.left > 0) { D.sp -= dt; if (D.sp <= 0 && al < 18) { D.sp = 1.6; const n = Math.min(D.left, 4); D.left -= n; for (let i = 0; i < n; i++) { const p = PTS[(Math.random() * PTS.length) | 0]; const hp = 70 + D.wave * 8;
+      if (D.left > 0) { D.sp -= dt; if (D.sp <= 0 && al < 18) { D.sp = 1.6; const n = Math.min(D.left, 4); D.left -= n; for (let i = 0; i < n; i++) { const p = PTS[(Math.random() * PTS.length) | 0];
           if (D.wave >= 5 && Math.random() < .12) g.spawnZ(p[0] + rnd(-3, 3), p[1] + rnd(-3, 3), { raider: true, hp: 90 + D.wave * 6, aggro: 99, gun: Math.random() < .5 ? 'smg' : 'rifle' });
-          else g.spawnZ(p[0] + rnd(-3, 3), p[1] + rnd(-3, 3), { aggro: 99, hp, runner: Math.random() < Math.min(.6, .1 + D.wave * .05) }); } } }
+          else g.spawnZ(p[0] + rnd(-3, 3), p[1] + rnd(-3, 3), { aggro: 99, kind: mixSurvivalKind(D.wave), wave: D.wave }); } } }
       if (D.wave > 0 && D.left <= 0 && al === 0 && !D.clear) { D.clear = true; D.gap = 8; const bonus = 20 + D.wave * 15; g.addCash(bonus); g.floatText('Wave ' + D.wave + ' cleared · +$' + bonus, '#9f9');
         if (D.wave > D.best) { D.best = D.wave; g.LS.setItem('atq3.survBest', String(D.wave)); g.toast('New best: wave ' + D.wave + '!', 2); } g.checkpoint(); }
       if (D.left <= 0 && al === 0 && (D.wave === 0 || D.clear)) { D.gap -= dt; if (D.gap <= 0) { D.wave++; D.clear = false; D.left = 5 + D.wave * 3; D.sp = 0; g.zombies = g.zombies.filter(z => { if (z.dead) g.scene.remove(z.root); return !z.dead; }); g.audio.roar && g.audio.roar(); } }

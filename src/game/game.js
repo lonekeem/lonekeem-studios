@@ -11,6 +11,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { townUpdate, townReset } from './townlife.js';
 import { buildWorld } from './world.js';
 import { CAST, randomLook, raiderLook, DEFAULT_LOOK, zVoiceAssign } from './looks.js';
+import { resolveKind, applyKindLook, kindStats, dressKind, tickSpecialZed, tickKindFx, poseKindBones, kindMinimapColor, kindKillXP, knockFrom } from './zedKinds.js';
 import { bossProp, wrap, walkie } from './props.js';
 import { CharLib, Char, backpack, weaponMesh, makeDog, makeRabbit } from './chars.js';
 import { buildPickup } from './gear.js';
@@ -395,14 +396,17 @@ export class Game {
     if (this.settings.gore) { const back = Math.abs(v.roll) > 3; addWound(v, { kind: 'torn', part: back ? 'chest' : 'belly', nz: back ? -1 : 1, size: .1, run: .3 }); addWound(v, { kind: 'bite', part: eaters > 1 ? 'thighL' : 'uarmR', nz: back ? -1 : 1, nx: .3, size: .06 }); }
     for (let i = 0; i < eaters; i++) { const zz = this.spawnZ(x, z, { eat: v }); zz.eatOff = i; this.placeFeeder(zz, v, i, eaters); if (this.settings.gore) { bloodyMouth(zz, 1.2 + i * .3); setHandBlood(zz, .6); } }
     return v; }
-  spawnZ(x, z, o = {}) { const zl = Object.assign((o.raider ? raiderLook : randomLook)((ZSEED++ * 7919 + (Math.random() * 1e5 | 0)) | 0, !o.raider), o.raider ? { grime: .6, blood: .1 } : { grime: 1, blood: this.settings.gore ? rnd(.5, 1) : 0.15 }); if (o.rig !== undefined) zl.rig = o.rig; if (o.fem != null) zl.fem = !!o.fem; if (Math.random() < .3 && !o.boss) zl.hair = 'balding'; if (o.boss) { const femBoss = o.fem || o.rig === 'zombie_office'; if (femBoss) { zl.fem = true; zl.beard = 'none'; } else { zl.fem = false; zl.hair = 'bald'; zl.beard = 'full'; } zl.build = 1.3; }
-    const sc = (o.scale || rnd(.9, 1.1)); const c = new Char(this.lib, zl, sc); c.id = Math.random() * 10; c.root.position.set(x, 0, z); c.root.rotation.y = rnd(0, 6); this.scene.add(c.root);
-    const runner = o.runner ?? Math.random() < (this.stepData.runners || 0.15);
-    Object.assign(c, { z: true, hp: o.hp || (runner ? 50 : 70), maxHp: o.hp || (runner ? 50 : 70), runner, speed: runner ? rnd(3.6, 4.4) : rnd(1.1, 1.6), st: o.eat ? 'eat' : (o.idle ? 'idle' : 'chase'), eat: o.eat, cd: rnd(0, 1), stun: 0, dead: false, boss: !!o.boss, aggro: o.aggro ?? 30, vel: V3() });
+  spawnZ(x, z, o = {}) { const zl = Object.assign((o.raider ? raiderLook : randomLook)((ZSEED++ * 7919 + (Math.random() * 1e5 | 0)) | 0, !o.raider), o.raider ? { grime: .6, blood: .1 } : { grime: 1, blood: this.settings.gore ? rnd(.5, 1) : 0.15 }); if (o.rig !== undefined) zl.rig = o.rig; if (o.fem != null) zl.fem = !!o.fem; if (o.boss) { const femBoss = o.fem || o.rig === 'zombie_office'; if (femBoss) { zl.fem = true; zl.beard = 'none'; } else { zl.fem = false; zl.hair = 'bald'; zl.beard = 'full'; } zl.build = 1.3; }
+    const kind = o.raider ? 'walker' : resolveKind(o, this.stepData || {}); if (!o.raider && !o.boss) applyKindLook(zl, kind);
+    const wave = o.wave ?? ((this.stepData && this.stepData.wave) || 0); const ks = o.raider ? { scale: o.scale || rnd(.9, 1.1), hp: o.hp || 90, maxHp: o.hp || 90, speed: 2.6, runner: false, tank: false, spitter: false, armor: null, kind: 'walker' } : kindStats(kind, o, wave, zl);
+    const sc = ks.scale; const c = new Char(this.lib, zl, sc); c.id = Math.random() * 10; c.root.position.set(x, 0, z); c.root.rotation.y = rnd(0, 6); this.scene.add(c.root);
+    const runner = !!ks.runner;
+    Object.assign(c, { z: true, kind: ks.kind, hp: ks.hp, maxHp: ks.maxHp, runner, tank: !!ks.tank, spitter: !!ks.spitter, speed: ks.speed, armor: ks.armor, st: o.eat ? 'eat' : (o.idle ? 'idle' : 'chase'), eat: o.eat, cd: rnd(0, 1), stun: 0, dead: false, boss: !!o.boss, aggro: o.aggro ?? 30, vel: V3() });
     if (o.det) c.det = o.det; if (o.hear) c.hear = 1; // v1.9.17 sleepers: custom wake radius (crouching = 40%) + wake on gunfire
-    if (o.eat || o.still) c.play('Idle_Loop'); else c.play(runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: runner ? 1.1 : 0.62 });
+    if (!o.raider && !o.boss) dressKind(c, kind);
+    if (o.eat || o.still) c.play('Idle_Loop'); else c.play(runner ? 'Jog_Fwd_Loop' : (c.tank ? 'Walk_Loop' : 'Walk_Loop'), { speed: runner ? 1.2 : (c.tank ? .48 : 0.62) });
     if (c.act('Walk_Loop')) c.act('Walk_Loop').time = rnd(0, 1);
-    if (!o.raider) c.zvo = zVoiceAssign(zl, { boss: !!o.boss, fem: zl.fem });
+    if (!o.raider) c.zvo = zVoiceAssign(zl, { boss: !!o.boss, fem: zl.fem, kind });
     if (o.raider) { c.raider = true; c.hp = c.maxHp = o.hp || 90; c.speed = 2.6; c.cd = rnd(1, 2.5); const h = new THREE.Group(); h.add(weaponMesh(o.gun || 'rifle')); h.rotation.set(Math.PI / 2, 0, 0); h.position.set(0, .08, .02); c.attach('DEF-hand.R', h); c.gunM = h; c.gunId = o.gun || 'rifle'; c.play('Pistol_Aim_Neutral'); if (c.mat && c.mat.userData.u && c.mat.userData.u.uShirt) if (o.shirt && c.mat.userData.u.uJacket) { c.mat.userData.u.uJacket.value.set(o.shirt); c.mat.userData.u.uShirt.value.set(o.shirt); } }
     // Pose immediately so a zombie that pops into view (e.g. during a melee-kill hitch / hitstop) is never left in bind T-pose.
     try { c.mixer.update(0); } catch (e) { /* first pose */ }
@@ -530,7 +534,8 @@ export class Game {
     z.mat.userData.u.uBlood.value = Math.min(1.3, z.mat.userData.u.uBlood.value + (this.settings.gore ? .15 : 0)); this.audio.at(hp).splat(); if (this.settings.gore && Math.random() < .5) this.audio.at(hp).squelch(.6);
     if (z.hp <= 0) { this.killZ(z, dir, o); return; }
     this.audio.at(hp).zHurt && this.audio.zHurt(z, z.boss ? .75 : .55);
-    if (!z.boss || dmg > 60) { z.stun = z.boss ? 0.25 : 0.45; z.play(o.head ? 'Hit_Head' : 'Hit_Chest', { once: true, force: true, cb: () => { z.curName = ''; } }); z.vel.addScaledVector(dir, z.boss ? 1 : 3); } }
+    if (z.tank) { if (o.head || dmg > 45) { z.stun = 0.18; if (z.mode === 'charge' || z.mode === 'wind') { z.mode = null; z.cd = Math.max(z.cd || 0, 1.2); } z.play(o.head ? 'Hit_Head' : 'Hit_Chest', { once: true, force: true, cb: () => { z.curName = ''; } }); z.vel.addScaledVector(dir, 1.1); } }
+    else if (!z.boss || dmg > 60) { z.stun = z.boss ? 0.25 : 0.45; z.play(o.head ? 'Hit_Head' : 'Hit_Chest', { once: true, force: true, cb: () => { z.curName = ''; } }); z.vel.addScaledVector(dir, z.boss ? 1 : 3); } }
   // pooled additive flame sprites (flamethrower, burning zombies, launcher blasts): 24 sprites total, no allocations per frame
   flameAt(p, n = 1, v) { if (!this.flames) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); const gr = x.createRadialGradient(32, 32, 2, 32, 32, 30); gr.addColorStop(0, 'rgba(255,240,180,1)'); gr.addColorStop(.4, 'rgba(255,140,30,.8)'); gr.addColorStop(1, 'rgba(120,20,0,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
       const m = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }); this.flames = []; this.flameI = 0; for (let i = 0; i < 24; i++) { const s = new THREE.Sprite(m); s.visible = false; this.scene.add(s); this.flames.push({ s, v: V3(), life: 0 }); } }
@@ -538,7 +543,7 @@ export class Game {
   spurt(z, bone, dur) { (this.spurts = this.spurts || []).push({ z, bone, t: dur }); if (this.spurts.length > 4) this.spurts.shift(); }
   killZ(z, dir, o = {}) { if (!dir || !dir.clone) dir = V3(0, 0, 1); if (Math.random() < (z.boss ? 1 : .15)) this.audio.shout && this.audio.shout('keem_kill'); z.dead = true; z.deadT = 0; z.st = 'dead'; const mine = !o.ai || z.playerHit; if (mine) this.save.kills++; const gore = this.settings.gore;
     this.audio.at(z.root.position).zDeath && this.audio.zDeath(z, z.boss ? .95 : .7);
-    const xp = z.boss ? 400 : (o.head ? 18 : 12); if (mine) this.addXP(xp); if (z.boss) this.addCash(500);
+    const xp = kindKillXP(z, o); if (mine) this.addXP(xp); if (z.boss) this.addCash(500);
     else if (mine && Math.random() < .35) this.addCash(rnd(5, 18)); if (mine && !z.boss) this.dropLoot(z);
     if (o.boom || z.boss) z.play('Death01', { once: true, force: true, speed: o.boom ? 1.6 : 1, fade: .12 }); else { z.play(o.head ? 'Hit_Head' : 'Hit_Chest', { once: true, force: true, speed: 1.7, fade: .08, cb: () => { if (z.dead) z.play('Death01', { once: true, force: true, speed: 1.05, fade: .28 }); } }); } z.vel.addScaledVector(dir, o.boom ? 9 : 2.5); if (o.boom) z.vel.y = 6;
     const pos = z.root.position.clone(); pos.y = 1.55 * z.scale; this.decal(z.root.position.x + dir.x, z.root.position.z + dir.z, 1.4);
@@ -717,6 +722,7 @@ export class Game {
     this.alive().forEach(z => { const d = z.root.position.distanceTo(p); if (d < 2.1) { if (sp > 3.5) { const dir = z.root.position.clone().sub(p).setY(0).normalize(); this.damageZ(z, 200, dir, { boom: true }); this.shake(.2); this.hitstop = .03; this.audio.thud(); T.v *= .95; } else { z.st = 'chase'; } } });
     this.player.root.position.copy(p); this.updateTruckCol(); }
   updateZ(dt) { const P = this.player, pp = this.truck.driving ? this.truck.g.position : P.root.position; const Z = this.zombies;
+    tickKindFx(this.scene, dt, pp, (n, from) => this.hurt(n, from), this.audio, !!(this.truck && this.truck.driving));
     if (this.flames) for (const f of this.flames) if (f.life > 0) { f.life -= dt; f.s.position.addScaledVector(f.v, dt); f.s.scale.multiplyScalar(1 + dt * 2.5); if (f.life <= 0) f.s.visible = false; }
     for (const z of Z) if (z.burn > 0 && !z.dead) { z.burn -= dt; if (Math.random() < dt * 10) { const p = z.root.position.clone(); p.y = rnd(.4, 1.6) * z.scale; this.flameAt(p, 1); } if ((z.burnTick = (z.burnTick || 0) - dt) <= 0) { z.burnTick = .3; this.damageZ(z, z.boss ? 6 : 14, V3(0, 0, 1), { flame: true }); } if (z.mat.userData.u.uShirt && !z.boss) z.mat.userData.u.uShirt.value.lerp(new THREE.Color('#151010'), dt); }
     this.rFxTick(dt); for (let i = 0; i < Z.length; i++) { const z = Z[i]; const zp = z.root.position;
@@ -743,12 +749,20 @@ export class Game {
       if ((z.tgT = (z.tgT || 0) - dt) <= 0) { z.tgT = rnd(.4, .7); z.tgt = null; if (!this.cut) { let bd = d * .95; for (const o of Z) { if (!o.raider || o.dead || o === z) continue; const q = o.root.position, e = Math.hypot(q.x - zp.x, q.z - zp.z); if (e < bd && e < 24) { bd = e; z.tgt = o; } }
           for (const k in this.npcs) { const n = this.npcs[k]; if (!n || n.isVictim || n.root.visible === false || !n.root.parent) continue; const q = n.root.position, e = Math.hypot(q.x - zp.x, q.z - zp.z); if (e < bd && e < 10) { bd = e; z.tgt = n; } } } }
       const tg = z.tgt && !z.tgt.dead && z.tgt.root.visible !== false ? z.tgt : null; if (tg) { toP.set(tg.root.position.x - zp.x, 0, tg.root.position.z - zp.z); d = toP.length(); }
-      if (d > z.aggro && !this.stepData.hordeAll && !tg) { if (!z.oneShot && !z.locoOn && !z.curName) z.play(z.runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: z.runner ? 1.1 : .62 }); z.mixer.update(dt); this.zBones(z); continue; }
+      if (d > z.aggro && !this.stepData.hordeAll && !tg) { if (!z.oneShot && !z.locoOn && !z.curName) z.play(z.runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: z.runner ? 1.2 : (z.tank ? .48 : .62) }); z.mixer.update(dt); this.zBones(z); continue; }
+      if ((z.tank || z.spitter) && !tg) {
+        const handled = tickSpecialZed(z, dt, { d, toP, zp, pp, driving: !!(this.truck && this.truck.driving), scene: this.scene, audio: this.audio,
+          moveCollide: (dx, dz, r) => this.moveCollide(zp, dx, dz, r),
+          hurtPlayer: (n, from) => this.hurt(n, from),
+          knock: (from, force) => { knockFrom((p, dx, dz, r) => this.moveCollide(p, dx, dz, r), P.root.position, from, force); this.state.stun = Math.max(this.state.stun || 0, .28); },
+          toast: (m, t) => this.toast(m, t), shake: (n) => this.shake(n) });
+        if (handled) { z.mixer.update(dt); this.zBones(z); this.stepTrack(z, zp, 'z'); continue; }
+      }
       if (z.cd > 0) z.cd -= dt;
       if (d < 1.05 && (tg || !this.truck.driving)) { if (z.cd <= 0) { z.cd = rnd(1.2, 1.8); z.play('Punch_Jab', { once: true, force: true, speed: .9, cb: () => { z.curName = ''; } }); z.hitAt = .35; } }
       else if (!z.oneShot) { toP.normalize(); let sx = toP.x * z.speed * dt, sz = toP.z * z.speed * dt;
         for (let j = 0; j < Z.length; j++) { if (j === i || Z[j].dead) continue; const o = Z[j].root.position; const ex = zp.x - o.x, ez = zp.z - o.z, e2 = ex * ex + ez * ez; if (e2 < .5 && e2 > 1e-4) { sx += ex / e2 * dt * .25; sz += ez / e2 * dt * .25; } }
-        this.moveCollide(zp, sx, sz, .3); z.root.rotation.y = angLerp(z.root.rotation.y, Math.atan2(toP.x, toP.z), Math.min(1, dt * 6)); z.play(z.runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: z.runner ? 1.1 : .62 }); }
+        this.moveCollide(zp, sx, sz, .3); z.root.rotation.y = angLerp(z.root.rotation.y, Math.atan2(toP.x, toP.z), Math.min(1, dt * 6)); z.play(z.runner ? 'Jog_Fwd_Loop' : 'Walk_Loop', { speed: z.runner ? 1.2 : .62 }); }
       if (z.hitAt > 0) { z.hitAt -= dt; if (z.hitAt <= 0 && d < 1.45) { if (tg && tg.raider) this.damageZ(tg, 14, toP.clone().normalize(), { ai: true }); else if (tg) { tg.root.position.addScaledVector(toP.clone().normalize(), .25); if (this.settings.gore && tg.skin) this.woundFrom(tg, zp, 'melee'); if (/nia/.test(tg.key || '') && Math.random() < .3 && this.audio.shout) this.audio.shout('nia_spot', false, tg.root.position); } else if (!this.truck.driving) this.hurt(this.settings.qteEasy ? 6 : 11, zp); } }
       if (Math.random() < dt * .08) this.audio.at(zp).groan(.06, z);
       z.mixer.update(dt); this.zBones(z); this.stepTrack(z, zp, 'z'); } }
@@ -804,8 +818,7 @@ export class Game {
     if (N.length) { const n = N[Math.floor(Math.random() * N.length)]; const k = /nia/.test(n.key || n.lookKey || '') ? 'nia_chat' : /marcus|dad/.test(n.key || n.lookKey || '') ? 'marcus_chat' : Math.random() < .5 ? 'npc_chat' : 'npcf_chat'; return this.audio.shout(k, false, n.root.position); }
     if (Math.random() < .3) pick(Math.random() < .5 ? 'npc_chat' : 'npcf_chat'); }
   zBones(z) { const b = z.bones; if (!z.dead) { // zombie posture: arms reaching, head lolled (also during punch/hit so a one-shot missing arm tracks cannot leave a T-pose)
-      ['DEF-upper_arm.L', 'DEF-upper_arm.R'].forEach((n, k) => { const bn = b[n]; if (bn) { bn.rotateX(z.runner ? -0.5 : -1.05); bn.rotateZ((k ? -1 : 1) * 0.12); } });
-      if (b['DEF-head']) b['DEF-head'].rotateZ(Math.sin(this.t * 1.3 + z.id) * .25 + .2); if (b['DEF-spine.002']) b['DEF-spine.002'].rotateX(.18); }
+      poseKindBones(z, this.t); }
     if (z.noHead && b['DEF-head']) b['DEF-head'].scale.setScalar(0.001); if (z.noArm && b[z.noArm]) b[z.noArm].scale.setScalar(0.001); if (z.noLimbs) for (const n of z.noLimbs) { const bn = z.bone(n); if (bn) bn.scale.setScalar(0.001); } }
   updateBoss(z, d, toP, dt) { const zp = z.root.position; z.t = (z.t || 0) + dt; $('#bossb i').style.width = Math.max(0, z.hp / z.maxHp * 100) + '%';
     if (z.stun > 0) { z.stun -= dt; return; }
@@ -895,7 +908,7 @@ export class Game {
     g.translate(W / 2, W / 2); g.rotate(this.cam.yaw); g.scale(1 / S, 1 / S); g.translate(-P.x, -P.z);
     g.fillStyle = '#3a4038'; g.fillRect(-5.5, -155, 11, 220); g.fillRect(-45, -0.5, 90, 9); g.fillStyle = '#1e3a4a'; g.fillRect(-200, -131, 400, 22); g.fillStyle = '#555'; g.fillRect(-5, -132, 10, 24);
     g.fillStyle = '#5a5248'; this.world.colliders.forEach(k => { if (k.x1 - k.x0 > 3 && k.x1 - k.x0 < 20 && k.z1 - k.z0 < 20) g.fillRect(k.x0, k.z0, k.x1 - k.x0, k.z1 - k.z0); });
-    g.fillStyle = '#e33'; this.alive().forEach(z => { g.beginPath(); g.arc(z.root.position.x, z.root.position.z, 1.4, 0, 7); g.fill(); });
+    this.alive().forEach(z => { g.fillStyle = kindMinimapColor(z); g.beginPath(); g.arc(z.root.position.x, z.root.position.z, z.tank ? 2.1 : 1.4, 0, 7); g.fill(); });
     if (this.wpTarget) { g.fillStyle = '#7fd49a'; g.beginPath(); g.arc(this.wpTarget[0], this.wpTarget[2], 3, 0, 7); g.fill(); }
     g.restore(); g.fillStyle = '#fff'; g.beginPath(); g.moveTo(W / 2, W / 2 - 6); g.lineTo(W / 2 - 4, W / 2 + 4); g.lineTo(W / 2 + 4, W / 2 + 4); g.fill(); }
 }
