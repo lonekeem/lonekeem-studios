@@ -694,7 +694,9 @@ body.photo #hud,body.photo #touch,body.photo #wp,body.photo #prompt,body.photo #
 #cban .cd-pickrow{margin:8px 0;font:13px system-ui;color:#cfe6d6}
 #cban .cd-pickrow input[type=color]{width:42px;height:28px;border:0;background:none;padding:0;vertical-align:middle;margin-left:8px}
 #cban canvas.cd-drawcan{cursor:crosshair;touch-action:none}
-#cban .cd-acts{margin-top:8px}
+#cban .cban-tools .clbl{margin:6px 0 3px}
+#cban .cd-pickrow{margin:4px 0}
+#cban .cd-acts{position:sticky;bottom:0;background:#08160e;padding:6px 0 2px;margin-top:6px;z-index:2}
 #online .cban-safe{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 #online .cban-safe button{min-height:34px;font-size:12px}
 #online .cwarn{color:#f0c070}
