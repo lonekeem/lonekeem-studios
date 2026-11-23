@@ -15,6 +15,9 @@ export function mergeSave(newer, older) {
   if (older.up && typeof older.up === 'object') { m.up = m.up && typeof m.up === 'object' ? m.up : {};
     for (const w of Object.keys(older.up)) { const o = older.up[w]; if (!o || typeof o !== 'object') continue; const n = m.up[w] = (m.up[w] && typeof m.up[w] === 'object') ? m.up[w] : {};
       for (const s of Object.keys(o)) if (num(o[s]) > num(n[s])) n[s] = o[s]; } }
+  // v1.9.86 chapter star ratings: keep the better result per chapter from either copy (more stars, then faster time)
+  if (older.stars && typeof older.stars === 'object') { m.stars = m.stars && typeof m.stars === 'object' ? m.stars : {};
+    for (const c of Object.keys(older.stars)) { const o = older.stars[c], n = m.stars[c]; if (o && typeof o === 'object' && (!n || num(o.s) > num(n.s) || (num(o.s) === num(n.s) && num(o.t) > 0 && (!num(n.t) || num(o.t) < num(n.t))))) m.stars[c] = clone(o); } }
   return m;
 }
 /** Merge two cloud payloads ({ save, sel, settings, survBest, stats, chars, at }). `at` = ms timestamp of the last local change. */
