@@ -70,7 +70,7 @@ async function play(step, o = {}) { if (o.prologue) import('./game/prologue.js')
   showChLoad(); await yieldPaint();
   $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden');
   if (o.prologue) { g.wantPrologue = true; try { const m = await import('./game/prologue.js'); await Promise.race([m.preloadPrologue(audio), new Promise(r => setTimeout(r, 6000))]); } catch (e) { } }
-  try { await g.start(step, { overlay: true }); } catch (e) { console.error(e); }
+  try { await g.start(step, { overlay: true }); } catch (e) { console.error(e); /* v1.9.71: a failed start used to leave a dead, untappable screen; go back to the menu instead */ try { g.running = false; } catch (x) {} hideLoading(); toTitle(); try { window.__atqShowErr && window.__atqShowErr('That mode could not start.<br><small>' + String((e && e.message) || e).slice(0, 120) + '</small>'); } catch (x) {} return; }
   await yieldPaint();
   hideLoading(); state = 'play';
   $('#hud').classList.remove('hidden'); $('#touch').classList.toggle('hidden', !(matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window));

@@ -74,6 +74,7 @@ export class Game {
     try { if (this.audio) this.audio._sfxHold = true; } catch (e) { /* ignore */ }
     const S = this.settings; const qn = S.qual === 'auto' || !S.qual ? autoQuality() : S.qual; const Q = this.Q = PRESETS[qn] || PRESETS.med;
     const canvas = $('#gl'); const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: Q.name !== 'low', powerPreference: 'high-performance' });
+    /* v1.9.71: if iOS drops the GL context and never gives it back, say so with a Reload button instead of a frozen, dead screen */ { let lostT = 0; canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); console.warn('[gl] context lost (%s)', 'story'); clearTimeout(lostT); lostT = setTimeout(() => { try { if (canvas.isConnected && window.__atqShowErr) window.__atqShowErr('The graphics on this phone were reset to save memory.<br><small>Tap Reload to keep playing. Your progress is saved.</small>'); } catch (x) { /* ignore */ } }, 4000); }, false); canvas.addEventListener('webglcontextrestored', () => { clearTimeout(lostT); console.warn('[gl] context restored (%s)', 'story'); }, false); }
     this.basePR = Math.min(window.devicePixelRatio || 1, Q.pr * (window.devicePixelRatio > 1 ? 1.34 : 1), 2); this.pr = this.basePR; r.setPixelRatio(this.pr);
     r.setSize(innerWidth, innerHeight, false); r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.05; r.outputColorSpace = THREE.SRGBColorSpace;
     r.shadowMap.enabled = Q.shadows; r.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -416,7 +417,7 @@ export class Game {
   alive() { return this.zombies.filter(z => !z.dead); }
 
   // ---------- UI helpers ----------
-  objective(t, h) { if (h && (matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window)) h = touchHint(h); $('#objt').textContent = t || ''; $('#objh').textContent = this.settings.hints ? (h || '') : ''; $('#obj').style.display = t ? '' : 'none'; }
+  objective(t, h) { if (h && (matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window)) h = touchHint(h); const ob = $('#obj'); if (!ob) return; if (!$('#objt')) ob.innerHTML = '<b>Objective</b><span id="objt"></span><small id="objh"></small>'; /* v1.9.71: self-heal if another mode rewrote the box */ $('#objt').textContent = t || ''; $('#objh').textContent = this.settings.hints ? (h || '') : ''; ob.style.display = t ? '' : 'none'; }
   // v1.9.4 raider AI: pick a firing spot (prefer cover), walk there (anim matches motion), then HOLD and shoot from the gun with flash + tracer
   rTarget(z, zp) { const pp = this.truck.driving ? this.truck.g.position : this.player.root.position; let t = null, td = Math.hypot(pp.x - zp.x, pp.z - zp.z);
     for (const o of this.zombies) { if (o.dead || o.raider || o === z || o.st === 'eat' || o.st === 'idle') continue; const d = Math.hypot(o.root.position.x - zp.x, o.root.position.z - zp.z); if (d < 12 && d < td * .8) { td = d; t = o; } }

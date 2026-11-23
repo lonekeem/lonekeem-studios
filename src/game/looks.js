@@ -179,6 +179,7 @@ const mat = (x, y, z, sx = 1, sy = sx, sz = sx, rx = 0, ry = 0, rz = 0) => new M
 class Parts { constructor() { this.by = {}; this.gloss = {}; }
   add(bone, geo, color, m, shiny) { let g = geo.index ? geo.toNonIndexed() : geo.clone(); if (m) g.applyMatrix4(m); g.deleteAttribute('uv'); const c = new THREE.Color(color), n = g.attributes.position.count, a = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); const bag = shiny ? this.gloss : this.by; (bag[bone] = bag[bone] || []).push(g); } }
+const ICO1 = new THREE.IcosahedronGeometry(1, 1); // v1.9.71: curls are 1.6-2.8 cm beads; detail 1 (80 tris) instead of 2 (320) cuts afro/hightop heads from ~220k to ~60k verts each (iPhone memory)
 const SPH = new THREE.SphereGeometry(1, 28, 20), SPHL = new THREE.SphereGeometry(1, 24, 16), ICO = new THREE.IcosahedronGeometry(1, 2), BOX = new THREE.BoxGeometry(1, 1, 1), CYL = new THREE.CylinderGeometry(1, 1, 1, 16), TOR = new THREE.TorusGeometry(1, .3, 10, 24);
 const cap = (theta) => new THREE.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, theta);
 const ring = (t0, t1) => new THREE.SphereGeometry(1, 22, 10, 0, Math.PI * 2, t0, t1 - t0);
@@ -189,7 +190,7 @@ const dark = (hex, k) => '#' + new THREE.Color(hex).multiplyScalar(k).getHexStri
 const mix = (a, b, k) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), k).getHexString();
 // curls: many small icospheres scattered over a region of the head ellipsoid
 function curls(P, r, col, n, f) { for (let i = 0; i < n; i++) { const p = f(r); if (!p) continue; const s = p[3] || (.016 + r() * .012); const c2 = r() < .3 ? dark(col, 1.35) : r() < .5 ? dark(col, .8) : col;
-  P.add('DEF-head', ICO, c2, mat(p[0], p[1], p[2], s, s * (.85 + r() * .3), s, r() * 3, r() * 3, 0)); } }
+  P.add('DEF-head', ICO1, c2, mat(p[0], p[1], p[2], s, s * (.85 + r() * .3), s, r() * 3, r() * 3, 0)); } }
 const onHead = (u, v, k) => [H.x + Math.sin(v) * Math.cos(u) * H.rx * k, H.y + Math.cos(v) * H.ry * k, H.z + Math.sin(v) * Math.sin(u) * H.rz * k];
 // ---------- head, face, hair ----------
 function browArch() { // tapered arch, not a box

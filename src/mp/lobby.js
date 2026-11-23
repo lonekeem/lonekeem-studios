@@ -88,7 +88,7 @@ export async function enterLobby({ look, onExit } = {}) {
     if (me.drv) camYaw = me.ry; info.textContent = 'Players online: ' + (net.peers.size + 1) + ' · KL street test';
     renderer.render(scene, cam); requestAnimationFrame(frame);
   }
-  function exit(edit) { running = false; removeEventListener('keydown', kd); removeEventListener('keyup', ku); net.close(); renderer.dispose(); root.remove(); delete window.__mpLobby; if (edit === true) { import('./creator.js').then(m => m.openCreator({ onClose: onExit, onPlay: l => enterLobby({ look: l, onExit }) })).then(c => { window.__mpCreator = c; }); } else onExit && onExit(); }
+  function exit(edit) { running = false; removeEventListener('keydown', kd); removeEventListener('keyup', ku); net.close(); try { renderer.dispose(); renderer.forceContextLoss(); } catch (e) { /* gl */ } root.remove(); delete window.__mpLobby; if (edit === true) { import('./creator.js').then(m => m.openCreator({ onClose: onExit, onPlay: l => enterLobby({ look: l, onExit }) })).then(c => { window.__mpCreator = c; }); } else onExit && onExit(); }
   window.__mpLobby = { me, net, remotes, car, cam, scene, setPos: (x, z) => { me.x = x; me.z = z; }, key: (k, v) => { keys[k] = v; }, peers: () => net.peers.size, camYaw: v => { camYaw = v; } };
   requestAnimationFrame(frame); return window.__mpLobby;
 }

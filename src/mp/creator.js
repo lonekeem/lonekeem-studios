@@ -201,7 +201,7 @@ export async function openCreator({ onClose, onPlay } = {}) {
     if (u) acct.append(el('span', {}, '● ' + ((u.user_metadata && u.user_metadata.name) || u.email || 'Signed in') + (r === 'admin' ? ' · admin' : '')), el('button', { on: { click: async () => { await signOut().catch(() => {}); refreshAcct(); } } }, 'Sign out'));
     else { acct.append(el('span', {}, 'Guest')); if (googleAllowed()) acct.append(el('button', { cls: 'gsi', on: { click: async e => { e.target.disabled = true; e.target.textContent = 'Opening Google…'; try { await signInGoogle(); } catch (err) { e.target.disabled = false; e.target.textContent = 'Sign in with Google'; acct.append(el('span', { style: 'color:#f88' }, 'Sign-in unavailable: ' + (err.message || err))); } } } }, 'Sign in with Google')); } };
   window.__mpRefreshAcct = refreshAcct; refreshAcct();
-  function close(play) { const out = play === true ? look : ownedSnap; running = false; renderer.dispose(); av && av.dispose(); root.remove(); (play === true ? onPlay : onClose)?.(out); }
+  function close(play) { const out = play === true ? look : ownedSnap; running = false; try { renderer.dispose(); renderer.forceContextLoss(); } catch (e) { /* gl */ } av && av.dispose(); root.remove(); (play === true ? onPlay : onClose)?.(out); }
   renderTabs(); await rebuild(look.base); renderBody(); setView('full'); requestAnimationFrame(frame);
   return { get look() { return look; }, root, close, setLook: l => { look = K.normalize(l); return rebuild(look.base).then(() => renderBody()); }, setTab: i => { tab = i; renderTabs(); renderBody(); setView(viewFor(TABS[i][0])); }, tabs: TABS.map(t => t[0]), av: () => av, setView, spinTo: a => { spin = a; } };
 }

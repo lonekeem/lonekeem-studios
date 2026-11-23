@@ -27,7 +27,10 @@
   var KEY='atq.modReload';
   function store(){ try{ return sessionStorage; }catch(e){ return null; } }
   function isModErr(m){ m=String(m||''); return /Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module|Failed to load module script|Unable to preload|vite:preloadError/i.test(m); }
+  function inPlay(){ try{ return !!(window.__atqBooted && (window.__mpTown || window.__mpLobby || (window.__atq && /^(play|paused|loading)$/.test(window.__atq.state||'')))); }catch(e){ return false; } }
   function reloadOnce(){
+    // v1.9.71: never yank a player out of a running game back to the loading screen because some late file failed; that waits for the menu
+    if(inPlay()){ try{ console.warn('[atq] module load failed during play; not reloading'); window.__atqNeedReload=1; }catch(e){} return true; }
     var s=store();
     if(s && s.getItem(KEY)==='1') return false;
     try{ if(s) s.setItem(KEY,'1'); }catch(e){}

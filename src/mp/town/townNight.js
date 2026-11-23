@@ -2,7 +2,7 @@
 // switch on at dusk, a flashlight at night, tougher / more zombies at night with a warning. Wall-clock phase = synced online.
 // Phone budget: 2 real point lights (nearest streetlights) + 1 flashlight, all created up front; everything else is emissive.
 import * as THREE from 'three';
-import { dnState, dnClockPhase, makeSkyDome, applySky, dnWatcher } from '../../game/daynight.js';
+import { dnState, dnClockPhase, makeSkyDome, applySky, dnWatcher, CYCLE } from '../../game/daynight.js';
 
 export function townDayNight({ scene, renderer, sun, hemi, cam, W, Z, toast, fogFar = 105, getMe }) {
   const S = {}; const sky = makeSkyDome(300); scene.add(sky); sky.onBeforeRender = () => sky.position.copy(cam.position);
@@ -42,14 +42,18 @@ export function townDayNight({ scene, renderer, sun, hemi, cam, W, Z, toast, fog
 #endif`); }; sid.customProgramCacheKey = () => 'atqWin2'; sid.needsUpdate = true; }
   const warn = dnWatcher((m) => toast && toast(m, 3.2));
   const fwd = new THREE.Vector3(); let acc = 1;
+  // v1.9.71: every visit starts in the morning (just after sunrise), then the normal 12-minute day/night runs on from there.
+  // Each player keeps their own clock (jobs, horde nights and the boss are per player too), so the sky is no longer wall-clock synced between players.
+  const START_P = .3, t0 = Date.now(); const phase = () => (START_P + (Date.now() - t0) / 1000 / CYCLE) % 1;
+  const moon = new THREE.Color('#9fb4d6'), moonG = new THREE.Color('#3a4636'), nFog = new THREE.Color('#34465a'), nHor = new THREE.Color('#3c5068'), nZen = new THREE.Color('#1a2840');
   const update = (dt) => {
-    const p = typeof window !== 'undefined' && window.__dnP != null ? window.__dnP : dnClockPhase(); dnState(p, S);
+    const p = typeof window !== 'undefined' && window.__dnP != null ? window.__dnP : phase(); dnState(p, S); if (S.nightK > 0) { const k = S.nightK; S.fog.lerp(nFog, .55 * k); S.hor.lerp(nHor, .5 * k); S.zen.lerp(nZen, .35 * k); } /* v1.9.71: moonlit blue night instead of near-black */
     applySky(sky.userData.U, S);
-    sun.color.copy(S.sun); sun.intensity = S.sunI; sun.position.copy(sun.target.position).addScaledVector(S.sunDir, 80);
-    if (hemi) { hemi.color.copy(S.hs); hemi.groundColor.copy(S.hg); hemi.intensity = 1.25 * S.hemiI / 1.3 + .55 * S.nightK; /* v1.9.66: a touch more moonlight so streets and storefronts read at night */ }
-    if (scene.fog) { scene.fog.color.copy(S.fog); scene.fog.far = fogFar * (1 - .22 * S.nightK); scene.fog.near = 28 * (1 - .5 * S.nightK); }
+    sun.color.copy(S.sun); sun.intensity = S.sunI + .9 * S.nightK; sun.position.copy(sun.target.position).addScaledVector(S.sunDir, 80);
+    if (hemi) { hemi.color.copy(S.hs).lerp(moon, .45 * S.nightK); hemi.groundColor.copy(S.hg).lerp(moonG, .5 * S.nightK); hemi.intensity = 1.25 * S.hemiI / 1.3 + 1.45 * S.nightK; /* v1.9.71: brighter blue moonlight so roads, houses and zombies read on a phone */ /* v1.9.66: a touch more moonlight so streets and storefronts read at night */ }
+    if (scene.fog) { scene.fog.color.copy(S.fog); scene.fog.far = fogFar * (1 - .1 * S.nightK); scene.fog.near = 28 * (1 - .3 * S.nightK); }
     if (scene.background && scene.background.isColor) scene.background.copy(S.fog);
-    renderer.toneMappingExposure = exp0 * S.exp * (1 + .2 * S.nightK); /* v1.9.66 slightly brighter nights */
+    renderer.toneMappingExposure = exp0 * S.exp * (1 + .55 * S.nightK); /* v1.9.66 slightly brighter nights */
     headM.emissiveIntensity = 3.2 * S.lampK; poolM.opacity = S.lampK; coneU.uK.value = S.lampK; cones.visible = S.lampK > .01; winU.value = S.lampK; if (W && W.nightSigns) for (const m of W.nightSigns) m.emissiveIntensity = .75 * S.lampK;
     fl.intensity = 9 * S.flashK; cam.getWorldDirection(fwd); fwd.y = Math.max(-.35, Math.min(.2, fwd.y)); fwd.normalize();
     { const me = getMe && getMe(); // torch rides at the player's chest, just in front of them, so the beam lights the street and never the player's own back

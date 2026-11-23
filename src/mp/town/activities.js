@@ -47,7 +47,7 @@ const JOBS = [
 ];
 const REPEAT_S = 600; // a finished job comes back after 10 minutes
 
-export function townActivities({ scene, W, Z, me, cars, bag, toast, aud, dn, col, root, save, insideB, solo }) {
+export function townActivities({ scene, W, Z, me, cars, bag, toast, aud, dn, col, root, save, insideB, solo, cam }) {
   const freeSpot = (x, z, r = .7) => { if (!col.hit(x, z, r)) return [x, z]; for (let k = 1; k < 30; k++) { const a = k * 2.4, d = .8 * k; const nx = x + Math.cos(a) * d, nz = z + Math.sin(a) * d; if (!col.hit(nx, nz, r)) return [nx, nz]; } return [x, z]; };
   const place = (key) => { const p = Array.isArray(key) ? key : P[key]; const f = freeSpot(p[0], p[1]); return { x: f[0], z: f[1], name: Array.isArray(key) ? 'the checkpoint' : P[key][2] }; };
   const pay = (n, why) => { n = Math.round(n); bag.add('cash', n); try { save(); } catch (e) { /* wallet */ } toast(`+$${n} · ${why}`, 2.6); try { aud.play && aud.play('coins', { vol: .6, flat: true }); } catch (e) { /* sfx */ } };
@@ -61,6 +61,15 @@ export function townActivities({ scene, W, Z, me, cars, bag, toast, aud, dn, col
   const tgt = new THREE.Mesh(beamG, tgtM); tgt.frustumCulled = false; tgt.visible = false; tgt.renderOrder = 4; scene.add(tgt);
   const ring = new THREE.Mesh(new THREE.RingGeometry(1.6, 2.1, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ffd27a', transparent: true, opacity: .7, depthWrite: false, fog: false })); ring.position.y = .07; ring.visible = false; scene.add(ring);
   const jobPos = {}; for (const j of JOBS) jobPos[j.id] = place(j.at);
+  // v1.9.71 job guide arrow (like Kemy's): a glowing chevron floating above you (on foot or in a car) that turns toward the job target, + distance
+  const arrowG = (() => { const s = new THREE.Shape(); s.moveTo(0, .95); s.lineTo(.62, .05); s.lineTo(.24, .18); s.lineTo(.24, -.7); s.lineTo(-.24, -.7); s.lineTo(-.24, .18); s.lineTo(-.62, .05); s.closePath(); const g = new THREE.ExtrudeGeometry(s, { depth: .14, bevelEnabled: false }); g.translate(0, 0, -.07); g.rotateX(-Math.PI / 2); return g; })(); // points +Z after the rotation? (+Y shape -> -Z); flipped below
+  const arrow = new THREE.Mesh(arrowG, new THREE.MeshBasicMaterial({ color: '#5cff8a', transparent: true, opacity: .92, depthTest: false, depthWrite: false, fog: false })); arrow.renderOrder = 30; arrow.frustumCulled = false; arrow.visible = false; scene.add(arrow);
+  const arrowTxt = el('div', {}); arrowTxt.style.cssText = 'position:absolute;left:0;top:0;transform:translate(-50%,-100%);z-index:7;pointer-events:none;color:#c9ffd8;font:800 12px system-ui,sans-serif;text-shadow:0 1px 3px #000,0 0 6px #000;white-space:nowrap;display:none'; root.append(arrowTxt);
+  const _av = new THREE.Vector3();
+  function arrowUpdate() { let t = st.job && st.job.target; if (!t && !st.job && st.track && jobPos[st.track]) t = jobPos[st.track]; const d = t ? Math.hypot(t.x - me.x, t.z - me.z) : 0;
+    if (!t || d < 5 || me.dead > 0) { arrow.visible = false; arrowTxt.style.display = 'none'; return; }
+    const y = me.drv ? 2.5 : .5, bob = Math.sin(performance.now() / 260) * .06, ux = (t.x - me.x) / d, uz = (t.z - me.z) / d, lead = me.drv ? 0 : 1.7; /* on foot: a chevron on the ground just ahead of you (the close camera hides anything above your head) */ arrow.visible = true; arrow.position.set(me.x + ux * lead, y + bob, me.z + uz * lead); arrow.rotation.set(0, Math.atan2(t.x - me.x, t.z - me.z) + Math.PI, 0); arrow.scale.setScalar(me.drv ? .75 : .45);
+    if (cam) { _av.set(arrow.position.x, y + .45, arrow.position.z).project(cam); if (_av.z < 1) { arrowTxt.style.display = ''; arrowTxt.style.left = ((_av.x + 1) / 2 * innerWidth).toFixed(0) + 'px'; arrowTxt.style.top = ((1 - _av.y) / 2 * innerHeight).toFixed(0) + 'px'; arrowTxt.textContent = (d >= 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'); } else arrowTxt.style.display = 'none'; } }
   // ---------- state ----------
   const st = { job: null, track: null, done: LS.get('atq.town.jobs', {}), daily: null, safe: LS.get('atq.town.safe', null), traps: LS.get('atq.town.traps', { spike: 1, snare: 1 }), visited: {}, horde: { night: false, boss: null, bossDone: false, waveT: 0, lastP: null } };
   const loadDaily = () => { const d = LS.get('atq.town.daily', null); const day = DAY(); if (d && d.day === day) return d; const r = (() => { let s = hsh(day); return () => { s = Math.imul(s ^ (s >>> 15), 2246822507) >>> 0; s ^= s >>> 13; return (s >>> 0) / 4294967296; }; })();
@@ -158,18 +167,25 @@ export function townActivities({ scene, W, Z, me, cars, bag, toast, aud, dn, col
       { t: 'Orange light beams mark jobs. Walk into one and tap ✋ to start it.', ev: 'job' },
       { t: 'Get in a car: walk up to it and tap ✋. Some are locked, so find an unlocked one.', ev: 'drive' },
       { t: 'Before night, make a house your safe house, barricade its doors and set traps. Each night ends with a boss. Good luck!', ev: 'end' }];
-    const box = el('div', {}); box.style.cssText = 'position:absolute;left:84px;top:140px;width:min(36vw,320px);background:#0f171bf0;border:1px solid #f0b44a99;border-radius:12px;padding:9px 12px;color:#f5ecd8;font:600 13px/1.35 system-ui,sans-serif;z-index:25;display:none;gap:8px;align-items:center';
+    // v1.9.71: the box lives on <body> above the touch HUD (it used to sit inside #mpt under #stickZone, which ate every tap on Next/Skip),
+    // top-centre between the left and right button columns. Taps are handled on touchend (iOS), clicks for mouse. Progress + skip are saved,
+    // and a step whose action doesn't happen (e.g. a full bag can't loot) moves on by itself after a while.
+    const box = el('div', { cls: 'actTut' }); box.style.cssText = 'position:fixed;left:50%;top:calc(max(6px, env(safe-area-inset-top)) + 106px);transform:translateX(-50%);width:min(52vw,420px);box-sizing:border-box;background:#0f171bf0;border:1px solid #f0b44a99;border-radius:12px;padding:8px 34px 8px 12px;color:#f5ecd8;font:600 12.5px/1.3 system-ui,sans-serif;z-index:74;display:none;gap:8px;align-items:center;pointer-events:auto;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent';
     const txt = el('div', {}); txt.style.flex = '1'; const step = el('div', {}); step.style.cssText = 'font-size:10.5px;color:#f0b44a;margin-bottom:2px';
-    const next = el('button', {}, 'Next'), skip = el('button', {}, 'Skip'); for (const b of [next, skip]) b.style.cssText = 'background:#f0b44a;color:#1b1206;border:0;border-radius:8px;padding:6px 10px;font-weight:800;font-size:12px'; skip.style.background = '#ffffff22'; skip.style.color = '#f5ecd8';
-    const col2 = el('div', {}, step, txt); col2.style.flex = '1'; box.append(col2, next, skip); box.style.display = 'none'; root.append(box); ['touchstart', 'pointerdown', 'mousedown'].forEach(t => box.addEventListener(t, e => e.stopPropagation(), { passive: true }));
-    let i = -1, on = false, t0 = 0, mv = 0, last = null; const show = () => { const s = STEPS[i]; step.textContent = `TUTORIAL · ${i + 1} / ${STEPS.length}`; txt.textContent = s.t; next.textContent = i === STEPS.length - 1 ? 'Done' : 'Next'; };
-    const go = (k) => { i = k; t0 = 0; if (i >= STEPS.length) { stop(); return; } show(); };
+    const next = el('button', {}, 'Next'), skip = el('button', {}, 'Skip'), xb = el('button', { 'aria-label': 'Close tutorial' }, '✕'); for (const q of [next, skip]) q.style.cssText = 'background:#f0b44a;color:#1b1206;border:0;border-radius:8px;padding:9px 12px;min-height:38px;font-weight:800;font-size:12.5px;pointer-events:auto;touch-action:manipulation'; skip.style.background = '#ffffff22'; skip.style.color = '#f5ecd8';
+    xb.style.cssText = 'position:absolute;top:0;right:0;width:32px;height:32px;background:none;border:0;color:#f5ecd8;font:700 15px system-ui,sans-serif;pointer-events:auto;touch-action:manipulation;opacity:.85';
+    const col2 = el('div', {}, step, txt); col2.style.flex = '1'; box.append(col2, next, skip, xb); document.body.append(box); ['touchstart', 'touchmove', 'pointerdown', 'mousedown'].forEach(t => box.addEventListener(t, e => e.stopPropagation(), { passive: true }));
+    const tapped = (q, fn) => { let tt = 0; q.addEventListener('touchend', e => { e.preventDefault(); e.stopPropagation(); tt = performance.now(); fn(); }, { passive: false }); q.addEventListener('click', e => { e.stopPropagation(); if (performance.now() - tt < 700) return; fn(); }); };
+    let i = -1, on = false, t0 = 0, mv = 0, last = null; const AUTO = 40; const show = () => { const s = STEPS[i]; step.textContent = `TUTORIAL · ${i + 1} / ${STEPS.length}`; txt.textContent = s.t; next.textContent = i === STEPS.length - 1 ? 'Done' : 'Next'; };
+    const go = (k) => { i = k; t0 = 0; mv = 0; last = null; if (i >= STEPS.length) { stop(); return; } LS.set('atq.town.tutStep', i); show(); };
     const stop = () => { on = false; box.style.display = 'none'; LS.set('atq.town.tut', 1); };
-    next.addEventListener('click', e => { e.stopPropagation(); go(i + 1); }); skip.addEventListener('click', e => { e.stopPropagation(); stop(); toast('Tutorial skipped. Replay it from Jobs.', 2); });
-    return { start(force) { if (!force && LS.get('atq.town.tut', 0)) return; on = true; box.style.display = 'flex'; mv = 0; last = null; go(0); },
+    tapped(next, () => { if (on) go(i + 1); }); const close = () => { if (!on) return; stop(); toast('Tutorial closed. Replay it from Jobs.', 2); }; tapped(skip, close); tapped(xb, close);
+    return { box, start(force) { if (!force && LS.get('atq.town.tut', 0)) return; on = true; box.style.display = 'flex'; const k = force ? 0 : Math.max(0, Math.min(STEPS.length - 1, LS.get('atq.town.tutStep', 0) | 0)); go(k); },
       ev(k) { if (!on) return; if (STEPS[i] && STEPS[i].ev === k) setTimeout(() => { if (on && STEPS[i] && STEPS[i].ev === k) go(i + 1); }, 900); },
-      update(dt) { if (!on) return; t0 += dt; if (STEPS[i].ev === 'move') { if (last) mv += Math.hypot(me.x - last[0], me.z - last[1]); last = [me.x, me.z]; if (mv > 6) { mv = -1e9; this.ev('move'); } } if (STEPS[i].ev === 'drive' && me.drv) this.ev('drive'); },
-      skip() { stop(); }, get on() { return on; } }; })();
+      update(dt) { if (!on || !STEPS[i]) return; t0 += dt; if (STEPS[i].ev === 'move') { if (last) mv += Math.hypot(me.x - last[0], me.z - last[1]); last = [me.x, me.z]; if (mv > 6) { mv = -1e9; this.ev('move'); } } if (STEPS[i].ev === 'drive' && me.drv) this.ev('drive');
+        if (t0 > AUTO) go(i + 1); /* never park on one step forever (the last card closes itself) */ },
+      hide(v) { if (on) box.style.display = v ? 'none' : 'flex'; },
+      skip() { stop(); }, dispose() { box.remove(); }, get on() { return on; } }; })();
   // ---------- polling trackers (kills / loot / driving / landmarks) ----------
   let lastKilled = Z && Z.stats ? Z.stats().killed : 0, lastLooted = -1, drvLast = null, drvAcc = 0, pollT = 0;
   const lootedCount = () => (W.containers || []).reduce((n, c) => n + (c.looted ? 1 : 0), 0);
@@ -182,7 +198,7 @@ export function townActivities({ scene, W, Z, me, cars, bag, toast, aud, dn, col
   const tmpM = new THREE.Matrix4();
   function update(dt) { const t = performance.now() / 1000; startM.uniforms.uT.value = tgtM.uniforms.uT.value = t;
     const now = Date.now() / 1000; let n = 0; for (const j of JOBS) { if (st.job || (st.done[j.id] || 0) + REPEAT_S > now) continue; const p = jobPos[j.id]; tmpM.makeTranslation(p.x, 0, p.z); starts.setMatrixAt(n++, tmpM); } starts.count = n; starts.instanceMatrix.needsUpdate = true;
-    if (!st.job && st.track) { const p = jobPos[st.track]; tgt.visible = false; } jobUpdate(dt); trapUpdate(dt); barUpdate(dt); hordeUpdate(dt); poll(dt); TUT.update(dt);
+    if (!st.job && st.track) { const p = jobPos[st.track]; tgt.visible = false; } jobUpdate(dt); trapUpdate(dt); barUpdate(dt); hordeUpdate(dt); poll(dt); TUT.update(dt); arrowUpdate();
     const s = st.job; if (s) { obj.style.display = ''; obj.textContent = `JOB · ${s.def.name} — ${s.status}${s.def.time ? ' · ' + mmss(s.left) : ''}`; } else obj.style.display = 'none';
     if (panelOn && (t * 2 | 0) !== (update._t | 0)) { update._t = t * 2 | 0; } }
   function acts(px, pz) { const L = []; if (me.drv) return L; const now = Date.now() / 1000;
@@ -203,7 +219,7 @@ export function townActivities({ scene, W, Z, me, cars, bag, toast, aud, dn, col
     if (st.horde.boss) { const q = st.horde.boss.root.position; dot(q.x, q.z, '#ff3b2f', 6, true); }
     for (const b of bars) { g.fillStyle = '#c89a5a'; g.fillRect(X(b.x) - 2, Z2(b.z) - 2, 4, 4); } }
   function safeSpawn() { const sb = st.safe && W.buildings.find(b => (b.cfg && b.cfg.id) === st.safe); if (!sb) return null; const x = (sb.rect.x0 + sb.rect.x1) / 2, z = (sb.rect.z0 + sb.rect.z1) / 2; const f = freeSpot(x, z, .5); return { x: f[0], z: f[1] }; }
-  function dispose() { for (const o of [starts, tgt, ring]) scene.remove(o); for (const m of pickups) scene.remove(m); for (const b of bars) scene.remove(b.g); for (const t of traps) scene.remove(t.g); for (const e of [obj, panel, css, bossBar]) e.remove(); }
+  function dispose() { for (const o of [starts, tgt, ring, arrow]) scene.remove(o); try { arrowTxt.remove(); } catch (e) { /* arrow */ } for (const m of pickups) scene.remove(m); for (const b of bars) scene.remove(b.g); for (const t of traps) scene.remove(t.g); for (const e of [obj, panel, css, bossBar]) e.remove(); try { TUT.dispose(); } catch (e) { /* tutorial */ } }
   setTimeout(() => TUT.start(false), 2500);
   return { update, acts, mini, openPanel, safeSpawn, dispose, state: st, TUT, startJob: id => { const j = JOBS.find(q => q.id === id); if (j) startJob(j); }, jobs: JOBS, jobPos, placeTrap, buildBar, bars, traps };
 }

@@ -66,7 +66,7 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
     const wallet = () => { const s = (window.__atq && window.__atq.save) || {}; return s; };
     const root = el('div', { id: 'prof' }); document.body.append(root);
     let renderer = null, scene, cam, av = null, gen = 0, running = true, rot = 0, swayT = 0, drag = null, zoom = 0, t = 0, last = performance.now(), auto = true;
-    const finish = (p) => { running = false; try { renderer && renderer.dispose(); av && av.dispose(); } catch (e) { /* ignore */ } root.remove(); resolve(p); };
+    const finish = (p) => { running = false; try { renderer && (renderer.dispose(), renderer.forceContextLoss()); av && av.dispose(); } catch (e) { /* ignore */ } root.remove(); resolve(p); };
 
     function welcome() { root.innerHTML = '';
       const w = el('div', { cls: 'welcome' }, el('h1', {}, 'Play online'), el('p', {}, 'Make a profile for your own survivor. Your character, cash and items save to it.'));
