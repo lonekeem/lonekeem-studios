@@ -108,7 +108,7 @@ export const steps = [
 function mop(b) { const m = new THREE.Group(), pole = new THREE.Mesh(new THREE.CylinderGeometry(.025, .025, 1.7, 8), new THREE.MeshStandardMaterial({ color: '#8a6a44' })); pole.position.y = .35; m.add(pole);
   const head = new THREE.Mesh(new THREE.SphereGeometry(.16, 10, 8), new THREE.MeshStandardMaterial({ color: '#cfcab8', roughness: 1 })); head.scale.set(1, .7, 1); head.position.y = 1.22; m.add(head); const sm = new THREE.Mesh(new THREE.SphereGeometry(.17, 8, 6), new THREE.MeshStandardMaterial({ color: '#5a0a0a' })); sm.scale.set(.6, .35, .6); sm.position.set(0, 1.3, .05); m.add(sm);
   m.rotation.set(PI / 2, 0, 0); m.position.set(0, .08, .02); b.attach('DEF-hand.R', m); b.mop = m; }
-function throwBreakers(g) { const D = g.stepData; if (D.pwr) return; D.pwr = true; D.uses = []; g.wpTarget = null; const pp = API.panelPos; g.cut = { anim: 'Interact', cam: V(pp[0] - 2.2, 1.8, pp[1] + 3), look: V(pp[0], 1.5, pp[1] - 1.2) }; g.objective('', '');
+function throwBreakers(g) { const D = g.stepData; if (D.pwr) return; D.pwr = true; D.uses = []; g.wpTarget = null; const pp = API.panelPos; g.cut = { anim: 'Interact', cam: V(pp[0] + .4, 1.9, pp[1] + 3.2), look: V(pp[0], 1.5, pp[1] - 1.2) }; g.objective('', '');
   g.say([['keem', "Fuse one. Fuse two. Fuse three."], ['nia', "Don't forget the big red lever. It always has a big red lever."]], () => {
     g.audio.thud(); g.shake(.5); API.setPower(true); [350, 700, 900, 1250].forEach((t, i) => setTimeout(() => { API.setPower(i % 2 === 1); if (i === 3) { API.setPower(true); } g.audio.click && g.audio.click(); }, t));
     setTimeout(() => { API.doorHall.set(true); g.audio.thud(); g.shake(.4); g.audio.sting && g.audio.sting(); }, 1500);
