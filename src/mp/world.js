@@ -8,6 +8,8 @@ import { onlineAllowed, showKidsOnlineBlock } from '../ui/gate.js';
 import { profiles, openProfileScreen, syncOnSignIn, signedOut, onSyncStatus, watchTitle } from './cloud.js';
 import { getActiveId, getPlayLook, getChar, KEEM_ID } from './chars.js';
 import { pickMode, missionLabel, COOP_MAX } from './coop/picker.js';
+import { attachClans } from './clanui.js';
+import { refreshMine, myClanBrief } from './clans.js';
 const roomMax = r => (r && r.mission ? COOP_MAX : MAX_PLAYERS);
 const $ = s => document.querySelector(s);
 const LS = (() => { try { localStorage.setItem('__w', 1); localStorage.removeItem('__w'); return localStorage; } catch (e) { const m = {}; return { getItem: k => (k in m ? m[k] : null), setItem: (k, v) => { m[k] = String(v); }, removeItem: k => { delete m[k]; } }; } })();
@@ -100,13 +102,15 @@ async function joinRoom(room, title, ui, opts = {}) {
     if (!PR.hasProfile()) { const made = await openProfileScreen('auto'); if (!made) return; }
     const picked = await chooseLook(opts); if (!picked) return; // stay on the lobby
     if (ui) ui.hide(); $('#title').classList.add('hidden');
-    const p = PR.getProfile(); const look = Object.assign({}, picked.look, { name: (picked.look && picked.look.name) || (p && p.name) || 'Survivor' });
+    const p = PR.getProfile(); try { await refreshMine(); } catch (e) { /* offline / guest */ }
+    const clan = myClanBrief();
+    const look = Object.assign({}, picked.look, { name: (picked.look && picked.look.name) || (p && p.name) || 'Survivor', clan });
     let L = null;
     if (!test) {
       try { L = await lobbyChannel(); await L.ch.track({ room, title: title || (p.name + "'s game"), name: p.name, char: look.name, avatar: p.avatarUrl || null, at: Date.now(), mission: opts.mission || null }); } catch (e) { console.warn('[world] could not list this game in the lobby:', e.message); }
     }
     const tw = await import('./town/town.js');
-    await tw.enterTown({ look, room, local: test, mission: opts.mission || null, onExit: () => { try { L && L.ch.untrack(); } catch (e) { /* ignore */ } back(); } });
+    await tw.enterTown({ look, room, local: test, mission: opts.mission || null, clan, onExit: () => { try { L && L.ch.untrack(); } catch (e) { /* ignore */ } back(); } });
   } catch (e) { if (reloadIfStale(e)) return; console.warn('[world] join failed:', e && e.message); back("Couldn't start the game. " + (e && e.message ? e.message : 'Please try again.')); }
 }
 
@@ -120,17 +124,22 @@ function buildUI() {
     <div class="wprof" id="wProf"></div>
     <div class="wflash hidden" id="wFlash" role="status"></div>
     <div class="wwel hidden" id="wWel"></div>
-    <div class="wseg" role="tablist"><button data-t="games" role="tab">World Lobby</button><button data-t="board" role="tab">Leaderboard</button></div>
+    <div class="wseg" id="wTabs" role="tablist"><button data-t="games" role="tab">World Lobby</button><button data-t="board" role="tab">Leaderboard</button><button data-t="clans" role="tab">Clans</button></div>
     <div class="wbody" id="wGames">
       <div class="wact"><button class="primary wbig" id="btnQuickJoin">Quick Join</button><button class="wbig" id="btnCreateGame">Create Game</button><button class="wbig" id="btnPractice">Practice Alone</button></div>
       <div class="wsub small" id="wGamesInfo">Open games from players anywhere in the world</div>
       <div class="wlist" id="wRooms"></div>
     </div>
     <div class="wbody hidden" id="wBoard">
-      <div class="wseg wsort"><button data-s="wave">Best Wave</button><button data-s="kills">Kills</button><button data-s="hs">Headshots</button></div>
+      <div class="wseg wsort" id="wBoardKind"><button data-kind="players" class="sel">Players</button><button data-kind="clans">Clans</button></div>
+      <div class="wseg wsort" id="wBoardSort"><button data-s="wave">Best Wave</button><button data-s="kills">Kills</button><button data-s="hs">Headshots</button></div>
       <div class="wme" id="wMe"></div>
       <div class="wtable" id="wRows"></div>
-      <div class="wsub small">Survival runs only · updates when a run ends</div>
+      <div class="wsub small" id="wBoardSub">Survival runs only · updates when a run ends</div>
+    </div>
+    <div class="wbody hidden" id="wClans">
+      <div id="cInbox" class="cinbox hidden"></div>
+      <div id="cMain" class="cmain"></div>
     </div></div>`;
   document.body.append(root);
   const q = s => root.querySelector(s); let tab = 'games', sort = 'wave', prof = null;
@@ -142,8 +151,8 @@ function buildUI() {
   };
   q('.wback').onclick = () => { ui.hide(); $('#title').classList.remove('hidden'); };
   root.querySelectorAll('.wseg:not(.wsort) button').forEach(b => b.onclick = () => setTab(b.dataset.t));
-  root.querySelectorAll('.wsort button').forEach(b => b.onclick = () => { sort = b.dataset.s; loadBoard(); });
-  function setTab(t) { tab = t === 'board' ? 'board' : 'games'; root.querySelectorAll('.wseg:not(.wsort) button').forEach(b => b.classList.toggle('sel', b.dataset.t === tab)); const games = q('#wGames'), board = q('#wBoard'); if (games) games.classList.toggle('hidden', tab !== 'games'); if (board) board.classList.toggle('hidden', tab !== 'board'); if (tab === 'board') loadBoard(); }
+  root.querySelectorAll('.wsort button[data-s]').forEach(b => b.onclick = () => { sort = b.dataset.s; loadBoard(); });
+  function setTab(t) { tab = (t === 'board' || t === 'clans') ? t : 'games'; root.querySelectorAll('.wseg:not(.wsort) button').forEach(b => b.classList.toggle('sel', b.dataset.t === tab)); const games = q('#wGames'), board = q('#wBoard'), clans = q('#wClans'); if (games) games.classList.toggle('hidden', tab !== 'games'); if (board) board.classList.toggle('hidden', tab !== 'board'); if (clans) clans.classList.toggle('hidden', tab !== 'clans'); if (tab === 'board') loadBoard(); if (tab === 'clans' && ui._clans) ui._clans.show(); }
   let syncing = false, pendingNew = null;
   onSyncStatus(w => { const e = q('#wSync'); if (e && w === 'saving') e.textContent = '☁ Saving…'; if (e && w === 'saved') e.textContent = '☁ Signed in with Google · synced'; if (w === 'conflict') flash('Loaded newer progress from your other device'); });
   function markOwner(id) { if (!id) return; try { localStorage.setItem('atq.profile.owner', id); } catch (e) { /* ignore */ } }
@@ -279,8 +288,15 @@ function buildUI() {
     catch (e) { if (reloadIfStale(e)) return; $('#title').classList.remove('hidden'); ui.open('games'); const s = q('#wGamesInfo'); if (s) { s.textContent = "Couldn't start practice. " + (e.message || 'Please try again.'); s.classList.add('warn'); } }
   };
   async function loadBoard() {
-    root.querySelectorAll('.wsort button').forEach(b => b.classList.toggle('sel', b.dataset.s === sort));
+    root.querySelectorAll('#wBoardSort button[data-s]').forEach(b => b.classList.toggle('sel', b.dataset.s === sort));
     const rowsEl = q('#wRows'), meEl = q('#wMe'); rowsEl.innerHTML = '<div class="wempty small">Loading…</div>';
+    if (ui._clans && ui._clans.boardKind() === 'clans') {
+      const sub = q('#wBoardSub'); if (sub) sub.textContent = 'Sum of real member Survival scores · no fake totals';
+      try { await ui._clans.loadClanBoardInto(rowsEl, meEl, sort === 'wave' || sort === 'hs' ? sort : 'kills'); }
+      catch (e) { rowsEl.innerHTML = `<div class="wempty">Can't load the clan board.<br><span class="small">${esc(e.message || e)}</span><br><button id="wBoardRetry">Retry</button></div>`; meEl.innerHTML = ''; const rb = q('#wBoardRetry'); if (rb) rb.onclick = loadBoard; }
+      return;
+    }
+    { const sub = q('#wBoardSub'); if (sub) sub.textContent = 'Survival runs only · updates when a run ends'; }
     try {
       const d = await topPlayers(sort); const rows = d.rows || [];
       const head = `<div class="wtr wth"><span class="wrk">#</span><span class="wnm">Player</span><span class="${sort === 'wave' ? 'on' : ''}">Wave</span><span class="${sort === 'kills' ? 'on' : ''}">Kills</span><span class="${sort === 'hs' ? 'on' : ''}">Head</span></div>`;
@@ -289,6 +305,13 @@ function buildUI() {
     } catch (e) { rowsEl.innerHTML = `<div class="wempty">Can't load the leaderboard.<br><span class="small">${esc(e.message || e)}</span><br><button id="wBoardRetry">Retry</button></div>`; meEl.innerHTML = ''; const rb = q('#wBoardRetry'); if (rb) rb.onclick = loadBoard; }
   }
   installHook(ui);
+  ui._clans = attachClans(root, {
+    esc, avatarHTML,
+    flash: (msg) => flash(msg),
+    requireSignIn: () => google(q('#wGoogle') || q('#wProf')),
+    profile: () => profile(),
+    onBoardKind: kind => { loadBoard(); },
+  });
   return ui;
 }
 

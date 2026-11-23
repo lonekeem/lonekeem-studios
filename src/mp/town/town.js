@@ -34,8 +34,9 @@ import { onAppLeave, onAppReturn } from '../../bgPause.js';
 import { townDayNight } from './townNight.js';
 import { attachInfest } from './infest.js';
 import { patchCutaway, setCutaway, occludingWalls, makeRoomLights, updateRoomLights, INDOOR_CAM } from './indoor.js';
+import { nameTagSprite, attachClanBadge } from '../clanBanner.js';
 
-function nameTag(text) { const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#000a'; g.roundRect ? g.roundRect(8, 10, 240, 44, 14) : g.rect(8, 10, 240, 44); g.fill(); g.fillStyle = '#fff'; g.font = '600 28px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text.slice(0, 16), 128, 33); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true })); s.scale.set(.5, .125, 1); s.renderOrder = 20; return s; }
+function nameTag(text, clan) { return nameTagSprite(THREE, text, clan); }
 
 /* v1.9.77: the shared input shim used to be built inside enterTown, so its skipLine() closed over the first town visit and kept that whole town (~190 MB: scene, cars, renderer) alive for the rest of the session */
 /* v1.9.77: same for the one-time audio-unlock listener (it was a closure inside the first town visit) */
@@ -110,7 +111,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   // online (Supabase Realtime) when reachable, otherwise solo (BroadcastChannel: other tabs of this browser only)
   const localNet = !!(solo || local || /^(w-test-|test-)/i.test(String(room || '')));
   const onl = localNet ? null : await goOnline(room); let online = !!onl; if (onl) onl.transport.onstatus = ok => { online = ok; };
-  const net = new Net(room, onl ? onl.transport : undefined); net.me = { name: look.name || 'Survivor', look }; net.hello();
+  const net = new Net(room, onl ? onl.transport : undefined); const clan = opts.clan || (look && look.clan) || (typeof window !== 'undefined' && window.__atqClanPreview) || null; net.me = { name: look.name || 'Survivor', look, clan }; net.hello();
   const models = await loadCarModels(); const carMgr = createCars({ scene, W, models }); const cars = carMgr.cars; for (const c of cars) W.containers.push(c.cabin, c.trunk);
   // cars: no real shadow casting (10 meshes each in the shadow pass) -> one soft blob plane per car instead
   { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const g2 = cv.getContext('2d'); const gr = g2.createRadialGradient(32, 32, 4, 32, 32, 31); gr.addColorStop(0, 'rgba(0,0,0,.62)'); gr.addColorStop(.6, 'rgba(0,0,0,.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g2.fillStyle = gr; g2.fillRect(0, 0, 64, 64); const bt = new THREE.CanvasTexture(cv); const bm = new THREE.MeshBasicMaterial({ map: bt, transparent: true, depthWrite: false, fog: false }); bm.polygonOffset = true; bm.polygonOffsetFactor = -2;
@@ -118,7 +119,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   const carBy = id => cars.find(c => c.id === id);
   const S = { roll: 0, atk: 0, atkHit: 0, vy: 0, y: 0, crouch: false, aim: false, shotT: 0, stun: 0, combo: 0, spd: 0 }; const me = { av: null, y: 0, x: SPAWN.x, z: SPAWN.z, ry: SPAWN.ry, sp: 0, drv: null, hp: 100, swing: 0, dead: 0, hitCd: 0, prot: 0 }; const remotes = new Map();
   const mkAvatar = async lk => { const L = lk || {}; const bare = !L.exclusive && !L.skin && !L.v; /* v1.9.54: a look with no dress data (missing/old/partial save) shows Keem instead of an undressed base body */ if (L.exclusive === 'skin.keem_story' || bare) { try { return await makeKeemChar(); } catch (e) { console.warn('keem', e); } } const base = L.base || 'mp_m1'; const tpl = await loadBase(base); const av = new Avatar(tpl); try { dress(av, Object.assign({ base }, L, L.exclusive === 'skin.keem_story' ? {} : { exclusive: undefined })); } catch (e) { console.warn('dress', e); } try { av.motion = await makeMotion(av); } catch (e) { console.warn('motion', e); } return av; };
-  me.av = await mkAvatar(look); scene.add(me.av.root); const myTag = nameTag(net.me.name); scene.add(myTag);
+  me.av = await mkAvatar(look); scene.add(me.av.root); try { attachClanBadge(me.av, clan, THREE); } catch (e) { console.warn('clan badge', e); } const myTag = nameTag(net.me.name, clan); scene.add(myTag);
   // ---- bodies (persistent corpses, drawn by the zombies module if present) ----
   // sounds: the story game's AudioSys (samples + synth fallback); fails silent if audio is blocked
   const aud = (useG && G.audio) ? G.audio : (window.__atq && window.__atq.audio) || new AudioSys({ vol: .9, music: .5, sfxVol: 1, voiceVol: 1, voices: true }); // reuse the title's already-unlocked context when there is one (iOS) try { aud.init(); } catch (e) { /* no audio */ }
@@ -378,7 +379,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
     if (H.frame) try { H.frame(dt, t); } catch (e) { console.warn('[coop]', e); }
     renderer.render(scene, cam);
   }
-  net.onHello = async p => { let r = remotes.get(p.id); if (!r) { r = { id: p.id, x: 0, z: 0, ry: 0, sp: 0 }; remotes.set(p.id, r); } if (!p.look) return; const av = await mkAvatar(p.look); if (r.av) { scene.remove(r.av.root); r.av.dispose(); } r.av = av; scene.add(av.root); if (r.tag) scene.remove(r.tag); r.tag = nameTag(p.name || 'Player'); scene.add(r.tag); };
+  net.onHello = async p => { let r = remotes.get(p.id); if (!r) { r = { id: p.id, x: 0, z: 0, ry: 0, sp: 0 }; remotes.set(p.id, r); } if (!p.look) return; const av = await mkAvatar(p.look); if (r.av) { scene.remove(r.av.root); r.av.dispose(); } r.av = av; scene.add(av.root); try { attachClanBadge(av, p.clan, THREE); } catch (e) { /* badge */ } if (r.tag) scene.remove(r.tag); r.tag = nameTag(p.name || 'Player', p.clan); scene.add(r.tag); };
   net.onLeave = p => { const r = remotes.get(p.id); if (r) { r.av && (scene.remove(r.av.root), r.av.dispose()); r.tag && scene.remove(r.tag); remotes.delete(p.id); } };
 
   const applyArmor = () => { /* damage reduction is applied in hurt(); the equipped name is shown on the HUD */ };
