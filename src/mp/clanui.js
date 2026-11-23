@@ -3,6 +3,7 @@ import {
   clanMine, clanSearch, clanBoard, clanCreate, clanUpdate, clanDisband, clanLeave, clanTransfer,
   clanKick, clanPromote, clanInviteByName, clanInviteRespond, clanInviteCancel, clanRequest,
   clanRequestRespond, clanReportBanner, clanAdminResetBanner, refreshMine, forgetMine, myClanBrief, cleanClanName, cleanClanTag, MAX_MEMBERS,
+  CLAN_CREATE_PRICE, money, sharedCash,
 } from './clans.js';
 import { SHAPES, PATTERNS, EMBLEMS, TRIMS, COLORS, DEFAULT_BANNER, cleanBanner, drawBanner, bannerCanvas } from './clanBanner.js';
 import { mountDrawTools } from './clanDraw.js';
@@ -148,7 +149,7 @@ export function attachClans(root, ctx) {
   let boardSort = 'kills';
   let boardKind = 'players';
 
-  const signed = () => !!(mine && mine.signed_in);
+  const signed = () => !!(mine && mine.signed_in) || (typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && !!window.__atqClanProofSignIn);
 
   async function reload(force) {
     mine = await refreshMine(force);
@@ -177,10 +178,10 @@ export function attachClans(root, ctx) {
     main.innerHTML = `
       <div class="cintro">
         ${bannerHTML(DEFAULT_BANNER, 64, 80)}
-        <div><h3>Clans</h3><p class="small">Create a clan, design a banner from preset parts, and climb the clan leaderboard. Up to ${MAX_MEMBERS} members. Scores are the real Survival totals of everyone in the clan.</p></div>
+        <div><h3>Clans</h3><p class="small">Create a clan for ${money(CLAN_CREATE_PRICE)} in-game cash, design a banner, and climb the clan board. Joining someone else's clan is free. Up to ${MAX_MEMBERS} members. Scores are the real Survival totals of everyone in the clan.</p></div>
       </div>
       <div class="wact cacts">
-        <button type="button" class="primary wbig" id="cCreate">Create a Clan</button>
+        <button type="button" class="primary wbig" id="cCreate">Create a Clan · ${money(CLAN_CREATE_PRICE)}</button>
         <button type="button" class="wbig" id="cBrowse">Find a Clan</button>
         <button type="button" class="wbig" id="cBoardBtn">Clan Board</button>
       </div>
@@ -204,8 +205,12 @@ export function attachClans(root, ctx) {
         </div>
         <div class="clbl">Who can join</div>
         <div class="wseg wsort" id="cJoin"><button data-j="request" class="sel">Ask to join</button><button data-j="invite">Invite only</button></div>
-        <div class="cacts2"><button type="button" id="cCreateGo" class="primary">Create clan</button><button type="button" id="cCreateBack">Cancel</button></div>
-        <p class="small wsub">Names and tags are unique. Banners use the game's own pieces — no uploads.</p>
+        <div class="ccreate-foot">
+          <p class="cwallet" id="cWallet">Your cash: ${money(sharedCash())}</p>
+          <p class="small cneed hidden" id="cCashNeed"></p>
+          <div class="cacts2"><button type="button" id="cCreateGo" class="primary">Create clan · ${money(CLAN_CREATE_PRICE)}</button><button type="button" id="cCreateBack">Cancel</button></div>
+        </div>
+        <p class="small wsub">Creating a clan costs ${money(CLAN_CREATE_PRICE)} in-game cash. Joining a clan is free. Names and tags are unique. Banners use the game's own pieces — no uploads.</p>
       </div>
     </div>`;
     const name = q('#cName'), tag = q('#cTag'), cv = q('#cDraftBan');
@@ -214,12 +219,41 @@ export function attachClans(root, ctx) {
     q('#cJoin').querySelectorAll('button').forEach(b => b.onclick = () => { draft.join = b.dataset.j; q('#cJoin').querySelectorAll('button').forEach(x => x.classList.toggle('sel', x === b)); });
     q('#cEditBan').onclick = () => openBannerBuilder({ banner: draft.banner, onSave: bn => { draft.banner = bn; paintPreview(cv, bn); } });
     q('#cCreateBack').onclick = () => { view = 'home'; render(); };
+    const paintCash = () => {
+      const have = sharedCash();
+      const need = CLAN_CREATE_PRICE;
+      const short = have < need;
+      const wal = q('#cWallet'); if (wal) wal.textContent = 'Your cash: ' + money(have);
+      const warn = q('#cCashNeed');
+      const go = q('#cCreateGo');
+      if (warn) {
+        warn.classList.toggle('hidden', !short);
+        warn.textContent = short ? ('Not enough cash — you need ' + money(need) + ' (you have ' + money(have) + '). Earn cash in Story, Survival or Online.') : '';
+      }
+      if (go) {
+        go.classList.toggle('needcash', short);
+        go.textContent = short ? ('Need ' + money(need) + ' (you have ' + money(have) + ')') : ('Create clan · ' + money(need));
+      }
+      if (!short) {
+        const fl = document.getElementById('wFlash');
+        if (fl && /not enough cash/i.test(fl.textContent || '')) { fl.classList.add('hidden'); fl.classList.remove('warn'); fl.textContent = ''; }
+      }
+    };
+    paintCash();
     q('#cCreateGo').onclick = async () => {
-      if (!signed()) return askSignIn();
       sync();
       if (draft.name.length < 3) { flash('Name needs at least 3 characters.', true); return; }
       if (draft.tag.length < 2) { flash('Tag needs 2–5 letters or numbers.', true); return; }
-      await act(async () => { await clanCreate(draft); view = 'home'; }, 'Clan created.');
+      paintCash();
+      const have = sharedCash();
+      if (have < CLAN_CREATE_PRICE) {
+        // The red button and #cCashNeed already state this; a toast would cover the header on a phone.
+        return;
+      }
+      if (!signed()) return askSignIn();
+      const ok = confirm('Creating a clan costs ' + money(CLAN_CREATE_PRICE) + ' in-game cash. Joining someone else\'s clan is free.\n\nCreate ' + draft.name + ' [' + draft.tag + '] for ' + money(CLAN_CREATE_PRICE) + '?');
+      if (!ok) return;
+      await act(async () => { await clanCreate(draft); view = 'home'; }, 'Clan created. ' + money(CLAN_CREATE_PRICE) + ' was spent.');
     };
     requestAnimationFrame(() => paintPreview(cv, draft.banner));
   }

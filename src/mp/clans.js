@@ -1,5 +1,6 @@
 // Clan API: thin wrapper around public.clan_* RPCs. Guests can browse + see the board; writes need Google sign-in.
 import { sb, getUser } from './online.js';
+import { getProfile, saveProfile } from './profile.js';
 import { cleanBanner, DEFAULT_BANNER } from './clanBanner.js';
 
 const isLocal = () => typeof location !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
@@ -27,6 +28,8 @@ const rpcErr = (error) => {
     [/own banner/i, "You can't report your own clan's banner. Edit or reset it instead."],
     [/admin only/i, 'Only an admin can do that.'],
     [/no clan/i, 'That clan is gone.'],
+    [/not enough cash/i, 'Not enough cash to create a clan.'],
+    [/sync cash first/i, 'Your cash has not been saved to your account yet. Sign in, wait a moment, then try again.'],
   ];
   for (const [re, t] of map) if (re.test(m)) return t;
   return m.replace(/^rejected:\s*/i, '');
@@ -39,6 +42,35 @@ async function call(name, args) {
 }
 
 export const MAX_MEMBERS = 30;
+export const CLAN_CREATE_PRICE = 2500; // in-game cash; must match atq_mp.clan_create_price()
+export const money = n => '$' + Math.max(0, Math.floor(+n || 0)).toLocaleString('en-US');
+
+export function sharedCash() {
+  try { if (typeof window !== 'undefined' && window.__atq && window.__atq.save && window.__atq.save.cash != null) return window.__atq.save.cash | 0; } catch (e) { /* ignore */ }
+  const p = getProfile && getProfile();
+  return (p && p.cash) | 0;
+}
+export function applySharedCash(n) {
+  n = Math.max(0, Math.floor(+n || 0));
+  try { if (typeof window !== 'undefined' && window.__atq && window.__atq.save) window.__atq.save.cash = n; } catch (e) { /* ignore */ }
+  try { saveProfile({ cash: n }, { silent: false }); } catch (e) { /* ignore */ }
+  try {
+    const shop = document.getElementById('shopCash');
+    if (shop && window.__atq && window.__atq.save) {
+      const save = window.__atq.save;
+      shop.innerHTML = 'Cash: $' + save.cash + '  ·  Level ' + (save.level || 1);
+    }
+    const inv = document.getElementById('invStats');
+    if (inv && window.__atq && window.__atq.save && /Cash \$/.test(inv.textContent || '')) {
+      inv.textContent = (inv.textContent || '').replace(/Cash \$\d+/, 'Cash $' + n);
+    }
+    const pc = document.getElementById('profCash'); if (pc) pc.textContent = '$' + n;
+    const cc = document.getElementById('cCash'); if (cc) cc.textContent = 'Cash: $' + n;
+    const wal = document.getElementById('cWallet'); if (wal) wal.textContent = 'Your cash: ' + money(n);
+  } catch (e) { /* ignore */ }
+  try { window.__atq && window.__atq.reloadSave && window.__atq.reloadSave(); } catch (e) { /* ignore */ }
+}
+
 export function cleanClanName(n) { return String(n || '').replace(/[^\p{L}\p{N} _.\-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 24); }
 export function cleanClanTag(t) { return String(t || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 5); }
 
@@ -51,7 +83,9 @@ export async function clanBoard(sort = 'kills', limit = 50) {
 }
 export async function clanTags(ids = []) { return call('clan_tags', { p_ids: ids }); }
 export async function clanCreate({ name, tag, banner, join }) {
-  return call('clan_create', { p_name: cleanClanName(name), p_tag: cleanClanTag(tag), p_banner: cleanBanner(banner || DEFAULT_BANNER), p_join: join === 'invite' ? 'invite' : 'request' });
+  const data = await call('clan_create', { p_name: cleanClanName(name), p_tag: cleanClanTag(tag), p_banner: cleanBanner(banner || DEFAULT_BANNER), p_join: join === 'invite' ? 'invite' : 'request' });
+  if (data && data.cash != null) applySharedCash(data.cash);
+  return data;
 }
 export async function clanUpdate(id, patch) {
   const args = { p_id: id };
@@ -91,5 +125,5 @@ export function myClanBrief() {
 }
 
 if (typeof window !== 'undefined' && isLocal()) {
-  window.__atqClans = { clanMine, clanSearch, clanBoard, clanCreate, clanUpdate, refreshMine, cachedMine, cleanClanName, cleanClanTag, cleanBanner };
+  window.__atqClans = { clanMine, clanSearch, clanBoard, clanCreate, clanUpdate, refreshMine, cachedMine, cleanClanName, cleanClanTag, cleanBanner, CLAN_CREATE_PRICE, money, sharedCash, applySharedCash };
 }
