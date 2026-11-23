@@ -19,6 +19,7 @@ import { Input } from './input.js';
 import { stepMove, startRoll, startJump, stepVehicle, stepFollowCam, clampCamToPlayer, CAM } from './pctl.js';
 import { syncWounds, addWound, bloodyMouth, makePool, tickPools, setHandBlood } from './gore.js';
 import { STORY, LOOT, chOf, TOTAL_PAGES, SPEAKER_NAMES, CH_START } from './story.js';
+import { buddyUpdate, buddyReset } from './biscuitBuddy.js';
 import { diffOf, diffId, loadRun, saveRun, newRun } from './difficulty.js';
 import { onDialogueLine, tickDialogueFace, endDialogueFace, resetDialogueFace } from './dialogueFace.js';
 import { hitChar, capsOf, updateAimPose, placeShotFx, muzzleWorld, stepAimAssist } from './aim.js';
@@ -197,7 +198,7 @@ export class Game {
       try { c.mixer.stopAllAction(); c.mixer.uncacheRoot(c.model); } catch (e) { /* ignore */ }
     });
   }
-  clearActors() { townReset(this); this.zombies.forEach(z => { this.scene.remove(z.root); z.mixer.stopAllAction(); z.mixer.uncacheRoot(z.model); this.disposeTree(z.root); }); this.zombies = []; for (const k in this.npcs) { const n = this.npcs[k]; this.scene.remove(n.root); n.mixer.stopAllAction(); n.mixer.uncacheRoot(n.model); this.disposeTree(n.root); } this.npcs = {};
+  clearActors() { buddyReset(this); townReset(this); this.zombies.forEach(z => { this.scene.remove(z.root); z.mixer.stopAllAction(); z.mixer.uncacheRoot(z.model); this.disposeTree(z.root); }); this.zombies = []; for (const k in this.npcs) { const n = this.npcs[k]; this.scene.remove(n.root); n.mixer.stopAllAction(); n.mixer.uncacheRoot(n.model); this.disposeTree(n.root); } this.npcs = {};
     this.pickups.forEach(p => this.scene.remove(p.mesh)); this.pickups = []; this.props.forEach(p => { this.scene.remove(p); this.disposeTree(p); }); this.props = []; this.decalN = 0; this.decals.forEach(d => d.visible = false); (this.pools || []).forEach(o => { this.scene.remove(o); o.material.dispose(); }); this.pools = [];
     if (this.truck) this.truck.driving = false; document.body.classList.remove('driving'); $('#drive')?.classList.add('hidden'); this.drv = {}; this.boss = null; $('#boss').classList.add('hidden'); this.dlgQ = []; this.dlgCur = null; $('#dlg').classList.remove('on'); }
   // v1.9.17: lighting modes for the hospital chapters. null = the usual night; 'dark' = Sublevel B (flashlight + emergency lights); 'ward' = lit upper floors.
@@ -670,7 +671,7 @@ export class Game {
     if (this.dying) { this.updateDying(dt); if (this.boss && !this.boss.propped) { this.boss.propped = 1; bossProp(this, this.boss, document.querySelector('#bossn')?.textContent); }
     this.updateZ(dt); this.updateFX(dt); tickPools(this, dt); tickGfx(this, dt); return; }
     // cutscene camera
-    if (this.run && !this.cut && !this.survival) { this.run.t += rdt; if ((this._runSv = (this._runSv || 0) + rdt) > 5) { this._runSv = 0; saveRun(this.LS, this.run); } } if (this.pro) this.pro.tick(rdt); const st = STORY[this.step]; st.update && st.update(this, dt); partnerUpdate(this, dt); this.failsafe(dt);
+    if (this.run && !this.cut && !this.survival) { this.run.t += rdt; if ((this._runSv = (this._runSv || 0) + rdt) > 5) { this._runSv = 0; saveRun(this.LS, this.run); } } if (this.pro) this.pro.tick(rdt); const st = STORY[this.step]; st.update && st.update(this, dt); partnerUpdate(this, dt); buddyUpdate(this, dt); this.failsafe(dt);
     if (s.fireCd > 0) s.fireCd -= dt; if (s.reload > 0) { s.reload -= dt; if (s.reload <= 0) this.finishReload(); }
     if (s.comboT > 0) { s.comboT -= dt; if (s.comboT <= 0) s.combo = 0; }
     if (this.hp < this.maxHp && this.t - (this.lastHurt || 0) > 5) this.hp = Math.min(this.maxHp, this.hp + dt * 4);
