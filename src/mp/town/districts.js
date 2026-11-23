@@ -37,13 +37,13 @@ export const OUTER_HOUSES = [
   { cx: 80, cz: -57.5, w: 9, d: 9, face: 'N', road: -72, side: 1 },
   { cx: -64, cz: -86.5, w: 9, d: 9, face: 'S', road: -72, side: -1 },
   { cx: 64, cz: -86.5, w: 9, d: 9, face: 'S', road: -72, side: -1 },
-  { cx: 89.5, cz: 16, w: 9, d: 9, face: 'E', road: 104, enterable: true },
+  { cx: 89.5, cz: 12.8, w: 9, d: 9, face: 'E', road: 104, enterable: true },
   { cx: 89.5, cz: 40, w: 9, d: 9, face: 'E', road: 104 },
   { cx: 89.5, cz: -56, w: 9, d: 9, face: 'E', road: 104 },
   { cx: -89.5, cz: 40, w: 9, d: 9, face: 'W', road: -104, enterable: true },
   { cx: -89.5, cz: 56, w: 9, d: 9, face: 'W', road: -104 },
   { cx: -89.5, cz: -48, w: 9, d: 9, face: 'W', road: -104 },
-  { cx: -89.5, cz: -72, w: 9, d: 9, face: 'W', road: -104 },
+  { cx: -89.5, cz: -58.5, w: 9, d: 9, face: 'W', road: -104 },
 ];
 
 const VDIMS = [[9, 8], [8.6, 8], [11, 7], [9, 8]];
@@ -102,7 +102,7 @@ function addPark(W) {
   // gravel paths (merged)
   const path = (x0, x1, z0, z1) => B.bounds('concrete', x0, x1, .04, .1, z0, z1, '#c2b79a', 2);
   path(-1.1, 1.1, 45.2, 64.6);
-  path(-22, 22, 54.2, 56.2);
+  path(-18.4, 18.4, 54.2, 56.2);
   path(-18, -16.2, 48, 55);
   path(16.2, 18, 49, 55);
   // fountain
@@ -124,16 +124,16 @@ function addPark(W) {
   B.bounds('paint', px + .4, px + 1.2, 0, .12, pz + .05, pz + .7, '#f0c44a', 1);
   col.add(px - 2.5, px + 2.9, pz - 2.1, pz + 1.0, 'prop', true);
   // basketball pad (east)
-  B.bounds('concrete', 12, 22, .04, .1, 50, 58, '#b9b3a4', 2);
-  B.bounds('metal', 21.3, 21.5, 0, 3.1, 53.7, 53.9, '#d8dde0', 1);
-  B.bounds('paint', 20.4, 21.5, 2.85, 3.05, 53.2, 54.4, '#e8efe4', 1);
-  col.add(21.2, 21.6, 53.6, 54.0, 'prop', true);
+  B.bounds('concrete', 9, 18.4, .04, .1, 50, 58, '#b9b3a4', 2);
+  B.bounds('metal', 17.8, 18.0, 0, 3.1, 53.7, 53.9, '#d8dde0', 1);
+  B.bounds('paint', 16.9, 18.0, 2.85, 3.05, 53.2, 54.4, '#e8efe4', 1);
+  col.add(17.7, 18.1, 53.6, 54.0, 'prop', true);
   // benches along the path
-  for (const [x, z, ry] of [[-6, 49.5, 0], [6, 49.5, 0], [-6, 60.5, Math.PI], [6, 60.5, Math.PI], [-22, 55, Math.PI / 2], [22, 55, -Math.PI / 2]]) bench(W, x, z, ry);
+  for (const [x, z, ry] of [[-6, 49.5, 0], [6, 49.5, 0], [-6, 60.5, Math.PI], [6, 60.5, Math.PI], [-17.6, 57.6, Math.PI / 2], [17.6, 57.6, -Math.PI / 2]]) bench(W, x, z, ry);
   // a few park trees (instanced with the town set later is hard; cheap unique cones, merged)
   for (let i = 0; i < 10; i++) {
     const a = rr() * 6.28, r = 18 + rr() * 8; const x = Math.cos(a) * r, z = 55 + Math.sin(a) * (8 + rr() * 4);
-    if (Math.abs(x) < 4 && Math.abs(z - 55) < 4) continue;
+    if (Math.abs(x) < 4 && Math.abs(z - 55) < 4) continue; if (Math.abs(x) > 17.2) continue; // v1.9.64: roads are wider now
     if (Math.abs(x) < 2 && (z < 48 || z > 62)) continue;
     const tr = new THREE.CylinderGeometry(.18, .28, 2.4, 5); tr.translate(x, 1.2, z); B.addGeo('plank', tr, null, '#5a4030');
     const cn = new THREE.ConeGeometry(1.4 + rr() * .4, 2.6 + rr() * .5, 6); cn.translate(x, 3.0, z); B.addGeo('siding', cn, null, '#4a7a3a');
@@ -209,7 +209,7 @@ function addMall(W) {
   closedShop(W, -116, 9, 8.6, 10, ['FALLS', 'VIDEO'], '#3a2a4a');
   B.bounds('concrete', -110.2, -107.6, .03, .09, -15.5, 15.5, '#c5c1b6', 2);
   for (let k = -3; k <= 3; k++) B.bounds('paint', -110.0, -107.8, .09, .12, k * 4.2 - .06, k * 4.2 + .06, '#d8c15a', 1);
-  poleSign(W, -107.2, 0, Math.PI / 2, ['CEDAR', 'PLAZA'], '#5a2e1e');
+  poleSign(W, -110.6, 0, Math.PI / 2, ['CEDAR', 'PLAZA'], '#5a2e1e');
 }
 
 /** Landmarks and props. Call BEFORE B.build() and before addLoot, after specials. */

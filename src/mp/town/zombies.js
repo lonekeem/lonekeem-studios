@@ -70,6 +70,12 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
   function inView(x, z) { if (!camera) return false; camera.updateMatrixWorld(); pm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); fr.setFromProjectionMatrix(pm); return fr.containsPoint(tmpV.set(x, 1, z)); }
   function farFromPlayers(x, z, d) { for (const p of getPlayers()) if (Math.hypot(p.x - x, p.z - z) < d) return false; return true; }
   function seedScatter() { let n = 0, tries = 0; while (n < target && tries++ < 200) { const e = graph[Math.floor(rnd() * graph.length)]; const f = rnd(); const nb = graph[e.n[Math.floor(rnd() * e.n.length)]]; const x = e.x + (nb.x - e.x) * f + R(-2, 2), z = e.z + (nb.z - e.z) * f + R(-2, 2); if (Math.abs(x) > 100 || Math.abs(z) > 70 || !farFromPlayers(x, z, 30) || col.hit(x, z, .4)) continue; const c = make(x, z); c.node = -1; pickNode(c); n++; } }
+  // v1.9.64 big map: spawn on road nodes 62-120 m from a player (out of sight), not only at the far map edge; far wanderers get moved back in
+  const minPD = (x, z) => { let m = 1e9; for (const p of getPlayers()) m = Math.min(m, Math.hypot(p.x - x, p.z - z)); return m; };
+  function ringNode() { const c = []; for (const n of graph) { const d = minPD(n.x, n.z); if (d > 62 && d < 120) c.push(n); } for (let k = 0; k < 8 && c.length; k++) { const e = c[Math.floor(rnd() * c.length)]; const x = e.x + R(-2.5, 2.5), z = e.z + R(-2.5, 2.5); if (inView(x, z) && minPD(x, z) < 98) continue; return [x, z]; } return null; }
+  function ringSpawn() { const p = ringNode(); if (!p) return edgeSpawn(); const c = make(p[0], p[1]); c.node = -1; pickNode(c); return c; }
+  let relT = 4; function relocate(dt) { if ((relT -= dt) > 0) return; relT = 2; let moved = 0; for (const z of zs) { if (z.dead || z.st === 'chase' || z.mission || z.boss || moved >= 2) continue; const q = z.root.position; if (minPD(q.x, q.z) < 150) continue; /* beyond the fog wall: nobody can see the hop */ const p = ringNode(); if (!p) return; q.x = p[0]; q.z = p[1]; z.node = -1; pickNode(z); moved++; } }
+  out.ringSpawn = ringSpawn; out._relocate = relocate;
   function edgeSpawn() { const ends = graph.filter(n => (Math.abs(n.x) >= BOUNDS.x - 7 || Math.abs(n.z) >= BOUNDS.z - 7)); for (let k = 0; k < 6; k++) { const e = ends[Math.floor(rnd() * ends.length)]; const x = e.x + R(-2.5, 2.5), z = e.z + R(-2.5, 2.5); if (!farFromPlayers(x, z, 60)) continue; if (inView(x, z) && !farFromPlayers(x, z, 98)) continue; /* never appear inside the visible, un-fogged area */ const c = make(x, z); c.node = -1; pickNode(c); return c; } return null; }
   seedScatter();
 
@@ -160,7 +166,7 @@ export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer,
     }
     S.alive = alive; S.dead = dead;
     // keep the count up: spawn at a road end when nobody can see it
-    if (alive < Math.round(target * nightMul) && (spawnT -= dt) <= 0) { spawnT = 3; edgeSpawn(); }
+    if (alive < Math.round(target * nightMul) && (spawnT -= dt) <= 0) { spawnT = 3; ringSpawn(); } relocate(dt);
     // bodies stay; only draw the nearest `deadVisible`
     if ((deadT -= dt) <= 0) { deadT = 1; const ds = zs.filter(z => z.dead); if (ds.length > deadVisible) { ds.forEach(z => { z._d = Math.hypot(z.root.position.x - p0.x, z.root.position.z - p0.z); }); ds.sort((a, b) => a._d - b._d); ds.forEach((z, k) => { z.root.visible = k < deadVisible; if (z.pool) z.pool.visible = k < deadVisible; }); } S.rendered = Math.min(ds.length, deadVisible); }
   }

@@ -14,19 +14,20 @@ export function wxKindAt(slot) { const r = hash(slot * 7919 + 13); const k = r <
   if (k !== 'clear') { const pr = hash((slot - 1) * 7919 + 13); const pk = pr < .34 ? 'clear' : pr < .55 ? 'rain' : pr < .70 ? 'fog' : pr < .85 ? 'storm' : 'snow'; if (pk === k) return 'clear'; } return k; }
 
 const WRAP = 'vec3 wrapP(vec3 b, vec3 c, vec3 S){ return c + mod(b - c + S * .5, S) - S * .5; }';
-function makeRain(n) {
-  const S = new THREE.Vector3(44, 24, 44); const pos = new Float32Array(n * 6), tip = new Float32Array(n * 2), sd = new Float32Array(n * 2);
-  for (let i = 0; i < n; i++) { const x = Math.random() * S.x, y = Math.random() * S.y, z = Math.random() * S.z, s = Math.random(); for (let j = 0; j < 2; j++) { pos.set([x, y, z], i * 6 + j * 3); tip[i * 2 + j] = j; sd[i * 2 + j] = s; } }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('tip', new THREE.BufferAttribute(tip, 1)); g.setAttribute('sd', new THREE.BufferAttribute(sd, 1));
+function makeRain(n) { // camera-facing thin quads (1px GL lines vanish on phones / in daylight)
+  const S = new THREE.Vector3(40, 22, 40); const pos = new Float32Array(n * 12), cr = new Float32Array(n * 8), sd = new Float32Array(n * 4), idx = new Uint32Array(n * 6);
+  for (let i = 0; i < n; i++) { const x = Math.random() * S.x, y = Math.random() * S.y, z = Math.random() * S.z, s = Math.random(); for (let j = 0; j < 4; j++) { pos.set([x, y, z], i * 12 + j * 3); cr.set([j & 1 ? 1 : -1, j >> 1], i * 8 + j * 2); sd[i * 4 + j] = s; } idx.set([i * 4, i * 4 + 1, i * 4 + 2, i * 4 + 1, i * 4 + 3, i * 4 + 2], i * 6); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('cr', new THREE.BufferAttribute(cr, 2)); g.setAttribute('sd', new THREE.BufferAttribute(sd, 1)); g.setIndex(new THREE.BufferAttribute(idx, 1));
   const U = { uT: { value: 0 }, uC: { value: new THREE.Vector3() }, uS: { value: S }, uK: { value: 0 }, uWind: { value: new THREE.Vector2(1.2, .6) }, uLit: { value: 1 } };
-  const m = new THREE.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false, fog: false,
-    vertexShader: `uniform float uT, uK; uniform vec3 uC, uS; uniform vec2 uWind; attribute float tip, sd; varying float vA; ${WRAP}
-void main(){ float sp = 15. + sd * 6.; vec3 b = position; b.y -= uT * sp; b.xz += uWind * uT * .9; vec3 p = wrapP(b, uC, uS);
-  vec3 v = normalize(vec3(uWind.x * .9, -sp, uWind.y * .9)); p -= v * tip * (.9 + sd * .5);
-  float d = length(p.xz - uC.xz); vA = (1. - tip * .8) * smoothstep(22., 8., d) * step(sd, uK) * smoothstep(-.2, 1.2, p.y);
+  const m = new THREE.ShaderMaterial({ uniforms: U, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide,
+    vertexShader: `uniform float uT, uK; uniform vec3 uC, uS; uniform vec2 uWind; attribute vec2 cr; attribute float sd; varying float vA; varying float vX; ${WRAP}
+void main(){ float sp = 14. + sd * 6.; vec3 b = position; b.y -= uT * sp; b.xz += uWind * uT * .9; vec3 p = wrapP(b, uC, uS);
+  vec3 v = normalize(vec3(uWind.x * .9, -sp, uWind.y * .9)); p -= v * cr.y * (.8 + sd * .6);
+  vec3 side = normalize(cross(v, normalize(p - cameraPosition))); p += side * cr.x * (.011 + sd * .008) * (1. + length(p - cameraPosition) * .05);
+  float d = length(p.xz - uC.xz); vA = (1. - cr.y * .75) * smoothstep(20., 6., d) * step(sd, uK) * smoothstep(-.2, 1.2, p.y); vX = cr.x;
   gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.); }`,
-    fragmentShader: 'uniform float uLit; varying float vA; void main(){ gl_FragColor = vec4(vec3(.74,.8,.86) * uLit, vA * .62); }' });
-  const L = new THREE.LineSegments(g, m); L.frustumCulled = false; L.renderOrder = 6; L.visible = false; return { obj: L, U };
+    fragmentShader: 'uniform float uLit; varying float vA; varying float vX; void main(){ float e = 1. - abs(vX); gl_FragColor = vec4(vec3(.8,.85,.9) * uLit, vA * e * .75); }' });
+  const L = new THREE.Mesh(g, m); L.frustumCulled = false; L.renderOrder = 6; L.visible = false; return { obj: L, U };
 }
 function makeSnow(n) {
   const S = new THREE.Vector3(48, 22, 48); const pos = new Float32Array(n * 3), sd = new Float32Array(n);
@@ -46,7 +47,14 @@ void main(){ vec3 b = position; float t = uT; b.y -= t * (1.1 + sd * .7); b.x +=
 export function townWeather({ scene, renderer, cam, sun, hemi, W, aud, toast, dn, low = false }) {
   const rain = makeRain(low ? 900 : 1700), snow = makeSnow(low ? 900 : 1600); scene.add(rain.obj, snow.obj);
   const K = { rain: 0, fog: 0, storm: 0, snow: 0 }; const S = { kind: 'clear', label: LABEL.clear, K, flash: 0, slot: -1, wet: 0, snowCover: 0 };
-  const M = W && W.M; const asph = M && M.asphalt; const asph0 = asph && { r: asph.roughness, c: asph.color.clone() }; const grd = W && W.ground && W.ground.material; const grd0 = grd && grd.color.clone(); const roof = M && M.roofmat; const roof0 = roof && roof.color.clone();
+  const M = W && W.M; const asph = M && M.asphalt; const asph0 = asph && { r: asph.roughness }; const grd = W && W.ground && W.ground.material; const roof = M && M.roofmat;
+  // snow / wet ground: shader mix on the textured surfaces (colour multiply can't whiten a dark texture)
+  const GU = { uSnow: { value: 0 }, uWet: { value: 0 } };
+  const patch = (mat, snowK, wetK, tag) => { if (!mat) return; const prev = mat.onBeforeCompile; mat.onBeforeCompile = (sh, r) => { if (prev) prev(sh, r); sh.uniforms.uSnow = GU.uSnow; sh.uniforms.uWet = GU.uWet;
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uSnow, uWet;').replace('#include <map_fragment>', `#include <map_fragment>
+diffuseColor.rgb *= 1. - ${wetK.toFixed(2)} * uWet; diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.84,.87,.9), ${snowK.toFixed(2)} * uSnow);`); };
+    const pk = mat.customProgramCacheKey ? mat.customProgramCacheKey.bind(mat) : null; mat.customProgramCacheKey = () => (pk ? pk() : '') + tag; mat.needsUpdate = true; };
+  patch(asph, .72, .38, 'wxA'); patch(grd, .9, .15, 'wxG'); patch(roof, .8, 0, 'wxR');
   const white = new THREE.Color('#e9eef2'), wetC = new THREE.Color('#7d8288'), grey = new THREE.Color('#7f8a90'), stormC = new THREE.Color('#3c464d'), fogC = new THREE.Color('#9aa4a8'), tmp = new THREE.Color();
   let t = 0, nextFlash = 6, flashT = 0, flashSeq = [], snd = { rain: null, storm: null, snow: null }, lastKind = null, sndAcc = 0;
   const loop = (key, file, vol) => { if (!aud || !aud.ctx) return; let s = snd[key]; if (!s && vol > .005) { s = aud.play(file, { loop: true, vol: 0, jit: 0, flat: true }); if (s && !s.dummy) snd[key] = s; else return; } if (s && s.g) s.g.gain.setTargetAtTime(vol, aud.ctx.currentTime, .8); };
@@ -73,14 +81,13 @@ export function townWeather({ scene, renderer, cam, sun, hemi, W, aud, toast, dn
     S.flash = fl; if (fl > 0) { if (hemi) hemi.intensity += 2.4 * fl; sun.intensity += 1.2 * fl; if (scene.fog) { scene.fog.color.lerp(tmp.set('#c6d2e6'), .65 * fl); if (scene.background && scene.background.isColor) scene.background.copy(scene.fog.color); } if (dn && dn.sky) { const U = dn.sky.userData.U; U.uZen.value.lerp(tmp.set('#d6e0f2'), .7 * fl); U.uHor.value.lerp(tmp, .7 * fl); } }
     // precipitation follows the camera (shader-wrapped)
     const lit = .35 + .65 * (1 - nightK) + fl; rain.U.uT.value = t; snow.U.uT.value = t; rain.U.uC.value.copy(cam.position); snow.U.uC.value.copy(cam.position);
-    rain.U.uK.value = K.rain * (.65 + .35 * K.storm); rain.U.uWind.value.set(1.2 + 4 * K.storm, .6 + 2 * K.storm); rain.U.uLit.value = lit; snow.U.uK.value = K.snow; snow.U.uLit.value = .45 + .55 * (1 - nightK) + fl;
+    rain.U.uK.value = K.rain * (.8 + .2 * K.storm); rain.U.uWind.value.set(1.2 + 4 * K.storm, .6 + 2 * K.storm); rain.U.uLit.value = lit; snow.U.uK.value = K.snow; snow.U.uLit.value = .45 + .55 * (1 - nightK) + fl;
     snow.U.uPx.value = renderer.domElement.height * .9; rain.obj.visible = K.rain > .02 && !indoor; snow.obj.visible = K.snow > .02 && !indoor;
     // ground: wet asphalt (darker, glossy), snow cover (whiter ground + roofs)
-    if (asph) { asph.roughness = asph0.r - .55 * S.wet; asph.color.copy(asph0.c).lerp(wetC, .55 * S.wet).lerp(white, .45 * S.snowCover); }
-    if (grd) grd.color.copy(grd0).lerp(white, .7 * S.snowCover); if (roof) roof.color.copy(roof0).lerp(white, .6 * S.snowCover);
+    if (asph) asph.roughness = asph0.r - .45 * S.wet; GU.uSnow.value = S.snowCover; GU.uWet.value = S.wet;
     // sound (ElevenLabs loops), quieter indoors
     if ((sndAcc += dt) > .25) { sndAcc = 0; const iv = indoor ? .35 : 1; loop('rain', 'wx_rain_loop', K.rain * (1 - K.storm) * .32 * iv); loop('storm', 'wx_storm_loop', K.storm * .42 * iv); loop('snow', 'wx_snow_loop', (K.snow * .3 + K.fog * .12) * iv); }
   };
-  const dispose = () => { for (const k in snd) { const s = snd[k]; if (s) { try { s.stop(); } catch (e) { /* gone */ } } snd[k] = null; } scene.remove(rain.obj, snow.obj); if (asph) { asph.roughness = asph0.r; asph.color.copy(asph0.c); } if (grd) grd.color.copy(grd0); if (roof) roof.color.copy(roof0); };
+  const dispose = () => { for (const k in snd) { const s = snd[k]; if (s) { try { s.stop(); } catch (e) { /* gone */ } } snd[k] = null; } scene.remove(rain.obj, snow.obj); if (asph) asph.roughness = asph0.r; GU.uSnow.value = 0; GU.uWet.value = 0; };
   return { update, state: S, dispose, slotEndsIn: () => WX_SLOT - (Date.now() / 1000) % WX_SLOT };
 }

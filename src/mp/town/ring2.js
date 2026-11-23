@@ -16,7 +16,7 @@ export const RING2_ZONES = [
   { id: 'yard', name: 'Falls Freight Yard', x0: 111, x1: 161, z0: -129, z1: -79, fill: '#8f9188' },
   { id: 'field', name: 'Falls Field', x0: -158, x1: -114, z0: -122, z1: -86, fill: '#5f9a4a' },
   { id: 'farm', name: 'Hollis Farm', x0: 176, x1: 208, z0: 31, z1: 65, fill: '#b9a35d' },
-  { id: 'civic', name: 'Police & Fire', x0: 111, x1: 128, z0: 31, z1: 65, fill: '#7d8aa0' },
+  { id: 'civic', name: 'Police & Fire', x0: 111, x1: 131, z0: 31, z1: 65, fill: '#7d8aa0' },
   { id: 'tower', name: 'Water Tower', x0: -9, x1: 9, z0: 95, z1: 113, fill: '#8fa0a8' },
 ];
 // parked cars of the new ring (ids continue after c22). m = model key in cars.js; noTint keeps the livery (police / taxi / ambulance).
@@ -185,13 +185,13 @@ function field(W) { const cx = -136, cz = -104, fw = 26, fl = 42; // american fo
 function civic(W) { // police + fire station facing the east road x = 104 (front = -x)
   const pol = { cx: 104 + EDGE + 1.5 + 6, cz: 39.5, face: 'W' }; shopfront(W, pol, 14, 12, ['QUIET FALLS', 'POLICE'], { mat: 'brick', wall: '#b9b1a4', sign: '#22334d', awning: false, door: '#22334d', doorX: 0, h: 4.6 });
   for (const lz of [6.3]) { const g = new THREE.CylinderGeometry(.05, .07, 7, 6); lgeo(W, pol, 'metal', g, -5.5, 3.5, lz, 0, '#d0d4d6'); }
-  const fire = { cx: 104 + EDGE + 1.5 + 7, cz: 56, face: 'W' }; const w = 14, d = 14, hw = w / 2, hd = d / 2;
+  const fire = { cx: 104 + EDGE + 1.5 + 10, cz: 56, face: 'W' }; const w = 14, d = 14, hw = w / 2, hd = d / 2;
   lbox(W, fire, 'brick', -hw, hw, 0, 5.6, -hd, hd, '#a8553f'); lbox(W, fire, 'concrete', -hw - .2, hw + .2, 5.6, 6.1, -hd - .2, hd + .2, '#d8d2c4');
   for (const lx of [-3.4, 3.4]) { lbox(W, fire, 'paint', lx - 2.6, lx + 2.6, 0, 4.2, hd, hd + .08, '#b52a22', .5); for (let y = .3; y < 4.2; y += .45) lbox(W, fire, 'dark', lx - 2.6, lx + 2.6, y, y + .05, hd + .08, hd + .1, '#6a1a14', 1); for (const x of [lx - 1.6, lx, lx + 1.6]) lbox(W, fire, 'dark', x - .45, x + .45, 2.6, 3.4, hd + .08, hd + .11, '#26313a', 1); }
   sign(W, fire, 0, 4.9, hd + .1, 8.5, .7, ['FIRE STATION 1'], '#f2ede2', '#b52a22'); lcol(W, fire, -hw, hw, -hd, hd);
   // driveway slabs to the road
   W.B.bounds('concrete', 104 + EDGE, fire.cx - hd, .03, .09, 49.5, 62.5, '#c5c1b6', 2);
-  fireTruck(W, 107.3, 58); }
+  fireTruck(W, 113.6, 58); }
 
 function fireTruck(W, x, z) { // static engine parked along the curb (front = -z), cartoon proportions
   const B = W.B, L = 8.4, wd = 2.5; const z0 = z - L / 2, z1 = z + L / 2, x0 = x - wd / 2, x1 = x + wd / 2;
