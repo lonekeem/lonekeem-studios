@@ -103,7 +103,7 @@ function itemFrame(sel, banner, w, h) {
 }
 
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
-function handlePts(fr) {
+function handlePts(fr, w, h) {
   if (!fr) return [];
   const { cx, cy, hx, hy, r } = fr;
   const c = Math.cos(r), s = Math.sin(r);
@@ -113,6 +113,11 @@ function handlePts(fr) {
     pt(hx, hy, 'se'), pt(0, hy, 's'), pt(-hx, hy, 'sw'), pt(-hx, 0, 'w'),
     pt(0, -hy - 22, 'rot'),
   ];
+  // Keep handles on the canvas so large items stay editable on a small preview.
+  if (w && h) {
+    const m = 12;
+    for (const p of out) { p.x = clamp(p.x, m, w - m); p.y = clamp(p.y, m, h - m); }
+  }
   return out;
 }
 
@@ -151,7 +156,7 @@ export function mountDrawTools({ tools, canvas, getBanner, setBanner, hint }) {
   };
   const drawSel = (g, b, w, h) => {
     const fr = itemFrame(sel, b, w, h); if (!fr) return;
-    const pts = handlePts(fr);
+    const pts = handlePts(fr, w, h);
     const box = pts.filter(p => p.id !== 'rot');
     g.save();
     g.strokeStyle = '#ffd54a'; g.lineWidth = Math.max(1.5, w * 0.006); g.setLineDash([6, 4]);
@@ -176,6 +181,7 @@ export function mountDrawTools({ tools, canvas, getBanner, setBanner, hint }) {
   };
 
   const html = `
+    <div class="cd-scroll">
     <div class="clbl">Tool</div>
     <div class="cban-row" id="cdTools">
       <button type="button" data-tool="move">Move</button>
@@ -190,18 +196,19 @@ export function mountDrawTools({ tools, canvas, getBanner, setBanner, hint }) {
     <div class="clbl">Color</div>
     <div class="cswatches" id="cdCols"></div>
     <div class="cd-pickrow"><label>Custom <input type="color" id="cdPick" value="${color}" aria-label="Color picker"></label></div>
-    <div class="cban-row cd-selacts" id="cdSelActs">
-      <button type="button" id="cdFront">Front</button>
-      <button type="button" id="cdBack">Back</button>
-      <button type="button" id="cdDup">Copy</button>
-      <button type="button" id="cdDel">Delete</button>
+    <p class="cban-hint" id="cdHint">Draw on top of the preset. Use Move to drag, resize, stretch or rotate anything on the banner.</p>
     </div>
-    <div class="cban-row cd-acts">
+    <div class="cban-row cd-sticky" id="cdSticky">
+      <span class="cd-selacts" id="cdSelActs">
+        <button type="button" id="cdFront">Front</button>
+        <button type="button" id="cdBack">Back</button>
+        <button type="button" id="cdDup">Copy</button>
+        <button type="button" id="cdDel">Delete</button>
+      </span>
       <button type="button" id="cdUndo">Undo</button>
       <button type="button" id="cdRedo">Redo</button>
       <button type="button" id="cdClear">Clear drawing</button>
-    </div>
-    <p class="cban-hint" id="cdHint">Draw on top of the preset. Use Move to drag, resize, stretch or rotate anything on the banner.</p>`;
+    </div>`;
   tools.innerHTML = html;
   const q = s => tools.querySelector(s);
   q('#cdShapes').innerHTML = DRAW_SHAPES.map(([id, lab]) => `<button type="button" data-shape="${id}">${lab}</button>`).join('');
@@ -325,7 +332,7 @@ export function mountDrawTools({ tools, canvas, getBanner, setBanner, hint }) {
     if (!fr) return null;
     const slop = 14 * (canvas.width / Math.max(1, canvas.getBoundingClientRect().width));
     let best = null, bd = slop;
-    for (const p of handlePts(fr)) {
+    for (const p of handlePts(fr, canvas.width, canvas.height)) {
       const d = Math.hypot(x - p.x, y - p.y);
       if (d <= bd) { bd = d; best = p.id; }
     }

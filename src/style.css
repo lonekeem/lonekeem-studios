@@ -696,7 +696,6 @@ body.photo #hud,body.photo #touch,body.photo #wp,body.photo #prompt,body.photo #
 #cban canvas.cd-drawcan{cursor:crosshair;touch-action:none}
 #cban .cban-tools .clbl{margin:6px 0 3px}
 #cban .cd-pickrow{margin:4px 0}
-#cban .cd-acts{position:sticky;bottom:0;background:#08160e;padding:6px 0 2px;margin-top:6px;z-index:2}
 #online .cban-safe{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
 #online .cban-safe button{min-height:34px;font-size:12px}
 #online .cwarn{color:#f0c070}
@@ -776,3 +775,11 @@ kbd.kk{display:inline-block;min-width:1.5em;padding:1px 6px;margin:0 2px;border-
 #cban .cd-selacts{display:none;flex-wrap:wrap;gap:6px;margin-top:4px}
 #cban .cd-selacts.show{display:flex}
 #cban .cd-selacts button:disabled{opacity:.4}
+
+#cban .cd-sticky{position:sticky;bottom:0;background:#08160e;padding:6px 0 2px;margin-top:6px;z-index:2}
+#cban .cd-acts{margin-top:4px}
+
+#cban .cban-tools:has(.cd-sticky){display:flex;flex-direction:column;overflow:hidden}
+#cban .cd-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:4px}
+
+#cban .cd-sticky button{min-height:32px;padding:3px 8px;font-size:12px}
