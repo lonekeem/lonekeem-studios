@@ -191,7 +191,7 @@ function civic(W) { // police + fire station facing the east road x = 104 (front
   sign(W, fire, 0, 4.9, hd + .1, 8.5, .7, ['FIRE STATION 1'], '#f2ede2', '#b52a22'); lcol(W, fire, -hw, hw, -hd, hd);
   // driveway slabs to the road
   W.B.bounds('concrete', 104 + EDGE, fire.cx - hd, .03, .09, 49.5, 62.5, '#c5c1b6', 2);
-  fireTruck(W, 113.6, 58); }
+  fireTruck(W, 113.6, 58); schoolBus(W, -11, -68.4); boxTruck(W, 12, 139.7); }
 
 function fireTruck(W, x, z) { // static engine parked along the curb (front = -z), cartoon proportions
   const B = W.B, L = 8.4, wd = 2.5; const z0 = z - L / 2, z1 = z + L / 2, x0 = x - wd / 2, x1 = x + wd / 2;
@@ -205,6 +205,33 @@ function fireTruck(W, x, z) { // static engine parked along the curb (front = -z
   B.bounds('paint', x0 - .01, x1 + .01, 1.1, 1.25, z0, z1, '#f2e6b0', 1);
   for (const zz of [z0 + 1.3, z1 - 2.2, z1 - 1.0]) for (const s of [-1, 1]) { const g = new THREE.CylinderGeometry(.55, .55, .4, 16); g.rotateZ(Math.PI / 2); g.translate(x + s * (wd / 2 - .1), .55, zz); B.addGeo('dark', g, null, '#1b1b1b'); const h = new THREE.CylinderGeometry(.28, .28, .42, 10); h.rotateZ(Math.PI / 2); h.translate(x + s * (wd / 2 - .08), .55, zz); B.addGeo('metal', h, null, '#c9ccc8'); }
   W.col.add(x0, x1, z0 - .3, z1, 'wall', true); }
+
+// v1.9.66 static school bus (front = -x) parked at the school curb, and a box truck (front = +x) unloading on Main Street. Plain cartoon boxes, no logos.
+function wheelsX(W, xs, z, wd, r) { for (const xx of xs) for (const s of [-1, 1]) { const g = new THREE.CylinderGeometry(r, r, .38, 16); g.rotateX(Math.PI / 2); g.translate(xx, r, z + s * (wd / 2 - .12)); W.B.addGeo('dark', g, null, '#1b1b1b'); const h = new THREE.CylinderGeometry(r * .5, r * .5, .4, 10); h.rotateX(Math.PI / 2); h.translate(xx, r, z + s * (wd / 2 - .1)); W.B.addGeo('metal', h, null, '#b9bcbc'); } }
+function schoolBus(W, x, z) { const B = W.B, L = 10, wd = 2.5, x0 = x - L / 2, x1 = x + L / 2, z0 = z - wd / 2, z1 = z + wd / 2, Y = '#f2b21c';
+  B.bounds('paint', x0 + 1.4, x1, .55, 3.0, z0, z1, Y, .6); B.bounds('paint', x0, x0 + 1.45, .55, 1.75, z0 + .05, z1 - .05, Y, .6); // body + hood
+  B.bounds('dark', x0 + 1.36, x0 + 1.42, 1.8, 2.75, z0 + .15, z1 - .15, '#1f2c36', 1); // windshield
+  for (let k = 0; k < 8; k++) { const wx = x0 + 2.2 + k * .95; for (const zz of [z0 - .02, z1 - .02]) B.bounds('dark', wx, wx + .72, 1.85, 2.6, zz, zz + .04, '#22303a', 1); }
+  for (const zz of [z0 - .03, z1 - .01]) { B.bounds('dark', x0 + .3, x1 - .1, 1.25, 1.33, zz, zz + .04, '#1a1a1a', 1); B.bounds('dark', x0 + .3, x1 - .1, 1.55, 1.6, zz, zz + .04, '#1a1a1a', 1); }
+  B.bounds('dark', x0 + 1.6, x0 + 2.1, .7, 2.6, z0 - .03, z0 + .01, '#26343c', 1); // door (curb side faces -z? both look fine)
+  B.bounds('metal', x0 - .25, x0 + .05, .45, .75, z0 - .05, z1 + .05, '#2a2a2a', .5); B.bounds('metal', x1 - .05, x1 + .2, .45, .75, z0 - .05, z1 + .05, '#2a2a2a', .5); // bumpers
+  B.bounds('paint', x0 - .02, x0 + .02, .95, 1.15, z0 + .25, z0 + .55, '#fff6d8', 1); B.bounds('paint', x0 - .02, x0 + .02, .95, 1.15, z1 - .55, z1 - .25, '#fff6d8', 1); // headlights
+  B.bounds('paint', x1 - .02, x1 + .02, 2.1, 2.4, z0 + .2, z0 + .5, '#b3261e', 1); B.bounds('paint', x1 - .02, x1 + .02, 2.1, 2.4, z1 - .5, z1 - .2, '#b3261e', 1);
+  B.bounds('dark', x0 + 1.6, x0 + 1.75, 1.8, 2.3, z1, z1 + .35, '#222', 1); // stop arm stub
+  wheelsX(W, [x0 + 1.1, x1 - 2.1], z, wd, .55);
+  for (const [face, lz] of [['S', wd / 2 + .03], ['N', wd / 2 + .03]]) sign(W, { cx: x + .6, cz: z, face }, 0, 2.82, lz, 5.2, .32, ['QUIET FALLS SCHOOLS'], Y, '#1a1a1a');
+  W.col.add(x0 - .3, x1 + .25, z0, z1, 'wall', true); }
+function boxTruck(W, x, z) { const B = W.B, L = 7, wd = 2.4, x0 = x - L / 2, x1 = x + L / 2, z0 = z - wd / 2, z1 = z + wd / 2;
+  B.bounds('paint', x1 - 2.0, x1, .55, 2.35, z0 + .05, z1 - .05, '#e8e4da', .6); B.bounds('dark', x1 - .06, x1 + .02, 1.55, 2.2, z0 + .2, z1 - .2, '#1f2c36', 1); // cab + windshield
+  for (const zz of [z0 + .02, z1 - .06]) B.bounds('dark', x1 - 1.3, x1 - .4, 1.55, 2.1, zz, zz + .04, '#1f2c36', 1);
+  B.bounds('paint', x0, x1 - 2.1, .7, 3.25, z0, z1, '#f4f1ea', .6); B.bounds('metal', x0 - .03, x0, .75, 3.2, z0 + .1, z1 - .1, '#c8c8c0', .6); // box + roll door
+  for (let k = 0; k < 9; k++) B.bounds('dark', x0 - .05, x0 - .02, .9 + k * .26, .93 + k * .26, z0 + .12, z1 - .12, '#9a9a94', 1);
+  for (const zz of [z0 - .02, z1 - .02]) B.bounds('paint', x0 + .3, x1 - 2.4, 1.0, 1.25, zz, zz + .04, '#2f7a4a', 1); // green stripe
+  B.bounds('metal', x1 - .05, x1 + .2, .45, .75, z0 - .05, z1 + .05, '#2a2a2a', .5); B.bounds('metal', x0 - .25, x0 + .05, .45, .7, z0, z1, '#2a2a2a', .5);
+  B.bounds('paint', x1 + .01, x1 + .04, .95, 1.15, z0 + .2, z0 + .5, '#fff6d8', 1); B.bounds('paint', x1 + .01, x1 + .04, .95, 1.15, z1 - .5, z1 - .2, '#fff6d8', 1);
+  wheelsX(W, [x1 - 1.2, x0 + 1.3], z, wd, .5);
+  for (const [face, lz] of [['S', wd / 2 + .03], ['N', wd / 2 + .03]]) sign(W, { cx: x - 1.1, cz: z, face }, 0, 2.3, lz, 3.6, .5, ['FALLS FRESH FOODS'], '#f4f1ea', '#2f7a4a');
+  W.col.add(x0 - .3, x1 + .25, z0, z1, 'wall', true); }
 
 function farm(W) { const o = { cx: 194, cz: 0, face: 'W' }; const w = 14, d = 12, hw = w / 2, hd = d / 2; // red barn facing the east road (x = 168)
   lbox(W, o, 'plank', -hw, hw, 0, 5.2, -hd, hd, '#9c3326', 1.5); { const g = gableGeo(d + .8, w + 1.0, 4.4); g.rotateY(Math.PI / 2); lgeo(W, o, 'roofmat', g, 0, 5.2, 0, 0, '#6a6a64'); }

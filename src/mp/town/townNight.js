@@ -46,17 +46,17 @@ export function townDayNight({ scene, renderer, sun, hemi, cam, W, Z, toast, fog
     const p = typeof window !== 'undefined' && window.__dnP != null ? window.__dnP : dnClockPhase(); dnState(p, S);
     applySky(sky.userData.U, S);
     sun.color.copy(S.sun); sun.intensity = S.sunI; sun.position.copy(sun.target.position).addScaledVector(S.sunDir, 80);
-    if (hemi) { hemi.color.copy(S.hs); hemi.groundColor.copy(S.hg); hemi.intensity = 1.25 * S.hemiI / 1.3 + .22 * S.nightK; }
-    if (scene.fog) { scene.fog.color.copy(S.fog); scene.fog.far = fogFar * (1 - .32 * S.nightK); scene.fog.near = 28 * (1 - .5 * S.nightK); }
+    if (hemi) { hemi.color.copy(S.hs); hemi.groundColor.copy(S.hg); hemi.intensity = 1.25 * S.hemiI / 1.3 + .55 * S.nightK; /* v1.9.66: a touch more moonlight so streets and storefronts read at night */ }
+    if (scene.fog) { scene.fog.color.copy(S.fog); scene.fog.far = fogFar * (1 - .22 * S.nightK); scene.fog.near = 28 * (1 - .5 * S.nightK); }
     if (scene.background && scene.background.isColor) scene.background.copy(S.fog);
-    renderer.toneMappingExposure = exp0 * S.exp;
+    renderer.toneMappingExposure = exp0 * S.exp * (1 + .2 * S.nightK); /* v1.9.66 slightly brighter nights */
     headM.emissiveIntensity = 3.2 * S.lampK; poolM.opacity = S.lampK; coneU.uK.value = S.lampK; cones.visible = S.lampK > .01; winU.value = S.lampK; if (W && W.nightSigns) for (const m of W.nightSigns) m.emissiveIntensity = .75 * S.lampK;
     fl.intensity = 9 * S.flashK; cam.getWorldDirection(fwd); fwd.y = Math.max(-.35, Math.min(.2, fwd.y)); fwd.normalize();
     { const me = getMe && getMe(); // torch rides at the player's chest, just in front of them, so the beam lights the street and never the player's own back
       if (me && !me.drv) { fl.position.set(me.x, 1.35 + (me.y || 0), me.z).addScaledVector(fwd, .55); } else fl.position.copy(cam.position).addScaledVector(fwd, 2.5);
       fl.target.position.copy(fl.position).addScaledVector(fwd, 10); }
     if ((acc += dt) > .5) { acc = 0; const me = getMe && getMe(); if (me && lamps.length && S.lampK > .01) { const near = lamps.map(l => [l, (l[0] - me.x) ** 2 + (l[1] - me.z) ** 2]).sort((a, b) => a[1] - b[1]); pl.forEach((L, i) => { const l = near[i] && near[i][0]; if (l) L.position.set(l[0], 5.6, l[1] - (l[2] || 0) * 1.2); }); } }
-    pl.forEach(L => { L.intensity = 9 * S.lampK; });
+    pl.forEach(L => { L.intensity = 12 * S.lampK; /* v1.9.66 brighter lamp pools */ });
     if (Z && Z.setNight) Z.setNight(1 + .35 * S.nightK); warn(S);
   };
   update(0); return { update, state: S, sky };

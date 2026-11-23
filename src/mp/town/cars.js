@@ -26,6 +26,13 @@ const BEAM_M = () => _L.beam || (_L.beam = new THREE.ShaderMaterial({ uniforms: 
   vertexShader: 'attribute float fade; varying float vF; varying vec3 vN; varying vec3 vV; void main(){ vF = fade; vec4 mv = modelViewMatrix * vec4(position,1.); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
   fragmentShader: 'uniform float uK; varying float vF; varying vec3 vN; varying vec3 vV; void main(){ float rim = pow(abs(dot(normalize(vN), normalize(vV))), 1.3); gl_FragColor = vec4(vec3(1.,.95,.82) * vF * rim * .16 * uK, 1.); }' }));
 
+const _ems = {}; function emsMat(rear) { const k = rear ? 'r' : 's'; if (_ems[k]) return _ems[k]; const c = document.createElement('canvas'); c.width = 1024; c.height = rear ? 256 : 220; const g = c.getContext('2d');
+  g.clearRect(0, 0, c.width, c.height); g.fillStyle = '#c8202a'; if (rear) { g.fillRect(0, 186, 1024, 40); } else { g.fillRect(0, 150, 1024, 46); g.fillStyle = '#1f4fa8'; g.fillRect(0, 196, 1024, 14); }
+  const star = (cx, cy, r) => { g.save(); g.translate(cx, cy); g.fillStyle = '#1f4fa8'; for (let i = 0; i < 3; i++) { g.rotate(Math.PI / 3); g.fillRect(-r * .2, -r, r * .4, r * 2); } g.fillStyle = '#fff'; g.fillRect(-r * .05, -r * .7, r * .1, r * 1.4); g.restore(); };
+  g.font = '900 92px system-ui, sans-serif'; g.textBaseline = 'middle'; g.fillStyle = '#c8202a';
+  if (rear) { star(512, 70, 62); g.font = '900 64px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('EMS', 512, 160); }
+  else { star(90, 78, 66); g.textAlign = 'left'; g.fillText('QUIET FALLS EMS', 180, 80); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return (_ems[k] = new THREE.MeshStandardMaterial({ map: t, transparent: true, alphaTest: .05, roughness: .5, polygonOffset: true, polygonOffsetFactor: -2 })); }
 export class Car {
   constructor(spec, models) {
     this.spec = spec; this.id = spec.id; this.kind = spec.m; this.g = new THREE.Group(); const src = models[spec.m]; this.L = LEN[spec.m] || 4.5; this.rad = .95;
@@ -49,6 +56,9 @@ export class Car {
     for (const hx of [-lx, lx]) { const t = new THREE.Mesh(GLOW_G(), TAIL_M()); t.position.set(hx, ly + .08, rz - .05); t.rotation.y = Math.PI; t.renderOrder = 4; this.tails.add(t); }
     if (spec.m === 'police' || spec.m === 'ambulance') { this.siren = []; const zb = spec.m === 'police' ? (bb.min.z + bb.max.z) / 2 - .15 : fz - .55; const yb = bb.max.y - (spec.m === 'police' ? .02 : .03);
       for (const [sx, col] of [[-.32, '#ff2a1a'], [.32, spec.m === 'police' ? '#2a5bff' : '#ff2a1a'], [0, '#ffffff']]) { const mm = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }); const q = new THREE.Mesh(SIREN_G(), mm); q.position.set(sx, yb, zb); q.scale.set(sx === 0 ? .6 : 1, 1, 1); q.renderOrder = 5; q.userData.lt = 1; this.g.add(q); this.siren.push(q); } }
+    if (spec.m === 'ambulance') { const dm = emsMat(); const h = (bb.max.y - bb.min.y), len = (fz - rz) * .62, yy = bb.min.y + h * .55, zc = (fz + rz) / 2 - (fz - rz) * .1; // v1.9.66 Quiet Falls EMS livery on both sides + rear
+      for (const s of [-1, 1]) { const d = new THREE.Mesh(new THREE.PlaneGeometry(len, h * .34), dm); d.position.set(s * (bb.max.x + .012), yy, zc); d.rotation.y = s * Math.PI / 2; this.g.add(d); }
+      const r = new THREE.Mesh(new THREE.PlaneGeometry((bb.max.x - bb.min.x) * .7, h * .3), emsMat(true)); r.position.set(0, yy + h * .08, rz - .02); r.rotation.y = Math.PI; this.g.add(r); }
     this.wheels = ['wheel-front-left', 'wheel-front-right', 'wheel-back-left', 'wheel-back-right'].map(n => this.m && this.m.getObjectByName(n)).filter(Boolean);
     // state
     const r = mulberry((spec.id.length * 977 + spec.x * 13 + spec.z * 7) | 0);
