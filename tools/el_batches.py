@@ -14,7 +14,7 @@ CAST = {  # same voices as earlier chapters; danny (Sheldon - Quirky) + harlow a
   'dube': ('oFoV1sxkPgfSMBqWZKyp', 'eleven_multilingual_v2'), 'vance': ('NQMJRVvPew6HsaebYnZj', 'eleven_multilingual_v2'),
   'radio': ('nJvj5shg2xu1GKGxqfkE', 'eleven_multilingual_v2'),
   'danny': ('ujcXHLWtGPYXnqBoMBgg', 'eleven_v3'), 'harlow': ('exurTFaGNF2gnRcPNH8I', 'eleven_v3'),
-  'director': ('Xb7hH8MSUJpSbSDYk0k2', 'eleven_v3'),
+  'director': ('Xb7hH8MSUJpSbSDYk0k2', 'eleven_v3'), 'pilot': ('nJvj5shg2xu1GKGxqfkE', 'eleven_multilingual_v2'),
 }
 def plan(maxn=8):
   subprocess.run(['node', 'tools/extract_lines.mjs'], cwd=ROOT, check=True, capture_output=True)

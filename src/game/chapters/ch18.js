@@ -7,7 +7,7 @@ import { mats, floor, prop, lamp, wallX, wallZ, table, shelfUnit, bloodPool, cra
 import { tree, street, streetLamp, pickup } from './kit/town.js';
 import { giveHammer } from '../hands.js';
 
-export const meta = { n: 18, title: 'Right Behind You', endQuote: '“I can feel my hand.”', nextTeaser: 'To be continued — Chapter 19 coming soon.' };
+export const meta = { n: 18, title: 'Right Behind You', endQuote: '“I can feel my hand.”' };
 export const speakers = {};
 export const Z0 = -5410;
 const C = { x0: -16, x1: 16, zf: -5474, zb: -5524, H: 3.8 };
