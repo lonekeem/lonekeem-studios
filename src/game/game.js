@@ -204,15 +204,14 @@ export class Game {
     await mk(Object.assign({}, randomLook((ZSEED++) | 0, true), { rig: null }));
     for (const rig of list) await mk(Object.assign({}, randomLook((ZSEED++) | 0, true), { rig }));
     if (rigs.raider && list.includes('raider')) await mk(raiderLook((ZSEED++) | 0));
-    const R = this.renderer, hid = []; this.scene.traverse(o => { if (!o.visible) { hid.push(o); o.visible = true; } }); const L = this.mLight, li = L ? L.intensity : 0;
+    // Compile the current (already visible) chapter only. Forcing every zone visible compiled 24 chapters on first launch and sat the bar at 90–100% for a long time.
+    const R = this.renderer, L = this.mLight, li = L ? L.intensity : 0;
     if (L) L.intensity = 6; if (this.muzzle) this.muzzle.visible = true; if (this.tracer) this.tracer.visible = true; if (this.faceL) this.faceL.intensity = 0.7;
     initAllTextures(R, this.scene);
     await yieldPaint();
-    // compile with hidden materials visible, then restore before the first draw so we do not render every chapter zone at once
     try { await compileScene(R, this.scene, this.camera); } catch (e) { }
-    hid.forEach(o => o.visible = false); if (L) L.intensity = li; if (this.muzzle) this.muzzle.visible = false; if (this.tracer) this.tracer.visible = false; if (this.faceL) this.faceL.intensity = 0;
+    if (L) L.intensity = li; if (this.muzzle) this.muzzle.visible = false; if (this.tracer) this.tracer.visible = false; if (this.faceL) this.faceL.intensity = 0;
     await yieldPaint();
-    try { R.render(this.scene, this.camera); } catch (e) { }
     extras.forEach(o => this.scene.remove(o));
     dummies.forEach(c => {
       this.scene.remove(c.root);
@@ -263,8 +262,15 @@ export class Game {
     else await yieldPaint();
     try { if (this.audio) { this.audio._sfxHold = false; this.audio._pumpSfx && this.audio._pumpSfx(); } } catch (e) { /* ignore */ }
     if (this.stepTok !== tok) return;
+    // Warm the real start view (and post-process) now so hideLoading is not stuck at 100% waiting on the first game-loop frame.
+    setP(0.96);
+    try { this.render(0); } catch (e) { /* first draw can throw if a mesh is mid-load */ }
+    await yieldPaint();
+    if (this.stepTok !== tok) return;
+    try { this.render(0); } catch (e) { /* ignore */ }
     setP(1);
     this.last = performance.now(); }
+
   // v1.6.3 failsafes: unstick player/targets, respawn a missing boss, offer an objective skip after 3 min stuck
   inCol(x, z, r = .3) { return this.world.colliders.some(c => !c.skip && x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r); }
   freeNear(x, z) { if (!this.inCol(x, z)) return [x, z]; for (let d = 1; d < 30; d += 1) for (let a = 0; a < 16; a++) { const nx = x + Math.cos(a / 16 * 6.283) * d, nz = z + Math.sin(a / 16 * 6.283) * d; if (!this.inCol(nx, nz)) return [nx, nz]; } return [x, z]; }
