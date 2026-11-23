@@ -51,8 +51,16 @@ export class Input {
     this.move.set(x, y); if (this.move.lengthSq() > 1) this.move.normalize(); if (this.stick.lengthSq() > .0025) this.move.copy(this.stick);
     this.run = !!(K.ShiftLeft || K.ShiftRight) || this.touchRun; if (this.tapFire > 0) this.tapFire -= dt; if (this.lt && !this.lt.moved && this.g.settings.ctl === 'simple' && performance.now() - this.lt.t0 > 280) this.holdFire = true; this.atk = !!(this.mAtk || this.btn.atk || K.KeyJ || this.holdFire); this.aim = !!(this.mAim || this.tAim);
     if (K.Escape || K.KeyP) { K.Escape = K.KeyP = false; this.g.onPause && this.g.onPause(); }
-    const pads = navigator.getGamepads ? navigator.getGamepads() : []; const p = pads && [...pads].find(q => q && q.connected); if (p) { const ax = p.axes, B = (i) => p.buttons[i] && p.buttons[i].pressed; const PD = this.padDead, PS = this.g.settings.padSens || 1, dz = v => Math.abs(v) < PD ? 0 : v;
+    const pads = navigator.getGamepads ? navigator.getGamepads() : []; const p = pads && [...pads].find(q => q && q.connected); if (p) { const ax = p.axes, B = (i) => !!(p.buttons[i] && (p.buttons[i].pressed || p.buttons[i].value > .5)); const PD = this.padDead, PS = this.g.settings.padSens || 1, dz = v => Math.abs(v) < PD ? 0 : v;
+      /* v1.9.86: a menu is up (pause, town panel, creator…) so the pad drives the menu (ui/padnav.js), not the game. After a gap (menu, cutscene,
+         load) re-arm without edges so the A that pressed "Continue" doesn't also jump. */
+      const t = performance.now(), gap = t - (this.padT || 0) > 250; this.padT = t;
+      if (window.__padMenu || gap) { for (let i = 0; i < p.buttons.length; i++) this.prev[i] = B(i); this.prev.st = B(9); if (window.__padMenu) return; }
       if (Math.abs(ax[0]) > PD || Math.abs(ax[1]) > PD) this.move.set(dz(ax[0]), dz(ax[1])); this.look.x += dz(ax[2] || 0) * dt * 2.6 * PS * (this.g.settings.sens || 1); this.look.y += dz(ax[3] || 0) * dt * 2.0 * PS * (this.g.settings.sens || 1) * this.ys();
-      const map = { 0: 'jump', 1: 'roll', 3: 'reload', 4: 'gren', 5: 'swap', 8: 'view', 11: 'crouch', 12: 'use', 2: 'atk' }; for (const i in map) { const now = B(+i); if (now && !this.prev[i]) this.edge[map[i]] = true; if (+i === 3 && now && !this.prev[i]) this.g.skipLine(); this.prev[i] = now; }
-      if (B(7) || B(2)) this.atk = true; if (B(6)) this.aim = true; if (B(10)) this.run = true; const st = B(9); if (st && !this.prev.st) this.g.onPause && this.g.onPause(); this.prev.st = st; } }
+      /* standard mapping: A jump · B roll · X use/talk · Y reload · LB grenade · RB / d-pad ◀ ▶ switch weapon · LT aim · RT fire · L3 sprint (latched) ·
+         R3 crouch · d-pad ▲ use · d-pad ▼ heal · View/Select camera · Start pause */
+      const map = { 0: 'jump', 1: 'roll', 2: 'use', 3: 'reload', 4: 'gren', 5: 'swap', 14: 'swap', 15: 'swap', 8: 'view', 11: 'crouch', 12: 'use', 13: 'heal' };
+      for (const i in map) { const now = B(+i); if (now && !this.prev[i]) { this.edge[map[i]] = true; if (+i === 2) this.g.skipLine(); } this.prev[i] = now; }
+      const l3 = B(10); if (l3 && !this.prev[10]) this.padRun = !this.padRun; this.prev[10] = l3; if (Math.hypot(ax[0] || 0, ax[1] || 0) < .3) this.padRun = false;
+      const rt = B(7); if (rt && !this.prev[7]) this.edge.atk = true; this.prev[7] = rt; if (rt) this.atk = true; if (B(6)) this.aim = true; if (this.padRun) this.run = true; const st = B(9); if (st && !this.prev.st) this.g.onPause && this.g.onPause(); this.prev.st = st; } }
 }

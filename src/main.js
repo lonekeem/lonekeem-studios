@@ -4,6 +4,7 @@ import { AudioSys } from './audio.js';
 import { initMenu, trackGame } from './ui/menu.js';
 import { initTutorial, offerTutorial, onGameReady as onTutReady } from './ui/tutorial.js';
 import { installHardwareBack } from './ui/hwBack.js';
+import { installPadNav } from './ui/padnav.js';
 import { runLaunchFlow, playIntroThen, applySafeDefaults, installGateSettings, isUnder13 } from './ui/gate.js';
 import { initDailies, attachDailies, renderDailies } from './ui/dailies.js';
 import { initRewards, attachRewards } from './ui/rewards.js';
@@ -367,7 +368,7 @@ initDailies();
 initRewards();
 initTutorial({ play: () => play(SURVIVAL_STEP, { tutorial: true }), toTitle });
 window.__atqBooted = true;
-installHardwareBack();
+installHardwareBack(); installPadNav();
 // v1.9.52: soft UI sounds on menu buttons (never during live gameplay)
 document.addEventListener('click', (e) => { try { const b = e.target && e.target.closest && e.target.closest('button, .btn, [role=button]'); if (!b || (game && game.running && !game.paused)) return;
   const id = (b.id || '') + ' ' + (b.className || ''); audio.ui && audio.ui(/back|close|cancel|quit|no\b/i.test(id) ? 'back' : /play|new|cont|start|buy|equip|retry|ok|yes|agree|confirm/i.test(id) ? 'confirm' : 'tap'); } catch (err) { /* ui sound only */ } }, true);

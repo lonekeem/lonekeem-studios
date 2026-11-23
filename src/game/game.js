@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { padMode, padHint, useGlyph } from '../ui/padnav.js';
 import { survivalDN } from './daynight.js';
 import { partnerEnter, partnerUpdate, ventUse } from './partner.js';
 import { glowUpdate, keyModel, cardModel } from './glow.js';
@@ -72,7 +73,7 @@ function initAllTextures(r, root) {
 // v1.9.2: touch wording for objective hints on phones
 const touchHint = (h) => h.replace(/\(WASD \/ left stick\)/g, '(left stick)').replace(/\bE \/ ✋/g, '✋ hand button').replace(/\bPress E\b/g, 'Tap ✋').replace(/GAS\/BRAKE \+ ◀ ▶ \([^)]*\)/g, 'GAS/BRAKE + ◀ ▶').replace(/\bWASD\b/g, 'left stick');
 export class Game {
-  constructor(opts) { Object.assign(this, opts); this.t = 0; this.paused = true; this.running = false; this.timeScale = 1; this.hitstop = 0; this.trauma = 0; }
+  constructor(opts) { addEventListener('atq:padmode', () => { if (this._obj) this.objective(...this._obj); }); Object.assign(this, opts); this.t = 0; this.paused = true; this.running = false; this.timeScale = 1; this.hitstop = 0; this.trauma = 0; }
   async load(progress) {
     try { if (this.audio) this.audio._sfxHold = true; } catch (e) { /* ignore */ }
     const S = this.settings; const qn = S.qual === 'auto' || !S.qual ? autoQuality() : S.qual; const Q = this.Q = PRESETS[qn] || PRESETS.med;
@@ -425,7 +426,7 @@ export class Game {
   alive() { return this.zombies.filter(z => !z.dead); }
 
   // ---------- UI helpers ----------
-  objective(t, h) { if (h && (matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window)) h = touchHint(h); const ob = $('#obj'); if (!ob) return; if (!$('#objt')) ob.innerHTML = '<b>Objective</b><span id="objt"></span><small id="objh"></small>'; /* v1.9.72: self-heal if another mode rewrote the box */ $('#objt').textContent = t || ''; $('#objh').textContent = this.settings.hints ? (h || '') : ''; ob.style.display = t ? '' : 'none'; }
+  objective(t, h) { this._obj = [t, h]; if (h && padMode()) h = padHint(h); else if (h && (matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window)) h = touchHint(h); const ob = $('#obj'); if (!ob) return; if (!$('#objt')) ob.innerHTML = '<b>Objective</b><span id="objt"></span><small id="objh"></small>'; /* v1.9.72: self-heal if another mode rewrote the box */ $('#objt').textContent = t || ''; $('#objh').textContent = this.settings.hints ? (h || '') : ''; ob.style.display = t ? '' : 'none'; }
   // v1.9.4 raider AI: pick a firing spot (prefer cover), walk there (anim matches motion), then HOLD and shoot from the gun with flash + tracer
   rTarget(z, zp) { const pp = this.truck.driving ? this.truck.g.position : this.player.root.position; let t = null, td = Math.hypot(pp.x - zp.x, pp.z - zp.z);
     for (const o of this.zombies) { if (o.dead || o.raider || o === z || o.st === 'eat' || o.st === 'idle') continue; const d = Math.hypot(o.root.position.x - zp.x, o.root.position.z - zp.z); if (d < 12 && d < td * .8) { td = d; t = o; } }
@@ -911,7 +912,7 @@ export class Game {
     $('#ammoTxt').textContent = w.type === 'gun' ? `${w.name}  ·  Ammo : ${s.mags[s.cur] || 0} / ${s.ammo[w.ammo] || 0}${this.state.reload > 0 ? '  (reloading)' : ''}` : w.name;
     $('#grenN').textContent = s.grenades; { const gn = $('#grenN2'); if (gn) gn.textContent = s.grenades; } $('#tAtk').textContent = w.type === 'gun' ? 'FIRE' : 'HIT'; $('#pages').textContent = '';
     $('#lowhp').style.opacity = this.dying ? 1 : clamp(1 - this.hp / this.maxHp * 2.2, 0, .9); const cb = $('#combo'); if (this.state.combo >= 2) { cb.textContent = `x${this.state.combo} COMBO`; cb.classList.add('on'); } else cb.classList.remove('on');
-    const n = this.nearUse(); $('#prompt').textContent = n && !this.cut ? `✋ ${n.label}` : (this.truck.driving ? 'GAS / BRAKE + ◀ ▶ · W/S + A/D · RT/LT' : '');
+    const n = this.nearUse(); $('#prompt').textContent = n && !this.cut ? `${useGlyph()} ${n.label}` : (this.truck.driving ? 'GAS / BRAKE + ◀ ▶ · W/S + A/D · RT/LT' : '');
     if (this.boss) { $('#boss').classList.remove('hidden'); $('#bossb i').style.width = Math.max(0, this.boss.hp / (this.boss.maxHp || 1) * 100) + '%'; }
     // waypoint
     const wpE = $('#wp'); const tgt = this.wpTarget; if (tgt && !this.cut) { const v = V3(tgt[0], tgt[1] || 1.2, tgt[2]); const dist = v.distanceTo(this.player.root.position); const p = v.clone().project(this.camera); let x = (p.x * .5 + .5) * innerWidth, y = (-p.y * .5 + .5) * innerHeight; const behind = p.z > 1;

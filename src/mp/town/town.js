@@ -1,6 +1,7 @@
 // Town assembly: renderer, lighting, player, camera, input, interactions (doors, loot, cars, shop), HUD and net events.
 // Houses/streets live in map.js + building.js; cars.js / loot.js / zombies.js / gas.js are the props modules.
 import { armSolve, camBlocked } from './camcol.js';
+import { useGlyph } from '../../ui/padnav.js';
 import { hitChar, capsOf, updateAimPose, placeShotFx, muzzleWorld, aimRayFrom, stepAimAssist } from '../../game/aim.js';
 import { goOnline, googleEnabled, getUser, getRole, signInGoogle, signOut } from '../online.js';
 import * as THREE from 'three';
@@ -325,7 +326,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
     if (wantUse) { wantUse = false; if (prim && !busy) { if (prim.dur) { hold.act = prim; hold.t = 0; chan = true; } else prim.run(); } }
     if (wantAlt) { wantAlt = false; if (alt && !busy) { if (alt.dur) { hold.act = alt; hold.t = 0; chan = true; } else alt.run(); } }
     if (hold.act) { hold.t += Math.min(rawDt, .6); if (hold.t >= hold.act.dur) { const a = hold.act; hold.act = null; hold.t = 0; chan = false; a.run(); } }
-    { const showA = hold.act || prim || alt; const pe = $q('#prompt'); if (showA && !busy && !(me.dead > 0)) { const a = hold.act || prim; let txt = a ? '✋ ' + a.label + (hold.act ? ' · ' + Math.round(Math.min(100, hold.t / hold.act.dur * 100)) + '%' : a.dur ? ' (hold ' + a.dur.toFixed(1) + 's)' : '') : ''; if (alt && !hold.act) txt += (txt ? '   ·   ' : '') + '⟳ ' + alt.label; pe.textContent = txt; } else pe.textContent = ''; }
+    { const showA = hold.act || prim || alt; const pe = $q('#prompt'); if (showA && !busy && !(me.dead > 0)) { const a = hold.act || prim; let txt = a ? useGlyph() + ' ' + a.label + (hold.act ? ' · ' + Math.round(Math.min(100, hold.t / hold.act.dur * 100)) + '%' : a.dur ? ' (hold ' + a.dur.toFixed(1) + 's)' : '') : ''; if (alt && !hold.act) txt += (txt ? '   ·   ' : '') + '⟳ ' + alt.label; pe.textContent = txt; } else pe.textContent = ''; }
     if (wantHit) { wantHit = false; if (!me.drv && !busy) { if (curGun()) fireGun(); else swingHit(); } } me.hitCd = Math.max(0, me.hitCd - dt); me.swing = Math.max(0, me.swing - dt * 3);
     // movement
     const c = me.drv; if (c) { c.update(dt, { I: inp, D: drv }, col, cars); me.x = c.x; me.z = c.z; me.ry = c.ry; me.sp = Math.abs(c.v) / 6; if (Z && Z.runOver && Math.abs(c.v) > 3.5) { const n = Z.runOver(c); if (n) { toast('Splat', .6); c.v *= .93; } } sendAcc += dt; if (sendAcc > .09) { sendAcc = 0; net.car(c.netState()); }
