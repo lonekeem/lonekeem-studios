@@ -46,7 +46,7 @@ function usable(ch) {
   return true;
 }
 
-function bodyFor(g, who) {
+export function bodyFor(g, who) {
   who = keyOf(who);
   if (!who || VOICELESS.has(who)) return null;
   if (who === 'keem') return usable(g.player) ? g.player : null;
@@ -246,6 +246,12 @@ export function endDialogueFace(g) {
   S.turns.clear();
   S.speaker = null;
   // lastWho stays so a follow-up say() in the same scene can still pick a partner
+}
+
+// v1.9.80: who a line's speaker will turn to (for Ch21-24 speaker framing); same rules as onDialogueLine
+export function speakTarget(g, who, text) {
+  if (!g.dlgFace) g.dlgFace = { lastWho: null, lastBody: null, turns: new Map(), hold: new Set(), speaker: null, active: false };
+  const t = targetOf(g, keyOf(who), text, nearby(g)); return t ? t.ch : null;
 }
 
 export function resetDialogueFace(g) {

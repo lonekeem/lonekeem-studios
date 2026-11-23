@@ -3,12 +3,12 @@
 // while Vance and Dr. Reyes make the Biscuit dose. Hale slips away to Portland Head Light with the tanks. World band z -7500..-7800.
 import * as THREE from 'three';
 import { PI, V, dist2, goto, afterBoss, clearThen, pg, rnd, $q } from './helpers.js';
-import { walk, tickMv, cam, snap, script, cast, followAll, place, face, act, allyTick, holdTick, keepUp, ring, tickRings, squad, spawnAuth, paintAuth, LOOK } from './ch15_kit.js';
+import { walk, tickMv, cam, snap, cast, followAll, place, face, act, allyTick, holdTick, keepUp, ring, tickRings, squad, spawnAuth, paintAuth, LOOK } from './ch15_kit.js';
 import { mats, floor, prop, lamp, wallX, wallZ, table, crate, shelfUnit } from './kit/common.js';
 import { hammerTick } from './kit/finale.js';
 import { giveHammer } from '../hands.js';
 import { spawnBiscuit } from './ch13_rabbit.js';
-import { grayify, spawnGray, grayHorde, strainTank, lane, dartTick, vest } from './ch21_kit.js';
+import { grayify, spawnGray, grayHorde, strainTank, lane, dartTick, vest, script } from './ch21_kit.js';
 
 export const meta = { n: 23, title: 'The Sentinel', endQuote: '“This time, nobody runs.”' };
 export const speakers = { hale: 'Commodore Hale' };

@@ -4,12 +4,12 @@
 // World band z -7100..-7400.
 import * as THREE from 'three';
 import { PI, V, dist2, goto, afterBoss, clearThen, pg, rnd, $q } from './helpers.js';
-import { walk, tickMv, cam, snap, script, cast, followAll, place, face, act, allyTick, holdTick, keepUp, ring, tickRings, squad } from './ch15_kit.js';
+import { walk, tickMv, cam, snap, cast, followAll, place, face, act, allyTick, holdTick, keepUp, ring, tickRings, squad } from './ch15_kit.js';
 import { mats, floor, prop, lamp, wallX, wallZ, crate } from './kit/common.js';
 import { tree, streetLamp } from './kit/town.js';
 import { hammerTick } from './kit/finale.js';
 import { giveHammer } from '../hands.js';
-import { grayify, spawnGray, grayHorde, vest, lantern, lane } from './ch21_kit.js';
+import { grayify, spawnGray, grayHorde, vest, lantern, lane, script } from './ch21_kit.js';
 
 export const meta = { n: 22, title: 'Last Train to Portland', endQuote: '“Portland, next stop!”' };
 export const speakers = { hale: 'Commodore Hale', yard: 'The Yardmaster' };

@@ -4,12 +4,12 @@
 // Restart the floodlights, hold the gym, put down Miss Gladys the crossing guard, and Vance comes on the radio. World band z -6700..-7000.
 import * as THREE from 'three';
 import { PI, V, dist2, goto, afterBoss, clearThen, pg, rnd, $q } from './helpers.js';
-import { walk, tickMv, cam, snap, script, cast, followAll, place, face, act, allyTick, holdTick, keepUp, ring, tickRings, dawn } from './ch15_kit.js';
+import { walk, tickMv, cam, snap, cast, followAll, place, face, act, allyTick, holdTick, keepUp, ring, tickRings, dawn } from './ch15_kit.js';
 import { mats, floor, prop, lamp, wallX, wallZ, table, crate } from './kit/common.js';
 import { house, tree, street, streetLamp, pickup } from './kit/town.js';
 import { hammerTick } from './kit/finale.js';
 import { giveHammer } from '../hands.js';
-import { grayify, spawnGray, grayHorde, floodGen, stopSign, vest, dry } from './ch21_kit.js';
+import { grayify, spawnGray, grayHorde, floodGen, stopSign, vest, dry, script } from './ch21_kit.js';
 
 export const meta = { n: 21, title: 'Porch Light', endQuote: '“Bring the rabbit.”' };
 export const speakers = { gladys: 'Miss Gladys' };

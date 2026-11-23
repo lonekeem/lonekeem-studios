@@ -4,13 +4,13 @@
 // World band z -7900..-8200.
 import * as THREE from 'three';
 import { PI, V, dist2, goto, afterBoss, clearThen, boss, pg, rnd, $q } from './helpers.js';
-import { walk, tickMv, cam, snap, script, cast, followAll, place, face, act, allyTick, holdTick, keepUp, ring, tickRings, squad, spawnAuth, paintAuth, shieldOn, helmOn, dawn, card, hideCard } from './ch15_kit.js';
+import { walk, tickMv, cam, snap, cast, followAll, place, face, act, allyTick, holdTick, keepUp, ring, tickRings, squad, spawnAuth, paintAuth, shieldOn, helmOn, dawn, card, hideCard } from './ch15_kit.js';
 import { mats, floor, prop, lamp, wallX, wallZ, crate } from './kit/common.js';
 import { tree, house } from './kit/town.js';
 import { hammerTick } from './kit/finale.js';
 import { giveHammer } from '../hands.js';
 import { spawnBiscuit, hopTo } from './ch13_rabbit.js';
-import { grayify, spawnGray, grayHorde, strainTank, dartTick, dry } from './ch21_kit.js';
+import { grayify, spawnGray, grayHorde, strainTank, dartTick, dry, script } from './ch21_kit.js';
 
 export const meta = { n: 24, title: 'The Good Kind', endQuote: '“He\'s a very good bunny.”', nextTeaser: 'The End — thank you for playing. A Lone Keem Studios game.' };
 export const speakers = { hale: 'Commodore Hale' };

@@ -2,7 +2,40 @@
 // Vance's Biscuit-dose dart rifle, small props (stop sign, lantern, strain tanks, floodlight generators, searchlights).
 import * as THREE from 'three';
 import { PI, rnd, dist2 } from './helpers.js';
-import { ring } from './ch15_kit.js';
+import { ring, script as script0 } from './ch15_kit.js';
+import { bodyFor, speakTarget } from '../dialogueFace.js';
+
+// v1.9.80: closer dialogue framing for Ch21-24. Before each spoken line, if the current cutscene shot is a
+// close/medium shot of the group, re-aim it at the speaker's face from the same side, ~2 m away, swinging
+// around anyone standing in the way. Wide/establishing shots, Biscuit shots and radio voices are left alone.
+const _pts = (g) => { const a = [g.player]; for (const k in g.npcs) a.push(g.npcs[k]); return a.filter(c => c && c.root && c.root.visible !== false && c.root.parent); };
+export function frameOn(g, who, text) {
+  const C = g.cut; if (!C || !C.cam || !C.look || C.noFrame) return;
+  if (C._ff) { C._ff = false; C.fov = 62; } // a framed line narrows the lens; anything else goes back to the normal lens
+  const c = C.cam, l = C.look, d = Math.hypot(c.x - l.x, c.z - l.z); if (d > 7 || d < .8 || l.y < .7) return;
+  const b = bodyFor(g, who); if (!b) return; const p = b.root.position; if (Math.hypot(p.x - l.x, p.z - l.z) > 4.5) return;
+  const kid = who === 'nia', s = b.root.scale.y || 1, h = (kid ? 1.0 : 1.5) * s, R = kid ? 1.45 : 1.8;
+  const t = speakTarget(g, who, text), a0 = Math.atan2(c.x - p.x, c.z - p.z), others = _pts(g).filter(o => o !== b);
+  // the speaker turns toward whoever they talk to: put the camera 30-70 deg off that line so we see their face
+  const aF = t && t !== b ? Math.atan2(t.root.position.x - p.x, t.root.position.z - p.z) : b.root.rotation.y;
+  const off = t && t !== b ? [.55, .85, 1.15] : [.25, .6, .95];
+  const cand = []; for (const o of off) { const A = [aF + o, aF - o]; A.sort((x, y) => Math.abs(Math.atan2(Math.sin(x - a0), Math.cos(x - a0))) - Math.abs(Math.atan2(Math.sin(y - a0), Math.cos(y - a0)))); cand.push(...A); }
+  for (const a of cand) {
+    const dx = Math.sin(a), dz = Math.cos(a), cx = p.x + dx * R, cz = p.z + dz * R;
+    const hit = others.some(o => { const q = o.root.position, u = ((q.x - p.x) * dx + (q.z - p.z) * dz); if (u < .25 || u > R + .45) return false; return Math.hypot(q.x - (p.x + dx * u), q.z - (p.z + dz * u)) < .42; }) || others.some(o => Math.hypot(o.root.position.x - cx, o.root.position.z - cz) < .75);
+    if (hit) continue;
+    C.look = new THREE.Vector3(p.x, h - .14, p.z); C.cam = new THREE.Vector3(cx, h + .02, cz); C.fov = innerHeight > innerWidth ? 66 : 46; C._ff = true; return;
+  }
+}
+export function script(g, items) {
+  const out = [];
+  for (const it of items) {
+    if (Array.isArray(it) && typeof it[0] === 'string') { const who = it[0], txt = it[1]; out.push((g) => frameOn(g, who, txt)); out.push(it); }
+    else if (typeof it === 'function') out.push((g) => { const k = g.cut && g.cut.cam; it(g); const C = g.cut; if (C && C._ff && C.cam !== k) { C._ff = false; C.fov = 62; } });
+    else out.push(it);
+  }
+  script0(g, out);
+}
 
 // ---------- the Gray: cool gray skin, pale eyes, a bit tougher and faster than the old infected ----------
 const EYE = new THREE.MeshBasicMaterial({ color: '#dff4ff' }); const EYEG = new THREE.SphereGeometry(.011, 6, 5);
