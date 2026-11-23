@@ -11,7 +11,7 @@ export const FILTERS = [
   { id: 'warm', name: 'Warm', ops: [['sepia', .32], ['saturate', 1.35], ['brightness', 1.05]] },
   { id: 'cold', name: 'Cold', ops: [['sepia', .38], ['hue-rotate', 175], ['saturate', 1.25], ['brightness', 1.04]] },
   { id: 'bw', name: 'B&W', ops: [['grayscale', 1], ['contrast', 1.1]] },
-  { id: 'noir', name: 'Noir', ops: [['grayscale', 1], ['contrast', 1.55], ['brightness', .92]], vig: true },
+  { id: 'noir', name: 'Noir', ops: [['grayscale', 1], ['contrast', 1.35], ['brightness', 1.02]], vig: true },
   { id: 'sepia', name: 'Sepia', ops: [['sepia', .9], ['contrast', 1.05]] },
 ];
 const cssOf = (f) => f.ops.map(([k, v]) => k === 'hue-rotate' ? `hue-rotate(${v}deg)` : `${k}(${v})`).join(' ');

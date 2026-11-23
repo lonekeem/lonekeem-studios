@@ -64,7 +64,7 @@ function pulseOff(root) { root.traverse(o => { if (o.userData && o.userData.glow
 
 export function glowUpdate(g) {
   const G = g.glow || glowInit(g); const t = G.t = g.t || 0; const P = g.player && g.player.root.position; if (!P) return;
-  const show = G.on && !g.cut && !g.dying && g.running !== false && !g.survival && !(g.stepData && g.stepData.noGlow);
+  const show = G.on && !g.cut && !g.photo && !g.dying && g.running !== false && !g.survival && !(g.stepData && g.stepData.noGlow);
   const cam = g.camera, T = g.truck, list = G.list; list.length = 0;
   if (show) {
     const D = g.stepData || {}, py = Math.max(0, P.y || 0);
