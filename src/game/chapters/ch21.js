@@ -172,7 +172,7 @@ export const steps = [
       ]);
     },
     update(g, dt) { const D = g.stepData, b = D.b; tickRings(g, D, dt); if (A.bell) A.bell.rotation.z *= .94; if (!D.on) return; hammerTick(g, D, dt, { dmg: 60 }); allyTick(g, D, 'reyes', dt, { dmg: 24, cd: 1.6 }); allyTick(g, D, 'dube', dt, { dmg: 40, cd: 1.9, sound: 'shotgun' });
-      if (!b || b.dead) { if (b && b.dead && !D.won) { D.won = true; D.rings && D.rings.forEach(r => g.scene.remove(r.m)); D.rings = []; afterBoss(g, () => goto(g, 'c21_end', 400)); } return; }
+      if (!b || b.dead || b.hp <= 0) { if (b && (b.dead || b.hp <= 0) && !D.won) { D.won = true; D.rings && D.rings.forEach(r => g.scene.remove(r.m)); D.rings = []; afterBoss(g, () => goto(g, 'c21_end', 400)); } return; }
       if (g.cut) return;
       D.cd -= dt; if (D.cd <= 0) { D.cd = b.hp < b.maxHp * .5 ? 3.6 : 4.8; const p = b.root.position; g.toast('STOP! — get clear!', 1.1); b.st = 'script'; b.play && b.play('Idle_Loop'); ring(g, D, p.x, p.z, { r: 4.2, life: 1.15, color: '#f2d020', dmg: 26, boom: true }); setTimeout(() => { if (b && !b.dead) b.st = 'chase'; }, 1150); }
       D.bell -= dt; if (D.bell <= 0) { D.bell = 13; if (A.bell) A.bell.rotation.z = .5; bellRing(g); g.toast('The school bell — more coming', 1.8); grayHorde(g, b.hp < b.maxHp * .5 ? 6 : 4, [W.west[0], W.east[0], W.north[1]], { runner: true }); }

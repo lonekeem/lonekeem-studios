@@ -168,7 +168,7 @@ export const steps = [
       ]);
     },
     update(g, dt) { const D = g.stepData, b = D.b; tickRings(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: 60 }); allyTick(g, D, 'reyes', dt, { dmg: 24, cd: 1.6 });
-      if (!b || b.dead) { if (b && b.dead && !D.won) { D.won = true; D.dash = null; D.rings && D.rings.forEach(r => g.scene.remove(r.m)); D.rings = []; g.say([['marcus', "End of the line, Mr. Pike. Rest easy."]]); afterBoss(g, () => goto(g, 'c22_depart', 500)); } return; }
+      if (!b || b.dead || b.hp <= 0) { if (b && (b.dead || b.hp <= 0) && !D.won) { D.won = true; D.dash = null; D.rings && D.rings.forEach(r => g.scene.remove(r.m)); D.rings = []; g.say([['marcus', "End of the line, Mr. Pike. Rest easy."]]); afterBoss(g, () => goto(g, 'c22_depart', 500)); } return; }
       if (g.cut) return;
       if (D.winded > 0) { D.winded -= dt; if (D.winded <= 0) { b.st = 'chase'; b.speed = 1.5; } }
       if (D.dash) { const p = b.root.position, s = 11 * dt; const nx = p.x + D.dash.dx * s, nz = p.z + D.dash.dz * s; D.dash.t -= dt;

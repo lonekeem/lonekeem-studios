@@ -177,7 +177,7 @@ export const steps = [
       ]);
     },
     update(g, dt) { const D = g.stepData, b = D.b; tickRings(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: 60 }); allyTick(g, D, 'reyes', dt, { dmg: 24, cd: 1.6 }); dartTick(g, D, 'vance', dt, { cd: 2.4 });
-      if (!b || b.dead) { if (b && b.dead && !D.won) { D.won = true; D.rings && D.rings.forEach(r => g.scene.remove(r.m)); D.rings = []; g.say([['vance', "He was a good sailor once. Lab. Now."]]); afterBoss(g, () => goto(g, 'c23_lab', 500)); } return; }
+      if (!b || b.dead || b.hp <= 0) { if (b && (b.dead || b.hp <= 0) && !D.won) { D.won = true; D.rings && D.rings.forEach(r => g.scene.remove(r.m)); D.rings = []; g.say([['vance', "He was a good sailor once. Lab. Now."]]); afterBoss(g, () => goto(g, 'c23_lab', 500)); } return; }
       if (g.cut) return;
       D.cd -= dt; if (D.cd <= 0) { D.cd = b.hp < b.maxHp * .5 ? 4 : 5.4; const p = b.root.position; g.toast('Chain swing — get clear!', 1.1); b.st = 'script'; b.play && b.play('Sword_Attack', { once: true }); ring(g, D, p.x, p.z, { r: 4.8, life: 1.3, color: '#e8f0ff', dmg: 28 }); setTimeout(() => { if (b && !b.dead) b.st = 'chase'; }, 1300); }
       D.th -= dt; if (D.th <= 0) { D.th = b.hp < b.maxHp * .5 ? 6.5 : 8.5; const p = b.root.position, P = g.player.root.position; lane(g, D, p.x, p.z, P.x, P.z, { n: 6, r: 1.3, life: 1.0, color: '#7ab8ff', dmg: 22 }); g.toast('Chain throw!', 1); }
@@ -224,7 +224,7 @@ export const steps = [
         ['keem', "This time, nobody runs."],
         (g) => { cam(g, V(0.2, 1.65, -7721.4), V(2.4, 1.5, -7724)); },
         ['danny', "There's a lifeboat on this side. I can drive a boat. I learned on… you know what, don't ask."],
-        (g) => { cam(g, V(0, 4, -7740), V(60, 8, -7850)); setTimeout(() => { g.audio.engine && g.audio.engine(false); g.onComplete && g.onComplete(23); }, 1800); },
+        (g) => { cam(g, V(9.6, 4.6, -7728), V(60, 8, -7850)); setTimeout(() => { g.audio.engine && g.audio.engine(false); g.onComplete && g.onComplete(23); }, 1800); },
       ]);
     },
     update(g, dt) { const D = g.stepData; tickMv(g, D, dt); if (D.go && D.lb) { D.lb.position.x += dt * 4.2; D.lb.position.z -= dt * 4.2; } } },
