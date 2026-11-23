@@ -29,7 +29,7 @@ export function townDayNight({ scene, renderer, sun, hemi, cam, W, Z, toast, fog
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uWin; varying vec3 vWinP;').replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
 #if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA )
 { vec3 vc = vColor.rgb; float isWin = step(max(max(vc.r, vc.g), vc.b), .05) * step(vc.r * 1.35, vc.b); vec3 cell = floor(vWinP * vec3(.7, .5, .7)); float on = step(.42, fract(sin(dot(cell, vec3(12.9898, 78.233, 37.719))) * 43758.5453));
-  totalEmissiveRadiance += isWin * on * uWin * vec3(1.0, .52, .2) * (.55 + .25 * fract(cell.x * 7.13 + cell.z * 3.7)); }
+  totalEmissiveRadiance += isWin * on * uWin * vec3(.95, .42, .1) * (.28 + .16 * fract(cell.x * 7.13 + cell.z * 3.7)); // warm, dim lamp-lit glass (not a white sheet) }
 #endif`); }; sid.customProgramCacheKey = () => 'atqWin1'; sid.needsUpdate = true; }
   const warn = dnWatcher((m) => toast && toast(m, 3.2));
   const fwd = new THREE.Vector3(); let acc = 1;
@@ -42,7 +42,10 @@ export function townDayNight({ scene, renderer, sun, hemi, cam, W, Z, toast, fog
     if (scene.background && scene.background.isColor) scene.background.copy(S.fog);
     renderer.toneMappingExposure = exp0 * S.exp;
     headM.emissiveIntensity = 3.2 * S.lampK; poolM.opacity = S.lampK; winU.value = S.lampK;
-    fl.intensity = 10 * S.flashK; cam.getWorldDirection(fwd); fl.position.copy(cam.position).addScaledVector(fwd, .3); fl.position.y -= .15; fl.target.position.copy(cam.position).addScaledVector(fwd, 10);
+    fl.intensity = 9 * S.flashK; cam.getWorldDirection(fwd); fwd.y = Math.max(-.35, Math.min(.2, fwd.y)); fwd.normalize();
+    { const me = getMe && getMe(); // torch rides at the player's chest, just in front of them, so the beam lights the street and never the player's own back
+      if (me && !me.drv) { fl.position.set(me.x, 1.35 + (me.y || 0), me.z).addScaledVector(fwd, .55); } else fl.position.copy(cam.position).addScaledVector(fwd, 2.5);
+      fl.target.position.copy(fl.position).addScaledVector(fwd, 10); }
     if ((acc += dt) > .5) { acc = 0; const me = getMe && getMe(); if (me && lamps.length && S.lampK > .01) { const near = lamps.map(l => [l, (l[0] - me.x) ** 2 + (l[1] - me.z) ** 2]).sort((a, b) => a[1] - b[1]); pl.forEach((L, i) => { const l = near[i] && near[i][0]; if (l) L.position.set(l[0], 5.6, l[1] - (l[2] || 0) * 1.2); }); } }
     pl.forEach(L => { L.intensity = 9 * S.lampK; });
     if (Z && Z.setNight) Z.setNight(1 + .35 * S.nightK); warn(S);
