@@ -25,7 +25,7 @@ function kit(H) {
     frame: std({ color: '#5a6064', metalness: .4, roughness: .5 }), red: std({ color: '#8a1a14' }),
   };
   const TRIM = std({ color: '#50564f', roughness: .9 });
-  // v1.9.50: darker mineral tiles in a pale T-bar grid (the inverse of the floor's light tiles / dark grout) so the ceiling never reads as a floor
+  // v1.9.52: darker mineral tiles in a pale T-bar grid (the inverse of the floor's light tiles / dark grout) so the ceiling never reads as a floor
   const ceilMat = (w, d) => { const t = T.ceil('#4e5456', '#a3aaa8'); t.repeat.set(w / 1.2, d / 1.2); return std({ map: t, color: '#ffffff', emissive: '#22282a', emissiveMap: t, emissiveIntensity: .6, roughness: 1 }); };
   // box with wall-style UVs: u follows the long side, v is exactly one texture per WH of height
   const wallGeo = (w, h, d) => { const g = new THREE.BoxGeometry(w, h, d), uv = g.attributes.uv; for (let f = 0; f < 6; f++) for (let i = 0; i < 4; i++) { const k = f * 4 + i, u = uv.getX(k), v = uv.getY(k); if (f < 2) uv.setXY(k, u * d / 4, v * h / WH); else if (f < 4) uv.setXY(k, u * w / 4, v * d / WH); else uv.setXY(k, u * w / 4, v * h / WH); } return g; };

@@ -6,7 +6,7 @@ import { mats, floor, wallX, wallZ, room, lamp, slabDoor, prop, table, shelfUnit
 export function buildCh14Lab(ctx, { x = 0, z = -3704 } = {}) {
   const K = mats(ctx), T = ctx.THREE, H = 4.1, A = { benches: [], lamps: [], cover: [], alarms: [] };
   const M = (c, o = {}) => new T.MeshStandardMaterial({ color: c, roughness: .85, ...o });
-  // v1.9.50: the floor, walls and ceiling each get their own look so the room never reads upside down
+  // v1.9.52: the floor, walls and ceiling each get their own look so the room never reads upside down
   // (light checkered vinyl floor, walls that darken toward the top, a dark drop ceiling with recessed light panels)
   const PO = { polygonOffset: true, polygonOffsetFactor: -8, polygonOffsetUnits: -8 };
   const tile = floorMat(ctx, 'vinyl', 42, 68, PO), tile2 = floorMat(ctx, 'sealed', 22, 60, PO);
@@ -259,7 +259,7 @@ function mesh(ctx, geo, mat, x, y, z, rx = 0, ry = 0, rz = 0) {
 }
 function dressLab(ctx, A, B) {
   const T = ctx.THREE, K = mats(ctx), { x, H, ANT_S, LAB_S, HALL_S, ARENA_S, antC, labC, hallC, arC } = B;
-  const waist = new T.MeshStandardMaterial({ color: '#4f7f8a', roughness: .55, metalness: .05 }); // v1.9.50: teal wainscot panels give the white lab some contrast
+  const waist = new T.MeshStandardMaterial({ color: '#4f7f8a', roughness: .55, metalness: .05 }); // v1.9.52: teal wainscot panels give the white lab some contrast
   const base = new T.MeshStandardMaterial({ color: '#8a949a', roughness: .7 });
   const pipeM = new T.MeshStandardMaterial({ color: '#7a848c', metalness: .7, roughness: .35 });
   const pipeB = new T.MeshStandardMaterial({ color: '#3a7a9a', metalness: .55, roughness: .4 });

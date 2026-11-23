@@ -181,7 +181,7 @@ $('#btnEndNext').onclick = () => { save = loadSave(LS) || save; const nc = Math.
 var CHN = CHAPTERS.map(c => (c ? c.title : '')), CHS = CHAPTERS.map(c => (c ? c.start : 0)); // derived from the chapter registry
 const unlockedCh = (s) => Math.max(s.maxCh || 1, s.done || (s.step || 0) >= 7 ? 2 : 1, s.done2 ? 3 : 1, CHS.findLastIndex(v => (s.step || 0) >= v) || 1);
 // chapter-select buttons are generated from the registry (src/game/chapters), so adding a chapter needs no HTML/menu edits
-{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.51 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
+{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.52 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
 const chList = $('#chList'); for (let c = 1; c <= LAST_CH; c++) { const b = document.createElement('button'); b.id = 'btnCh' + c; b.textContent = 'Chapter ' + c + ' · ' + CHN[c]; chList.appendChild(b); }
 $('#btnChapters').onclick = () => { const s = loadSave(LS) || defaultSave(); const u = unlockedCh(s); for (let c = 2; c <= LAST_CH; c++) { const b = $('#btnCh' + c); b.disabled = c > u; b.textContent = 'Chapter ' + c + ' · ' + CHN[c] + (c > u ? ' (finish Chapter ' + (c - 1) + ')' : ''); } showScreen('#chapters'); };
 $('#btnCh1').onclick = () => { save = loadSave(LS) || defaultSave(); writeSave(LS, save); play(0); };
@@ -226,14 +226,14 @@ document.body.dataset.dev = 'ontouchstart' in window ? 'touch' : 'kbd'; fadeIn()
 const qs = new URLSearchParams(location.search);
 if (qs.has('prologue')) { $('#warning').classList.add('hidden'); save = defaultSave(); play(0, { prologue: true }); }
 else if (qs.has('step')) { $('#warning').classList.add('hidden'); save = defaultSave(); if (qs.has('god')) Object.assign(save, { owned: ['fists', 'bat', 'pistol', 'rifle', 'shotgun'], items: ['backpack'], ammo: { light: 99, shell: 30, rifle: 200 }, grenades: 3, cash: 2000, cur: 'rifle' }); play(+qs.get('step')); }
-else { $('#warning').classList.add('hidden'); applySafeDefaults(S, saveS); runLaunchFlow({ audio, applySettings: () => applySafeDefaults(S, saveS), onDone: () => { toTitle(); setTimeout(() => { if (!game && !gamePromise) ensureGame().catch(e => console.error(e)); }, 400); } }); } // v1.9.50: preload the engine quietly behind the title again (the launch gate had moved all of it onto the Play tap)
+else { $('#warning').classList.add('hidden'); applySafeDefaults(S, saveS); runLaunchFlow({ audio, applySettings: () => applySafeDefaults(S, saveS), onDone: () => { toTitle(); setTimeout(() => { if (!game && !gamePromise) ensureGame().catch(e => console.error(e)); }, 400); } }); } // v1.9.52: preload the engine quietly behind the title again (the launch gate had moved all of it onto the Play tap)
 initMenu();
 initDailies();
 initRewards();
 initTutorial({ play: () => play(SURVIVAL_STEP, { tutorial: true }), toTitle });
 window.__atqBooted = true;
 installHardwareBack();
-// v1.9.50: soft UI sounds on menu buttons (never during live gameplay)
+// v1.9.52: soft UI sounds on menu buttons (never during live gameplay)
 document.addEventListener('click', (e) => { try { const b = e.target && e.target.closest && e.target.closest('button, .btn, [role=button]'); if (!b || (game && game.running && !game.paused)) return;
   const id = (b.id || '') + ' ' + (b.className || ''); audio.ui && audio.ui(/back|close|cancel|quit|no\b/i.test(id) ? 'back' : /play|new|cont|start|buy|equip|retry|ok|yes|agree|confirm/i.test(id) ? 'confirm' : 'tap'); } catch (err) { /* ui sound only */ } }, true);
 // (title background image removed in v1.3.1)

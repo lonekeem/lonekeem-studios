@@ -571,5 +571,5 @@ body.driving #wbar{display:none!important}
   #hudTop #obj small{font-size:10px;line-height:1.25}
   #hudTop #bossn{font-size:11px;letter-spacing:.22em}
 }
-/* v1.9.50: cheap vignette for Low quality (Medium / High do it in the post grade) */
+/* v1.9.52: cheap vignette for Low quality (Medium / High do it in the post grade) */
 body.gfx-vig::before{content:'';position:fixed;inset:0;z-index:5;pointer-events:none;background:radial-gradient(ellipse 75% 70% at 50% 50%,rgba(0,0,0,0) 58%,rgba(0,0,0,.34) 100%)}

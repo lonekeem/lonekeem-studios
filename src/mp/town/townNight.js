@@ -1,4 +1,4 @@
-// v1.9.51 Quiet Falls day/night: sky dome, sun/moon, hemi + fog by time of day, streetlights and house windows that
+// v1.9.52 Quiet Falls day/night: sky dome, sun/moon, hemi + fog by time of day, streetlights and house windows that
 // switch on at dusk, a flashlight at night, tougher / more zombies at night with a warning. Wall-clock phase = synced online.
 // Phone budget: 2 real point lights (nearest streetlights) + 1 flashlight, all created up front; everything else is emissive.
 import * as THREE from 'three';

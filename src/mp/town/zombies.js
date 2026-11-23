@@ -37,7 +37,7 @@ function settleCorpse(z) { try { z.root.updateMatrixWorld(true); const ys = []; 
   if (minY < 1e8) { z.root.position.y = Math.max(-.05, Math.min(.35, z.root.position.y + (.02 - minY))); z.root.updateMatrixWorld(true); } } catch (e) { /* ignore */ } }
 const nd0 = z => { const g = window.__mpTown; return g && g.me ? Math.hypot(z.root.position.x - g.me.x, z.root.position.z - g.me.z) : 0; };
 export async function createZombies({ scene, W, camera, getPlayers, onHitPlayer, onNoise, models, bodies = [], fogFar = 105, target = 14, seed = 7, deadVisible = 120, onEvent }) {
-  let nightMul = 1; // v1.9.51: set by the day/night cycle (1 by day, up to 1.35 at night)
+  let nightMul = 1; // v1.9.52: set by the day/night cycle (1 by day, up to 1.35 at night)
   if (!models || !models.lib) models = await loadZombieModels();
   const lib = models.lib, col = W.col, nav = W.nav, rnd = mulberry(seed * 7919 + 1), graph = roadGraph();
   const zs = []; const pools = []; const S = { alive: 0, dead: 0, spawned: 0, killed: 0, rendered: 0 }; const out = { zombies: zs, stats: () => S, target };

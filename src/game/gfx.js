@@ -1,4 +1,4 @@
-// v1.9.50 graphics pass: post chain per quality, per-level look (exposure / fog / grade / particles),
+// v1.9.52 graphics pass: post chain per quality, per-level look (exposure / fog / grade / particles),
 // bullet impact sparks + dust puffs, ejected shell casings, ambient dust / ember motes.
 // Everything here is pooled and created at load so nothing compiles a new shader mid-fight.
 import * as THREE from 'three';

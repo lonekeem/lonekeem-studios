@@ -115,7 +115,7 @@ export class Game {
     this.initFX(); initGfxFx(this); this.input = new Input(this); attachGameWeaponBar(this);
     this.zombies = []; this.npcs = {}; this.pickups = []; this.props = [];
     // post
-    setupPost(this, Q); // v1.9.50: medium = bloom + grade, high = + GTAO; low = no post (CSS vignette)
+    setupPost(this, Q); // v1.9.52: medium = bloom + grade, high = + GTAO; low = no post (CSS vignette)
     addEventListener('resize', () => this.resize()); this.resize();
     this.cam = { yaw: Math.PI / 2, pitch: -0.12, dist: CAM.dist, fp: !!S.fp, shake: V3() };
     this.fpsAcc = 0; this.fpsN = 0; this.fpsT = 0;
@@ -198,7 +198,7 @@ export class Game {
     const o = this._L0, ind = !!mode; if (f) f.indoor = ind; if (sky) sky.visible = !ind; this.moon.visible = !ind; this.moon.intensity = ind ? 0 : o.moon;
     if (!ind) { this.hemi.intensity = o.hemi; this.hemi.color.copy(o.hc); this.hemi.groundColor.copy(o.hg); S.environmentIntensity = o.env; S.fog.density = o.fog; S.fog.color.copy(o.fc); S.background = this.world.env && sky ? null : S.background; return; }
     if (mode === 'dark') { this.hemi.intensity = 1.0; this.hemi.color.set('#5a7a78'); this.hemi.groundColor.set('#2a3634'); S.environmentIntensity = .1; S.fog.density = o.fog * .55; S.fog.color.set('#0a1214'); }
-    else if (mode === 'lab') { this.hemi.intensity = .5; this.hemi.color.set('#cfe2ee'); this.hemi.groundColor.set('#3e3a36'); S.environmentIntensity = .2; S.fog.density = o.fog * .3; S.fog.color.set('#1a2226'); } // v1.9.50: Level 9 lab: darker fill so the ceiling lights and lamps carry the room
+    else if (mode === 'lab') { this.hemi.intensity = .5; this.hemi.color.set('#cfe2ee'); this.hemi.groundColor.set('#3e3a36'); S.environmentIntensity = .2; S.fog.density = o.fog * .3; S.fog.color.set('#1a2226'); } // v1.9.52: Level 9 lab: darker fill so the ceiling lights and lamps carry the room
     else { this.hemi.intensity = 1.25; this.hemi.color.set('#e8f2f4'); this.hemi.groundColor.set('#7a6e60'); S.environmentIntensity = .28; S.fog.density = o.fog * .22; S.fog.color.set('#c4ceca'); }
     S.background = new THREE.Color(S.fog.color); }
   async loadStep(i, opts = {}) {
@@ -800,7 +800,7 @@ export class Game {
     const ty = this.torsoMinY(n); if (ty < 8 && Math.abs(ty - (gy + .03)) > .01) { n.root.position.y += (gy + .03) - ty; n.root.updateMatrixWorld(true); }
     n.screamT -= dt; if (n.screamT <= 0 && n.struggle > .35 && L > .5) { n.screamT = rnd(1.8, 3.5); const dd = n.root.position.distanceTo(this.player.root.position); if (dd < 30) { this.audio.at(n.root.position); if (Math.random() < .5) this.audio.shout(Math.random() < .5 ? 'npcf_scream' : 'npcm_scream', true, n.root.position); else this.audio.scream(.15); } } }
   // animation-synced footsteps (two footfalls per walk/jog/sprint cycle), surface by location, positional
-  surfaceAt(x, z) { const K = this.world && this.world.KH; if (K && x > K.x0 && x < K.x1 && z > K.z0 && z < K.z1) return 'wood'; if (this.stepData && this.stepData.surface === 'wood') return 'wood'; if (this.world && this.world.flags && this.world.flags.indoor) return 'concrete'; // v1.9.50: hospital / lab floors
+  surfaceAt(x, z) { const K = this.world && this.world.KH; if (K && x > K.x0 && x < K.x1 && z > K.z0 && z < K.z1) return 'wood'; if (this.stepData && this.stepData.surface === 'wood') return 'wood'; if (this.world && this.world.flags && this.world.flags.indoor) return 'concrete'; // v1.9.52: hospital / lab floors
     if (Math.abs(x) < 7.8) return 'asphalt'; const M = this.world && this.world.mud; if (M) for (const m of M) { if ((x - m[0]) ** 2 + (z - m[1]) ** 2 < m[2]) return 'mud'; } return 'grass'; }
   stepTrack(c, pos, who) { const a = c.cur; if (!a || !/Walk|Jog|Sprint|Run|Crouch_Fwd|Shuffle/.test(c.curName)) { c._ph = -1; return; } const cl = a.getClip(); const ph = (a.time / cl.duration) % 1; const prev = c._ph ?? -1; c._ph = ph;
     if (prev < 0) return; const hit = (prev < .02 && ph >= .02) || (prev < .52 && ph >= .52) || (ph < prev && ph >= .02); if (!hit) return;
@@ -882,7 +882,7 @@ export class Game {
     const fpT = fpOn && !(T && T.driving); if (fpT) { fpos.copy(cam.position); const rgt = V3(Math.cos(C.yaw), 0, -Math.sin(C.yaw)); fpos.addScaledVector(rgt, .02); fpos.y -= .04; } const wd = fpT ? this._fpWallD || 99 : 99; this._flI = lerp(this._flI == null ? 17 : this._flI, 17 * clamp(Math.pow(Math.max(wd, .05) / 2.5, 1.6) * (wd < 1.2 ? Math.pow(wd / 1.2, .85) : 1), .002, 1), Math.min(1, rdt * 30)); fl.intensity = this._flI; fl.angle = lerp(.42, .85, clamp((1.4 - wd) / 1.2, 0, 1));
     fl.position.copy(fpos).addScaledVector(fdir, fpT ? 0 : .3); fl.target.position.copy(fpos).addScaledVector(fdir, 10); fl.visible = !this.cut || this.cut.flash;
     // moon shadow follows
-    const mp = P.root.position; this.moon.position.set(mp.x - 20, 40, mp.z + 14); this.moon.target.position.copy(mp); survivalDN(this, rdt || 0); // v1.9.51 Survival day/night (moves the sun/moon, sky, fog, lamps, torch)
+    const mp = P.root.position; this.moon.position.set(mp.x - 20, 40, mp.z + 14); this.moon.target.position.copy(mp); survivalDN(this, rdt || 0); // v1.9.52 Survival day/night (moves the sun/moon, sky, fog, lamps, torch)
     if (this.player && this.scene) { if (!this.faceL) { this.faceL = new THREE.PointLight('#ffe6cc', 0, 4.5, 1.6); this.faceL.castShadow = false; this.scene.add(this.faceL); } this.faceL.visible = true; this.faceL.intensity = this.cut ? 0.7 : 0; /* v1.9.10: face fill only in cutscenes (made the player glow white in play); keep the light in the scene so shaders are not recompiled */ const hp = this.cut && this.cut.look ? this.cut.look : this.player.root.position, hy = this.cut && this.cut.look ? hp.y + .25 : hp.y + 1.7, cp = cam.position; this.faceL.position.set(hp.x + (cp.x - hp.x) * .45, hy, hp.z + (cp.z - hp.z) * .45); }
     if (this.audio.listen) { const K = this.world && this.world.KH, c = cam.position; this.audio.listen(cam, !!((this.world.flags && this.world.flags.indoor) || (K && c.x > K.x0 && c.x < K.x1 && c.z > K.z0 && c.z < K.z1))); }
     try { glowUpdate(this); } catch (e) { if (!this._glowErr) { this._glowErr = 1; console.warn('glow', e); } }

@@ -85,7 +85,7 @@ diffuseColor.rgb *= col;`); };
 
   // ---------- sky dome + nicer fog colours
   const SKY_H = new THREE.Color('#34454c'), SKY_Z = new THREE.Color('#0a121c');
-  const skyU = { uTime: { value: 0 }, uHor: { value: SKY_H }, uZen: { value: SKY_Z }, uMoon: { value: new V3(-30, 50, 20).normalize() }, uClouds: { value: low ? 0 : 1 }, uDay: { value: 0 } }; // v1.9.51 uDay: Survival day/night
+  const skyU = { uTime: { value: 0 }, uHor: { value: SKY_H }, uZen: { value: SKY_Z }, uMoon: { value: new V3(-30, 50, 20).normalize() }, uClouds: { value: low ? 0 : 1 }, uDay: { value: 0 } }; // v1.9.52 uDay: Survival day/night
   const sky = new THREE.Mesh(new THREE.SphereGeometry(200, 24, 12), new THREE.ShaderMaterial({ uniforms: skyU, side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false,
     vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
     fragmentShader: `varying vec3 vD; uniform float uTime, uClouds, uDay; uniform vec3 uHor, uZen, uMoon;

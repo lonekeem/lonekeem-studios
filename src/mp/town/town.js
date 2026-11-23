@@ -57,7 +57,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   const scene = new THREE.Scene(); const FOG_FAR = 105; scene.background = new THREE.Color('#aab5b8'); scene.fog = new THREE.Fog('#aab5b8', 28, FOG_FAR);
   const hemi = new THREE.HemisphereLight('#dfe8f0', '#59614a', 1.25); scene.add(hemi); const sun = new THREE.DirectionalLight('#ffeccc', 2.1); sun.position.set(36, 60, 28); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = sc.bottom = -34; sc.right = sc.top = 34; sc.near = 5; sc.far = 160; sun.shadow.bias = -.0006; sun.shadow.normalBias = .04; scene.add(sun, sun.target);
   const cam = new THREE.PerspectiveCamera(58, 1, .1, 320);
-  // v1.9.51: the sky dome now lives in townNight.js (day/night cycle)
+  // v1.9.52: the sky dome now lives in townNight.js (day/night cycle)
   try { const qs = JSON.parse(localStorage.getItem('atq3.settings') || '{}').qual; const coarse = matchMedia('(pointer:coarse)').matches; const q = qs && qs !== 'auto' ? qs : (coarse ? 'low' : 'high');
     if (q === 'low') { renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5)); sun.shadow.mapSize.set(1024, 1024); } else if (q === 'med') renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.75)); } catch (e) { /* defaults */ }
   // ---- world ----
@@ -103,7 +103,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   window.__mpAud = aud; if (!window.__mpAudHooked) { window.__mpAudHooked = 1; const ul = () => { try { if (window.__mpAud && !window.__mpAud._bgSuspended) window.__mpAud.unlock(true); } catch (e) { /* ignore */ } }; ['touchend', 'click', 'keydown', 'pointerup'].forEach(ev => addEventListener(ev, ul, { capture: true, passive: true })); }
   try { aud.stopGameplay && aud.stopGameplay(); } catch (e) { /* ignore */ }
   try { aud.beginSession && aud.beginSession('town'); } catch (e) { /* ignore */ }
-  try { aud.bedsFor && aud.bedsFor({ indoor: false, mood: 'day' }); } catch (e) { /* ambience only */ } // v1.9.50: outdoor town bed (light crickets + far horde)
+  try { aud.bedsFor && aud.bedsFor({ indoor: false, mood: 'day' }); } catch (e) { /* ambience only */ } // v1.9.52: outdoor town bed (light crickets + far horde)
   try { aud.rain && aud.rain(false); aud.beat && aud.beat(0); } catch (e) { /* ignore */ }
   // ---- cheap draw-call LOD: container/furniture lids only near the player, cars hidden far away, no shadows from small bits ----
   let perfAcc = 0; for (const c of W.containers) if (c.lid && c.lid.parent) c.lid.parent.traverse(o => { if (o.isMesh) o.castShadow = false; }); for (const c of cars) c.g.traverse(o => { if (o.isMesh && /wheel/.test(o.name)) o.castShadow = false; });
@@ -115,7 +115,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   const Z = await createZombies({ scene, W, camera: cam, bodies: BODIES, fogFar: 105, deadVisible: 90, target: 12, getPlayers: () => [{ x: me.x, z: me.z, ry: me.ry, drv: !!me.drv, id: 'me', crouch: false }, ...[...remotes.values()].filter(r => r.av).map(r => ({ x: r.x, z: r.z, id: r.id, drv: false }))], onHitPlayer: (dmg, from) => { if (!from || from.id === 'me') hurt(dmg); }, onEvent: (ev, z) => zEvent(ev, z) });
   // ---- toasts / hurt ----
   let toastTm = 0; const toast = (m, sec = 1.8, kind) => { const e = $q('#toast'); if (!e) return; e.textContent = m; e.classList.toggle('wep', kind === 'wep'); e.classList.add('on'); clearTimeout(toastTm); toastTm = setTimeout(() => { e.classList.remove('on'); e.classList.remove('wep'); }, sec * 1000); };
-  const DN = townDayNight({ scene, renderer, sun, hemi, cam, W, Z, toast, fogFar: FOG_FAR, getMe: () => me }); // v1.9.51 day/night (wall clock = same sky for everyone online)
+  const DN = townDayNight({ scene, renderer, sun, hemi, cam, W, Z, toast, fogFar: FOG_FAR, getMe: () => me }); // v1.9.52 day/night (wall clock = same sky for everyone online)
   const hurt = (dmg) => { if (me.dead > 0 || me.prot > 0 || S.roll > 0) return; me.hp = Math.max(0, me.hp - dmg); try { aud.hurt(); } catch (e) { /* ignore */ } vig.style.opacity = 1; setTimeout(() => vig.style.opacity = 0, 180); if (me.hp <= 0) die(); else if (dmg >= 8 && !me.drv) { S.stun = .25; const P = me.av && me.av.motion; if (P && P.play && !fp) P.play('Hit_Chest', { once: true, force: true, speed: 1.6, cb: () => { P.curName = ''; } }); } };
   // death -> countdown -> respawn. me.dead is the countdown in seconds (>0 only while dead; it is ALWAYS reset to exactly 0 on respawn: a negative leftover is truthy and used to block hurt/fire/use forever).
   const RESPAWN_T = 3.2, PROT_T = 2;
