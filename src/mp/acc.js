@@ -307,47 +307,47 @@ export const PIERCE = {
   // Hoop threads the ala and hangs down, tilted toward the camera so the ring reads as a hoop, not an edge.
   noseRing(B, c, o) {
     const n = noseOf(c); if (!n) return; const s = o.side || 1;
-    const R = .0064, t = .0014;
-    const hit = n.ala(s, t * .35, -.0012);
+    const R = .0062, t = .00135;
+    const hit = n.ala(s, 0, -.0012);
     const p = hit.p;
-    const axis = new THREE.Vector3(s * .62, .06, .78).normalize();
-    const v = new THREE.Vector3(0, -1, .12);
+    const axis = new THREE.Vector3(s * .55, .08, .83).normalize();
+    const v = new THREE.Vector3(0, -1, .1);
     v.addScaledVector(axis, -v.dot(axis)).normalize();
     const u = new THREE.Vector3().crossVectors(v, axis).normalize();
-    const center = p.clone().addScaledVector(v, R * .82).addScaledVector(hit.n, t * .35);
-    const pts = []; const N = 22;
-    for (let i = 0; i <= N; i++) {
+    // Pull the centre slightly into the ala so the wire wraps through the nostril edge.
+    const center = p.clone().addScaledVector(v, R * .78).addScaledVector(hit.n, -R * .1);
+    const pts = []; const N = 24;
+    for (let i = 0; i < N; i++) {
       const a = i / N * PI * 2;
       pts.push(xyz(center.clone().addScaledVector(u, Math.cos(a) * R).addScaledVector(v, Math.sin(a) * R)));
     }
     B.tube(pts, t, 'm', true, N, 6);
   },
-  // Closed captive ring hanging under the columella, full circle visible from the front.
+  // Closed ring hanging under the columella, facing the camera (top tucked back into the septum).
   septum(B, c) {
     const n = noseOf(c); if (!n) return;
-    const R = .0064, t = .0014;
-    const hit = n.under(0);
-    const p = hit.p.clone();
-    p.x = (n.tip(0).p.x + p.x) * .5;
-    p.y -= R * .92;
-    p.z += R * .28;
-    B.torus(R, t, xyz(p), 'm', [0, PI / 2, 0]);
+    const R = .006, t = .00145;
+    const tip = n.tip(0).p;
+    const p = tip.clone();
+    p.y -= .009 * n.s + R * .75;
+    p.z -= .0015 * n.s;
+    B.torus(R, t, xyz(p), 'm', [0.62, 0, 0]);
   },
-  // Thicker horseshoe clicker with end beads, U opening up into the septum.
+  // Horseshoe clicker facing the camera: U hangs under the nose, ends tuck back into the septum.
   septumClick(B, c) {
     const n = noseOf(c); if (!n) return;
-    const R = .007, t = .0018;
-    const hit = n.under(0);
-    const cx = hit.p.x, cy = hit.p.y - R * .88, cz = hit.p.z + R * .22;
-    const a0 = -PI * .72, a1 = PI * .72, N = 16, pts = [];
+    const R = .0068, t = .00175;
+    const tip = n.tip(0).p;
+    const cx = tip.x, cy = tip.y - .009 * n.s - R * .55, cz = tip.z - .0015 * n.s;
+    const a0 = -PI * .7, a1 = PI * .7, N = 16, pts = [];
     for (let i = 0; i <= N; i++) {
       const a = a0 + (a1 - a0) * (i / N);
-      pts.push([cx, cy - R * Math.cos(a), cz + R * Math.sin(a)]);
+      pts.push([cx + R * Math.sin(a), cy - R * Math.cos(a), cz + R * .42 * Math.cos(a)]);
     }
     B.tube(pts, t, 'm', false, N, 6);
     for (const k of [-1, 1]) {
       const a = k * a1;
-      B.sphere(t * 1.45, [cx, cy - R * Math.cos(a), cz + R * Math.sin(a)], null, 'm');
+      B.sphere(t * 1.4, [cx + R * Math.sin(a), cy - R * Math.cos(a), cz + R * .42 * Math.cos(a)], null, 'm');
     }
   },
   // Short horizontal barbell sitting on the upper nasal ridge, not the cheeks or tip.
