@@ -43,7 +43,7 @@ export const steps = [
       sleepers(g, [[-7, -2863], [6, -2850], [1, -2873], [-9, -2887], [8, -2879], [13, -2890], [-2, -2884], [-4, -2858]]); g.victim(-10, Z(-2893), null, 2);
       g.say([['vance', "Sublevel B. The power is failing down there, so mind the lights."], ['keem', "Where is she?"], ['vance', "End of the research wing, past the morgue and the boiler room. My volunteers are loose. They react to light and noise."],
         ['marcus', "Volunteers. That's what he calls them."], ['nia', "Biscuit says shh. He is very good at shh."], ['keem', "Crouch, stay quiet, stay together. Let's go get Mom."]]); },
-    update(g) { const D = g.stepData; if (!D.go && g.player.root.position.z < Z(-2892) && g.player.root.position.x > 5) { D.go = true; goto(g, 'c12_boiler', 150); } } },
+    update(g) { const D = g.stepData; if (!D.go && g.player.root.position.z < Z(-2890.5) && g.player.root.position.x > 5) { D.go = true; goto(g, 'c12_boiler', 150); } } },
 
   { id: 'c12_boiler', ch: 12, cp: [10, Z(-2899), PI], obj: 'Find 3 fuses (0/3)', hint: 'Walk over the glowing fuses. Each one rattles the room, so expect company.', mood: 'tense', beat: 2, light: 'dark', rain: false,
     enter(g) { const D = g.stepData; g.hand.visible = true; API.setPower(false); API.doorBoiler.set(true); API.doorHall.set(false); fam(g, D, Z(-2899), 10); D.fuses = 0; g.wpTarget = null; const FZ = [[-8, -2918], [13, -2922], [-12, -2940]];

@@ -75,7 +75,7 @@ export function holdTick(g, D, dt, secs, label, onDone) { if (D.held) return; D.
   if (left !== D._hl) { D._hl = left; g.objective(label + ' · ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0'), D.holdHint || 'Stay alive. Keep them off the family.'); }
   if (D.ht >= secs) { D.held = true; onDone && onDone(); } }
 // keep `n` enemies alive from spawn points while a hold runs
-export function keepUp(g, D, dt, n, fn, every = 2.2) { D._ku = (D._ku || 0) - dt; if (D._ku > 0) return; D._ku = every; if (g.alive().filter(z => !z.boss && !z.ally).length < n) fn(); }
+export function keepUp(g, D, dt, n, fn, every = 2.2) { if (D.held || D.clear) return; D._ku = (D._ku || 0) - dt; if (D._ku > 0) return; D._ku = every; if (g.alive().filter(z => !z.boss && !z.ally).length < n) fn(); }
 
 // ---------- props ----------
 const red = () => new THREE.MeshStandardMaterial({ color: '#d0301e', roughness: .45 });
