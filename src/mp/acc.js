@@ -292,10 +292,60 @@ export const EAR = { // each is built for one side (s = +1 / -1); lobe position 
   cross(B, c, s, o) { const l = c.lobes[s > 0 ? 0 : 1]; const y = l.y - .02; B.tube([[l.x + s * .003, l.y + .01, l.z + .004], [l.x + s * .003, y + .01, l.z + .004]], .0014, 'm', false, 6, 4); B.box(.003, .02, .003, [l.x + s * .003, y, l.z + .004], 'm'); B.box(.003, .003, .012, [l.x + s * .003, y + .005, l.z + .004], 'm'); },
   chain(B, c, s, o) { const l = c.lobes[s > 0 ? 0 : 1], e = c.ears[s > 0 ? 0 : 1]; B.tube([[l.x + s * .003, l.y + .01, l.z + .004], [l.x + s * .008, (l.y + e.y) / 2 - .02, l.z - .005], [e.x + s * .004, e.y + .015, e.z + .002]], .0016, 'm', false, 12, 4); B.sphere(.005, [l.x + s * .003, l.y + .01, l.z + .004], null, 'g'); },
 };
+function xyz(v) { return [v.x, v.y, v.z]; }
+function noseOf(c) { return c.nose; }
+function studAt(B, hit, o) {
+  const r = o && o.gem ? .0032 : .0026;
+  const p = hit.p;
+  B.sphere(r, xyz(p), null, o && o.gem ? 'g' : 'm');
+  if (o && o.gem) B.sphere(r * .55, [p.x - hit.n.x * r * .6, p.y - hit.n.y * r * .6, p.z - hit.n.z * r * .6], null, 'm');
+}
 export const PIERCE = {
-  nose(B, c, o) { const s = o.side || 1; const x = s * c.hw * .12, y = c.noseY + .002; B.sphere(.004, [x, y, c.faceZ(x, y) + .005], null, o.gem ? 'g' : 'm'); },
-  noseRing(B, c, o) { const s = o.side || 1; const x = s * c.hw * .12, y = c.noseY - .002; B.torus(.007, .0017, [x, y, c.faceZ(x, y) + .003], 'm', [0, PI / 2, 0]); },
-  septum(B, c) { B.torus(.008, .0018, [0, c.noseY - .012, c.faceZ(0, c.noseY - .012) + .004], 'm', [PI / 2, 0, 0], PI * 1.5); },
+  // Nostril stud sits on the ala surface (lifted by ~half the bead so it doesn't float or sink).
+  nose(B, c, o) { const n = noseOf(c); if (!n) return; const s = o.side || 1; const r = o.gem ? .0032 : .0026; studAt(B, n.ala(s, r * .55, o.high ? .008 : 0), o); },
+  noseHigh(B, c, o) { const n = noseOf(c); if (!n) return; const s = o.side || 1; const r = o.gem ? .003 : .0025; studAt(B, n.high(s, r * .55), o); },
+  // Hoop threads the nostril rim and hangs slightly down and forward.
+  noseRing(B, c, o) {
+    const n = noseOf(c); if (!n) return; const s = o.side || 1;
+    const R = .0058, t = .00135;
+    const hit = n.ala(s, 0, -.0015);
+    const p = hit.p.clone().addScaledVector(hit.n, t * .2);
+    p.y -= R * .42; p.z += R * .12;
+    // YZ ring, flared a little toward the cheek so it wraps the ala instead of sitting in front of it.
+    B.torus(R, t, xyz(p), 'm', [0.15, PI / 2, -s * 0.28]);
+  },
+  // Closed captive ring hanging under the columella.
+  septum(B, c) {
+    const n = noseOf(c); if (!n) return;
+    const R = .0062, t = .0014;
+    const hit = n.under(0);
+    const p = hit.p.clone(); p.y -= R * .38; p.z += R * .06;
+    B.torus(R, t, xyz(p), 'm', [0, PI / 2, 0]);
+  },
+  // Thicker horseshoe clicker with end beads, opening up into the septum.
+  septumClick(B, c) {
+    const n = noseOf(c); if (!n) return;
+    const R = .0066, t = .0017;
+    const hit = n.under(0);
+    const p = hit.p.clone(); p.y -= R * .4; p.z += R * .05;
+    // Arc is a U opening upward (into the nose) in the sagittal plane.
+    B.torus(R, t, xyz(p), 'm', [0, PI / 2, PI], PI * 1.35);
+    const open = PI * 1.35 / 2;
+    for (const k of [-1, 1]) {
+      const a = PI + k * open;
+      B.sphere(t * 1.35, [p.x, p.y + R * Math.sin(a), p.z + R * Math.cos(a)], null, 'm');
+    }
+  },
+  // Horizontal barbell across the nasal bridge.
+  noseBridge(B, c) {
+    const n = noseOf(c); if (!n) return;
+    const span = .0052 * n.nW;
+    const a = n.bridge(.0022, -span), b = n.bridge(.0022, span), m = n.bridge(.003, 0);
+    B.tube([xyz(a.p), xyz(m.p), xyz(b.p)], .00115, 'm', false, 10, 6);
+    B.sphere(.0024, xyz(a.p), null, 'm'); B.sphere(.0024, xyz(b.p), null, 'm');
+  },
+  // One-tap both-nostril studs (people can also stack left+right themselves).
+  noseDouble(B, c, o) { PIERCE.nose(B, c, { ...o, side: 1, gem: 0 }); PIERCE.nose(B, c, { ...o, side: -1, gem: 0 }); },
   brow(B, c, o) { const s = o.side || 1; const x = s * c.hw * .55, y = c.eyeY + .045; B.sphere(.0035, [x, y, c.faceZ(x, y) + .001], null, 'm'); B.sphere(.0035, [x + s * .006, y + .01, c.faceZ(x, y + .01) + .001], null, 'm'); },
   lip(B, c, o) { const s = o.side || 1; const x = s * c.hw * .14, y = c.mouthY - .019; B.torus(.006, .0016, [x, y, c.faceZ(x, y) + .001], 'm', [0, 0, 0], PI * 1.6); },
   eyebrowBar(B, c, o) { const x = c.hw * .55, y = c.eyeY + .05; B.cyl(.0022, .0022, .016, [x, y, c.faceZ(x, y) + .001], 'm', [0, 0, .5]); },

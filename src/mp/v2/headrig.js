@@ -243,8 +243,31 @@ export function headCtx(av, base) {
   const lobe = sd => { const p = lm.lobe(sd); return new THREE.Vector3(p.x * s, C.y + p.y * s, C.z + p.z * s); };
   const faceZ = (x, y) => C.z + s * L.surfZ(x / s, (y - C.y) / s);
   const crownY = B(.03); const top = B(L.top) + hairT * s;
+  // Project a head-local seed onto the analytic surface, then lift along the outward normal (bind space).
+  const _n = new THREE.Vector3();
+  const project = (lx, ly, lz, lift = 0) => {
+    let x = lx, y = ly, z = lz;
+    for (let i = 0; i < 24; i++) {
+      const d = h.sdf(x, y, z);
+      if (Math.abs(d) < 4e-4) break;
+      sdfNormal(h.sdf, x, y, z, _n);
+      x -= _n.x * d; y -= _n.y * d; z -= _n.z * d;
+    }
+    sdfNormal(h.sdf, x, y, z, _n);
+    return { p: new THREE.Vector3(C.x + x * s + _n.x * lift, C.y + y * s + _n.y * lift, C.z + z * s + _n.z * lift), n: _n.clone() };
+  };
+  const Hn = h.H, ty = L.noseY + .004 * Hn.noseTip, tz = Hn.D * .97 + .013 + .004 * Hn.noseTip, nW = Hn.noseW;
+  const nose = {
+    nW, ty, tz, s,
+    tip: (lift = 0) => project(0, ty, tz, lift),
+    ala: (sd, lift = 0, dy = 0) => project(sd * .0122 * nW, ty - .0028 + dy, tz - .003, lift),
+    high: (sd, lift = 0) => project(sd * .0104 * nW, ty + .0078, tz - .012, lift),
+    under: (lift = 0) => project(0, ty - .0105, tz - .006, lift),
+    bridge: (lift = 0, dx = 0) => project(dx, (L.eyeY + ty) * .5 - .001, tz - .024, lift),
+    project,
+  };
   return Object.assign({}, base, { hw, hs: s, eyeY: B(L.eyeY), mouthY: B(L.mouthY), noseY: B(L.noseY), zc: C.z + .0 * s, top, chinY: B(L.chin), front: C.z + L.front * s, back: C.z + L.back * s - hairT,
-    faceZ, ears: [ear(1), ear(-1)], lobes: [lobe(1), lobe(-1)], earY: B(L.earY), skY: B(L.eyeY), crownY, ry: (top - crownY) + .006, rx: hw * 1.02 + hairT + .006, rz: (h.H.D * s) + hairT + .008 });
+    faceZ, ears: [ear(1), ear(-1)], lobes: [lobe(1), lobe(-1)], earY: B(L.earY), skY: B(L.eyeY), crownY, ry: (top - crownY) + .006, rx: hw * 1.02 + hairT + .006, rz: (h.H.D * s) + hairT + .008, nose });
 }
 
 // ---------- face masks (cloth bands on the same surface)

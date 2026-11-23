@@ -51,6 +51,12 @@ export function normalize(look) { // fill missing fields from the defaults (forw
   if (o.mask && !C.MASKS.some(m => m[0] === o.mask.id)) o.mask = null;
   // Hijab was removed from the creator; existing looks fall back to hair.
   if (o.acc && o.acc.hat && o.acc.hat.id === 'hijab') o.acc.hat = null;
+  if (o.acc) {
+    let p = o.acc.pierce;
+    if (typeof p === 'string') p = p === 'none' ? [] : [p];
+    if (!Array.isArray(p)) p = [];
+    o.acc.pierce = [...new Set(p.filter(id => C.PIERCINGS.some(e => e[0] === id)))];
+  }
   return o;
 }
 const KEY = 'atq.mp.look.v1', FAV = 'atq.mp.fav.v1', SLOTS = 'atq.mp.slots.v1';

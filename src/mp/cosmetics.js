@@ -40,7 +40,7 @@ export const PRICE = {
   rounddark: 140, squaredark: 140, hexclear: 140, hexdark: 150, ovalclear: 140, ovaldark: 150, thindark: 140,
   hoopLarge: 80, hoopHuge: 90, hoopthick: 90, drops: 120, dropl: 140, cuff: 100, cross: 110, chain: 120,
   gstudTiny: 70, gstudSmall: 80, gstudBig: 90, studBig: 60,
-  nosering: 60, septum: 80, nosegem: 70, nosegemR: 70, brow: 60, browR: 60, lip: 60, lipR: 60, tragus: 60, tragusR: 60,
+  nosering: 60, noseringR: 60, septum: 80, septumclick: 90, nosegem: 70, nosegemR: 70, nosedouble: 80, nosehigh: 70, nosehighR: 70, nosebridge: 100, brow: 60, browR: 60, lip: 60, lipR: 60, tragus: 60, tragusR: 60,
   chainMid: 120, chainLong: 150, pearls: 200, pearlsl: 220, scarf: 100, lanyard: 80,
   chainShortthick: 90, chainMidthick: 140, chainLongthick: 160,
   chainMidorb: 150, chainMidcross: 150, chainMidtag: 150, chainMidring: 150, chainMidheart: 180,

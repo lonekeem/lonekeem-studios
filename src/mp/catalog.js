@@ -135,8 +135,18 @@ export const EARRINGS = [];
 for (const [r, n] of [[.0045, 'Tiny'], [.006, 'Small'], [.008, 'Big']]) { EARRINGS.push(H('stud' + n, n + ' stud', 'stud', { r })); EARRINGS.push(H('gstud' + n, n + ' gem stud', 'stud', { r, gem: 1 })); }
 for (const [R, n] of [[.011, 'Tiny'], [.016, 'Small'], [.022, 'Medium'], [.03, 'Large'], [.04, 'Huge']]) EARRINGS.push(H('hoop' + n, n + ' hoop', 'hoop', { R }));
 EARRINGS.push(H('hoopthick', 'Thick hoop', 'hoop', { R: .02, t: .0055 }), H('drops', 'Gem drop', 'drop'), H('dropl', 'Long gem drop', 'drop', { len: .055 }), H('cuff', 'Ear cuff', 'cuff'), H('cross', 'Cross dangle', 'cross'), H('chain', 'Chain & stud', 'chain'));
-export const PIERCINGS = [H('nose', 'Nose stud (left)', 'nose', { side: 1 }), H('noseR', 'Nose stud (right)', 'nose', { side: -1 }), H('nosegem', 'Nose gem (left)', 'nose', { side: 1, gem: 1 }), H('nosegemR', 'Nose gem (right)', 'nose', { side: -1, gem: 1 }), H('nosering', 'Nose ring', 'noseRing', { side: 1 }), H('septum', 'Septum ring', 'septum'),
-  H('brow', 'Eyebrow piercing', 'brow', { side: 1 }), H('browR', 'Eyebrow piercing (right)', 'brow', { side: -1 }), H('lip', 'Lip ring', 'lip', { side: 1 }), H('lipR', 'Lip ring (right)', 'lip', { side: -1 }), H('tragus', 'Tragus stud', 'tragus', { side: 1 }), H('tragusR', 'Tragus stud (right)', 'tragus', { side: -1 })];
+export const PIERCINGS = [
+  H('nose', 'Nose stud (left)', 'nose', { side: 1 }), H('noseR', 'Nose stud (right)', 'nose', { side: -1 }),
+  H('nosegem', 'Nose gem (left)', 'nose', { side: 1, gem: 1 }), H('nosegemR', 'Nose gem (right)', 'nose', { side: -1, gem: 1 }),
+  H('nosedouble', 'Double nostril studs', 'noseDouble'),
+  H('nosehigh', 'High nostril stud (left)', 'noseHigh', { side: 1 }), H('nosehighR', 'High nostril stud (right)', 'noseHigh', { side: -1 }),
+  H('nosering', 'Nostril hoop (left)', 'noseRing', { side: 1 }), H('noseringR', 'Nostril hoop (right)', 'noseRing', { side: -1 }),
+  H('septum', 'Septum ring', 'septum'), H('septumclick', 'Septum clicker', 'septumClick'),
+  H('nosebridge', 'Bridge bar', 'noseBridge'),
+  H('brow', 'Eyebrow piercing', 'brow', { side: 1 }), H('browR', 'Eyebrow piercing (right)', 'brow', { side: -1 }),
+  H('lip', 'Lip ring', 'lip', { side: 1 }), H('lipR', 'Lip ring (right)', 'lip', { side: -1 }),
+  H('tragus', 'Tragus stud', 'tragus', { side: 1 }), H('tragusR', 'Tragus stud (right)', 'tragus', { side: -1 }),
+];
 export const NECKLACES = [];
 for (const [dn, d] of [['Short', .06], ['Mid', .12], ['Long', .2]]) for (const [pn, p, t] of [['', '', .0023], [' thick', '', .0045], [' + orb', 'orb', .0025], [' + cross', 'cross', .0025], [' + tag', 'tag', .0025], [' + ring', 'ring', .0025], [' + heart', 'heart', .0025]]) NECKLACES.push(H('chain' + dn + pn.replace(/\W/g, ''), dn + ' chain' + pn, 'chain', { drop: d, pend: p, t }));
 NECKLACES.push(H('choker', 'Choker', 'choker'), H('chokerg', 'Gem choker', 'choker', { pend: 1 }), H('pearls', 'Pearl strand', 'pearls'), H('pearlsl', 'Long pearls', 'pearls', { drop: .18 }), H('beads', 'Bead necklace', 'beads'), H('scarf', 'Scarf', 'scarf'), H('lanyard', 'Lanyard', 'lanyard'));
