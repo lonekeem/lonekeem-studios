@@ -6,7 +6,7 @@ import { PATTERNS } from './garments.js';
 function makeALine(yTop, len, waistRx, waistRz, hemRx, hemRz, nu = 56, nv = 14) {
   const pos = [], nrm = [], uv = [], idx = [];
   for (let j = 0; j <= nv; j++) {
-    const v = j / nv, along = v < 0.42 ? 0 : Math.pow((v - 0.42) / 0.58, 1.35); // stay slim past the hands, then flare
+    const v = j / nv, along = v * v * (3 - 2 * v); // smooth A-line
     const y = yTop - len * v;
     const rx = waistRx + (hemRx - waistRx) * along;
     const rz = waistRz + (hemRz - waistRz) * along;
@@ -101,10 +101,10 @@ export function mountSkirt(av, piece, row) {
   const leg = Math.max(0.4, P.Hips.y - ((P.LeftFoot && P.LeftFoot.y) || 0.08));
   const len = Math.max(0.18, leg * (0.22 + (le || 0.4) * 0.62));
   const hips = (av._morph && av._morph.hips) || 0;
-  const waistRx = 0.110 + hips * 0.03 + (loose || 0) * 1.4;
-  const waistRz = waistRx * 0.72;
+  const waistRx = 0.126 + hips * 0.04 + (loose || 0) * 1.6;
+  const waistRz = waistRx * 0.74;
   const flare = Math.max(fl || 0, (kb || 0) * 0.45, 0.045) * (le > 0.4 ? 1.15 : 1.0);
-  const hemRx = waistRx + flare * 0.55 + 0.01, hemRz = waistRz + flare * 0.95 + 0.016;
+  const hemRx = waistRx + flare + 0.016, hemRz = waistRz + flare * 0.7 + 0.014;
   const geo = makeALine(yTop, len, waistRx, waistRz, hemRx, hemRz);
   skinTo(av, geo, () => [['Hips', 1]]);
   const mesh = new THREE.SkinnedMesh(geo, skirtMat(piece));

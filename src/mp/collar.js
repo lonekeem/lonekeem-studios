@@ -57,7 +57,7 @@ export function clearCollar(av) {
   av._collar = null;
 }
 
-export function mountCollar(av, piece, kind) {
+export function mountCollar(av, piece, kind, row) {
   clearCollar(av);
   if (!piece || kind !== 3 || !av.boneIdx || av.boneIdx.Spine02 == null) return;
   const id = piece.id || '';
@@ -65,12 +65,14 @@ export function mountCollar(av, piece, kind) {
   const P = av.tpl.P;
   const yN = P.neck.y;
   const zc = (P.neck && typeof P.neck.z === 'number') ? P.neck.z : 0;
-  const zChest = ctx.torsoZ(yN - 0.06) + 0.016;
+  const zChest = ctx.torsoZ(yN - 0.08) + 0.018;
+  const oh = Math.max(0.04, (row && row[6]) || 0.05);
   const c = piece.c || '#888';
   const out = [];
   const add = (geo) => out.push(bindAcc(av, rigid(av, geo, 'Spine02', mat(c))));
 
   if (id === 'robe' || id === 'poncho') {
+    add(horseshoe(yN - 0.01, zc, 0.055, 0.10, 0.05, 0.92, 0.35));
     const belt = new THREE.TorusGeometry(0.13, 0.016, 8, 28);
     belt.rotateX(Math.PI / 2);
     belt.translate(0, P.Hips.y + 0.16, (ctx.torsoZ(P.Hips.y + 0.16) + ctx.torsoZ(P.Hips.y + 0.16, true)) / 2);
@@ -78,10 +80,10 @@ export function mountCollar(av, piece, kind) {
     av._collar = out; return;
   }
 
-  // Yoke covers the shader neck rim (which sits on the inner shoulders). Open at the chest.
-  add(horseshoe(yN - 0.01, zc, 0.055, 0.10, 0.05, 0.92, 0.55));
-  const xIn = 0.028, xOut = 0.058;
-  add(lapel(1, yN - 0.005, yN - 0.17, xIn, xOut, zChest, 0.014));
-  add(lapel(-1, yN - 0.005, yN - 0.17, xIn, xOut, zChest, 0.014));
+  // Yoke covers the shader neck rim. Lapels sit on the jacket placket, not in the shirt gap.
+  add(horseshoe(yN - 0.008, zc, 0.052, 0.112, 0.048, 0.92, 0.62));
+  const xIn = oh + 0.002, xOut = oh + 0.034;
+  add(lapel(1, yN - 0.002, yN - 0.18, xIn, xOut, zChest, 0.01));
+  add(lapel(-1, yN - 0.002, yN - 0.18, xIn, xOut, zChest, 0.01));
   av._collar = out;
 }

@@ -51,8 +51,8 @@ function setGarment(av, name, kind, piece, tbl, g) {
   const m = bodyLayer(av, name, kind); setLm(av, m.material); m.visible = !!piece; if (!piece) { if (kind === 1) clearSkirt(av); if (kind === 3) clearCollar(av); return; } const s = tbl.find(t => t[0] === piece.id); if (!s) { m.visible = false; if (kind === 1) clearSkirt(av); if (kind === 3) clearCollar(av); return; }
   const U = m.material.userData.U, off = m.material.userData.off; U.uC1.value.set(piece.c); U.uC2.value.set(piece.c2 || '#ffffff'); U.uPat.value.set(piece.p || 0, 11 + (piece.ps || 0) * 8, 1, 0); U.uSole.value.set(.02, 0, 0, 0);
   U.uShape.value.set(0, 0, 0, 0); { const d = DET[piece.id] || [0, 0, 0, 0]; U.uDet.value.set(...d); }
-  if (kind === 0 || kind === 3) { const [id, nm, gd, sl, hem, nT, nD, nW, dl, tu, loose, flare, con] = s; if (kind === 3) { const [id2, n2, g2, sl2, hem2, nt2, oh, ot, dl2, tu2, lo2, fl2] = s; U.uG1.value.set(sl2, hem2, 0, 9); U.uG2.value.set(dl2, oh, ot, tu2); U.uN.value.set(nt2, .06, .13, -.03); U.uShape.value.set(0, lo2 * 2, 0, fl2 * (id2 === 'robe' ? 1.35 : 1)); off.value = .0145 + lo2; U.uSole.value.set(.02, 0, 1, id2 === 'varsity' ? 1 : 0); if (id2 === 'robe') { U.uDet.value.w = 1; U.uG2.value.set(dl2, 0.016, 0.88, tu2); }
-      else { const nk = U.uNk.value; nk.x = 0.04; nk.z = Math.max(0.05, nk.z - 0.018); nk.w = Math.max(0.05, nk.w - 0.014); } // tighter, shallower neck hole; collar covers the rim
+  if (kind === 0 || kind === 3) { const [id, nm, gd, sl, hem, nT, nD, nW, dl, tu, loose, flare, con] = s; if (kind === 3) { const [id2, n2, g2, sl2, hem2, nt2, oh, ot, dl2, tu2, lo2, fl2] = s; U.uG1.value.set(sl2, hem2, 0, 9); U.uG2.value.set(dl2, oh, ot, tu2); U.uN.value.set(nt2, .06, .13, -.03); U.uShape.value.set(0, lo2 * 2, 0, fl2 * (id2 === 'robe' ? 1.35 : 1)); off.value = .0145 + lo2; U.uSole.value.set(.02, 0, 1, id2 === 'varsity' ? 1 : 0); { const nk = U.uNk.value; nk.x = 0.04; nk.z = Math.max(0.05, nk.z - 0.018); nk.w = Math.max(0.05, nk.w - 0.014); }
+      if (id2 === 'robe') { U.uDet.value.w = 1; U.uG2.value.set(dl2, 0.016, 0.88, tu2); } // tighter, shallower neck hole; collar/belt covers the rim
     }
     else { U.uG1.value.set(sl, hem, 0, 9); U.uG2.value.set(dl, .05, .5, tu); U.uN.value.set(nT, nD, nW, -.03); U.uShape.value.set(0, loose * 2, 0, flare); off.value = .0095 + loose + (dl > 0 ? .014 : 0); U.uSole.value.set(.02, 0, 0, con); } }
   else if (kind === 1) { const [id, nm, gd, le, wa, loose, fl, kb] = s;
@@ -60,6 +60,7 @@ function setGarment(av, name, kind, piece, tbl, g) {
     else { clearSkirt(av); U.uG1.value.set(le, wa, 0, 9); U.uShape.value.set(kb, fl, 0, 0); off.value = .0062 + loose; } }
   else if (kind === 2) { const [id, nm, gd, sh, soleY, offs, cap] = s; U.uG1.value.set(sh, 0, id === 'socks' ? 1 : 0, 9); U.uSole.value.set(soleY, cap, 0, 0); off.value = offs; U.uC3.value.set(piece.sole || '#f2f2f0'); U.uPat.value.z = (piece.p || 0) ? 1 : 0; }
   else if (kind === 4) { const [id, nm, sh, offs] = s; U.uG1.value.set(sh, 0, 0, 9); off.value = offs; }
+  if (kind === 3) mountCollar(av, piece, kind, s);
 }
 function setUnder(av, f, skinCol) { const m = bodyLayer(av, 'under', 5); const U = m.material.userData.U; m.material.userData.off.value = .0035; U.uC1.value.set(f ? '#2a2a30' : '#26272c'); U.uG1.value.set(0, 0, f ? 1 : 0, 9); m.visible = true; }
 
