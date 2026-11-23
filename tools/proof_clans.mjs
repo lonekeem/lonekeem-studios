@@ -18,6 +18,9 @@ await ctx.addInitScript(() => {
   try {
     localStorage.setItem('atq3.settings', JSON.stringify({ qual: 'low' }));
     localStorage.setItem('atq_prologue_seen', '1');
+    localStorage.setItem('atq.gate', JSON.stringify({ birthYear: 1990, agreedVersion: 1 }));
+    localStorage.setItem('atq.tut.seen', '1');
+    localStorage.setItem('atq.town.tut', '1');
     localStorage.setItem('atq.profile.v1', JSON.stringify({ v: 1, name: 'ZzClanProof', uid: null, createdAt: Date.now() }));
     localStorage.setItem('atq.guest', JSON.stringify({ id: crypto.randomUUID(), secret: crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, ''), name: 'ZzClanProof' }));
   } catch (e) { /* ignore */ }
@@ -35,9 +38,20 @@ async function shot(name) {
 }
 
 await p.goto(URL, { waitUntil: 'domcontentloaded' });
-await p.click('#btnWarn').catch(() => {});
-await p.waitForSelector('#title:not(.hidden)', { timeout: 60000 });
-await p.waitForTimeout(400);
+for (let i = 0; i < 80; i++) {
+  const r = await p.evaluate(() => {
+    const s = document.getElementById('gateSkip'); if (s && s.offsetParent) { s.click(); return ''; }
+    const ts = document.getElementById('tutSkip'); if (ts && ts.offsetParent) { ts.click(); return ''; }
+    const w = document.getElementById('btnWarn'); if (w && w.offsetParent) { w.click(); return ''; }
+    const t = document.getElementById('title'); const l = document.getElementById('loading');
+    return t && !t.classList.contains('hidden') && (!l || l.classList.contains('hidden')) ? 'ok' : '';
+  });
+  if (r === 'ok') break;
+  await p.waitForTimeout(400);
+}
+await p.waitForSelector('#title:not(.hidden)', { timeout: 30000 });
+await p.locator('#tutSkip').click({ timeout: 1500 }).catch(() => {});
+await p.waitForTimeout(300);
 
 const foot = await p.evaluate(() => document.querySelector('#foot')?.textContent || '');
 const lobby = await p.evaluate(() => !!document.querySelector('#btnLobby'));
@@ -54,12 +68,12 @@ await shot('02-online-pane');
 
 await p.click('#btnClans');
 await p.waitForSelector('#online:not(.hidden)', { timeout: 30000 });
-await p.waitForTimeout(1200);
+await p.waitForSelector('#cCreate, #cName', { timeout: 20000 });
 const tabSel = await p.evaluate(() => {
   const b = document.querySelector('#online .wseg:not(.wsort) button[data-t="clans"]');
-  return { exists: !!b, sel: !!(b && b.classList.contains('sel')), text: document.querySelector('#cMain')?.innerText?.slice(0, 240) || '' };
+  return { exists: !!b, sel: !!(b && b.classList.contains('sel')), text: (document.querySelector('#cMain')?.innerText || document.querySelector('#wClans')?.innerText || '').slice(0, 240) };
 });
-rec('Clans tab opens', tabSel.exists && tabSel.sel && /Clan/.test(tabSel.text), tabSel);
+rec('Clans tab opens', tabSel.exists && tabSel.sel && /Create a Clan|Clan name|Clans/.test(tabSel.text), tabSel);
 await shot('03-clans-home');
 
 // Create form + live banner preview (guest can open the form; save requires sign-in)
@@ -130,20 +144,34 @@ await shot('12-leaderboard-clans');
 // Private test town with a preview clan on the nametag — never listed in the public lobby
 await p.evaluate(() => { document.querySelector('#online .wback')?.click(); });
 await p.waitForTimeout(300);
-const joined = await p.evaluate(async () => {
-  window.__atqClanPreview = {
-    id: 'preview', name: 'Quiet Falls Crew', tag: 'QFC',
-    banner: { v: 1, shape: 'shield', bg: '#8b1e1e', bg2: '#d9b44a', pattern: 'chevron', emblem: 'bunny', emblemColor: '#f4f0e6', trim: '#d9b44a', trimStyle: 'thick' },
-  };
+const previewClan = {
+  id: 'preview', name: 'Quiet Falls Crew', tag: 'QFC',
+  banner: { v: 1, shape: 'shield', bg: '#8b1e1e', bg2: '#d9b44a', pattern: 'chevron', emblem: 'bunny', emblemColor: '#f4f0e6', trim: '#d9b44a', trimStyle: 'thick' },
+};
+// 2D nametag close-up (same canvas the town sprites use)
+await p.evaluate((clan) => {
+  const old = document.getElementById('cTagProof'); if (old) old.remove();
+  const box = document.createElement('div'); box.id = 'cTagProof';
+  box.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#0b1a12;display:flex;align-items:center;justify-content:center;';
+  const c = document.createElement('canvas'); c.width = 768; c.height = 288; c.style.width = '512px'; c.style.height = '192px';
+  box.append(c); document.body.append(box);
+  return import('/src/mp/clanBanner.js').then(m => { m.drawNameTag(c.getContext('2d'), c.width, c.height, 'ZzClanProof', clan); });
+}, previewClan);
+await p.waitForTimeout(200);
+await shot('12b-nametag-2d-close');
+await p.evaluate(() => document.getElementById('cTagProof')?.remove());
+const joined = await p.evaluate(async (clan) => {
+  window.__atqClanPreview = clan;
   if (!window.__atqWorld || !window.__atqWorld.joinTestRoom) {
     const m = await import('/src/mp/world.js');
     if (m.openOnline) m.openOnline('games');
     await new Promise(r => setTimeout(r, 400));
   }
   const room = 'w-test-clan-' + Math.random().toString(36).slice(2, 8);
-  await window.__atqWorld.joinTestRoom(room, 'Clan proof (private)', null);
+  // fire and forget: enterTown resolves after load; we wait on __mpTown in Playwright
+  window.__atqWorld.joinTestRoom(room, 'Clan proof (private)', null, { look: { name: 'ZzClanProof', base: 'mp_m1', clan } });
   return room;
-});
+}, previewClan);
 rec('joined private test room', typeof joined === 'string' && joined.startsWith('w-test-'), joined);
 try {
   await p.waitForFunction(() => !!window.__mpTown, { timeout: 180000 });
@@ -154,22 +182,31 @@ try {
   await b.close();
   process.exit(1);
 }
-await p.waitForTimeout(4000);
-// Frame the player so the nametag is readable
+await p.waitForTimeout(2500);
+await p.locator('.actTut button:has-text("Skip"), .actTut button[aria-label="Close tutorial"], #tutSkip').first().click({ timeout: 3000 }).catch(() => {});
+await p.evaluate(() => { document.querySelectorAll('.actTut').forEach(el => { el.style.display = 'none'; }); try { window.__mpTown && window.__mpTown.ACT && window.__mpTown.ACT.tut && window.__mpTown.ACT.tut.skip && window.__mpTown.ACT.tut.skip(); } catch (e) {} });
+await p.waitForTimeout(400);
 await p.evaluate(() => {
   const T = window.__mpTown; if (!T) return;
-  try { T.setCam(0.9, 0.18, 3.4); } catch (e) { /* ignore */ }
-  try { T.setPos((T.me?.x || 0), (T.me?.z || 0)); } catch (e) { /* ignore */ }
+  try { T.setCam((T.me && T.me.ry) || 0, 0.18, 3.05); } catch (e) { /* ignore */ }
+  T.scene && T.scene.traverse(o => { if (o.isSprite && o.userData && o.userData.clanTag) o.visible = true; });
 });
-await p.waitForTimeout(800);
-await shot('13-town-nametag');
-// closer head crop via camera
-await p.evaluate(() => { try { window.__mpTown.setCam(1.2, 0.25, 2.4); } catch (e) {} });
-await p.waitForTimeout(600);
-await shot('14-town-nametag-close');
-// behind the player to see the back-patch flag
-await p.evaluate(() => { try { const T = window.__mpTown; T.setCam((T.me?.ry || 0) + Math.PI, 0.1, 2.8); } catch (e) {} });
 await p.waitForTimeout(700);
+await shot('13-town-nametag');
+await p.evaluate(() => {
+  const T = window.__mpTown; if (!T) return;
+  try { T.setCam((T.me && T.me.ry) || 0, 0.16, 3.05); } catch (e) {}
+  T.scene && T.scene.traverse(o => { if (o.isSprite) o.visible = true; });
+});
+await p.waitForTimeout(500);
+await shot('14-town-nametag-close');
+// look at the back / flag: stand behind the facing direction (default third-person already does); orbit slightly
+await p.evaluate(() => {
+  const T = window.__mpTown; if (!T) return;
+  try { T.setCam(((T.me && T.me.ry) || 0) + 0.45, 0.10, 3.05); } catch (e) {}
+  T.scene && T.scene.traverse(o => { if (o.isSprite) o.visible = true; });
+});
+await p.waitForTimeout(600);
 await shot('15-town-back-flag');
 
 const peersHook = await p.evaluate(() => !!(window.__mpTown && window.__atqWorld && window.__atqWorld.isTestRoom('w-test-x', { test: true })));

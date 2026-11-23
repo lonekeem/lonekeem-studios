@@ -312,6 +312,18 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
     g.fillStyle = '#e8c04a'; for (const c of cars) g.fillRect(X(c.x) - 2.5, Z2(c.z) - 2.5, 5, 5); if (Z) { g.fillStyle = '#e0443a'; for (const z of Z.zombies) { if (z.dead) continue; const p = z.root.position; g.fillRect(X(p.x) - 1.5, Z2(p.z) - 1.5, 3, 3); } } g.fillStyle = '#6ac7ff'; for (const r of remotes.values()) g.fillRect(X(r.x) - 3, Z2(r.z) - 3, 6, 6); if (H.mini) try { H.mini(g, X, Z2, MS2); } catch (e) { /* ignore */ } if (ACT) try { ACT.mini(g, X, Z2, MS2); } catch (e) { /* ignore */ } if (INF) try { INF.drawMini(g, X, Z2, MS2); } catch (e) { /* ignore */ }
     g.restore(); g.fillStyle = '#fff'; g.strokeStyle = '#000'; g.lineWidth = 1.5; g.save(); g.translate(MSZ / 2, MSZ / 2); g.rotate(-me.ry + Math.PI); g.beginPath(); g.moveTo(0, -7); g.lineTo(5, 5); g.lineTo(-5, 5); g.closePath(); g.fill(); g.stroke(); g.restore(); g.strokeStyle = '#fff6'; g.lineWidth = 2; g.beginPath(); g.arc(MSZ / 2, MSZ / 2, MSZ / 2 - 2, 0, 7); g.stroke(); }
   const insideB = (x, z) => { for (const b of W.buildings) { const r = b.rect; if (x > r.x0 - .1 && x < r.x1 + .1 && z > r.z0 - .1 && z < r.z1 + .1) return b; } return null; };
+  const _tagP = new THREE.Vector3();
+  const placeNameTag = (tag, x, y, z, show) => {
+    if (!tag) return;
+    if (!show) { tag.visible = false; return; }
+    _tagP.set(x, y, z).project(cam);
+    if (_tagP.z < -1 || _tagP.z > 1) { tag.visible = false; return; }
+    // Lift a few screen pixels above the hat so a pitched follow camera doesn't send the tag into the top HUD.
+    _tagP.y += 8 * 2 / Math.max(1, innerHeight);
+    _tagP.unproject(cam);
+    tag.position.copy(_tagP);
+    tag.visible = true;
+  };
   function frame(now) {
     if (!running) return; requestAnimationFrame(frame); const rawDt = (now - last) / 1000, dt = Math.min(window.__MP_DTCAP || .05, rawDt); last = now; t += dt; const w = innerWidth, h = innerHeight; if (canvas.width !== Math.floor(w * renderer.getPixelRatio()) || canvas.height !== Math.floor(h * renderer.getPixelRatio())) { renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
     if (me.dead > 0) { if (H.holdDead && H.holdDead(dt)) { /* downed in a co-op mission: coop.js decides */ } else { me.dead -= dt; const cn = dead.querySelector('.cnt'); if (cn) cn.textContent = String(Math.max(1, Math.ceil(me.dead))); if (me.dead <= 0) respawn(); } } else if (me.prot > 0) me.prot = Math.max(0, me.prot - dt);
@@ -338,14 +350,13 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
     me.av.root.visible = !c && !fp && (!(me.prot > 0) || Math.floor(performance.now() / 100) % 2 === 0); me.av.root.rotation.order = 'YXZ'; if (c || me.dead > 0 && !me.av.motion) me.av.root.position.set(me.x, me.y, me.z); { const P = me.av.motion; if (P) { P.mixer.update(me.dead > 0 || busy || !running ? dt : (c ? 0 : dt)); if (!c && me.dead <= 0) updateAimPose(AG, dt); } else animate(me.av, t, me.sp, look && look.acc && look.acc.chair ? 'sit' : 'ground'); try { if (look && look.acc && look.acc.chair) poseChair(me.av, t); } catch (e) {} } placeShotFx(AG);
     if (!c) stepSnd(me.av.motion, me.x, me.z, S.crouch ? .14 : S.spd > 4.4 ? .5 : .32, 'p');
     try { if (c) { aud.engine(true, Math.min(1, Math.abs(c.v) / 17)); aud.tires && aud.tires(true, Math.abs((c._T && c._T.st) || 0) * Math.abs(c.v) / 30); wasDrv = true; } else if (wasDrv) { wasDrv = false; aud.engine(false); aud.tires && aud.tires(false); } } catch (e) { /* ignore */ }
-    myTag.position.set(me.x, 1.95 + me.y, me.z); myTag.visible = !c && !fp && cam.position.distanceTo(myTag.position) > 4.5; // v1.9.75: own tag hides when the camera is tucked close (it rode up into the top banner)
     // doors animate
     for (const D of W.doors) { if (!D.installed) continue; const tg = D.target; if (Math.abs(D.open - tg) > .001) { D.open += Math.sign(tg - D.open) * dt * 2.2; if ((tg > D.open) === (D.open < tg) && Math.abs(D.open - tg) < .03) D.open = tg; D.pivot.rotation.y = D.swing * D.open * (D.state === 'broken' ? 1.95 : 1.55); }
       if (D.state === 'closing' && D.open <= .02) { D.state = 'closed'; D.open = 0; D.pivot.rotation.y = 0; col.set(D.col, true); } }
     // containers lid anim
     for (const k of W.containers) if (k.lid && k.opening) { k.opening = Math.min(2, k.opening + dt * 2); k.lid.rotation.y = -Math.min(1.5, (k.opening - 1) * 3); if (k.opening >= 1.5) k.opening = 0, k.lid.rotation.y = -1.5; }
     // remote players
-    for (const [id, p] of net.peers) { const r = remotes.get(id); if (!r || !r.av || !p.s) continue; const s = p.s; r.x += (s.x - r.x) * Math.min(1, dt * 10); r.z += (s.z - r.z) * Math.min(1, dt * 10); r.ry += angDiff(r.ry, s.ry) * Math.min(1, dt * 10); r.sp += ((s.sp || 0) - r.sp) * Math.min(1, dt * 8); r.av.root.visible = !s.drv; r.av.root.position.set(r.x, 0, r.z); r.av.root.rotation.y = r.ry; if (r.av.motion) { r.spd = (r.spd || 0) + ((s.spd ?? (s.sp || 0) * 3.1) - (r.spd || 0)) * Math.min(1, dt * 8); if ((s.g || 0) !== (r.g || 0) || (s.g && !r.gm)) { r.g = s.g || 0; r.gm = mountGun(r.av.motion, r.g, r.gm, r.av); } driveRemote(r.av.motion, dt, { spd: r.spd, f: s.f, g: s.g }); stepSnd(r.av.motion, r.x, r.z, .3, 'n'); } else { const rl = p.look || (r.av && r.av.look) || (s && s.look); animate(r.av, t + id.length, r.sp, rl && rl.acc && rl.acc.chair ? 'sit' : 'ground'); try { if (rl && rl.acc && rl.acc.chair) poseChair(r.av, t + id.length); } catch (e) {} } r.tag.position.set(r.x, 1.95, r.z); r.tag.visible = !s.drv; }
+    for (const [id, p] of net.peers) { const r = remotes.get(id); if (!r || !r.av || !p.s) continue; const s = p.s; r.x += (s.x - r.x) * Math.min(1, dt * 10); r.z += (s.z - r.z) * Math.min(1, dt * 10); r.ry += angDiff(r.ry, s.ry) * Math.min(1, dt * 10); r.sp += ((s.sp || 0) - r.sp) * Math.min(1, dt * 8); r.av.root.visible = !s.drv; r.av.root.position.set(r.x, 0, r.z); r.av.root.rotation.y = r.ry; if (r.av.motion) { r.spd = (r.spd || 0) + ((s.spd ?? (s.sp || 0) * 3.1) - (r.spd || 0)) * Math.min(1, dt * 8); if ((s.g || 0) !== (r.g || 0) || (s.g && !r.gm)) { r.g = s.g || 0; r.gm = mountGun(r.av.motion, r.g, r.gm, r.av); } driveRemote(r.av.motion, dt, { spd: r.spd, f: s.f, g: s.g }); stepSnd(r.av.motion, r.x, r.z, .3, 'n'); } else { const rl = p.look || (r.av && r.av.look) || (s && s.look); animate(r.av, t + id.length, r.sp, rl && rl.acc && rl.acc.chair ? 'sit' : 'ground'); try { if (rl && rl.acc && rl.acc.chair) poseChair(r.av, t + id.length); } catch (e) {} } placeNameTag(r.tag, r.x, 1.50, r.z, !s.drv); }
     stAcc += dt; if (stAcc > .08) { stAcc = 0; net.state({ x: me.x, z: me.z, ry: me.ry, sp: me.sp, spd: +(S.spd || 0).toFixed(2), f: (S.crouch ? 1 : 0) | (S.roll > 0 ? 2 : 0) | (S.y > .05 ? 4 : 0) | (S.atk > 0 ? 8 : 0) | (S.atk > 0 && bag.best().name !== 'fists' ? 16 : 0) | (S.stun > 0 ? 32 : 0) | (me.dead > 0 ? 64 : 0), drv: c ? 1 : 0, g: GS.shown || 0 }); }
     // zombies / nav
     navAcc += dt; if (navAcc > .45) { navAcc = 0; W.nav.field(me.x, me.z); } try { if (aud.ctx && aud.listen) aud.listen(cam, !!insideB(me.x, me.z)); } catch (e) { /* ignore */ } perfLOD(dt); DN.update(dt); try { if (ACT) { ACT.TUT.hide(!!panelKind || pausePanel.style.display === 'flex' || me.dead > 0 || document.body.classList.contains('cine') || document.body.classList.contains('coopcard')); ACT.update(dt); } } catch (e) { /* activities */ } try { WX.update(dt, !!insideB(me.x, me.z)); setCarNight(Math.max(DN.state.lampK || 0, WX.state.K.storm * .8, WX.state.K.fog * .6, WX.state.K.rain * .45)); { const dc = me.drv, on = dc && dc.engine && dc.hp > 0; const k = on ? Math.max(DN.state.lampK || 0, WX.state.K.storm * .8, WX.state.K.fog * .6) : 0; carSpot.intensity = 40 * k; if (on) { const s2 = Math.sin(dc.ry), c2 = Math.cos(dc.ry); carSpot.position.set(dc.x + s2 * (dc.L / 2), .9, dc.z + c2 * (dc.L / 2)); carSpot.target.position.set(dc.x + s2 * 16, 0, dc.z + c2 * 16); } } } catch (e) { /* weather */ } if (Z) { Z.update(dt, t); zombieLOD(); } updateLoot(W, dt);
@@ -364,6 +375,8 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
       const gw = curGun() && WEAPONS[curGun()];
       stepFollowCam({ cam, yaw: syaw, pitch: lookPitch, px: me.x, py: me.y, pz: me.z, aim: aimOn, crouch: !!(shim.state && shim.state.crouch), indoor: !!inb, dt, zoom: gw && gw.zoom, state: followSt, hitDist, minDist: inb ? INDOOR_CAM.minDist : undefined, height: inb ? INDOOR_CAM.height : undefined });
       camPos.copy(cam.position); camInit = true; camDist = followSt.d; }
+    cam.updateMatrixWorld(true);
+    placeNameTag(myTag, me.x, 1.50 + me.y, me.z, !c && !fp);
     // ceiling stays; only tuck the roof away if the camera has risen through it. Fade occluding walls so the arm never has to clip into the head.
     for (const b of W.buildings) if (b.roof) b.roof.visible = !(b === inb && cam.position.y > (b.Hh || 2.8) - .3);
     try { if (inb && !fp && !c) setCutaway(occludingWalls(inb, cam.position, me.x, me.z), .92); else setCutaway(null, 0); } catch (e) { /* cutaway */ }
@@ -391,6 +404,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
     if (old && old.root && old.root.parent) scene.remove(old.root);
     try { if (old && old.dispose) old.dispose(); } catch (e) {}
     me.av = av; scene.add(av.root);
+    try { attachClanBadge(av, (net.me && net.me.clan) || clan, THREE); } catch (e) { /* badge */ }
     GS.shown = null; GS.mesh = null;
     try { if (held) { bag.pref = held; } equipVisual(); } catch (e) {}
     try { applyArmor(); } catch (e) {}
