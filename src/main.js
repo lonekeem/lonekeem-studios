@@ -96,7 +96,7 @@ function pause() {
   showScreen('#pause'); back = '#pause';
 }
 function resume() { state = 'play'; showScreen(null); try { audio.resumeAll(); } catch (e) {} if (game) { game.paused = false; game.last = performance.now(); } }
-addEventListener('keydown', e => { audio.init(); if (state === 'photo') { if (e.key === 'Escape') photoClose(game); return; } if ((e.key === 'Escape' || e.key === 'p' || e.key === 'P') && state !== 'play') { if (state === 'paused') resume(); else if (['shop', 'inv', 'settings'].includes(state) && back === '#pause') { state = 'paused'; showScreen('#pause'); } }
+addEventListener('keydown', e => { audio.init(); if (state === 'photo') { if (e.key === 'Escape') photoClose(game); return; } if ((e.key === 'Escape' || e.key === 'p' || e.key === 'P') && state !== 'play') { e.__atqHandled = 1; /* v1.9.90: the game's own key listener must not re-pause on this same press */ if (state === 'paused') resume(); else if (['shop', 'inv', 'settings'].includes(state) && back === '#pause') { state = 'paused'; showScreen('#pause'); } }
   if ((e.key === 'i' || e.key === 'I' || e.key === 'Tab') && state === 'play') { e.preventDefault(); pause(); openInv(); } });
 addEventListener('pointerdown', () => audio.init());
 // v1.5.1 tap-to-unlock: iOS only unlocks Web Audio from touchend/click, so resume (plus a 1-sample buffer) on each tap until 'running'. Respects the silent switch.

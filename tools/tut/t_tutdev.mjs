@@ -30,24 +30,24 @@ async function doTouch(id) { switch (id) {
     await touch('touchStart', [{ x: c.x, y: c.y - 54, id: 1 }, { x: r.x, y: r.y, id: 2 }]); await p.waitForTimeout(90); await touch('touchEnd', [{ x: c.x, y: c.y - 54, id: 1 }]); await p.waitForTimeout(900); await touch('touchEnd', []); await tapSel('#tRun'); return; }
   case 'swap': { const has = await q(() => { const e = [...document.querySelectorAll('#wbar .wslot:not(.eq)')].find(x => x.getBoundingClientRect().width > 4 && x.dataset.id !== 'fists'); if (!e) return false; e.setAttribute('data-t', 1); return true; }); return has ? tapSel('#wbar [data-t]') : ringTap(); }
   case 'camera': await ringTap(); await p.waitForTimeout(400); return tapSel('#btnView');
-  case 'pause': await tapSel('#btnPause'); await p.waitForTimeout(700); await shot('pause-menu'); return tapSel('#btnResume'); } }
+  case 'pause': await tapSel('#btnPause'); await p.waitForFunction(() => window.__atq.state === 'paused', null, { timeout: 15000 }).catch(() => {}); await p.waitForTimeout(400); await shot('pause-menu'); return tapSel('#btnResume'); } }
 async function doPad(id) { const PR = k => P.press(k); switch (id) {
   case 'move': await P.axis(1, -1); await p.waitForTimeout(1300); return P.axis(1, 0);
-  case 'look': await P.axis(2, 1); await p.waitForTimeout(1200); return P.axis(2, 0);
-  case 'aim': await P.hold('LT', 1); await p.waitForTimeout(700); return P.hold('LT', 0); case 'fire': return PR('RT'); case 'jump': return PR('A'); case 'roll': return PR('B');
+  case 'look': await P.axis(2, 1); await p.waitForTimeout(2500); return P.axis(2, 0);
+  case 'aim': await P.hold('LT', 1); await p.waitForFunction(() => window.__atqTut.step() !== 'aim', null, { timeout: 6000 }).catch(() => {}); return P.hold('LT', 0); case 'fire': return PR('RT'); case 'jump': return PR('A'); case 'roll': return PR('B');
   case 'crouch': return PR('R3'); case 'run': await P.axis(1, -1); await p.waitForTimeout(300); await PR('L3'); await p.waitForTimeout(800); return P.axis(1, 0);
   case 'reload': return PR('Y'); case 'swap': return PR('RB'); case 'gren': return PR('LB'); case 'use': return PR('X'); case 'heal': return PR('DOWN'); case 'camera': await PR('VIEW'); await p.waitForTimeout(300); return PR('VIEW');
-  case 'pause': await PR('START'); await p.waitForTimeout(700); await shot('pause-menu'); return PR('B'); } }
+  case 'pause': await PR('START'); await p.waitForFunction(() => window.__atq.state === 'paused', null, { timeout: 15000 }).catch(() => {}); await p.waitForTimeout(400); await shot('pause-menu'); return PR('B'); } }
 const key = async (k, ms = 120) => { await p.keyboard.down(k); await p.waitForTimeout(ms); await p.keyboard.up(k); await p.waitForTimeout(150); };
 async function doKbd(id) { switch (id) {
   case 'move': return key('KeyW', 1300);
   case 'look': { await p.mouse.move(640, 360); await p.mouse.down({ button: 'middle' }); for (let i = 1; i <= 10; i++) { await p.mouse.move(640 + 30 * i, 360); await p.waitForTimeout(60); } return p.mouse.up({ button: 'middle' }); }
-  case 'aim': await p.mouse.move(640, 360); await p.mouse.down({ button: 'right' }); await p.waitForTimeout(700); return p.mouse.up({ button: 'right' });
+  case 'aim': await p.mouse.move(640, 360); await p.mouse.down({ button: 'right' }); await p.waitForFunction(() => window.__atqTut.step() !== 'aim', null, { timeout: 6000 }).catch(() => {}); return p.mouse.up({ button: 'right' });
   case 'fire': await p.mouse.down(); await p.waitForTimeout(120); return p.mouse.up();
   case 'jump': return key('Space'); case 'roll': return key('ControlLeft'); case 'crouch': return key('KeyC');
   case 'run': await p.keyboard.down('KeyW'); await p.keyboard.down('ShiftLeft'); await p.waitForTimeout(900); await p.keyboard.up('ShiftLeft'); return p.keyboard.up('KeyW');
   case 'reload': return key('KeyR'); case 'swap': return key('KeyQ'); case 'gren': return key('KeyG'); case 'use': return key('KeyE'); case 'heal': return key('KeyH'); case 'camera': await key('KeyV'); return key('KeyV');
-  case 'pause': await key('Escape'); await p.waitForTimeout(700); await shot('pause-menu'); return key('Escape'); } }
+  case 'pause': await key('Escape'); await p.waitForFunction(() => window.__atq.state === 'paused', null, { timeout: 15000 }).catch(() => {}); await p.waitForTimeout(400); await shot('pause-menu'); return key('Escape'); } }
 const doIt = { touch: doTouch, se: doTouch, pad: doPad, kbd: doKbd }[MODE];
 
 // layout: tutorial card must not cover any on-screen control
@@ -91,7 +91,7 @@ if (MODE !== 'se') {
   await p.waitForTimeout(400); log('✕ closes', { active: await q(() => window.__atqTut.active()), seen: await q(() => localStorage.getItem('atq.tut.seen')), hud: await q(() => document.getElementById('tutHud').classList.contains('hidden')) });
   // Controls reference from Pause for the current device, Back returns to Pause
   await q(() => window.__atq.game.onPause()); await p.waitForTimeout(600);
-  if (MODE === 'pad') { await q(() => window.__padConnect()); for (let i = 0; i < 8 && (await P.focus()) !== '#btnPControls'; i++) await P.press('DOWN'); await P.press('A'); }
+  if (MODE === 'pad') { await q(() => window.__padConnect()); const fp = []; for (let i = 0; i < 10 && (await P.focus()) !== '#btnPControls'; i++) { await P.press('DOWN'); fp.push(await P.focus()); } log('pad pause focus path', { st: await q(() => window.__atq.state), fp }); await P.press('A'); }
   else if (MODE === 'kbd') await p.click('#btnPControls'); else await tapSel('#btnPControls');
   await p.waitForTimeout(600); log('controls ref', await q(() => ({ open: !document.getElementById('controls').classList.contains('hidden'), now: document.querySelector('#ctlRef .cnow').innerText, tab: document.querySelector('#ctlRef .ctabs .on').innerText, fire: [...document.querySelectorAll('#ctlRef tr')].find(r => /Fire/.test(r.innerText)).innerText.replace(/\s+/g, ' ') })));
   await shot('controls-ref');
