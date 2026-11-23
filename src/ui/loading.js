@@ -1,6 +1,36 @@
 import tipsData from '../data/tips-and-quotes.json';
 
-let rot = 0;
+let rot = 0, hangT = 0, lastP = 0, retryBound = false;
+
+function hideStuck() {
+  const s = document.getElementById('loadStuck');
+  if (s) s.classList.add('hidden');
+}
+
+function showStuck() {
+  const el = document.getElementById('loading');
+  if (!el || el.classList.contains('hidden')) return;
+  const lt = el.querySelector('.lt');
+  if (lt && !/taking longer/i.test(lt.textContent || '')) lt.textContent = 'This is taking longer than usual…';
+  const s = document.getElementById('loadStuck');
+  if (s) s.classList.remove('hidden');
+}
+
+function bindRetry() {
+  if (retryBound) return;
+  const b = document.getElementById('btnLoadRetry');
+  if (!b) return;
+  retryBound = true;
+  b.addEventListener('click', () => {
+    try { if (window.__atqReloadStale && window.__atqReloadStale()) return; } catch (e) { /* ignore */ }
+    try { location.reload(); } catch (e) { /* ignore */ }
+  });
+}
+
+function armHangWatch() {
+  clearTimeout(hangT);
+  hangT = setTimeout(showStuck, 40000);
+}
 
 function $(s, el) { return (el || document).querySelector(s); }
 
@@ -33,7 +63,11 @@ export function showLoading({ ch, title, message } = {}) {
     const q = pick(tipsData.quotes);
     quote.textContent = '“' + q + '”';
   }
+  lastP = 0;
   setProgress(0);
+  hideStuck();
+  bindRetry();
+  armHangWatch();
   rotateTip(el);
   clearInterval(rot);
   rot = setInterval(() => rotateTip(el), 4500);
@@ -42,13 +76,18 @@ export function showLoading({ ch, title, message } = {}) {
 
 export function setProgress(p) {
   const i = document.querySelector('#loading .lb i');
-  if (i) i.style.width = Math.round(Math.max(0, Math.min(1, +p || 0)) * 100) + '%';
+  const n = Math.max(0, Math.min(1, +p || 0));
+  if (i) i.style.width = Math.round(n * 100) + '%';
+  if (n > lastP + 0.02) { lastP = n; hideStuck(); armHangWatch(); }
 }
 
 export function hideLoading() {
   const el = document.getElementById('loading');
   if (el) el.classList.add('hidden');
   clearInterval(rot); rot = 0;
+  clearTimeout(hangT); hangT = 0;
+  lastP = 0;
+  hideStuck();
 }
 
 /** Two animation frames so the loading overlay can paint before heavy work. */

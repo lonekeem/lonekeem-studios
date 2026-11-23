@@ -50,9 +50,11 @@ async function playPrologueToMenu() {
 function refreshTitleProgress() { save = loadSave(LS) || save; try { const sv = loadSave(LS), has = !!(sv && (sv.played || sv.step > 0)); const b = $('#btnContinue'); if (b) { b.classList.toggle('hidden', !has); if (has) b.textContent = 'Continue · Chapter ' + chOf(sv.step || 0) + (CHN[chOf(sv.step || 0)] ? ' · ' + CHN[chOf(sv.step || 0)] : ''); } } catch (e) {} try { renderDailies(); } catch (e) {} }
 function toTitle() { state = 'title'; if (game) { try { game.leave(); } catch (e) {} } $('#stage').classList.add('hidden'); $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden'); try { audio.stopGameplay && audio.stopGameplay(); } catch (e) {} try { audio.resumeAll(); } catch (e) {} audio.beat && audio.beat(0); audio.setMood('menu'); refreshTitleProgress(); showScreen('#title'); back = '#title'; try { offerTutorial({ play: () => play(SURVIVAL_STEP, { tutorial: true }), toTitle }); } catch (e) { /* ignore */ } }
 
-async function ensureGame() { if (game) return game; if (gamePromise) return gamePromise;
+async function ensureGame(opts = {}) { if (game) return game; if (gamePromise) return gamePromise;
+  const quiet = !!opts.quiet;
   const studioOn = $('#studio') && !$('#studio').classList.contains('hidden');
-  if (!studioOn && (!$('#loading') || $('#loading').classList.contains('hidden'))) showLoading({ message: 'LOADING', title: 'Riverside' });
+  // Quiet preload behind the title menu — do not cover it with LOADING Riverside (that looked like a hang on first launch).
+  if (!quiet && !studioOn && (!$('#loading') || $('#loading').classList.contains('hidden'))) showLoading({ message: 'LOADING', title: 'Riverside' });
   gamePromise = (async () => { const { Game } = await import('./game/game.js'); const g = new Game({ settings: S, audio, LS, save }); { const NM = { keem: 'Keem', marcus: 'Dad', nia: 'Nia', npcf: 'Neighbor', npcm: 'Neighbor', walt: 'Mr. Walt', ruth: 'Ruth', gus: 'Big Gus' }; let bk = document.getElementById('bark'); if (!bk) { bk = document.createElement('div'); bk.id = 'bark'; bk.style.cssText = 'position:fixed;left:50%;bottom:22%;transform:translateX(-50%);max-width:80vw;padding:4px 10px;border-radius:8px;background:rgba(0,0,0,.55);color:#eee;font:14px Georgia,serif;pointer-events:none;opacity:0;transition:opacity .25s;z-index:30;text-align:center'; document.body.appendChild(bk); } let bt; audio.onBark = (who, t) => { if (!t || S.playSubs === false || (g.dlgCur)) return; bk.textContent = (NM[who] || who) + ': ' + t.replace(/\{([^|}]*)\|([^}]*)\}/g, (m, a, b) => S.lang === 'off' ? b : a); bk.style.opacity = 1; clearTimeout(bt); bt = setTimeout(() => bk.style.opacity = 0, 2600); }; }
     await g.load(p => setProgress(p));
     g.onDeath = () => { if (g.run && !g.survival) { g.run.deaths = (g.run.deaths || 0) + 1; saveRun(LS, g.run); } state = 'dead'; $('#deadMsg').textContent = g.survival ? 'Survived to wave ' + (g.stepData.wave || 0) + ' · Best: wave ' + (LS.getItem('atq3.survBest') || 0) : ['They got you.', 'Keem didn\'t make it.', 'Torn apart in Riverside.', 'Should\'ve rolled.'][(Math.random() * 4) | 0]; showScreen('#dead'); };
@@ -68,13 +70,15 @@ async function ensureGame() { if (game) return game; if (gamePromise) return gam
     try { attachDailies(g); } catch (e) { console.warn('dailies tracking off', e); }
     try { attachRewards(g); } catch (e) { console.warn('rewards tracking off', e); }
     try { onTutReady(g); } catch (e) { /* ignore */ }
-    game = g; hideLoading(); return g; })();
+    game = g; if (!quiet) hideLoading(); return g; })().catch(e => { gamePromise = null; console.error(e); try { hideLoading(); } catch (x) {} try { window.__atqShowErr && window.__atqShowErr('The game could not finish loading.<br><small>' + String((e && e.message) || e).slice(0, 140) + '</small>'); } catch (x) {} throw e; });
   return gamePromise; }
 function goLandscape() { if (document.body.dataset.dev !== 'touch' || window.Capacitor?.isNativePlatform?.()) return; try { const d = document.documentElement, rq = d.requestFullscreen || d.webkitRequestFullscreen; const p = !document.fullscreenElement && rq ? rq.call(d, { navigationUI: 'hide' }) : null; Promise.resolve(p).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape')).catch(() => {}); } catch (e) {} }
 async function play(step, o = {}) { if (o.prologue) import('./game/prologue.js').then(m => m.preloadPrologue(audio)).catch(() => {}); goLandscape(); showScreen(null); $('#stage').classList.remove('hidden'); state = 'loading';
   const showChLoad = () => { if (step === SURVIVAL_STEP) showLoading({ message: 'SURVIVAL', title: 'Endless waves' }); else { const ch = chOf(step || 0); showLoading({ ch, title: (CHAPTERS[ch] && CHAPTERS[ch].title) || 'Riverside' }); } };
   showChLoad(); await yieldPaint();
-  const g = await ensureGame(); g.save = save; g.settings = S; g.replay = o.replay || null; g.run = null; audio.init();
+  let g;
+  try { g = await ensureGame(); } catch (e) { hideLoading(); toTitle(); return; }
+  g.save = save; g.settings = S; g.replay = o.replay || null; g.run = null; audio.init();
   showChLoad(); await yieldPaint();
   $('#hud').classList.add('hidden'); $('#touch').classList.add('hidden');
   if (o.prologue) { g.wantPrologue = true; try { const m = await import('./game/prologue.js'); await Promise.race([m.preloadPrologue(audio), new Promise(r => setTimeout(r, 6000))]); } catch (e) { } }
@@ -297,7 +301,7 @@ $('#btnWarn').onclick = async () => {
   let left = 7000, then = performance.now();
   const studioTick = () => { if (done) return; const now = performance.now(); if (!isAway()) left -= now - then; then = now; if (left <= 0) finish(); else requestAnimationFrame(studioTick); };
   requestAnimationFrame(studioTick);
-  ensureGame().catch(e => console.error(e));
+  ensureGame({ quiet: true }).catch(e => console.error(e));
   hideLoading(); // preload quietly behind the intro
   await tracks.catch(() => {});
 };
@@ -364,7 +368,7 @@ document.body.dataset.dev = 'ontouchstart' in window ? 'touch' : 'kbd'; fadeIn()
 const qs = new URLSearchParams(location.search);
 if (qs.has('prologue')) { $('#warning').classList.add('hidden'); save = defaultSave(); play(0, { prologue: true }); }
 else if (qs.has('step')) { $('#warning').classList.add('hidden'); save = defaultSave(); if (qs.has('god')) Object.assign(save, { owned: ['fists', 'bat', 'pistol', 'rifle', 'shotgun'], items: ['backpack'], ammo: { light: 99, shell: 30, rifle: 200 }, grenades: 3, cash: 2000, cur: 'rifle' }); play(+qs.get('step')); }
-else { $('#warning').classList.add('hidden'); applySafeDefaults(S, saveS); runLaunchFlow({ audio, applySettings: () => applySafeDefaults(S, saveS), onDone: () => { toTitle(); setTimeout(() => { if (!game && !gamePromise) ensureGame().catch(e => console.error(e)); }, 400); } }); } // v1.9.52: preload the engine quietly behind the title again (the launch gate had moved all of it onto the Play tap)
+else { $('#warning').classList.add('hidden'); applySafeDefaults(S, saveS); runLaunchFlow({ audio, applySettings: () => applySafeDefaults(S, saveS), onDone: () => { toTitle(); setTimeout(() => { if (!game && !gamePromise) ensureGame({ quiet: true }).catch(e => console.error(e)); }, 400); } }); } // v1.9.52: preload the engine quietly behind the title again (the launch gate had moved all of it onto the Play tap)
 initMenu();
 initDailies();
 initRewards();

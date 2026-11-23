@@ -85,9 +85,17 @@ export class Game {
     r.shadowMap.enabled = Q.shadows; r.shadowMap.type = THREE.PCFSoftShadowMap;
     const scene = this.scene = new THREE.Scene(); scene.fog = new THREE.FogExp2('#141c1a', Q.fog); scene.background = new THREE.Color('#0f1614');
     const cam = this.camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.05, 260); scene.add(cam);
-    const mgr = new THREE.LoadingManager(); mgr.onProgress = (u, a, b) => progress && progress(a / b);
+    let staged = 0;
+    const setLoad = (p) => { staged = Math.max(staged, Math.min(1, +p || 0)); progress && progress(staged); };
+    const withTimeout = (p, ms, label) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('Timed out loading ' + label)), ms))]);
+    const mgr = new THREE.LoadingManager();
+    // Keep early asset progress from jumping the bar to 100% (and sitting there) while later work is still running.
+    mgr.onProgress = (u, a, b) => { if (b > 0) setLoad(Math.min(0.48, (a / b) * 0.48)); };
     const base = './'; const tl = new THREE.TextureLoader(mgr);
-    const [gltf, hdr] = await Promise.all([new GLTFLoader(mgr).loadAsync(base + 'models/AnimationLibrary_Godot_Standard.gltf'), new HDRLoader(mgr).loadAsync(base + 'tex/sky.hdr').catch(() => null)]);
+    const [gltf, hdr] = await Promise.all([
+      withTimeout(new GLTFLoader(mgr).loadAsync(base + 'models/AnimationLibrary_Godot_Standard.gltf'), 45000, 'animations'),
+      new HDRLoader(mgr).loadAsync(base + 'tex/sky.hdr').catch(() => null),
+    ]);
     if (hdr) { const pm = new THREE.PMREMGenerator(r); const env = pm.fromEquirectangular(hdr).texture; scene.environment = env; scene.environmentIntensity = 0.32; scene.background = env; scene.backgroundIntensity = 0.06; scene.backgroundBlurriness = 0.35; hdr.dispose(); }
     // night lighting
     const GRADE = /[?&]grade=1/.test(location.search); // optional visual-only night grade (test shots): cooler moon, warmer fill, slightly lifted fog
@@ -100,14 +108,15 @@ export class Game {
       await Promise.all(CK.slice(i, i + 3).map(k => new GLTFLoader().loadAsync(base + 'models/cars/' + k + '.glb').then(g => { CM[k] = g.scene; }).catch(() => { })));
       await yieldOnce();
     }
-    progress && progress(0.55); await yieldPaint();
+    setLoad(0.55); await yieldPaint();
     resetBudget();
     this.world = await buildWorld(scene, Q, tl, base, CM, yieldPaint); if (this.world.env && !/[?&]sky=0/.test(location.search)) { scene.background = null; scene.fog.color.copy(this.world.env.fogColor); } // v2.1 procedural sky dome + matching fog
-    progress && progress(0.72); await yieldPaint();
+    setLoad(0.72); await yieldPaint();
     this.lib = new CharLib(gltf); this.lib.rigs = await loadRigs(base, RIG_CORE, yieldPaint);
-    progress && progress(0.8); await yieldPaint();
-    await loadMoreRigs(this.lib.rigs, base, RIG_REST, yieldPaint);
-    await new Promise(res => { if (mgr.itemsLoaded >= mgr.itemsTotal) res(); else { mgr.onLoad = res; setTimeout(res, 15000); } });
+    setLoad(0.84); await yieldPaint();
+    // Remaining story/survival rigs used to block first load for a long sit at ~80%. Chapter 1 only needs RIG_CORE; the rest load in the background.
+    this._rigsRest = loadMoreRigs(this.lib.rigs, base, RIG_REST, yieldPaint).then(() => { this._rigsRestDone = true; return this.lib.rigs; }).catch(() => { this._rigsRestDone = true; return this.lib.rigs; });
+    await new Promise(res => { if (mgr.itemsLoaded >= mgr.itemsTotal) res(); else { mgr.onLoad = res; setTimeout(res, 8000); } });
     // drive buttons (touch / mouse)
     [['#dGas', 'gas'], ['#dBrake', 'brake'], ['#dL', 'l'], ['#dR', 'r']].forEach(([id, k]) => { const e = $(id); if (!e) return; const on = (v) => (ev) => { ev.preventDefault(); this.drv = this.drv || {}; this.drv[k] = v; e.classList.toggle('on', v); };
       e.addEventListener('pointerdown', on(true)); ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => e.addEventListener(t, on(false))); });
@@ -127,9 +136,9 @@ export class Game {
     this.cam = { yaw: Math.PI / 2, pitch: -0.12, dist: CAM.dist, fp: !!S.fp, shake: V3() };
     this.fpsAcc = 0; this.fpsN = 0; this.fpsT = 0;
     // Upload textures now; full shader / character warmup runs under the chapter loading overlay (not behind the title menu)
-    progress && progress(0.92); await yieldPaint();
+    setLoad(0.92); await yieldPaint();
     initAllTextures(r, scene);
-    progress && progress(1);
+    setLoad(1);
     try { if (this.audio) { this.audio._sfxHold = false; this.audio._pumpSfx && this.audio._pumpSfx(); } } catch (e) { /* ignore */ }
   }
   resize() { const w = innerWidth, h = innerHeight; this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); if (this.composer) this.composer.setSize(w, h); if (this._grade) this._grade.uniforms.uAsp.value = w / Math.max(1, h); this._xh = null; }
@@ -157,7 +166,12 @@ export class Game {
     this.scene.traverse(o => { if (o.geometry) K.add(o.geometry); (Array.isArray(o.material) ? o.material : [o.material]).forEach(add); }); this.lib.gltf.scene.traverse(o => { if (o.geometry) K.add(o.geometry); }); }
   disposeTree(root) { if (!root || !this._keep) return; const K = this._keep; root.traverse(o => { if (o.geometry && !K.has(o.geometry)) o.geometry.dispose(); const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
       ms.forEach(m => { if (K.has(m)) return; for (const k in m) { const v = m[k]; if (v && v.isTexture && !K.has(v)) v.dispose(); } const u = m.userData && m.userData.u; if (u) for (const k in u) { const v = u[k] && u[k].value; if (v && v.isTexture && !K.has(v)) v.dispose(); } m.dispose(); }); }); }
-  async prewarm() { // create every lazily-built fx / weapon / rig up front: a light or first zombie added mid-fight recompiles shaders
+  async readyRigs({ wait = true, ms = 20000 } = {}) {
+    if (this._rigsRestDone || !this._rigsRest) return;
+    if (!wait) return;
+    try { await Promise.race([this._rigsRest, new Promise(r => setTimeout(r, ms))]); } catch (e) { /* later-chapter rigs fall back to the mannequin if a file fails */ }
+  }
+  async prewarm(keys, onP) { // create lazily-built fx / weapon / rig up front: a light or first zombie added mid-fight recompiles shaders
     if (!this._boomL) { this._boomL = new THREE.PointLight('#ff9040', 0, 60, 2); this.scene.add(this._boomL); this._ballGeo = new THREE.SphereGeometry(1, 12, 8); }
     while (this.booms.length < 4) { const b = { ball: new THREE.Mesh(this._ballGeo, new THREE.MeshBasicMaterial({ color: '#ffb050', transparent: true, blending: THREE.AdditiveBlending, depthWrite: false })) }; b.ball.visible = false; this.scene.add(b.ball); this.booms.push(b); }
     if (!this.flames) { this.flameAt(V3(0, -50, 0), 1); this.flames.forEach(f => { f.life = 0; f.s.visible = false; }); }
@@ -171,9 +185,12 @@ export class Game {
     WEAPON_ORDER.forEach(id => { const src = this.weaponMeshes && this.weaponMeshes[id]; if (!src) return; const m = src.clone(true); m.visible = true; wg.add(m); });
     this.scene.add(wg); extras.push(wg);
     const rigs = (this.lib && this.lib.rigs) || {};
-    Object.values(rigs).forEach(root => { if (root) initAllTextures(this.renderer, root); });
+    const want = (keys && keys.length) ? keys : RIG_CORE;
+    const list = want.filter(k => rigs[k]);
+    list.forEach(k => { if (rigs[k]) initAllTextures(this.renderer, rigs[k]); });
     const dummies = [];
     resetBudget();
+    const n = list.length + 2; let i = 0;
     const mk = async (look) => {
       try {
         const c = new Char(this.lib, look, 1);
@@ -181,11 +198,12 @@ export class Game {
         this.scene.add(c.root);
         dummies.push(c);
       } catch (e) { /* a missing clip/rig should not abort warmup */ }
+      i++; if (onP) try { onP(0.74 + 0.20 * (i / n)); } catch (e) { /* ignore */ }
       await yieldPaint(); // one character per frame so processHands cannot freeze the loader
     };
     await mk(Object.assign({}, randomLook((ZSEED++) | 0, true), { rig: null }));
-    for (const rig of Object.keys(rigs)) await mk(Object.assign({}, randomLook((ZSEED++) | 0, true), { rig }));
-    await mk(raiderLook((ZSEED++) | 0));
+    for (const rig of list) await mk(Object.assign({}, randomLook((ZSEED++) | 0, true), { rig }));
+    if (rigs.raider && list.includes('raider')) await mk(raiderLook((ZSEED++) | 0));
     const R = this.renderer, hid = []; this.scene.traverse(o => { if (!o.visible) { hid.push(o); o.visible = true; } }); const L = this.mLight, li = L ? L.intensity : 0;
     if (L) L.intensity = 6; if (this.muzzle) this.muzzle.visible = true; if (this.tracer) this.tracer.visible = true; if (this.faceL) this.faceL.intensity = 0.7;
     initAllTextures(R, this.scene);
@@ -224,6 +242,9 @@ export class Game {
     this.pack.visible = this.save.items.includes('backpack') || !!this.player.wantsPack; this.equip(this.save.cur || 'fists', true);
     if (!(await yn(0.2))) return;
     this.survival = !!st.survival; const ch = chOf(i);
+    // Chapter 1 starts on core rigs. Later chapters and Survival wait (with a cap) for the background set.
+    if (this.survival || ch > 1) await this.readyRigs({ wait: true, ms: 20000 });
+    if (this.stepTok !== tok) return;
     try { if (this.world && this.world.ensureZone) this.world.ensureZone(ch); } catch (e) { /* ignore */ }
     const zs = this.world.zones || {}; for (const k in zs) if (zs[k] && zs[k].isObject3D) zs[k].visible = +k === ch; if (ch > (this.save.ch || 1) && !st.survival) this.save.ch = ch;
     if (!st.survival) LOOT.forEach(l => { const lc = chOf(l.minStep || 0); if (!this.save.loot.includes(l.id) && (l.minStep || 0) <= i + 1 && (lc === ch || (ch <= 2 && lc <= 2))) this.addPickup(l); });
@@ -237,7 +258,8 @@ export class Game {
     if (!(await yn(0.72))) return;
     try { if (this.audio) this.audio._sfxHold = true; } catch (e) { /* ignore */ }
     initAllTextures(this.renderer, this.scene);
-    if (!this._warm) { this._warm = 1; await this.prewarm(); }
+    if (!this._warm) { this._warm = 1; await this.prewarm(RIG_CORE, (p) => setP(p)); }
+    else if ((this.survival || ch > 1) && !this._warmRest) { this._warmRest = 1; await this.prewarm(RIG_REST, (p) => setP(p)); }
     else await yieldPaint();
     try { if (this.audio) { this.audio._sfxHold = false; this.audio._pumpSfx && this.audio._pumpSfx(); } } catch (e) { /* ignore */ }
     if (this.stepTok !== tok) return;
