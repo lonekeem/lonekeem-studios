@@ -55,7 +55,7 @@ def split(only=None):
     src = RAW / f"{b['id']}.mp3"
     if not src.exists(): rep.append((b['id'], 'missing raw')); continue
     n = len(b['lines']); ok = None
-    for d in (1.8, 1.5, 2.2, 1.2, 2.6):
+    for d in (1.8, 1.5, 2.2, 1.2, 2.6, 1.0, 0.8, 0.6):
       sil, dur = silences(src, d)
       inner = [s for s in sil if s[0] > .15 and s[1] < dur - .05]
       if len(inner) == n - 1: ok = (inner, dur); break
@@ -64,7 +64,7 @@ def split(only=None):
     bad = []
     for i, ln in enumerate(b['lines']):
       seglen = cuts[i + 1] - cuts[i]; cps = len(ln['text']) / max(.1, seglen)
-      if cps > 30 or cps < 3: bad.append((i, round(seglen, 2), round(cps, 1)))
+      if cps > 30 or (cps < 3 and len(ln['text']) > 12): bad.append((i, round(seglen, 2), round(cps, 1)))
     if bad: rep.append((b['id'], 'odd lengths', bad)); continue
     for i, ln in enumerate(b['lines']): post(src, OUT / f"{ln['hash']}.mp3", cuts[i], cuts[i + 1])
     rep.append((b['id'], 'ok', n))
