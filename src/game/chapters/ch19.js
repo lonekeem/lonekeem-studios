@@ -108,14 +108,14 @@ export const steps = [
       g.cut = { anim: 'Idle_Loop', cam: V(.6, 1.6, -6023.5), look: V(0, 1.0, -6020.6), flash: false }; snap(g);
       script(g, [
         ['reyes', "Red light means you're on. Just read it like a story."],
-        (g) => { onAir(true); g.audio.click && g.audio.click(); g.cut.noFace = true; face(D.nia, 0, -6024); cam(g, V(.9, 1.25, -6023.1), V(0, .9, -6020.7)); },
+        (g) => { onAir(true); g.audio.click && g.audio.click(); g.cut.noFace = true; face(D.nia, 0, -6024); cam(g, V(.5, 1.75, -6023.2), V(0, .75, -6020.6)); },
         ['nia', "Hi. My name is Nia. I'm in Riverside, Maine. My brother Keem can't turn, and Dr. Reyes made a cure from his blood."],
         ['nia', "It works. It worked on my dad. So here's how you make it. Step one…"],
         (g) => { g.cut.noFace = false; cam(g, V(-1.2, 1.65, -6021.4), V(-2.6, 1.4, -6017.8)); },
         ['marcus', "Listen to her. Steady as a rock."],
         (g) => { g.audio.staticBurst && g.audio.staticBurst(1); },
         ['radio', "…this is Bar Harbor… we hear you, Riverside… say again step four…"],
-        (g) => { g.cut.noFace = true; face(D.nia, 0, -6024); cam(g, V(.9, 1.25, -6023.1), V(0, .9, -6020.7)); },
+        (g) => { g.cut.noFace = true; face(D.nia, 0, -6024); cam(g, V(.5, 1.75, -6023.2), V(0, .75, -6020.6)); },
         ['nia', "Step four. Spin it for ninety seconds. Not eighty-nine."],
         (g) => { g.cut.noFace = false; g.audio.staticBurst && g.audio.staticBurst(1.3); g.shake(.15); cam(g, V(3.6, 1.8, -6015.2), V(0, 1.2, -6020)); },
         ['director', "Very touching. Now listen to me, little girl. Put your brother on."],
