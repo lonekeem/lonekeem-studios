@@ -241,7 +241,7 @@ export function initTutorial(opts = {}) {
     window.__atqTut = {
       start: () => startTutorial(opts), skip: skipTutorial, offer: () => offerTutorial(opts),
       seen: hasSeenTutorial, mark: markTutorialSeen, active: () => active, step: () => (STEPS[step] ? STEPS[step].id : 'done'),
-      complete, steps: STEPS.map(s => s.id), reset: () => { LS.set(SEEN, ''); active = false; step = 0; hideOffer(); paint(); },
+      complete, flash: () => doneFlash, stepT: () => stepT, steps: STEPS.map(s => s.id), reset: () => { LS.set(SEEN, ''); active = false; step = 0; hideOffer(); paint(); },
     };
   }
 }

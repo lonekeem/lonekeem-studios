@@ -62,8 +62,8 @@ for (const id of ids) {
   if ((await T()) !== id) { log('skip-mismatch', { want: id, at: await T() }); }
   const c0 = await card(); await shot(`s-${String(ids.indexOf(id) + 1).padStart(2, '0')}-${id}`);
   if (MODE === 'se') { res[id] = { card: c0, layout: await overlaps() }; await q(() => document.querySelector('#tutHud .tnext').click()); await p.waitForTimeout(250); continue; }
-  await doIt(id); await p.waitForTimeout(1300);
-  const after = await T(); const ok = after !== id; res[id] = { by: ok ? 'action' : 'NOT', card: c0 };
+  await doIt(id); let after = id; for (let k = 0; k < 30 && (after = await T()) === id; k++) await p.waitForTimeout(250); // slow software frames: give the game time to see it
+ const ok = after !== id; res[id] = { by: ok ? 'action' : 'NOT', card: c0 };
   if (!ok) { await q(() => document.querySelector('#tutHud .tnext').click()); await p.waitForTimeout(300); }
   if (id === 'roll' && MODE === 'touch') { // live switch: pad press repaints with glyphs, touch brings the ring back
     await q(() => window.__padConnect()); const st = await T(); await P.press('UP'); const pc = await card(); await shot('switch-to-pad'); await tapAt(W * .5, H * .55); await p.waitForTimeout(300); const tc = await card(); await shot('switch-back-touch'); log('live switch', { step: st, pad: pc, touch: tc }); }
@@ -81,7 +81,8 @@ if (MODE !== 'se') {
   if (MODE === 'kbd') { await p.click('#tutHud .tnext'); await p.click('#tutHud .tnext'); } else { await tapSel('#tutHud .tnext'); await tapSel('#tutHud .tnext'); }
   log('next x2', { step: await T(), saved: await q(() => localStorage.getItem('atq.tut.step')) });
   await q(() => localStorage.removeItem('atq.tut.seen'));
-  await p.reload(); await p.waitForFunction(() => window.__atqTut, null, { timeout: 300000 }); await p.waitForTimeout(1500);
+  await p.reload(); await p.waitForFunction(() => window.__atqTut, null, { timeout: 300000 });
+  for (let i = 0; i < 60; i++) { const r = await q(() => { const s = document.getElementById('gateSkip'); if (s && s.offsetParent) { s.click(); return 'skip'; } const w = document.getElementById('btnWarn'); if (w && w.offsetParent) { w.click(); return 'warn'; } const t = document.getElementById('title'); return t && !t.classList.contains('hidden') ? 'title' : ''; }); if (r === 'title') break; await p.waitForTimeout(500); }
   await p.waitForFunction(() => document.getElementById('loading').classList.contains('hidden'), null, { timeout: 300000 });
   await q(() => { localStorage.removeItem('atq.tut.seen'); window.__atqTut.offer(); }); await p.waitForTimeout(400); log('offer after reload', await q(() => document.getElementById('tutOffer').innerText.replace(/\s+/g, ' ').slice(0, 140))); await shot('offer-resume');
   await q(() => document.getElementById('tutStart').click()); await p.waitForFunction(() => window.__atq.state === 'play', null, { timeout: 300000 }); await p.waitForTimeout(1500);
