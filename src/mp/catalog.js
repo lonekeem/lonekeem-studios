@@ -56,7 +56,7 @@ export const TOPS = [
   ['threeq', '3/4 sleeve', 'u', .7, .05, .98, .1, .13, 0, 0, 0, 0, 0], ['capsl', 'Cap sleeve', 'f', .2, .05, .98, .1, .13, 0, 0, 0, 0, 0], ['sundress', 'Sundress', 'f', 0, .05, .92, .13, .15, .3, 0, 0, .04, 0],
   ['sleevedress', 'Dress sleeves', 'f', .45, .05, .98, .08, .12, .32, 0, 0, .05, 0], ['minidress', 'Mini dress', 'f', .2, .05, .98, .1, .13, .2, 0, 0, .03, 0], ['maxidress', 'Maxi dress', 'f', 0, .05, .92, .11, .14, .85, 0, 0, .07, 0],
   ['bodysuit', 'Bodysuit', 'u', 1, .0, .98, .1, .12, .06, 0, 0, 0, 0], ['jersey', 'Sport jersey', 'u', .25, .0, .96, .14, .15, 0, 0, .005, 0, 0], ['flowy', 'Flowy blouse', 'f', .8, .0, .98, .12, .14, 0, 0, .008, .0, 0],
-  ['hoodie', 'Pullover hoodie', 'u', 1, .0, 1.0, .05, .13, 0, 1, .01, 0, 0], ['polo', 'Polo shirt', 'u', .45, .04, .98, .1, .1, 0, 0, 0, 0, 0], ['kurta', 'Kurta', 'u', 1, .05, .98, .12, .12, .28, 0, .004, .012, 0],
+  ['hoodie', 'Pullover hoodie', 'u', 1, .0, 1.0, .05, .13, 0, 1, .01, 0, 0], ['polo', 'Polo shirt', 'u', .45, .04, .98, .1, .1, 0, 0, 0, 0, 0], ['kurta', 'Kurta', 'u', 1, .05, .98, .12, .12, .32, 0, .002, .03, 0],
 ];
 // jackets: [id, name, g, sleeveEnd, hem, neckTop, openHalfW, openTop, dressLen, hood/collar(turtle), loose, flare]
 export const JACKETS = [
@@ -64,7 +64,7 @@ export const JACKETS = [
   ['puffer', 'Puffer', 'u', 1, .0, 1.0, .05, .0, 0, 1, .02, 0], ['trench', 'Trench coat', 'u', 1, -.2, .98, .06, .0, .45, 0, .008, .03], ['cardigan', 'Cardigan', 'u', 1, -.08, .98, .07, .0, 0, 0, .008, 0], ['vest', 'Vest', 'u', 0, .02, .98, .07, .0, 0, 0, .008, 0],
   ['parka', 'Parka', 'u', 1, -.12, 1.0, .05, .0, .2, 1, .016, .02], ['windbreaker', 'Windbreaker', 'u', 1, .04, .98, .05, .0, 0, 0, .012, 0], ['zip', 'Zip hoodie', 'u', 1, .0, 1.0, .04, .0, 0, 1, .011, 0], ['varsity', 'Varsity', 'u', 1, .06, .98, .06, .0, 0, 0, .01, 0],
   ['cropjacket', 'Cropped jacket', 'f', 1, .3, .98, .06, .0, 0, 0, .007, 0], ['cropzip', 'Cropped zip hoodie', 'f', 1, .36, .97, .0, .0, 0, 0, .013, 0], ['longcoat', 'Long coat', 'u', 1, -.3, .98, .06, .0, .75, 0, .009, .04], ['shacket', 'Shirt jacket', 'u', 1, -.02, .98, .06, .0, 0, 0, .009, 0], ['poncho', 'Poncho', 'u', .8, -.1, .99, .0, .0, .1, 0, .018, .06],
-  ['robe', 'Belted robe', 'u', 1, -.25, .98, .08, .0, .7, 0, .014, .05],
+  ['robe', 'Belted robe', 'u', 1, -.25, .98, .08, .0, .72, 0, .01, .07],
 ];
 // pants / skirts: [id, name, g, legEnd, waist, loose, flare]  (flare is per-leg radial offset, k = x + y * s)
 export const PANTS = [

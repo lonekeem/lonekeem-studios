@@ -280,13 +280,13 @@ export function hairMaterial(c1, c2, hl = .35, skin = null) { // skin: blend the
 // ---------- facial hair: polar band around the mouth. Inner edge = first entry into the mask, outer edge = exit; both edges tuck under
 // the skin, so beards have clean smooth outlines and a clean opening around the lips.
 export const BEARD_STYLES = { // mask(p, a, L) on head-local surface points; T thickness, curl
-  full: { trim: 1, T: .0016, curl: .0006, fade: .016, mask: (p, a, L) => Math.abs(a) < 91 && offNeck(p) && p.y < cheekY(Math.abs(p.x)) && p.y > fullFloor(p) && !mouthHole(p, L, .016) },
-  boxed: { T: .004, curl: .0008, mask: (p, a, L) => Math.abs(a) < 90 && offNeck(p) && p.y < topLine(a, L, .8) && !mouthHole(p, L, .008) },
-  lumber: { T: .013, curl: .003, mask: (p, a, L) => Math.abs(a) < 92 && offNeck(p) && p.y < topLine(a, L, 1.15) && !mouthHole(p, L, .01) },
-  goatee: { T: .006, curl: .0015, mask: (p, a, L) => Math.abs(p.x) < .034 && p.y < L.mouthY - .006 && p.z > .02 },
-  circle: { T: .006, curl: .0015, mask: (p, a, L) => Math.abs(p.x) < .036 + .006 * Math.max(0, (L.mouthY - p.y) * 20) && p.y < L.mouthY + .022 && p.z > .02 && !mouthHole(p, L, .007) },
-  strap: { T: .0045, curl: .001, mask: (p, a, L) => Math.abs(a) < 84 && offNeck(p) && p.y < topLine(a, L, 1) && p.y < jawBand(p, a, L) && !mouthHole(p, L, .02) && !(Math.abs(p.x) < .06 && p.y > L.mouthY - .024) },
-  curtain: { T: .006, curl: .0015, mask: (p, a, L) => Math.abs(a) < 84 && offNeck(p) && p.y < topLine(a, L, 1) && p.y < jawBand(p, a, L) + .02 && !(Math.abs(p.x) < .05 && p.y > L.mouthY - .02) },
+  full: { trim: 1, T: .009, curl: .0022, fade: .018, mask: (p, a, L) => Math.abs(a) < 91 && offNeck(p) && p.y < cheekY(Math.abs(p.x)) && p.y > fullFloor(p) && !mouthHole(p, L, .016) },
+  boxed: { T: .008, curl: .0016, mask: (p, a, L) => Math.abs(a) < 90 && offNeck(p) && p.y < topLine(a, L, .8) && !mouthHole(p, L, .008) },
+  lumber: { T: .016, curl: .004, mask: (p, a, L) => Math.abs(a) < 92 && offNeck(p) && p.y < topLine(a, L, 1.15) && !mouthHole(p, L, .01) },
+  goatee: { T: .009, curl: .002, mask: (p, a, L) => Math.abs(p.x) < .034 && p.y < L.mouthY - .006 && p.z > .02 },
+  circle: { T: .009, curl: .002, mask: (p, a, L) => Math.abs(p.x) < .036 + .006 * Math.max(0, (L.mouthY - p.y) * 20) && p.y < L.mouthY + .022 && p.z > .02 && !mouthHole(p, L, .007) },
+  strap: { T: .0075, curl: .0016, mask: (p, a, L) => Math.abs(a) < 84 && offNeck(p) && p.y < topLine(a, L, 1) && p.y < jawBand(p, a, L) && !mouthHole(p, L, .02) && !(Math.abs(p.x) < .06 && p.y > L.mouthY - .024) },
+  curtain: { T: .009, curl: .002, mask: (p, a, L) => Math.abs(a) < 84 && offNeck(p) && p.y < topLine(a, L, 1) && p.y < jawBand(p, a, L) + .02 && !(Math.abs(p.x) < .05 && p.y > L.mouthY - .02) },
   mutton: { T: .006, curl: .0015, mask: (p, a, L) => Math.abs(a) < 86 && Math.abs(a) > 40 && offNeck(p) && p.y < topLine(a, L, 1) && p.y > L.mouthY - .03 },
   soul: { T: .005, curl: 0, mask: (p, a, L) => Math.abs(p.x) < .009 && p.y < L.mouthY - .012 && p.y > L.mouthY - .03 && p.z > .02 },
 };

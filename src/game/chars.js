@@ -83,7 +83,7 @@ export function stylizeFrag(sh, sat = 1.1, rim = 0.16) {
       totalEmissiveRadiance += diffuseColor.rgb * stRim * ${rim.toFixed(2)} + vec3(0.02, 0.018, 0.016) * stRim; }`);
 }
 export function bodyMat(o) {
-  const m = new THREE.MeshStandardMaterial({ roughness: 0.78, metalness: 0 });
+  const m = new THREE.MeshStandardMaterial({ roughness: 0.62, metalness: 0 });
   const U = m.userData.u = {
     uSkin: { value: new THREE.Color(o.skin) }, uShirt: { value: new THREE.Color(o.shirt) }, uPants: { value: new THREE.Color(o.pants) },
     uShoes: { value: new THREE.Color(o.shoes || '#1b1b1b') }, uHair: { value: new THREE.Color(o.hair || '#0d0a08') },
@@ -126,10 +126,10 @@ export function bodyMat(o) {
       bl = max(bl, mouth); bl = max(bl, uZed * step(0.62, h) * step(h, 0.8) * step(0.03, vBP.z) * smoothstep(0.3,0.7,n1) * 0.9);
       c = mix(c, vec3(0.22,0.0,0.0), clamp(bl,0.,1.));
       diffuseColor.rgb = c;`)
-      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.32, uGloss * step(0.52, vBP.y/1.83) * step(0.0, uJk - 0.5));\nroughnessFactor = mix(roughnessFactor, 0.25, step(0.5, diffuseColor.r - diffuseColor.g) * uBlood);');
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(roughnessFactor, 0.28, step(0.5, uJk) * step(0.52, vBP.y/1.83));\nroughnessFactor = mix(roughnessFactor, 0.22, uGloss * step(0.52, vBP.y/1.83) * step(0.0, uJk - 0.5));\nroughnessFactor = mix(roughnessFactor, 0.25, step(0.5, diffuseColor.r - diffuseColor.g) * uBlood);');
   };
-  const _obc = m.onBeforeCompile; m.onBeforeCompile = (sh) => { _obc(sh); stylizeFrag(sh, o.zed ? 0.95 : 1.12, o.zed ? 0.1 : 0.16); };
-  m.customProgramCacheKey = () => 'body';
+  const _obc = m.onBeforeCompile; m.onBeforeCompile = (sh) => { _obc(sh); stylizeFrag(sh, o.zed ? 0.95 : 1.16, o.zed ? 0.1 : 0.26); };
+  m.customProgramCacheKey = () => 'body2';
   return m;
 }
 
@@ -152,7 +152,7 @@ export class Char {
     this.root = new THREE.Group(); this.root.add(obj); obj.scale.setScalar(scale); this.scale = scale; this.model = obj;
     if (look.hair) dressChar(this, look);
     { // stylized avatar proportions: big head, chunky sneakers/boots (scale tracks for these bones are stripped from the clips)
-      const hd = this.bone('DEF-head'); if (hd) hd.scale.setScalar(look.headK || 1.32);
+      const hd = this.bone('DEF-head'); if (hd) hd.scale.setScalar(look.headK || 1.4);
       ['DEF-foot.L', 'DEF-foot.R', 'DEF-toe.L', 'DEF-toe.R'].forEach(n => { const b = this.bone(n); if (b) b.scale.set(1.14, 1.14, 1.2); }); }
     if (look.rig && lib.rigs && lib.rigs[look.rig] && !/[?&]rig=0/.test(location.search)) { try { attachRig(this, lib.rigs[look.rig], { tint: /zombie|raider|gen[mf]/.test(look.rig) ? look.tint : null, tintK: /gen[mf]/.test(look.rig) ? .22 : /zombie_/.test(look.rig) ? .3 : undefined, tintMul: look.rig === 'zombie_elder' ? .42 : look.rig === 'zombie_big' ? .86 : look.rig === 'zombie_male' ? .95 : undefined, rough: /zombie_/.test(look.rig) ? .88 : undefined, handColor: look.rig === 'raider' ? '#1c1c1f' : /zombie/.test(look.rig) ? '#8e9677' : null }); } catch (e) { console.warn('rig', e); } }
     this.mixer = new THREE.AnimationMixer(obj); this.actions = {}; this.cur = null; this.curName = ''; this.oneShot = null;

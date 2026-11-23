@@ -49,9 +49,12 @@ function setGarment(av, name, kind, piece, tbl, g) {
   const m = bodyLayer(av, name, kind); setLm(av, m.material); m.visible = !!piece; if (!piece) return; const s = tbl.find(t => t[0] === piece.id); if (!s) { m.visible = false; return; }
   const U = m.material.userData.U, off = m.material.userData.off; U.uC1.value.set(piece.c); U.uC2.value.set(piece.c2 || '#ffffff'); U.uPat.value.set(piece.p || 0, 11 + (piece.ps || 0) * 8, 1, 0); U.uSole.value.set(.02, 0, 0, 0);
   U.uShape.value.set(0, 0, 0, 0); { const d = DET[piece.id] || [0, 0, 0, 0]; U.uDet.value.set(...d); }
-  if (kind === 0 || kind === 3) { const [id, nm, gd, sl, hem, nT, nD, nW, dl, tu, loose, flare, con] = s; if (kind === 3) { const [id2, n2, g2, sl2, hem2, nt2, oh, ot, dl2, tu2, lo2, fl2] = s; U.uG1.value.set(sl2, hem2, 0, 9); U.uG2.value.set(dl2, oh, ot, tu2); U.uN.value.set(nt2, .06, .13, -.03); U.uShape.value.set(0, lo2 * 2, 0, fl2); off.value = .0145 + lo2; U.uSole.value.set(.02, 0, 1, id2 === 'varsity' ? 1 : 0); } // varsity: contrast (cream) sleeves in c2
-    else { U.uG1.value.set(sl, hem, 0, 9); U.uG2.value.set(dl, .05, .5, tu); U.uN.value.set(nT, nD, nW, -.03); U.uShape.value.set(0, loose * 2, 0, flare); off.value = .0095 + loose + (dl > 0 ? .009 : 0); U.uSole.value.set(.02, 0, 0, con); } }
-  else if (kind === 1) { const [id, nm, gd, le, wa, loose, fl, kb] = s; U.uG1.value.set(le, wa, 0, 9); U.uShape.value.set(kb, fl, 0, 0); off.value = .0062 + loose; }
+  if (kind === 0 || kind === 3) { const [id, nm, gd, sl, hem, nT, nD, nW, dl, tu, loose, flare, con] = s; if (kind === 3) { const [id2, n2, g2, sl2, hem2, nt2, oh, ot, dl2, tu2, lo2, fl2] = s; U.uG1.value.set(sl2, hem2, 0, 9); U.uG2.value.set(dl2, oh, ot, tu2); U.uN.value.set(nt2, .06, .13, -.03); U.uShape.value.set(0, lo2 * 2, 0, fl2 * (id2 === 'robe' ? 1.35 : 1)); off.value = .0145 + lo2; U.uSole.value.set(.02, 0, 1, id2 === 'varsity' ? 1 : 0); if (id2 === 'robe') { U.uDet.value.w = 1; U.uG2.value.set(dl2, 0.016, 0.88, tu2); } } // robe cinch + flare; varsity contrast sleeves
+    else { U.uG1.value.set(sl, hem, 0, 9); U.uG2.value.set(dl, .05, .5, tu); U.uN.value.set(nT, nD, nW, -.03); U.uShape.value.set(0, loose * 2, 0, flare); off.value = .0095 + loose + (dl > 0 ? .014 : 0); U.uSole.value.set(.02, 0, 0, con); } }
+  else if (kind === 1) { const [id, nm, gd, le, wa, loose, fl, kb] = s;
+    if (/skirt/.test(id)) { const hem = Math.max(fl || 0, (kb || 0) * 0.55, 0.055) * (le > 0.4 ? 1.25 : 1.05);
+      U.uG1.value.set(le, wa, 0, 9); U.uG2.value.set(le, 0, 0, 1); U.uShape.value.set(0.004 + loose * 0.2, hem, 0, 0); off.value = .008 + loose; }
+    else { U.uG1.value.set(le, wa, 0, 9); U.uShape.value.set(kb, fl, 0, 0); off.value = .0062 + loose; } }
   else if (kind === 2) { const [id, nm, gd, sh, soleY, offs, cap] = s; U.uG1.value.set(sh, 0, id === 'socks' ? 1 : 0, 9); U.uSole.value.set(soleY, cap, 0, 0); off.value = offs; U.uC3.value.set(piece.sole || '#f2f2f0'); U.uPat.value.z = (piece.p || 0) ? 1 : 0; }
   else if (kind === 4) { const [id, nm, sh, offs] = s; U.uG1.value.set(sh, 0, 0, 9); off.value = offs; }
 }

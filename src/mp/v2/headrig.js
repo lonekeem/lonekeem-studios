@@ -5,7 +5,7 @@ import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { headParams, makeSDF, landmarks, buildHeadGeometry, buildEarGeometry, sdfNormal, rayR } from './head.js';
 import { paintFace } from './facepaint.js';
 
-export const HEAD_BIG = { m: 1.2, f: 1.18 };
+export const HEAD_BIG = { m: 1.48, f: 1.46 };
 const HEAD_OFF = { m: [0, .112, .03], f: [0, .108, .028] };
 export function headFrame(av, g) { // head centre (bind space) + scale
   // HEAD_BIG: Bitmoji proportions (bigger head on the same neck / shoulders). The head grows about its jaw line, so the chin stays
@@ -40,7 +40,7 @@ float beardMask(vec3 p){ float ax = abs(p.x); float cy = -.08 + .068 * smoothste
   float mx = p.x / .048, my = (p.y + .084) / .0208; float mh = smoothstep(.85, 1.15, mx * mx + my * my); return up * fl * fr * mh; }
 `.replace(/\n/g, ' ');
 export function skinMaterial(U, faceTex, plain = false) { // plain: the neck tube — lit exactly like the body skin (no extra self-light) so there is no tone step where it meets the chest
-  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: plain ? .62 : .5, metalness: 0 });
+  const m = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: plain ? .62 : .46, metalness: 0 });
   m.userData.face = { value: faceTex || null }; m.userData.beard = { value: new THREE.Vector4(0, 0, 0, 0) }; m.userData.beardCol = { value: new THREE.Color('#6b4e36') };
   m.onBeforeCompile = sh => {
     sh.uniforms.uBeard = m.userData.beard; sh.uniforms.uBeardCol = m.userData.beardCol; sh.uniforms.uSkin = U.uSkin; sh.uniforms.uFace = m.userData.face; sh.uniforms.uHasFace = { value: faceTex ? 1 : 0 };
@@ -48,15 +48,15 @@ export function skinMaterial(U, faceTex, plain = false) { // plain: the neck tub
     sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uSkin; uniform sampler2D uFace; uniform float uHasFace; varying vec2 vUv2; varying float vF; varying vec3 vL; uniform vec4 uBeard; uniform vec3 uBeardCol;' + BEARD_GLSL)
       .replace('#include <color_fragment>', `#include <color_fragment>
         vec3 c = uSkin; if (uHasFace > .5 && vF > .001) { vec4 t = texture2D(uFace, vUv2); c = mix(c, t.rgb, t.a * vF); }
-        if (uBeard.x > .5) { float bm = beardMask(vL); c = mix(c, uBeardCol, smoothstep(0.0, 1.0, bm) * .8 * uBeard.y); /* v1.9.28 smooth cartoon underlay (no stipple) */ }
+        if (uBeard.x > .5) { float bm = beardMask(vL); c = mix(c, uBeardCol, smoothstep(0.0, 1.0, bm) * .28 * uBeard.y); /* light underlay; volume comes from the beard mesh */ }
         diffuseColor.rgb = c;`)
       .replace('#include <emissivemap_fragment>', plain ? '#include <emissivemap_fragment>' : `#include <emissivemap_fragment>
         { vec3 N = normalize(vNormal); vec3 V = normalize(vViewPosition); float ndv = clamp(dot(N, V), 0.0, 1.0);
           float wrap = pow(1.0 - ndv, 1.55); float rimF = pow(1.0 - ndv, 2.7);
           /* soft subsurface-like wrap + face rim, still cheap on phones */
-          totalEmissiveRadiance += diffuseColor.rgb * (0.05 + wrap * 0.14) + vec3(0.16, 0.06, 0.04) * wrap * 0.45 + vec3(0.55, 0.72, 0.9) * rimF * 0.22; }`);
+          totalEmissiveRadiance += diffuseColor.rgb * (0.06 + wrap * 0.18) + vec3(0.22, 0.08, 0.05) * wrap * 0.55 + vec3(0.55, 0.74, 0.95) * rimF * 0.32; }`);
   };
-  m.customProgramCacheKey = () => 'v2skin2' + (faceTex ? 'f' : '') + (plain ? 'p' : ''); return m;
+  m.customProgramCacheKey = () => 'v2skin3' + (faceTex ? 'f' : '') + (plain ? 'p' : ''); return m;
 }
 
 export function buildHead(av, look) {
@@ -102,7 +102,7 @@ export function faceOpts(look, g, L, H) {
   const lipBase = '#' + sk.clone().multiply(new THREE.Color('#e0a090')).lerp(new THREE.Color('#9a4a42'), .3).getHexString();
   const mk = look.makeup || {}; const lipCol = mk.lip ? ('#' + new THREE.Color(lipBase).lerp(new THREE.Color(mk.lipCol), [0, .45, .8, .95][mk.lip]).getHexString()) : (look.mouth.col || lipBase);
   return { eyeX: L.eyeX + (look.eyes.space || 0) * .004, eyeY: L.eyeY, browY: L.browY + (look.brows.y || 0) * .004, noseY: L.noseY, mouthY: L.mouthY, noseW: H.noseW,
-    w: es[0] * sz, h: es[1] * sz, tilt: es[2] + (look.eyes.tilt || 0) * .15, arch: es[3], flat: es[4], irisK: .78, eyeCol: look.eyes.col || '#4a2c17', lash: Math.max(look.eyes.lash || 0, f ? .5 : 0), liner: mk.liner || 0, shadow: mk.shadow || 0, shadowCol: mk.shadowCol || '#7a4a8a', wing: false,
+    w: es[0] * sz, h: es[1] * sz, tilt: es[2] + (look.eyes.tilt || 0) * .15, arch: es[3], flat: es[4], irisK: .9, eyeCol: look.eyes.col || '#4a2c17', lash: Math.max(look.eyes.lash || 0, f ? .5 : 0), liner: mk.liner || 0, shadow: mk.shadow || 0, shadowCol: mk.shadowCol || '#7a4a8a', wing: false,
     bArch: bs[0] + (look.brows.arch || 0) * .4, bTilt: bs[1], bTaper: bs[2], bThick: bs[3] * (1 + .5 * (look.brows.thick || 0)), bLen: bs[4], bSparse: bn === 'Sparse', unibrow: bn === 'Unibrow', browCol,
     mW: ms[0] * (1 + .2 * (look.mouth.width || 0)), mFull: Math.min(1, ms[1] + .3 * (look.mouth.full || 0)), mSmile: ms[2], mOpen: !!ms[3], mSmirk: mn === 'Smirk', lipCol,
     freckles: look.skinx.freckles || 0, freckleCol: '#' + sk.clone().multiplyScalar(.6).lerp(new THREE.Color('#6a3a20'), .4).getHexString(), moles: look.skinx.moles || 0, blush: mk.blush || 0,

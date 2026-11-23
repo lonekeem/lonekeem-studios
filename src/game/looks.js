@@ -60,12 +60,12 @@ export const OUTFITS = [
   { id: 'smock', name: 'Barber Smock', shirt: '#e8e2d2', pants: '#2a2a2a', shoes: '#151515', sleeve: .45 },
 ];
 export const OUTFIT = Object.fromEntries(OUTFITS.map(o => [o.id, o]));
-export const DEFAULT_LOOK = { rig: 'keem', outfit: 'varsityB', hair: 'crop', hairColor: '#0b0806', skin: '#6a4430', face: 'keem', eyes: '#2a1608', beard: 'jaw', pack: false, glasses: true, build: 1, seed: 7 };
+export const DEFAULT_LOOK = { rig: 'keem', outfit: 'varsityB', hair: 'crop', hairColor: '#0b0806', skin: '#6a4430', face: 'keem', eyes: '#2a1608', beard: 'jaw', pack: false, glasses: true, build: 1, seed: 7, headK: 1.4, eyeK: 1.2 };
 // Story cast: each one distinct (hair, face, skin, build, clothes)
 export const CAST = {
   keem: DEFAULT_LOOK,
-  marcus: { rig: 'dad', outfit: 'flannelR', hair: 'crop', hairColor: '#120c08', skin: '#6a4430', face: 'strong', eyes: '#2a1608', beard: 'jaw', build: 1.12, seed: 3, grey: .18 },
-  nia: { rig: 'nia', outfit: 'purplehood', hair: 'puffs', hairColor: '#160d07', skin: '#7a4f36', face: 'soft', eyes: '#3a2210', beard: 'none', build: .95, seed: 11, headK: 1.42, eyeK: 1.12 },
+  marcus: { rig: 'dad', outfit: 'flannelR', hair: 'crop', hairColor: '#120c08', skin: '#6a4430', face: 'strong', eyes: '#2a1608', beard: 'jaw', build: 1.12, seed: 3, grey: .18, headK: 1.36, eyeK: 1.12 },
+  nia: { rig: 'nia', outfit: 'purplehood', hair: 'puffs', hairColor: '#160d07', skin: '#7a4f36', face: 'soft', eyes: '#3a2210', beard: 'none', build: .95, seed: 11, headK: 1.46, eyeK: 1.22 },
   walt: { rig: 'walt', outfit: 'cardigan', hair: 'balding', hairColor: '#b8b4ac', skin: '#d9a98c', face: 'elder', eyes: '#3a5a7a', beard: 'mustache', glasses: true, build: 1.08, seed: 5 },
   ruth: { rig: 'ruth', outfit: 'blouse', hair: 'bun', hairColor: '#7a4a2a', skin: '#e6b89a', face: 'narrow', eyes: '#3a4a2a', beard: 'none', build: .96, seed: 8 },
   dube: { rig: 'dube', outfit: 'button', hair: 'buzz', hairColor: '#8a8680', skin: '#3b2417', face: 'round', eyes: '#2a1608', beard: 'goatee', glasses: true, build: 1.16, seed: 9 },
@@ -175,14 +175,15 @@ export function zSkin(hex, look) { const c = new THREE.Color(hex); const tint = 
 // ---------- geometry helpers ----------
 const M4 = THREE.Matrix4, V = THREE.Vector3, Q = THREE.Quaternion, E = THREE.Euler;
 const mat = (x, y, z, sx = 1, sy = sx, sz = sx, rx = 0, ry = 0, rz = 0) => new M4().compose(new V(x, y, z), new Q().setFromEuler(new E(rx, ry, rz)), new V(sx, sy, sz));
-class Parts { constructor() { this.by = {}; }
-  add(bone, geo, color, m) { let g = geo.index ? geo.toNonIndexed() : geo.clone(); if (m) g.applyMatrix4(m); g.deleteAttribute('uv'); const c = new THREE.Color(color), n = g.attributes.position.count, a = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); (this.by[bone] = this.by[bone] || []).push(g); } }
-const SPH = new THREE.SphereGeometry(1, 20, 14), SPHL = new THREE.SphereGeometry(1, 12, 8), ICO = new THREE.IcosahedronGeometry(1, 1), BOX = new THREE.BoxGeometry(1, 1, 1), CYL = new THREE.CylinderGeometry(1, 1, 1, 10), TOR = new THREE.TorusGeometry(1, .3, 8, 20);
+class Parts { constructor() { this.by = {}; this.gloss = {}; }
+  add(bone, geo, color, m, shiny) { let g = geo.index ? geo.toNonIndexed() : geo.clone(); if (m) g.applyMatrix4(m); g.deleteAttribute('uv'); const c = new THREE.Color(color), n = g.attributes.position.count, a = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); const bag = shiny ? this.gloss : this.by; (bag[bone] = bag[bone] || []).push(g); } }
+const SPH = new THREE.SphereGeometry(1, 28, 20), SPHL = new THREE.SphereGeometry(1, 24, 16), ICO = new THREE.IcosahedronGeometry(1, 2), BOX = new THREE.BoxGeometry(1, 1, 1), CYL = new THREE.CylinderGeometry(1, 1, 1, 16), TOR = new THREE.TorusGeometry(1, .3, 10, 24);
 const cap = (theta) => new THREE.SphereGeometry(1, 22, 12, 0, Math.PI * 2, 0, theta);
 const ring = (t0, t1) => new THREE.SphereGeometry(1, 22, 10, 0, Math.PI * 2, t0, t1 - t0);
-export const MAT = { std: null, gloss: null };
-function partsMat(gloss) { const k = gloss ? 'gloss' : 'std'; if (MAT[k]) return MAT[k]; const m = MAT[k] = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: gloss ? .35 : .62, metalness: 0 }); m.onBeforeCompile = (sh) => stylizeFrag(sh, 1.1, .16); m.customProgramCacheKey = () => 'parts' + k; return m; }
+export const MAT = { std: null, gloss: null, eye: null };
+function partsMat(kind) { const k = kind || 'std'; if (MAT[k]) return MAT[k]; const rough = k === 'eye' ? .14 : k === 'gloss' ? .32 : .55; const rim = k === 'eye' ? .34 : .28;
+  const m = MAT[k] = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: rough, metalness: k === 'eye' ? .08 : 0 }); m.onBeforeCompile = (sh) => stylizeFrag(sh, 1.14, rim); m.customProgramCacheKey = () => 'parts3' + k; return m; }
 const dark = (hex, k) => '#' + new THREE.Color(hex).multiplyScalar(k).getHexString();
 const mix = (a, b, k) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), k).getHexString();
 // curls: many small icospheres scattered over a region of the head ellipsoid
@@ -199,9 +200,9 @@ export function buildHead(P, L) { const r = mulberry((L.seed || 1) * 131 + 7); c
   [-1, 1].forEach(s => { P.add(B, SPH, dark(skin, .93), mat(s * .078, 1.588, -.03, .012, .024, .016)); // ears
     P.add(B, SPH, skin, mat(s * .046, 1.572, .036, .022, .016, .02)); // cheekbones
     // big, glossy cartoon eyes (v2.0 stylized avatar look)
-    const ex = s * .034, ey = 1.603, es = .0168 * F.eye * (L.eyeK || 1), lidc = L.zed ? '#2a2a22' : dark(skin, .42);
-    P.add(B, SPH, L.zed ? '#e4e6c4' : '#fbf8f2', mat(ex, ey, .0505, es, es * 1.04, es * .62));
-    if (!L.zed) { P.add(B, SPHL, L.eyes || '#2a1608', mat(ex, ey - .0008, .0585, es * .74, es * .78, es * .24)); P.add(B, SPHL, '#060403', mat(ex, ey - .0008, .0615, es * .4, es * .42, es * .12)); P.add(B, SPHL, '#ffffff', mat(ex + s * .0042, ey + .0058, .0632, .0027)); P.add(B, SPHL, '#ffffff', mat(ex - s * .0035, ey - .004, .0632, .0012)); }
+    const ex = s * .034, ey = 1.603, es = .0192 * F.eye * (L.eyeK || 1.18), lidc = L.zed ? '#2a2a22' : dark(skin, .42);
+    P.add(B, SPH, L.zed ? '#e4e6c4' : '#fbf8f2', mat(ex, ey, .0505, es, es * 1.04, es * .62), !L.zed);
+    if (!L.zed) { P.add(B, SPHL, L.eyes || '#2a1608', mat(ex, ey - .0008, .0585, es * .78, es * .82, es * .28), true); P.add(B, SPHL, '#060403', mat(ex, ey - .0008, .062, es * .42, es * .44, es * .13), true); P.add(B, SPHL, '#ffffff', mat(ex + s * .005, ey + .0064, .064, .0036), true); P.add(B, SPHL, '#ffffff', mat(ex - s * .0038, ey - .0042, .0638, .0016), true); }
     else { P.add(B, SPHL, '#c9d2a0', mat(ex, ey, .0585, es * .6, es * .62, es * .22)); P.add(B, SPHL, '#0a0806', mat(ex, ey, .0615, es * .16, es * .17, es * .1)); P.add(B, SPH, '#3a2a36', mat(ex, ey - es * 1.18, .047, es * 1.2, es * .38, es * .5)); P.add(B, SPH, '#8a1010', mat(ex + s * es * .75, ey + es * .15, .0525, es * .06, es * .5, es * .3)); }
     P.add(B, SPH, lidc, mat(ex, ey + es * .86, .0535, es * 1.12, es * .22, es * .62, -.06 * s)); // upper lash line
     P.add(B, SPH, dark(skin, .9), mat(ex, ey + es * 1.02, .0505, es * 1.15, es * .42, es * .68)); // lid
@@ -287,8 +288,9 @@ export function buildAcc(P, L, o) { const acc = (o.acc || []).slice(); if (L.pac
 // attach merged parts to bones of a Char (bind-space -> bone space)
 export function dressChar(c, L) { const P = new Parts(); const o = OUTFIT[L.outfit] || OUTFITS[0]; buildHead(P, L); buildAcc(P, L, o);
   let sm; c.model.traverse(x => { if (x.isSkinnedMesh) sm = x; }); const sk = sm.skeleton; c.parts = [];
-  for (const bn in P.by) { const nb = (n) => n.replace(/[.]/g, ''); const i = sk.bones.findIndex(b => nb(b.name) === nb(bn)); if (i < 0) continue; const geo = mergeGeometries(P.by[bn]); geo.applyMatrix4(new M4().multiplyMatrices(sk.boneInverses[i], sm.bindMatrix)); geo.computeBoundingSphere();
-    const m = new THREE.Mesh(geo, partsMat(o.gloss && bn !== 'DEF-head')); m.castShadow = true; m.frustumCulled = false; sk.bones[i].add(m); c.parts.push(m); }
+  const attachBag = (bag, mat) => { for (const bn in bag) { const nb = (n) => n.replace(/[.]/g, ''); const i = sk.bones.findIndex(b => nb(b.name) === nb(bn)); if (i < 0) continue; const geo = mergeGeometries(bag[bn]); geo.applyMatrix4(new M4().multiplyMatrices(sk.boneInverses[i], sm.bindMatrix)); geo.computeBoundingSphere();
+    const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.frustumCulled = false; sk.bones[i].add(m); c.parts.push(m); } };
+  attachBag(P.by, partsMat(o.gloss && 'gloss' || 'std')); attachBag(P.gloss, partsMat('eye'));
   if (o.acc && o.acc.includes('pack') || L.pack) c.wantsPack = true;
   const b = L.build || 1, hgt = L.height || 1; c.model.scale.set(c.scale * b, c.scale * hgt, c.scale * (1 + (b - 1) * .8));
 }

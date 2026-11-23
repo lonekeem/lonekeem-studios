@@ -91,18 +91,63 @@ export const HAT = {
   helmet(B, c) { hemi(B, 'a', 0, c.crownY - .04, c.zc, c.rx * 1.12, c.ry * 1.18, c.rz * 1.1, 1.18); B.add(new THREE.CylinderGeometry(c.rz * 1.16, c.rz * 1.16, .05, 24, 1, true, -1.05, 2.1), 'k', [0, c.eyeY + .025, c.zc], [0, 0, 0], [c.rx / c.rz, 1, 1]); },
   // Original hijab: cloth crown and a drape around the jaw, neck and shoulders, with a smooth face opening. Not a copy of any brand.
   hijab(B, c) {
-    const g = new THREE.SphereGeometry(1, 48, 30, 0, PI * 2, 0, PI * .86); const pa = g.attributes.position;
-    const F = new THREE.Vector3(0, -.18, 1).normalize(), A = .82; const v = new THREE.Vector3(), t = new THREE.Vector3();
-    for (let i = 0; i < pa.count; i++) { v.fromBufferAttribute(pa, i); const d = v.dot(F); if (d <= Math.cos(A)) continue; t.copy(v).addScaledVector(F, -d); if (t.lengthSq() < 1e-6) t.set(0, 1, 0); t.normalize(); v.copy(F).multiplyScalar(Math.cos(A)).addScaledVector(t, Math.sin(A)); pa.setXYZ(i, v.x, v.y, v.z); }
-    g.computeVertexNormals(); const S = [c.rx * 1.16, c.ry * 1.22 + .03, c.rz * 1.16], O = [0, c.crownY - .03, c.zc - .004]; B.add(g, 'a', O, [0, 0, 0], S);
-    const rim = []; for (let k = 0; k <= 40; k++) { const a = (k / 40) * PI * 2; const up = new THREE.Vector3().crossVectors(F, new THREE.Vector3(1, 0, 0)).normalize().multiplyScalar(-1); t.set(Math.cos(a), 0, 0).addScaledVector(up, Math.sin(a)).normalize(); v.copy(F).multiplyScalar(Math.cos(A)).addScaledVector(t, Math.sin(A)); if (Math.acos(Math.max(-1, Math.min(1, v.y))) > PI * .86) continue; rim.push([O[0] + v.x * S[0], O[1] + v.y * S[1], O[2] + v.z * S[2]]); }
-    if (rim.length > 3) B.tube(rim, .005, 'b', false, 48, 5);
+    // Tight draped hijab. Face opening is a hole whose rim verts are snapped to a smooth oval.
+    // Sides sit on the shoulders; the front tucks under the chin. No wide saucer brim.
+    const NU = 96, NV = 48, pos = [], inside = [];
+    const hcz = c.zc, hcy = c.crownY - c.ry * .12;
     const ny = (c.P && c.P.neck ? c.P.neck.y : c.chinY - .08);
-    const chin = c.chinY || (ny + .07);
-    // Neck cloth that meets the crown, then a flatter shoulder cape — no floating ring, no thick chin cowl.
-    B.add(new THREE.SphereGeometry(1, 28, 18, 0, PI * 2, 0, PI * .62), 'a', [0, (chin + ny) * .5, c.zc - c.rz * .18], [0, 0, 0], [c.rx * 1.18, Math.max(.07, (chin - ny) * .62 + .02), c.rz * 1.08]);
-    B.add(new THREE.SphereGeometry(1, 28, 16, 0, PI * 2, 0, PI * .55), 'a', [0, ny - .03, c.zc - c.rz * .3], [0, 0, 0], [c.rx * 1.42, .055, c.rz * 1.2]);
-    B.add(new THREE.SphereGeometry(1, 20, 12), 'a', [0, ny - .01, c.back * .55], [0, 0, 0], [c.rx * .58, .06, c.rz * .48]);
+    const openCy = ((c.eyeY + .012) + (c.mouthY || (c.chinY + .04))) * .5;
+    const openH = Math.max(.038, (c.eyeY - (c.mouthY || c.chinY) + .048) * .5);
+    const openW = c.rx * .6;
+    for (let j = 0; j <= NV; j++) {
+      const v = j / NV;
+      for (let i = 0; i <= NU; i++) {
+        const a = i / NU * Math.PI * 2;
+        const front = Math.max(0, Math.cos(a)), back = Math.max(0, -Math.cos(a)), side = Math.abs(Math.sin(a));
+        let y, rx, rz, cz = hcz;
+        if (v <= .55) {
+          const th = (v / .55) * Math.PI * .7;
+          y = hcy + Math.cos(th) * (c.ry * 1.1 + .007);
+          rx = Math.max(.001, Math.sin(th) * c.rx * 1.1);
+          rz = Math.max(.001, Math.sin(th) * c.rz * 1.12);
+        } else {
+          const tt = (v - .55) / .45, s = tt * tt * (3 - 2 * tt);
+          const th = Math.PI * .7;
+          const yJaw = hcy + Math.cos(th) * (c.ry * 1.1 + .007);
+          const rxJaw = Math.sin(th) * c.rx * 1.1, rzJaw = Math.sin(th) * c.rz * 1.12;
+          const w = front + side + back || 1;
+          const yHem = (front * (c.chinY - .016) + side * (ny - .07) + back * (ny - .1)) / w;
+          y = yJaw + (yHem - yJaw) * s;
+          const cinch = Math.exp(-((tt - .14) / .13) * ((tt - .14) / .13)) * (0.2 * front + 0.06 * side);
+          const flare = Math.max(0, (tt - .2) / .8), fk = flare * flare * (3 - 2 * flare);
+          const flareAmt = (0.02 * front + 0.32 * side + 0.12 * back) * fk;
+          rx = rxJaw * (1 - cinch) + (c.rx * 1.12 + c.rx * flareAmt - rxJaw * (1 - cinch)) * fk;
+          rz = rzJaw * (1 - cinch * .3) + (c.rz * 1.08 + c.rz * flareAmt * .4 - rzJaw * (1 - cinch * .3)) * fk;
+          cz = hcz - .012 * fk * back;
+        }
+        let x = Math.sin(a) * rx, z = cz + Math.cos(a) * rz;
+        const nx = x / Math.max(openW, 1e-4), nyv = (y - openCy) / Math.max(openH, 1e-4);
+        const ell = nx * nx + nyv * nyv;
+        const isFront = z > hcz + c.rz * .02;
+        const inHole = isFront && ell < 1 && y < openCy + openH * 1.05 && y > openCy - openH * 1.05;
+        if (inHole) {
+          const len = Math.sqrt(ell) || 1e-4, k = 1 / len;
+          x *= k; y = openCy + (y - openCy) * k;
+        }
+        inside.push(inHole ? 1 : 0);
+        pos.push(x, y, z);
+      }
+    }
+    const idx = [];
+    for (let j = 0; j < NV; j++) for (let i = 0; i < NU; i++) {
+      const a = j * (NU + 1) + i, b = a + NU + 1;
+      if (!(inside[a] && inside[a + 1] && inside[b])) idx.push(a, b, a + 1);
+      if (!(inside[a + 1] && inside[b] && inside[b + 1])) idx.push(a + 1, b, b + 1);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setIndex(idx); g.computeVertexNormals();
+    B.add(g, 'a');
   },
   // Original head wrap / turban: stacked cloth bands on the crown with a side fold. Covers the hair.
   wrap(B, c) {

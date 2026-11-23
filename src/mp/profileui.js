@@ -12,6 +12,7 @@ import { getProfile, saveProfile, hasProfile, pullProfile, DEFAULT_SEL } from '.
 import { upsertChar, setActiveId, getChar, KEEM_ID } from './chars.js';
 import { OUTFITS, OUTFIT, HAIRS, HAIR_COLORS, SKINS, FACES, BEARDS, EYES } from '../game/looks.js';
 import * as COS from './cosmetics.js';
+import * as C from './catalog.js';
 import { poseChair } from './chair.js';
 
 const CSS = `
@@ -49,7 +50,7 @@ const CSS = `
 `;
 const el = (tag, props = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(props)) { if (k === 'cls') e.className = v; else if (k === 'on') for (const [ev, fn] of Object.entries(v)) e.addEventListener(ev, fn); else if (k === 'style') e.style.cssText = v; else e[k] = v; } for (const c of kids.flat()) if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(String(c))); return e; };
 const STEPS = [['name', 'Name'], ['skin', 'Skin & eyes'], ['face', 'Face'], ['hair', 'Hair'], ['outfit', 'Outfits'], ['clothes', 'Clothes'], ['extra', 'Accessories']];
-const SUB = { name: 'This is what other players see above your head.', skin: 'Pick a skin tone and eye colour. You can also pick a body.', face: 'Face shape and facial hair.', hair: 'Hairstyle and colour, including dyed looks.', outfit: 'Ready-made outfits. Free ones plus ones you buy with shared cash.', clothes: 'Shirts, jackets, pants and shoes. Some are free, some you buy in the Store.', extra: 'Hats, glasses, earrings, piercings, chains, a wheelchair, backpack and build.' };
+const SUB = { name: 'This is what other players see above your head.', skin: 'Pick a skin tone and eye colour. You can also pick a body.', face: 'Face shape, eyes, brows, nose, mouth, makeup and facial hair.', hair: 'Hairstyle and colour, including dyed looks.', outfit: 'Ready-made outfits. Free ones plus ones you buy with shared cash.', clothes: 'Shirts, jackets, pants and shoes. Some are free, some you buy in the Store.', extra: 'Hats, glasses, earrings, piercings, chains, a wheelchair, backpack and build.' };
 const NAMES = ['Ash', 'Rook', 'Juno', 'Dex', 'Nova', 'Kai', 'Mars', 'Sage', 'Rio', 'Zuri', 'Blaze', 'Echo', 'Onyx', 'Ivy', 'Jett', 'Remy'];
 const CLOSE = { skin: 1, face: 1, hair: 1, extra: 1 };
 
@@ -105,7 +106,7 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
       const swatches = (key, arr, part) => el('div', { cls: 'sws' }, arr.map(c => el('button', { cls: 'sw' + (sel[key] === c ? ' on' : ''), style: 'background:' + c, title: c, on: { click: () => set(part, () => { sel[key] = c; }) } })));
       const owned = (o) => !o.price || ((wallet().outfits || []).includes(o.id));
       sel.parts = sel.parts || {};
-      let clothSub = 'top', accSub = 'hat';
+      let clothSub = 'top', accSub = 'hat', faceSub = 'shape';
       const buyPiece = (id) => { const W = wallet(); if (COS.ownedCosmetic(W, id)) return true; const p = COS.priceOf(id); if ((W.cash | 0) < p) { toast(`You need $${p}. Earn cash in Story, Survival or Online.`); return false; } if (!confirm(`Buy ${COS.itemName(id)} for $${p} (in-game cash)?`)) return false; COS.buyCosmetic(W, id); saveProfile({ cash: W.cash, cosmetics: W.cosmetics }, { silent: true }); try { window.__atq.audio.pickup(); } catch (e) { /* ignore */ } return true; };
       const wearId = (slot) => { const v = sel.parts[slot]; if (v == null) return null; return typeof v === 'string' ? v : v.id; };
       const pickPiece = (slot, id, extra) => set('clothes', () => { if (id && id !== 'none' && !buyPiece(id)) return false; sel.parts = sel.parts || {}; sel.parts[slot] = (id == null || id === 'none') ? 'none' : id; if (extra && extra.mirror) sel.parts[extra.mirror] = sel.parts[slot]; if (slot === 'glasses') sel.glasses = id !== 'none'; if (slot === 'chair' && id === 'chair') { /* mobility aid */ } });
@@ -122,8 +123,29 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
           return [inp, el('div', { cls: 'lbl' }, 'Ideas'), el('div', { cls: 'grid' }, NAMES.slice(0, 8).map(n => card(n, { click: () => { name = n; inp.value = n; nm.textContent = n; } })))]; },
         skin: () => [el('div', { cls: 'lbl' }, 'Body'), el('div', { cls: 'grid' }, [['mp_m1', 'Guy'], ['mp_f1', 'Girl']].map(([id, n]) => card(n, { on: (sel.base || 'mp_m1') === id, click: () => set('skin', () => { sel.base = id; base = Object.assign({}, base, { base: id }); }) }))),
           el('div', { cls: 'lbl' }, 'Skin tone'), swatches('skin', SKINS, 'skin'), el('div', { cls: 'lbl' }, 'Eye colour'), swatches('eyes', EYES, 'skin')],
-        face: () => [el('div', { cls: 'lbl' }, 'Face shape'), el('div', { cls: 'grid' }, Object.entries(FACES).map(([k, f]) => card(f.name === 'Keem' ? 'Classic' : f.name, { on: sel.face === k, click: () => set('face', () => { sel.face = k; }) }))),
-          el('div', { cls: 'lbl' }, 'Facial hair'), el('div', { cls: 'grid' }, Object.entries(BEARDS).map(([k, n]) => card(n, { on: sel.beard === k, click: () => set('face', () => { sel.beard = k; }) })))],
+        face: () => { const tabs = [['shape', 'Shape'], ['eyes', 'Eyes'], ['brows', 'Brows'], ['nose', 'Nose'], ['mouth', 'Mouth'], ['makeup', 'Makeup'], ['hairf', 'Facial hair']];
+          const faceIdx = () => ({ keem: 0, soft: 1, strong: 2, narrow: 3, round: 4, sharp: 5, elder: 6 }[sel.face] );
+          const curEye = sel.eyeShape != null ? sel.eyeShape : ({ keem: 0, soft: 1, strong: 11, narrow: 3, round: 7, sharp: 9, elder: 6 }[sel.face] || 0);
+          const curBrow = sel.browStyle != null ? sel.browStyle : ({ keem: 3, soft: 0, strong: 8, narrow: 1, round: 0, sharp: 6, elder: 5 }[sel.face] || 0);
+          const curNose = sel.noseStyle != null ? sel.noseStyle : ({ keem: 2, soft: 1, strong: 4, narrow: 7, round: 1, sharp: 7, elder: 3 }[sel.face] || 0);
+          const curMouth = sel.mouthStyle != null ? sel.mouthStyle : ({ keem: 1, soft: 3, strong: 0, narrow: 2, round: 8, sharp: 7, elder: 2 }[sel.face] || 0);
+          const mk = sel.makeup || { shadow: 0, liner: 0, blush: 0, lip: 0 };
+          const section = {
+            shape: () => [el('div', { cls: 'lbl' }, 'Face shape'), el('div', { cls: 'grid' }, Object.entries(FACES).map(([k, f]) => card(f.name === 'Keem' ? 'Classic' : f.name, { on: sel.face === k, click: () => set('face', () => { sel.face = k; sel.eyeShape = sel.browStyle = sel.noseStyle = sel.mouthStyle = undefined; }) })))],
+            eyes: () => [el('div', { cls: 'lbl' }, 'Eye shape'), el('div', { cls: 'grid' }, C.EYES.map((e, i) => card(e[0], { on: curEye === i, click: () => set('face', () => { sel.eyeShape = i; }) }))),
+              el('div', { cls: 'lbl' }, 'Eye size'), el('div', { cls: 'grid' }, [[-0.25, 'Small'], [0, 'Average'], [0.45, 'Large'], [0.8, 'Huge']].map(([v, n]) => card(n, { on: (sel.eyeSize || 0) === v, click: () => set('face', () => { sel.eyeSize = v; }) }))),
+              el('div', { cls: 'lbl' }, 'Eye colour'), swatches('eyes', [...new Set([...(C.SWATCH.eye || []), ...EYES])], 'skin')],
+            brows: () => [el('div', { cls: 'lbl' }, 'Brow shape'), el('div', { cls: 'grid' }, C.BROWS.map((e, i) => card(e[0], { on: curBrow === i, click: () => set('face', () => { sel.browStyle = i; }) })))],
+            nose: () => [el('div', { cls: 'lbl' }, 'Nose'), el('div', { cls: 'grid' }, C.NOSES.map((e, i) => card(e[0], { on: curNose === i, click: () => set('face', () => { sel.noseStyle = i; }) })))],
+            mouth: () => [el('div', { cls: 'lbl' }, 'Mouth'), el('div', { cls: 'grid' }, C.MOUTHS.map((e, i) => card(e[0], { on: curMouth === i, click: () => set('face', () => { sel.mouthStyle = i; }) })))],
+            makeup: () => [el('div', { cls: 'lbl' }, 'Eyeshadow'), el('div', { cls: 'grid' }, C.MAKEUP.shadow.map((n, i) => card(n, { on: (mk.shadow || 0) === i, click: () => set('face', () => { sel.makeup = Object.assign({}, mk, { shadow: i }); }) }))),
+              el('div', { cls: 'lbl' }, 'Eyeliner'), el('div', { cls: 'grid' }, C.MAKEUP.liner.map((n, i) => card(n, { on: (mk.liner || 0) === i, click: () => set('face', () => { sel.makeup = Object.assign({}, mk, { liner: i }); }) }))),
+              el('div', { cls: 'lbl' }, 'Blush'), el('div', { cls: 'grid' }, C.MAKEUP.blush.map((n, i) => card(n, { on: (mk.blush || 0) === i, click: () => set('face', () => { sel.makeup = Object.assign({}, mk, { blush: i }); }) }))),
+              el('div', { cls: 'lbl' }, 'Lipstick'), el('div', { cls: 'grid' }, C.MAKEUP.lipstick.map((n, i) => card(n, { on: (mk.lip || 0) === i, click: () => set('face', () => { sel.makeup = Object.assign({}, mk, { lip: i }); }) })))],
+            hairf: () => [el('div', { cls: 'lbl' }, 'Beard'), el('div', { cls: 'grid' }, [['none', 'None'], ['stubble', 'Stubble'], ['mustache', 'Mustache'], ['goatee', 'Goatee'], ['full', 'Full beard'], ['boxed', 'Short boxed'], ['lumber', 'Big beard'], ['circle', 'Circle beard'], ['soul', 'Soul patch'], ['strap', 'Chin strap'], ['curtain', 'Chin curtain']].map(([k, n]) => card(n, { on: (sel.beard || 'none') === k, click: () => set('face', () => { sel.beard = k; }) }))),
+              el('div', { cls: 'lbl' }, 'Mustache'), el('div', { cls: 'grid' }, C.STACHES.map(s => card(s[1], { on: (sel.stache || (sel.beard === 'mustache' ? 'chevron' : 'none')) === s[0], click: () => set('face', () => { sel.stache = s[0]; if (s[0] !== 'none' && (!sel.beard || sel.beard === 'none')) sel.beard = 'mustache'; }) })))],
+          };
+          return [el('div', { cls: 'subs' }, tabs.map(([k, n]) => el('button', { cls: faceSub === k ? 'on' : '', on: { click: () => { faceSub = k; render(); } } }, n))), ...section[faceSub]()]; },
         hair: () => [el('div', { cls: 'lbl' }, 'Colour'), swatches('hairColor', HAIR_COLORS, 'hair'), el('div', { cls: 'lbl' }, 'Style'), el('div', { cls: 'grid' }, Object.entries(HAIRS).map(([k, n]) => card(n, { on: sel.hair === k, click: () => set('hair', () => { sel.hair = k; }) })))],
         outfit: () => { const W = wallet(); const sorted = [...OUTFITS].sort((a, b) => (owned(b) - owned(a)) || ((a.price || 0) - (b.price || 0)));
           return [el('div', { cls: 'grid' }, sorted.map(o => { const own = owned(o), lockLv = !own && o.lvl && (W.level || 1) < o.lvl, wear = sel.outfit === o.id && !Object.keys(sel.parts || {}).length;

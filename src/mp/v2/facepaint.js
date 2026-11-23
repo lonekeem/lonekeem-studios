@@ -12,7 +12,7 @@ const mixc = (a, b, t) => '#' + new THREE.Color(a).lerp(new THREE.Color(b), t).g
 function rnd(seed) { let s = seed >>> 0 || 1; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
 // eye presets: [w, h, tilt(rad), upperArch(0..1), lowerFlat(0..1)]
-export const EYE_SHAPES = { Almond: [.056, .04, .06, .55, .6], Round: [.052, .046, 0, .75, .35], Wide: [.06, .041, 0, .6, .5], Narrow: [.056, .03, .04, .45, .7], Upturned: [.056, .039, .16, .55, .6], Downturned: [.056, .039, -.12, .55, .55],
+export const EYE_SHAPES = { Almond: [.064, .048, .06, .6, .55], Round: [.06, .054, 0, .8, .3], Wide: [.068, .048, 0, .6, .5], Narrow: [.06, .034, .04, .45, .7], Upturned: [.064, .046, .16, .55, .6], Downturned: [.064, .046, -.12, .55, .55],
   Hooded: [.056, .034, 0, .4, .6], Big: [.062, .048, 0, .7, .4], Sleepy: [.056, .032, -.05, .35, .6], Cat: [.06, .035, .22, .5, .65], Small: [.048, .034, 0, .6, .5], 'Deep-set': [.054, .036, .03, .5, .6] };
 
 function eyePath(g, cx, cy, w, h, tilt, arch, flat, side) { // in px, side=+1 left eye (screen right)
@@ -44,8 +44,8 @@ function drawEye(g, o, side) {
   // upper lid shadow on the eyeball
   const lg = g.createLinearGradient(0, ey - h * 1.1, 0, ey - h * .2); lg.addColorStop(0, 'rgba(40,20,15,.45)'); lg.addColorStop(1, 'rgba(40,20,15,0)'); g.fillStyle = lg; g.fillRect(ex - w, ey - h * 2, w * 2, h * 2);
   // highlights
-  g.fillStyle = 'rgba(255,255,255,.95)'; g.beginPath(); g.ellipse(ix - ir * .38, iy - ir * .38, ir * .26, ir * .22, -.5, 0, 7); g.fill();
-  g.fillStyle = 'rgba(255,255,255,.75)'; g.beginPath(); g.arc(ix + ir * .36, iy + ir * .34, ir * .1, 0, 7); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.98)'; g.beginPath(); g.ellipse(ix - ir * .34, iy - ir * .4, ir * .34, ir * .28, -.5, 0, 7); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.85)'; g.beginPath(); g.arc(ix + ir * .4, iy + ir * .32, ir * .13, 0, 7); g.fill();
   g.restore();
   // lash line (upper lid), thicker towards the outer corner, optional wing
   const lw = K * (.0016 + .0012 * o.liner + .0006 * o.lash);

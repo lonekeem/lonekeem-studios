@@ -20,7 +20,7 @@ const FACE = { // v1.9.28: gentle morphs (strong values made tall egg-shaped hea
   strong: [{ jaw: .35, chinW: .25, cheekbone: .2 }, 11, 8, 4, 0, 0], narrow: [{ jaw: -.25, faceW: -.3, chinW: -.2 }, 3, 1, 7, 2, 0],
   round: [{ faceW: .3, cheekFull: .4, faceLen: -.25, chin: -.2 }, 7, 0, 1, 8, 0], sharp: [{ jaw: -.1, cheekbone: .35, chin: .15, faceW: -.1 }, 9, 6, 7, 7, 0],
   elder: [{ cheekFull: -.2, noseLen: .2 }, 6, 5, 3, 2, .6] };
-const BEARD = { none: ['none', 'none'], stubble: ['stubble', 'none'], mustache: ['none', 'chevron'], goatee: ['goatee', 'chevron'], full: ['strap', 'chevron'] /* v1.9.28: jawline beard + mustache, mouth stays visible (the solid 'full' read as a mask) */, jaw: ['strap', 'none'] };
+const BEARD = { none: ['none', 'none'], stubble: ['stubble', 'none'], mustache: ['none', 'chevron'], goatee: ['goatee', 'chevron'], full: ['full', 'chevron'], jaw: ['strap', 'none'], boxed: ['boxed', 'none'], lumber: ['lumber', 'chevron'], circle: ['circle', 'chevron'], soul: ['soul', 'none'], strap: ['strap', 'none'], curtain: ['curtain', 'none'] };
 
 export function skinToT(h) { // closest point on the mp skin ramp
   let best = 0, bd = 9; const c = hex(h); const n = parseInt(c.slice(1), 16); const r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
@@ -60,8 +60,10 @@ export function applySel(M, L, parts, OUTFIT) {
     if (w.goggles) M.acc.glasses = w.goggles; else if (!L.glasses) M.acc.glasses = null; if (w.bag) M.acc.bag = w.bag; else if (!L.pack) M.acc.bag = null; }
   if (has('hair')) { const hc = L.hairColor || '#0b0807'; M.hair = { id: HAIR[L.hair] || 'crew', c: hc, c2: shade(hc, 1.35), hl: .25 }; if (M.beard) M.beard.c = null; if (M.stache) M.stache.c = null; M.brows.col = null; }
   if (has('face')) { const f = FACE[L.face] || FACE.keem; for (const g of Object.values(K.MORPH_KEYS)) for (const k of g) if (!/muscle|weight|chest|shoulders|hips|legs|neck/.test(k)) delete M.morph[k]; Object.assign(M.morph, f[0]);
-    M.eyes = { ...M.eyes, s: f[1] }; M.brows = { ...M.brows, s: f[2] }; M.nose = { s: f[3] }; M.mouth = { ...M.mouth, s: f[4] }; M.skinx = { ...M.skinx, age: f[5] };
-    const b = BEARD[L.beard] || BEARD.none; M.beard = { ...(M.beard || {}), id: b[0], c: null, len: .5, dens: .9 }; M.stache = { ...(M.stache || {}), id: b[1], c: null, len: .45, dens: .9 }; }
+    M.eyes = { ...M.eyes, s: L.eyeShape != null ? L.eyeShape : f[1] }; M.brows = { ...M.brows, s: L.browStyle != null ? L.browStyle : f[2] }; M.nose = { s: L.noseStyle != null ? L.noseStyle : f[3] }; M.mouth = { ...M.mouth, s: L.mouthStyle != null ? L.mouthStyle : f[4] }; M.skinx = { ...M.skinx, age: f[5] };
+    if (L.eyeSize != null) M.eyes.size = L.eyeSize;
+    if (L.makeup) M.makeup = { ...M.makeup, shadow: L.makeup.shadow ?? M.makeup.shadow, liner: L.makeup.liner ?? M.makeup.liner, blush: L.makeup.blush ?? M.makeup.blush, lip: L.makeup.lip ?? M.makeup.lip, lipCol: L.makeup.lipCol || M.makeup.lipCol, shadowCol: L.makeup.shadowCol || M.makeup.shadowCol };
+    const b = BEARD[L.beard] || BEARD.none; M.beard = { ...(M.beard || {}), id: b[0], c: null, len: .5, dens: .9 }; M.stache = { ...(M.stache || {}), id: L.stache || b[1], c: null, len: .45, dens: .9 }; }
   if (has('skin')) { M.skin = { t: skinToT(L.skin || '#6a4430'), u: .15 }; if (L.eyes) M.eyes = { ...M.eyes, col: L.eyes }; }
   if (has('extra')) { const g = M._og; M.acc.glasses = L.glasses ? (g || { id: 'squareclear', m: 3, g: 0, c: '#1b1b1d', c2: '#fff', p: 0 }) : (g || null);
     M.acc.bag = L.pack ? (M._obag || { id: 'pack', m: 0, g: 0, c: '#2e3a2a', c2: '#3a4632', p: 0 }) : (M._obag || null);

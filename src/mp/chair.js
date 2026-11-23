@@ -21,7 +21,7 @@ export function mountChair(av) {
     const post = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, .28, 8), frame); post.position.set(s * .17, .44, -.14); g.add(post);
   }
   const handles = new THREE.Mesh(new THREE.TorusGeometry(.07, .01, 8, 16, Math.PI), chrome); handles.rotation.x = Math.PI / 2; handles.position.set(0, .86, -.2); g.add(handles);
-  g.position.set(0, 0, 0.06);
+  g.position.set(0, 0, -0.02);
   av.root.add(g); av._chair = g;
 }
 
