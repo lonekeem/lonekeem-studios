@@ -12,8 +12,9 @@ import * as ch19 from './ch19.js';
 import * as ch20 from './ch20.js';
 import * as ch21 from './ch21.js';
 import * as ch22 from './ch22.js';
+import * as ch23 from './ch23.js';
 
-export const CH_MODULES = [ch12, ch13, ch14, ch15, ch16, ch17, ch18, ch19, ch20, ch21, ch22];
+export const CH_MODULES = [ch12, ch13, ch14, ch15, ch16, ch17, ch18, ch19, ch20, ch21, ch22, ch23];
 export const CHAPTER_LIST = [...CORE_CHAPTERS, ...CH_MODULES.map(m => m.meta)];
 export const NEW_STEPS = CH_MODULES.flatMap(m => m.steps);
 export const NEW_LOOT = CH_MODULES.flatMap(m => m.loot || []);
