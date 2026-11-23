@@ -54,3 +54,38 @@ export function initLayout(S, saveS, closeTo) {
   };
   return { open() { if (!root) build(); sel = null; root.querySelector('#leName').textContent = 'Tap a button'; root.querySelector('#leSize').disabled = true; root.classList.remove('hidden'); refresh(); }, refresh: () => applyLayout(S) };
 }
+
+// Keep off-screen objective markers off the touch buttons and HUD chrome (v1.9.91).
+const MARKER_HUD = '#touch .rb, #stickBase, #stickZone, #mini, #pfp, #obj, #hudr, #hpTxt, #ammoTxt, #wbar.on, #budCue, #boss, #prompt, #skipObj, #rld';
+export function clampHudMarker(x, y, hw = 32, hh = 28, pad = 10) {
+  const W = innerWidth, H = innerHeight;
+  const minX = hw + pad, maxX = Math.max(minX, W - hw - pad);
+  const minY = hh + pad, maxY = Math.max(minY, H - hh - pad);
+  x = clamp(x, minX, maxX); y = clamp(y, minY, maxY);
+  const rects = [];
+  for (const el of document.querySelectorAll(MARKER_HUD)) {
+    const s = getComputedStyle(el);
+    if (s.display === 'none' || s.visibility === 'hidden' || +s.opacity === 0) continue;
+    if (!el.getClientRects().length) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 4 || r.height < 4) continue;
+    rects.push({ l: r.left - pad, r: r.right + pad, t: r.top - pad, b: r.bottom + pad });
+  }
+  const hit = (x, y) => {
+    const L = x - hw, R = x + hw, T = y - hh, B = y + hh;
+    return rects.find(u => L < u.r && R > u.l && T < u.b && B > u.t);
+  };
+  for (let i = 0; i < 8; i++) {
+    const u = hit(x, y); if (!u) break;
+    const opts = [[u.r + hw, y], [u.l - hw, y], [x, u.b + hh], [x, u.t - hh]]
+      .map(([nx, ny]) => [clamp(nx, minX, maxX), clamp(ny, minY, maxY)]);
+    let best = opts[0], bestD = 1e9;
+    for (const [nx, ny] of opts) {
+      const d = Math.hypot(nx - x, ny - y);
+      if (d < bestD) { bestD = d; best = [nx, ny]; }
+    }
+    if (bestD < .5) break;
+    x = best[0]; y = best[1];
+  }
+  return [x, y];
+}

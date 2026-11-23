@@ -6,6 +6,7 @@
 // sparkles, a constant-size floating marker you can see through walls, and an edge arrow when an objective is off-screen.
 // Fades out when you are close so it never blocks the first-person view. Does NOT change gameplay.
 import * as THREE from 'three';
+import { clampHudMarker } from './layout.js';
 
 const GOLD = new THREE.Color('#ffd54a'), SOFT = new THREE.Color('#bfeaff');
 const _v = new THREE.Vector3(), _w = new THREE.Vector3();
@@ -114,5 +115,5 @@ export function glowUpdate(g) {
   for (let i = si * 6 * 3; i < sp.array.length; i++) sp.array[i] = 9999; sp.needsUpdate = true;
   arrows.sort((a, b) => a.d - b.d); G.arrows.forEach((el, i) => { const a = arrows[i]; if (!a) { el.style.display = 'none'; return; }
     let [dx, dy] = a.dir; const m = Math.hypot(dx, dy) || 1; dx /= m; dy /= m; const mx = 46, my = 58, s = Math.min((W / 2 - mx) / Math.max(.001, Math.abs(dx)), (H / 2 - my) / Math.max(.001, Math.abs(dy)));
-    el.style.display = ''; el.style.left = (W / 2 + dx * s) + 'px'; el.style.top = (H / 2 - dy * s) + 'px'; el.firstChild.style.transform = `rotate(${Math.atan2(-dy, dx)}rad)`; el.lastChild.textContent = Math.round(a.d) + ' m'; });
+    let x = W / 2 + dx * s, y = H / 2 - dy * s; [x, y] = clampHudMarker(x, y, 32, 28, 10); el.style.display = ''; el.style.left = x + 'px'; el.style.top = y + 'px'; el.firstChild.style.transform = `rotate(${Math.atan2(-dy, dx)}rad)`; el.lastChild.textContent = Math.round(a.d) + ' m'; });
 }

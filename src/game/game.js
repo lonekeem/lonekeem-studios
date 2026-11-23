@@ -16,6 +16,7 @@ import { buildPickup, buildWeapon } from './gear.js';
 import { loadRigs, loadMoreRigs, RIG_CORE, RIG_REST } from './avatar.js';
 import { WEAPONS, WEAPON_ORDER, stat, perk, xpFor, PERKS, writeSave, armorAbsorb } from './data.js';
 import { V3, clamp, lerp, rnd, angLerp, bloodTex } from './util.js';
+import { clampHudMarker } from './layout.js';
 import { Input } from './input.js';
 import { stepMove, startRoll, startJump, stepVehicle, stepFollowCam, clampCamToPlayer, CAM } from './pctl.js';
 import { syncWounds, addWound, bloodyMouth, makePool, tickPools, setHandBlood } from './gore.js';
@@ -916,7 +917,7 @@ export class Game {
     if (this.boss) { $('#boss').classList.remove('hidden'); $('#bossb i').style.width = Math.max(0, this.boss.hp / (this.boss.maxHp || 1) * 100) + '%'; }
     // waypoint
     const wpE = $('#wp'); const tgt = this.wpTarget; if (tgt && !this.cut) { const v = V3(tgt[0], tgt[1] || 1.2, tgt[2]); const dist = v.distanceTo(this.player.root.position); const p = v.clone().project(this.camera); let x = (p.x * .5 + .5) * innerWidth, y = (-p.y * .5 + .5) * innerHeight; const behind = p.z > 1;
-      if (behind) { x = innerWidth - x; y = innerHeight - 40; } x = clamp(x, 40, innerWidth - 40); y = clamp(y, 60, innerHeight - 60); wpE.style.display = ''; wpE.style.left = x + 'px'; wpE.style.top = y + 'px'; wpE.querySelector('.d').textContent = Math.round(dist) + ' m';
+      if (behind) { x = innerWidth - x; y = innerHeight - 40; } [x, y] = clampHudMarker(x, y, 32, 28, 10); wpE.style.display = ''; wpE.style.left = x + 'px'; wpE.style.top = y + 'px'; wpE.querySelector('.d').textContent = Math.round(dist) + ' m';
       wpE.querySelector('.arr').textContent = behind ? '▼' : (dist < 3 ? '◆' : '▲'); } else wpE.style.display = 'none';
     this.mini(); }
   mini() { const c = $('#mini'), g = c.getContext('2d'), W = c.width, S = 1.4; const P = this.player.root.position; g.clearRect(0, 0, W, W); g.save(); g.beginPath(); g.arc(W / 2, W / 2, W / 2 - 1, 0, 7); g.clip(); g.fillStyle = 'rgba(10,20,14,.7)'; g.fillRect(0, 0, W, W);
