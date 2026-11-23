@@ -29,7 +29,7 @@
   function isModErr(m){ m=String(m||''); return /Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module|Failed to load module script|Unable to preload|vite:preloadError/i.test(m); }
   function inPlay(){ try{ return !!(window.__atqBooted && (window.__mpTown || window.__mpLobby || (window.__atq && /^(play|paused|loading)$/.test(window.__atq.state||'')))); }catch(e){ return false; } }
   function reloadOnce(){
-    // v1.9.71: never yank a player out of a running game back to the loading screen because some late file failed; that waits for the menu
+    // v1.9.72: never yank a player out of a running game back to the loading screen because some late file failed; that waits for the menu
     if(inPlay()){ try{ console.warn('[atq] module load failed during play; not reloading'); window.__atqNeedReload=1; }catch(e){} return true; }
     var s=store();
     if(s && s.getItem(KEY)==='1') return false;
@@ -196,7 +196,7 @@
     <button id="btnSettings" class="mplay">Settings</button>
     <button id="btnPlay" class="mplay hidden" tabindex="-1" aria-hidden="true">Play</button>
   </div>
-  <div class="foot" id="foot">v1.9.71 · Story Mode · Chapters 1–20 · Multiplayer (Beta)</div>
+  <div class="foot" id="foot">v1.9.72 · Story Mode · Chapters 1–20 · Multiplayer (Beta)</div>
 </div>
 <div id="settings" class="screen hidden">
   <div class="panel">

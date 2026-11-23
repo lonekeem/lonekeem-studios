@@ -61,7 +61,7 @@ export function townActivities({ scene, W, Z, me, cars, bag, toast, aud, dn, col
   const tgt = new THREE.Mesh(beamG, tgtM); tgt.frustumCulled = false; tgt.visible = false; tgt.renderOrder = 4; scene.add(tgt);
   const ring = new THREE.Mesh(new THREE.RingGeometry(1.6, 2.1, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ffd27a', transparent: true, opacity: .7, depthWrite: false, fog: false })); ring.position.y = .07; ring.visible = false; scene.add(ring);
   const jobPos = {}; for (const j of JOBS) jobPos[j.id] = place(j.at);
-  // v1.9.71 job guide arrow (like Kemy's): a glowing chevron floating above you (on foot or in a car) that turns toward the job target, + distance
+  // v1.9.72 job guide arrow (like Kemy's): a glowing chevron floating above you (on foot or in a car) that turns toward the job target, + distance
   const arrowG = (() => { const s = new THREE.Shape(); s.moveTo(0, .95); s.lineTo(.62, .05); s.lineTo(.24, .18); s.lineTo(.24, -.7); s.lineTo(-.24, -.7); s.lineTo(-.24, .18); s.lineTo(-.62, .05); s.closePath(); const g = new THREE.ExtrudeGeometry(s, { depth: .14, bevelEnabled: false }); g.translate(0, 0, -.07); g.rotateX(-Math.PI / 2); return g; })(); // points +Z after the rotation? (+Y shape -> -Z); flipped below
   const arrow = new THREE.Mesh(arrowG, new THREE.MeshBasicMaterial({ color: '#5cff8a', transparent: true, opacity: .92, depthTest: false, depthWrite: false, fog: false })); arrow.renderOrder = 30; arrow.frustumCulled = false; arrow.visible = false; scene.add(arrow);
   const arrowTxt = el('div', {}); arrowTxt.style.cssText = 'position:absolute;left:0;top:0;transform:translate(-50%,-100%);z-index:7;pointer-events:none;color:#c9ffd8;font:800 12px system-ui,sans-serif;text-shadow:0 1px 3px #000,0 0 6px #000;white-space:nowrap;display:none'; root.append(arrowTxt);
@@ -167,7 +167,7 @@ export function townActivities({ scene, W, Z, me, cars, bag, toast, aud, dn, col
       { t: 'Orange light beams mark jobs. Walk into one and tap ✋ to start it.', ev: 'job' },
       { t: 'Get in a car: walk up to it and tap ✋. Some are locked, so find an unlocked one.', ev: 'drive' },
       { t: 'Before night, make a house your safe house, barricade its doors and set traps. Each night ends with a boss. Good luck!', ev: 'end' }];
-    // v1.9.71: the box lives on <body> above the touch HUD (it used to sit inside #mpt under #stickZone, which ate every tap on Next/Skip),
+    // v1.9.72: the box lives on <body> above the touch HUD (it used to sit inside #mpt under #stickZone, which ate every tap on Next/Skip),
     // top-centre between the left and right button columns. Taps are handled on touchend (iOS), clicks for mouse. Progress + skip are saved,
     // and a step whose action doesn't happen (e.g. a full bag can't loot) moves on by itself after a while.
     const box = el('div', { cls: 'actTut' }); box.style.cssText = 'position:fixed;left:50%;top:calc(max(6px, env(safe-area-inset-top)) + 106px);transform:translateX(-50%);width:min(52vw,420px);box-sizing:border-box;background:#0f171bf0;border:1px solid #f0b44a99;border-radius:12px;padding:8px 34px 8px 12px;color:#f5ecd8;font:600 12.5px/1.3 system-ui,sans-serif;z-index:74;display:none;gap:8px;align-items:center;pointer-events:auto;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent';
