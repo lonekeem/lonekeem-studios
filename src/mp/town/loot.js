@@ -69,6 +69,11 @@ export const LOOT_SPOTS = [
   ['lc3', 'crate', -27.6, 16.5, 1.2], ['lc4', 'crate', 19, 27.9, 0], ['lf1', 'duffel', 21.2, -21.4, .5], ['lf2', 'duffel', -21.5, 22.2, 2], ['lg3', 'gascans', -44, 3.4, 3.14], ['ld3', 'dumpster', 12, 14.2, 0],
   // gun cases (table 'arms'): spread around town, one near spawn so they're easy to find
   ['la1', 'arms', 10, 8, .3], ['la2', 'arms', 44, 6.5, 1.2], ['la3', 'arms', -30, -6, 0], ['la4', 'arms', 8, -34, 2.2], ['la5', 'arms', 62, -14, .5], ['la6', 'arms', -22, 28, 3.14],
+  // outer ring (park, school, Cedar Plaza, east/west houses) — do not move the spots above
+  ['lf3', 'duffel', 12, 54, .4], ['lc5', 'crate', -14, 50, .2], ['ld4', 'dumpster', 24, 64, 0],
+  ['lc6', 'crate', 12, -50, 0], ['la7', 'arms', -14, -52, 1.1], ['ld5', 'dumpster', 18, -64, 0],
+  ['ld6', 'dumpster', -124, -12, 1.57], ['lc7', 'crate', -124, 8, .3], ['lg4', 'gascans', -108, 14, 0], ['lf4', 'duffel', -110, -14, 2],
+  ['lc8', 'crate', 86, 18, .2], ['la8', 'arms', 86, 42, .8], ['ld7', 'dumpster', -92, 44, 0],
 ];
 const SPEC = { gascans: { table: 'gascache', label: 'Gas cans', w: 1.0, d: .6, h: .5 }, crate: { table: 'supply', label: 'Supply crate', w: 1.0, d: .8, h: .75 }, dumpster: { table: 'dumpster', label: 'Dumpster', w: 1.8, d: 1.0, h: 1.2 }, arms: { table: 'arms', label: 'Gun case', w: .9, d: .45, h: .4 }, duffel: { table: 'duffel', label: 'Duffel bag', w: .9, d: .45, h: .4 } };
 export function addLoot(W, spots = LOOT_SPOTS) {

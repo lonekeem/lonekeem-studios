@@ -1,12 +1,16 @@
-// "Quiet Falls": a starter grid town (2x2 streets, 25 houses: 7 enterable with real doors, 18 closed instanced exteriors), a store, a gas station,
-// sheds, forest edge. Layout is generated from ROADS/LOT rules so the grid can grow towards 100 houses by extending ROADS + EXT.
+// "Quiet Falls": the original 2x2 core (25 houses: 7 enterable, 18 closed instanced exteriors, a store, a gas station, sheds)
+// plus an outer ring of streets — Willow Park, Quiet Falls School, Cedar Plaza, more houses. CORE lots stay fixed so
+// co-op mission spots (crates, Marcus shed, store, radio tower, evac) do not move. New roads live on CFG.ZR/XR.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { Builder, boxGeo, mulberry, makeMats, bloodTex, crackTex, weedTex, signTex, groundTex, klTex } from './kit.js';
 import { makeBuilding, gableGeo, plain, hash, COLORS, FACE_ROT, H } from './building.js';
+import { placeOuterHouses, addDistricts } from './districts.js';
 
-export const CFG = { ZR: [-24, 24], XR: [-24, 24], EXT: 80, HOUSES: 25, ENTERABLE: 7, ROAD_HALF: 4 }; // grow: add roads to ZR/XR, raise EXT/HOUSES (max 100)
-export const BOUNDS = { x: 118, z: 88 }; export const ROAD_HALF = 4;
+// CORE is the original 2x2 town used by genLots (do not add roads here — that would move existing houses).
+export const CORE = { ZR: [-24, 24], XR: [-24, 24], EXT: 80, HOUSES: 25, ENTERABLE: 7 };
+export const CFG = { ZR: [-72, -24, 24, 72], XR: [-104, -24, 24, 104], EXT: 80, HOUSES: 25, ENTERABLE: 7, ROAD_HALF: 4 };
+export const BOUNDS = { x: 148, z: 118 }; export const ROAD_HALF = 4;
 
 // ---------- spatial grid of rect colliders ----------
 export class Colliders {
@@ -35,9 +39,9 @@ export class Nav { // 1 m grid, counted blockers (doors toggle), BFS flow field 
 
 // ---------- lots (generated) ----------
 export function genLots() { // houses along every east-west road, both sides, in spans between/outside the north-south roads
-  const lots = []; const R = ROAD_HALF; const spans = []; const xs = [-CFG.EXT, ...CFG.XR.flatMap(x => [x - R - 4, x + R + 4]), CFG.EXT];
+  const lots = []; const R = ROAD_HALF; const spans = []; const xs = [-CORE.EXT, ...CORE.XR.flatMap(x => [x - R - 4, x + R + 4]), CORE.EXT];
   for (let i = 0; i < xs.length; i += 2) spans.push([xs[i], xs[i + 1]]);
-  for (const z0 of CFG.ZR) for (const side of [-1, 1]) for (const [a, b] of spans) { const pitch = 11, n = Math.floor((b - a) / pitch); if (n < 1) continue; const off = (b - a - n * pitch) / 2;
+  for (const z0 of CORE.ZR) for (const side of [-1, 1]) for (const [a, b] of spans) { const pitch = 11, n = Math.floor((b - a) / pitch); if (n < 1) continue; const off = (b - a - n * pitch) / 2;
     for (let k = 0; k < n; k++) { const cx = a + off + (k + .5) * pitch; const d = 9; const cz = z0 + side * (10 + d / 2); lots.push({ cx, cz, w: 9, d, face: side > 0 ? 'N' : 'S', road: z0, side }); } }
   lots.sort((p, q) => Math.hypot(p.cx, p.cz) - Math.hypot(q.cx, q.cz)); lots.forEach((l, i) => { l.id = 'L' + i; }); return lots;
 }
@@ -54,9 +58,13 @@ export const CAR_SPAWNS = [
   { id: 'c9', m: 'hatchback-sports', x: 4, z: -22.6, ry: .55, fuel: .35, lock: 2, tint: '#a8322d' }, { id: 'c10', m: 'suv', x: -48, z: -26, ry: Math.PI / 2, fuel: .9, lock: 1, tint: '#6b7a52' },
   { id: 'c11', m: 'sedan', x: 22, z: -8, ry: Math.PI + .1, fuel: .5, lock: 1, tint: '#9a8f78' }, { id: 'c12', m: 'van', x: -23.8, z: -44, ry: .1, fuel: .3, lock: 0, tint: '#3c4a63' },
   { id: 'c13', m: 'sedan', x: 20, z: -22, ry: -Math.PI / 2, fuel: .65, lock: 0, tint: '#b8b3a6' }, { id: 'c14', m: 'suv', x: 24.2, z: 44, ry: Math.PI + .6, fuel: .45, lock: 1, tint: '#7c3b52' },
+  { id: 'c15', m: 'sedan', x: 8, z: -66, ry: Math.PI / 2, fuel: .4, lock: 1, tint: '#6a7a4a' }, { id: 'c16', m: 'van', x: -14, z: -65.5, ry: Math.PI / 2 + .08, fuel: .2, lock: 1, tint: '#c2b8a0' },
+  { id: 'c17', m: 'suv', x: -108.6, z: -8, ry: 0, fuel: .55, lock: 1, tint: '#3d4a63' }, { id: 'c18', m: 'sedan', x: -108.6, z: 8, ry: Math.PI, fuel: .15, lock: 0, tint: '#8a5340' },
+  { id: 'c19', m: 'hatchback-sports', x: 20, z: 73.8, ry: Math.PI / 2, fuel: .7, lock: 1, tint: '#c9a23a' }, { id: 'c20', m: 'truck', x: 105.8, z: 20, ry: 0, fuel: .3, lock: 1, tint: '#5a5e62' },
+  { id: 'c21', m: 'suv', x: -20, z: 70.2, ry: -Math.PI / 2, fuel: .6, lock: 0, tint: '#4a6a58' }, { id: 'c22', m: 'sedan', x: -40, z: -73.8, ry: Math.PI / 2, fuel: .25, lock: 1, tint: '#9a8a72' },
 ];
 export const BODIES = [{ x: -4, z: 23, ry: 1.1, k: 'h' }, { x: 12, z: -22, ry: .3, k: 'h' }, { x: 26, z: -24, ry: 4, k: 'z' }, { x: -24.5, z: 0, ry: 5, k: 'h' }, { x: -23, z: -12, ry: 1.7, k: 'z' }, { x: 24.5, z: 12, ry: 2, k: 'h' },
-  { x: 44, z: -10, ry: 3, k: 'h' }, { x: 49, z: -11, ry: 1, k: 'z' }, { x: -7, z: -19, ry: 2.8, k: 'h' }, { x: 1, z: -19.3, ry: .2, k: 'z' }, { x: 17, z: 23.5, ry: 4.4, k: 'h' }, { x: -23.5, z: 33, ry: 1.9, k: 'h' }, { x: -34, z: -22, ry: 5.7, k: 'z' }];
+  { x: 44, z: -10, ry: 3, k: 'h' }, { x: 49, z: -11, ry: 1, k: 'z' }, { x: -7, z: -19, ry: 2.8, k: 'h' }, { x: 1, z: -19.3, ry: .2, k: 'z' }, { x: 17, z: 23.5, ry: 4.4, k: 'h' }, { x: -23.5, z: 33, ry: 1.9, k: 'h' }, { x: -34, z: -22, ry: 5.7, k: 'z' }, { x: 0, z: 62, ry: 2.1, k: 'h' }, { x: -10, z: -62, ry: .8, k: 'z' }, { x: -110, z: 4, ry: 4.2, k: 'h' }, { x: 92, z: 18, ry: 1.4, k: 'z' }];
 
 // ---------- closed (instanced) house variants ----------
 function part(geos, mat, x0, x1, y0, y1, z0, z1, color) { const g = boxGeo(x1 - x0, y1 - y0, z1 - z0, 2, [(x0 * 3.1) % 1, (y0 * 1.7) % 1]); g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2); const n = g.attributes.position.count, c = new THREE.Color(color), a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); geos.push(g.toNonIndexed()); }
@@ -90,7 +98,7 @@ export function buildTown(scene, opts = {}) {
   const W = { M, B, col, nav, root, doors: [], containers: [], buildings: [], lots: [], decals: { blood: [], crack: [] }, closed: null, bounds: BOUNDS, enterable: [], rnd, hash };
   const R = ROAD_HALF, MX = BOUNDS.x + 30, MZ = BOUNDS.z + 30;
   // ground
-  const gm = new THREE.MeshStandardMaterial({ map: groundTex(), roughness: 1 }); gm.map.repeat.set(70, 55); const ground = new THREE.Mesh(new THREE.PlaneGeometry(BOUNDS.x * 2 + 120, BOUNDS.z * 2 + 120), gm); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; root.add(ground); W.ground = ground;
+  const gm = new THREE.MeshStandardMaterial({ map: groundTex(), roughness: 1 }); gm.map.repeat.set(90, 72); const ground = new THREE.Mesh(new THREE.PlaneGeometry(BOUNDS.x * 2 + 120, BOUNDS.z * 2 + 120), gm); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; root.add(ground); W.ground = ground;
   // roads: east-west full strips, north-south strips between east-west roads (no overlap at intersections)
   const roadMesh = (x0, x1, z0, z1) => { const g = new THREE.PlaneGeometry(x1 - x0, z1 - z0); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * (x1 - x0) / 6, uv.getY(i) * (z1 - z0) / 6); const m = new THREE.Mesh(g, M.asphalt); m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, .02, (z0 + z1) / 2); m.receiveShadow = true; root.add(m); };
   const zs = [...CFG.ZR].sort((a, b) => a - b), xsr = [...CFG.XR].sort((a, b) => a - b);
@@ -111,8 +119,11 @@ export function buildTown(scene, opts = {}) {
   W.closed = new Closed(W, scene); const rr = mulberry(77);
   free.forEach((l, i) => { l.enterable = entIdx.has(i); l.ci = Math.floor(rr() * COLORS.length); if (l.enterable) { const kind = 'house'; const bd = makeBuilding(W, { id: l.id, kind, cx: l.cx, cz: l.cz, w: l.w, d: l.d, face: l.face, ci: l.ci, locked: rr() < .6 ? 1 : 0, back: rr() < .5 ? 1 : 0 }); l.bd = bd; W.enterable.push(bd); }
     else { const v = Math.floor(rr() * 4); const dims = [[9, 8], [8.6, 8], [11, 7], [9, 8]][v]; l.v = v; const tint = new THREE.Color(COLORS[l.ci]).multiplyScalar(.55 + rr() * .3); W.closed.add(l, v, tint, new THREE.Color(['#d0c0b0', '#a8a8a2', '#c8a08c', '#9aa296'][Math.floor(rr() * 4)]).multiplyScalar(1)); const fw = (Math.abs(Math.sin(l.face === 'E' || l.face === 'W' ? 1 : 0)) ? dims[1] : dims[0]); const swap = l.face === 'E' || l.face === 'W'; const hx = (swap ? dims[1] : dims[0]) / 2, hz = (swap ? dims[0] : dims[1]) / 2; col.add(l.cx - hx, l.cx + hx, l.cz - hz, l.cz + hz, 'wall', true); } });
+  placeOuterHouses(W);
   W.closed.init(scene);
   for (const s of SPECIAL) { const bd = makeBuilding(W, s); W.enterable.push(bd); }
+  // new districts (park, school, plaza) before gas/loot hooks so their colliders exist when loot is placed.
+  addDistricts(W);
   // gas station: owned by the props helper (gas.js). The lot is reserved (GAS_LOT) and addGas(W) is called from the town via opts.hooks (before the statics are merged).
   for (const h of (opts.hooks || [])) h(W);
   // street furniture, fences, junk, lamp poles
@@ -125,11 +136,11 @@ export function buildTown(scene, opts = {}) {
   W.statics = B.build(scene, M);
   // weeds + trees (instanced)
   { const wt = weedTex(); const wm = new THREE.MeshStandardMaterial({ map: wt, alphaTest: .4, side: THREE.DoubleSide, roughness: 1, color: '#9aa070' }); const n = 700; const q1 = new THREE.PlaneGeometry(1.1, 1), q2 = q1.clone(); q2.rotateY(Math.PI / 2); const wg = mergeGeometries([q1.translate(0, .5, 0), q2.translate(0, .5, 0)]); const im = new THREE.InstancedMesh(wg, wm, n); const m4 = new THREE.Matrix4(); let c = 0;
-    for (let i = 0; i < n * 3 && c < n; i++) { const x = (rnd() - .5) * 2 * (CFG.EXT + 30), z = (rnd() - .5) * 2 * (Math.abs(zs[0]) + 40); if (zs.some(zz => Math.abs(z - zz) < R + 2.5) || xsr.some(xx => Math.abs(x - xx) < R + 2.5)) continue; if (col.hit(x, z, .3) || W.buildings.some(b => x > b.rect.x0 - 1 && x < b.rect.x1 + 1 && z > b.rect.z0 - 1 && z < b.rect.z1 + 1)) continue; m4.compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * 6), new THREE.Vector3(1 + rnd(), .7 + rnd() * 1.1, 1 + rnd())); im.setMatrixAt(c++, m4); } im.count = c; im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; root.add(im); }
+    for (let i = 0; i < n * 3 && c < n; i++) { const x = (rnd() - .5) * 2 * (BOUNDS.x - 16), z = (rnd() - .5) * 2 * (BOUNDS.z - 16); if (zs.some(zz => Math.abs(z - zz) < R + 2.5) || xsr.some(xx => Math.abs(x - xx) < R + 2.5)) continue; if (col.hit(x, z, .3) || W.buildings.some(b => x > b.rect.x0 - 1 && x < b.rect.x1 + 1 && z > b.rect.z0 - 1 && z < b.rect.z1 + 1)) continue; m4.compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * 6), new THREE.Vector3(1 + rnd(), .7 + rnd() * 1.1, 1 + rnd())); im.setMatrixAt(c++, m4); } im.count = c; im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; root.add(im); }
   { const tr = new THREE.CylinderGeometry(.22, .34, 3.2, 5, 1, true); tr.translate(0, 1.6, 0); const cn = (r, h, y) => { const g = new THREE.ConeGeometry(r, h, 7, 1, true); g.translate(0, y, 0); return g; }; const parts = [[tr, '#5a3f2a'], [cn(2.5, 4.2, 4.1), '#35602f'], [cn(1.9, 3.4, 6.0), '#3d6d34'], [cn(1.2, 2.6, 7.6), '#477a3b']].map(([g, c]) => { const n = g.attributes.position.count, cc = new THREE.Color(c), a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = cc.r; a[i * 3 + 1] = cc.g; a[i * 3 + 2] = cc.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g.index ? g.toNonIndexed() : g; });
-    const spots = []; const inTown = (x, z) => Math.abs(x) < CFG.EXT + 16 && Math.abs(z) < Math.abs(zs[zs.length - 1]) + 40; const onRoad = (x, z) => zs.some(zz => Math.abs(z - zz) < R + 3) || xsr.some(xx => Math.abs(x - xx) < R + 3);
+    const spots = []; const inTown = (x, z) => Math.abs(x) < 128 && Math.abs(z) < 100; const onRoad = (x, z) => zs.some(zz => Math.abs(z - zz) < R + 3) || xsr.some(xx => Math.abs(x - xx) < R + 3);
     for (let i = 0; i < 4000 && spots.length < 820; i++) { const x = (rnd() - .5) * 2 * (BOUNDS.x + 4), z = (rnd() - .5) * 2 * (BOUNDS.z + 4); if (inTown(x, z) || onRoad(x, z)) continue; spots.push([x, z]); }
-    for (let i = 0; i < 90; i++) { const x = (rnd() - .5) * 2 * (CFG.EXT + 12), z = (rnd() - .5) * 2 * (Math.abs(zs[0]) + 36); if (onRoad(x, z) || col.hit(x, z, 3.2)) continue; if (Math.abs(z) < 20 && Math.abs(x) < CFG.EXT) continue; if (free.some(l => Math.hypot(l.cx - x, l.cz - z) < 9)) continue; spots.push([x, z]); }
+    for (let i = 0; i < 90; i++) { const x = (rnd() - .5) * 2 * 120, z = (rnd() - .5) * 2 * 90; if (onRoad(x, z) || col.hit(x, z, 3.2)) continue; if (Math.abs(z) < 20 && Math.abs(x) < CFG.EXT) continue; if (free.some(l => Math.hypot(l.cx - x, l.cz - z) < 9)) continue; spots.push([x, z]); }
     // chunked into 36 m cells so the camera frustum culls whole chunks (phone perf); no tree shadows
     const tg = mergeGeometries(parts), tmat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, side: THREE.DoubleSide }); const cells = new Map(); spots.forEach(([x, z]) => { const k = Math.floor(x / 36) + ',' + Math.floor(z / 36); (cells.get(k) || cells.set(k, []).get(k)).push([x, z]); });
     const m4 = new THREE.Matrix4(), cc = new THREE.Color(); for (const arr of cells.values()) { const im = new THREE.InstancedMesh(tg, tmat, arr.length); arr.forEach(([x, z], i) => { const s2 = .8 + rnd() * .8; m4.compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * 6), new THREE.Vector3(s2, s2 * (.9 + rnd() * .4), s2)); im.setMatrixAt(i, m4); cc.setScalar(.8 + rnd() * .35); im.setColorAt(i, cc); col.add(x - .35, x + .35, z - .35, z + .35, 'tree', true); }); im.castShadow = false; im.computeBoundingSphere(); root.add(im); }
