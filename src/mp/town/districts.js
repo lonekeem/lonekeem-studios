@@ -10,9 +10,9 @@ export const RADIO_KEEP = { x: 70, z: -31, r: 12 };
 
 // Coloured minimap zones (drawn in town.js).
 export const ZONES = [
-  { id: 'park', name: 'Willow Park', x0: -28, x1: 28, z0: 45, z1: 65, fill: '#6fa85a' },
-  { id: 'school', name: 'Quiet Falls School', x0: -22, x1: 22, z0: -68, z1: -46, fill: '#c4a66a' },
-  { id: 'mall', name: 'Cedar Plaza', x0: -128, x1: -108, z0: -16, z1: 16, fill: '#d9895c' },
+  { id: 'park', name: 'Willow Park', x0: -16.8, x1: 16.8, z0: 45, z1: 64.8, fill: '#6fa85a' },
+  { id: 'school', name: 'Quiet Falls School', x0: -16.8, x1: 16.8, z0: -66.8, z1: -46, fill: '#c4a66a' },
+  { id: 'mall', name: 'Cedar Plaza', x0: -128, x1: -109.1, z0: -16, z1: 16, fill: '#d9895c' },
 ];
 
 export function inKeep(x, z, pad = 0) {
@@ -97,8 +97,9 @@ function bench(W, x, z, ry) {
 function addPark(W) {
   const { B, col, root, M } = W; const rr = mulberry(202);
   // slightly greener lawn (one cheap plane, shared grass look)
-  const lawn = new THREE.Mesh(new THREE.PlaneGeometry(56, 20), new THREE.MeshStandardMaterial({ color: '#6f9a4e', roughness: 1 }));
-  lawn.rotation.x = -Math.PI / 2; lawn.position.set(0, .03, 55); lawn.receiveShadow = true; root.add(lawn);
+  // v1.9.88: the lawn stops at the sidewalks (roads x = +-24 run through the park block since v1.9.62; the old 56 m sheet covered both roads)
+  const lawn = new THREE.Mesh(new THREE.PlaneGeometry(33.6, 19.8), new THREE.MeshStandardMaterial({ color: '#6f9a4e', roughness: 1 }));
+  lawn.rotation.x = -Math.PI / 2; lawn.position.set(0, .03, 54.9); lawn.receiveShadow = true; root.add(lawn);
   // gravel paths (merged)
   const path = (x0, x1, z0, z1) => B.bounds('concrete', x0, x1, .04, .1, z0, z1, '#c2b79a', 2);
   path(-1.1, 1.1, 45.2, 64.6);
@@ -152,15 +153,15 @@ function addSchool(W) {
     const band = new THREE.Mesh(new THREE.BoxGeometry(10, .85, .14), [side, side, side, side, new THREE.MeshStandardMaterial({ map: t, roughness: .7 }), side]);
     band.position.set(0, (bd.Hh || 3.2) - .45, bd.cfg.d / 2 + .32); bd.grp.add(band); } // v1.9.62: in front of the store-kit wall (was hidden inside it)
   // front walk + parking lot between the building and the new south road (z = -72)
-  B.bounds('concrete', -18, 16, .03, .09, -67.5, -60.2, '#c5c1b6', 2);
-  for (let k = -3; k <= 2; k++) B.bounds('paint', k * 4.2 - .06, k * 4.2 + .06, .09, .12, -67.2, -60.6, '#d8c15a', 1);
+  B.bounds('concrete', -16.8, 16, .03, .09, -66.8, -60.2, '#c5c1b6', 2);
+  for (let k = -3; k <= 2; k++) B.bounds('paint', k * 4.2 - .06, k * 4.2 + .06, .09, .12, -66.7, -60.6, '#d8c15a', 1);
   // playground blacktop + frame to the east
-  B.bounds('concrete', 8, 21, .03, .09, -60, -48, '#b7b3a8', 2);
+  B.bounds('concrete', 8, 16.8, .03, .09, -60, -48, '#b7b3a8', 2); // v1.9.88: ends at the sidewalk (was 21, onto road x = 24)
   B.bounds('metal', 9.2, 9.4, 0, 2.3, -58.6, -58.4, '#c45a3a', 1);
-  B.bounds('metal', 19.0, 19.2, 0, 2.3, -58.6, -58.4, '#c45a3a', 1);
-  B.bounds('metal', 9.2, 19.2, 2.2, 2.35, -58.6, -58.4, '#c45a3a', 1);
-  B.bounds('metal', 10.2, 17.8, 1.5, 1.6, -52.2, -50.4, '#3a6ea0', 1);
-  col.add(9, 19.4, -59, -50.2, 'prop', true);
+  B.bounds('metal', 16.4, 16.6, 0, 2.3, -58.6, -58.4, '#c45a3a', 1);
+  B.bounds('metal', 9.2, 16.6, 2.2, 2.35, -58.6, -58.4, '#c45a3a', 1);
+  B.bounds('metal', 10.2, 16.2, 1.5, 1.6, -52.2, -50.4, '#3a6ea0', 1);
+  col.add(9, 16.8, -59, -50.2, 'prop', true);
   // flagpole
   B.bounds('metal', 12.85, 13.05, 0, 5.4, -61.1, -60.9, '#d8dde0', 1);
   B.bounds('paint', 13.05, 14.3, 4.5, 5.2, -61.15, -60.85, '#3a6ea0', 1);
@@ -207,8 +208,8 @@ function addMall(W) {
   const laundry = makeBuilding(W, { id: 'mall0', kind: 'kiosk', cx: -116, cz: 0, w: 8.6, d: 10, face: 'E', ci: 2, locked: 0, color: '#c8bfae' });
   W.enterable.push(laundry); shopSign(laundry, ['CEDAR', 'LAUNDRY'], '#2a4a6a');
   closedShop(W, -116, 9, 8.6, 10, ['FALLS', 'VIDEO'], '#3a2a4a');
-  B.bounds('concrete', -110.2, -107.6, .03, .09, -15.5, 15.5, '#c5c1b6', 2);
-  for (let k = -3; k <= 3; k++) B.bounds('paint', -110.0, -107.8, .09, .12, k * 4.2 - .06, k * 4.2 + .06, '#d8c15a', 1);
+  B.bounds('concrete', -111.2, -109.1, .03, .09, -15.5, 15.5, '#c5c1b6', 2); // v1.9.88: on the sidewalk, not the road x = -104
+  for (let k = -3; k <= 3; k++) B.bounds('paint', -111.0, -109.3, .09, .12, k * 4.2 - .06, k * 4.2 + .06, '#d8c15a', 1);
   poleSign(W, -110.6, 0, Math.PI / 2, ['CEDAR', 'PLAZA'], '#5a2e1e');
 }
 
