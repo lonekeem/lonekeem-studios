@@ -37,7 +37,7 @@ export const SHOE_STYLE = {
   dadshoe: { sole: .044, toe: 1, bulk: .022, col: .01, d: 1, line: 1 },
   court: { sole: .01, toe: .9, bulk: .005, col: .0, d: 3, line: 1 },
   sockrun: { sole: .018, toe: .9, bulk: .004, col: .006, d: 6 },
-  cowboy: { sole: .014, toe: .22, bulk: .008, col: .24, d: 6, heel: .04 },
+  cowboy: { sole: .014, toe: .18, bulk: .006, col: .22, d: 6, heel: .045 },
   snowboot: { sole: .036, toe: 1, bulk: .028, col: .22, d: 6, puffy: 1 },
   welly: { sole: .016, toe: .9, bulk: .015, col: .3, d: 6 },
   shearling: { sole: .022, toe: 1, bulk: .024, col: .18, d: 6, puffy: 1 },
@@ -46,10 +46,10 @@ export const SHOE_STYLE = {
   motoboots: { sole: .022, toe: .68, bulk: .014, col: .16, d: 1, heel: .022 },
   flipflop: { sole: .012, toe: 1, bulk: .004, col: -.02, d: 7, openToe: 1, openHeel: 1, thong: 1 },
   sportsand: { sole: .016, toe: 1, bulk: .006, col: -.016, d: 7, openToe: 1, openHeel: 1, straps: [.3, .5] },
-  gladiator: { sole: .01, toe: .9, bulk: .005, col: .09, d: 7, openToe: 1, straps: [.22, .38, .54], ankleRing: 1 },
+  gladiator: { sole: .01, toe: .9, bulk: .005, col: -.016, d: 7, openToe: 1, straps: [.22, .38, .54], ankleRing: 1 },
   wedgesand: { sole: .01, toe: .95, bulk: .006, col: -.016, d: 7, openToe: 1, openHeel: 1, heel: .05, wedge: 1, vampStrap: 1 },
   platsand: { sole: .042, toe: 1, bulk: .008, col: -.016, d: 7, openToe: 1, openHeel: 1, vampStrap: 1 },
-  fisherman: { sole: .012, toe: .88, bulk: .006, col: .0, d: 7, openToe: 1, straps: [.48, .7] },
+  fisherman: { sole: .012, toe: .88, bulk: .006, col: -.012, d: 7, openToe: 1, straps: [.48, .7] },
   oxford: { sole: .01, toe: .48, bulk: .005, col: -.004, d: 6, captoe: 1 },
   derby: { sole: .012, toe: .55, bulk: .006, col: -.002, d: 1 },
   monk: { sole: .01, toe: .55, bulk: .005, col: -.004, d: 6, vampStrap: 1 },
@@ -98,7 +98,7 @@ function footBins(av, sd) {
   return av[key] = { B, z0, z1, ground: Math.min(...B.map(b => b.y0)) };
 }
 
-function liftAt(st, u) {
+function heelDrop(st, u) {
   const h = st.heel || 0; if (!h) return 0;
   const span = st.wedge ? 0.92 : 0.64;
   return h * Math.pow(1 - Math.min(1, u / span), st.wedge ? 0.7 : 1.35);
@@ -116,13 +116,16 @@ function loft(av, sd, st) {
     let top = b.y1 + m + extra * .6;
     if (st.col > .06) { const shaft = ank.y + .02 + st.col; const heel = 1 - ss(.08, .4, u); top = Math.max(top, shaft * heel + top * (1 - heel)); let widen = .006 * heel * Math.min(1, st.col / .16); if (st.puffy) widen += .012 * heel; x0 -= widen; x1 += widen; }
     else if (st.col >= 0) top = Math.min(top, ank.y + .03 + st.col + .045 * ss(.22, .42, u) * (1 - ss(.55, .8, u)));
-    else { const lo = ank.y + st.col; top = u < .5 ? Math.min(top, lo + (top - lo) * ss(.25, .6, u)) : top; }
-    const lift = liftAt(st, u);
-    const y0 = ground - .003 + lift;
-    top = Math.max(top, y0 + st.sole + .025 * (1 - toeK * .6));
+    else { const lo = Math.max(b.y1 + .003, ank.y + st.col); const open = 1 - ss(.10, .50, u); top = top * (1 - open * .4) + lo * (open * .4); top = Math.max(top, b.y1 + .004); }
+    const drop = heelDrop(st, u);
+    const y0 = ground - .003 - drop;
+    top = Math.max(top, ground + st.sole + .025 * (1 - toeK * .6));
+    top = Math.max(top, b.y1 + .004);
     if (st.puffy && st.col < .06) { x0 -= .006; x1 += .006; top += .006; }
-    const soleLip = y0 + st.sole + .006;
-    if (st.slide) {
+    const soleLip = y0 + st.sole + drop + .006; // lip sits at the foot, not at the bottom of a tall heel
+    if (st.thong || (st.straps && st.openToe)) {
+      top = soleLip + (st.thong ? .002 : .005);
+    } else if (st.slide) {
       const band = Math.exp(-Math.pow((u - 0.40) / 0.10, 2));
       top = soleLip + (Math.min(top, ank.y + .01) - soleLip) * band;
     } else {
@@ -162,8 +165,8 @@ function vampAt(av, sd, st, L, u, thick) {
   const { z0, len, ground } = L; const { B } = footBins(av, sd);
   const k = Math.min(NU - 1, Math.max(0, Math.floor(NU * u)));
   const b = B[k]; const xc = (b.x0 + b.x1) / 2, hw = Math.max(0.02, (b.x1 - b.x0) / 2 + 0.006);
-  const z = z0 + len * u; const lift = liftAt(st, u);
-  const y0 = ground + st.sole + 0.003 + lift, y1 = b.y1 + (st.slide ? 0.016 : 0.009);
+  const z = z0 + len * u;
+  const y0 = ground + st.sole + 0.003, y1 = b.y1 + (st.slide ? 0.016 : 0.009);
   const pts = [];
   for (let i = 0; i <= 16; i++) { const a = Math.PI * (i / 16); pts.push(new THREE.Vector3(xc + Math.cos(a) * hw, y0 + Math.pow(Math.sin(a), 1.35) * (y1 - y0), z)); }
   const g = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, thick, 8, false); return tagTube(g, u, .25, .7);
@@ -183,12 +186,12 @@ function thong(av, sd, st, L) {
   const k = Math.min(NU - 1, Math.floor(NU * 0.80));
   const b = B[k]; const hw = Math.max(0.016, (b.x1 - b.x0) / 2);
   const xc = (b.x0 + b.x1) / 2 + sd * hw * 0.22;
-  const z = z0 + len * 0.80; const lift = liftAt(st, 0.8);
-  const y0 = ground + st.sole + 0.002 + lift, y1 = b.y1 + 0.01;
+  const z = z0 + len * 0.80;
+  const y0 = ground + st.sole + 0.002, y1 = b.y1 + 0.01;
   const post = [new THREE.Vector3(xc, y0, z), new THREE.Vector3(xc, y1, z)];
   const g1 = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(post), 6, 0.0032, 6, false);
   const k2 = Math.min(NU - 1, Math.floor(NU * 0.42));
-  const b2 = B[k2]; const z2 = z0 + len * 0.42; const y2 = ground + st.sole + 0.004 + liftAt(st, 0.42);
+  const b2 = B[k2]; const z2 = z0 + len * 0.42; const y2 = ground + st.sole + 0.004;
   const left = [new THREE.Vector3(xc, y1, z), new THREE.Vector3(b2.x0 - 0.004, (y1 + y2) * .5, (z + z2) * .5), new THREE.Vector3(b2.x0 - 0.002, y2, z2)];
   const right = [new THREE.Vector3(xc, y1, z), new THREE.Vector3(b2.x1 + 0.004, (y1 + y2) * .5, (z + z2) * .5), new THREE.Vector3(b2.x1 + 0.002, y2, z2)];
   const g2 = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(left), 10, 0.0036, 6, false);
@@ -204,9 +207,9 @@ function heelPost(av, sd, st, L) {
   const { z0, len, ground } = L; const { B } = footBins(av, sd);
   const u = 0.10; const k = Math.max(0, Math.floor(NU * u)); const b = B[k];
   const xc = (b.x0 + b.x1) / 2, z = z0 + len * u;
-  const y1 = ground + st.sole + liftAt(st, u) - 0.002;
-  const y0 = ground - 0.002;
-  const h = Math.max(0.01, y1 - y0);
+  const y1 = ground + 0.001;
+  const y0 = ground - (st.heel || 0) - 0.002;
+  const h = Math.max(0.012, y1 - y0);
   const topR = st.block ? 0.014 : (st.spike ? 0.0045 : 0.008);
   const botR = st.block ? 0.016 : (st.spike ? 0.007 : 0.01);
   const g = new THREE.CylinderGeometry(topR, botR, h, st.spike ? 8 : 12);
@@ -220,8 +223,8 @@ function cleatStuds(av, sd, st, L) {
   const geos = [];
   for (const u of us) {
     const k = Math.min(NU - 1, Math.max(0, Math.floor(NU * u)));
-    const b = B[k]; const z = z0 + len * u; const lift = liftAt(st, u);
-    const y = ground - 0.002 + lift;
+    const b = B[k]; const z = z0 + len * u;
+    const y = ground - 0.002 - heelDrop(st, u);
     const xs = kind === 3 ? [(b.x0 + b.x1) / 2] : [b.x0 + 0.008, b.x1 - 0.008];
     for (const x of xs) {
       const h = kind === 3 ? 0.01 : 0.012;
@@ -236,11 +239,11 @@ function tasselDrops(av, sd, st, L) {
   const { z0, len, ground } = L; const { B } = footBins(av, sd);
   const k = Math.min(NU - 1, Math.floor(NU * 0.55));
   const b = B[k]; const xc = (b.x0 + b.x1) / 2, z = z0 + len * 0.55;
-  const y = b.y1 + 0.006;
+  const y = b.y1 + 0.016;
   const geos = [];
   for (const s of [-1, 1]) {
-    const g = new THREE.SphereGeometry(0.006, 10, 8);
-    g.scale(1, 1.5, 0.8); g.translate(xc + s * 0.01, y - 0.008, z + 0.004);
+    const g = new THREE.SphereGeometry(0.007, 10, 8);
+    g.scale(1, 1.6, 0.85); g.translate(xc + s * 0.012, y, z + 0.012);
     geos.push(tagTube(g, 0.55, 0.25, 0.85));
   }
   return geos;
