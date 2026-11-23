@@ -9,14 +9,23 @@ export function townDayNight({ scene, renderer, sun, hemi, cam, W, Z, toast, fog
   const exp0 = renderer.toneMappingExposure || 1.05;
   // streetlight heads + soft ground pools (emissive / additive, no lights)
   const lamps = (W && W.lampPos) || [];
-  const headM = new THREE.MeshStandardMaterial({ color: '#2a2a2a', emissive: '#ffcf8a', emissiveIntensity: 0 });
-  const heads = new THREE.InstancedMesh(new THREE.BoxGeometry(.9, .16, .36), headM, Math.max(1, lamps.length));
-  const pc = document.createElement('canvas'); pc.width = pc.height = 64; const g = pc.getContext('2d'); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,200,130,.55)'); gr.addColorStop(.6, 'rgba(255,170,90,.18)'); gr.addColorStop(1, 'rgba(255,160,80,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  const headM = new THREE.MeshStandardMaterial({ color: '#2a2a2a', emissive: '#ffd59a', emissiveIntensity: 0 });
+  const heads = new THREE.InstancedMesh(new THREE.BoxGeometry(.9, .2, .42), headM, Math.max(1, lamps.length));
+  const pc = document.createElement('canvas'); pc.width = pc.height = 64; const g = pc.getContext('2d'); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,205,140,.62)'); gr.addColorStop(.55, 'rgba(255,175,95,.22)'); gr.addColorStop(1, 'rgba(255,160,80,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
   const poolM = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(pc), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, polygonOffset: true, polygonOffsetFactor: -4 });
-  const pools = new THREE.InstancedMesh(new THREE.PlaneGeometry(9, 9).rotateX(-Math.PI / 2), poolM, Math.max(1, lamps.length));
-  { const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(1, 1, 1), p = new THREE.Vector3();
-    lamps.forEach(([x, z, side], i) => { const hx = x, hz = z - (side || 0) * .45; p.set(hx, 6.05, hz); m.compose(p, q, s); heads.setMatrixAt(i, m); p.set(hx, .04, z - (side || 0) * 1.6); m.compose(p, q, s); pools.setMatrixAt(i, m); });
-    heads.count = pools.count = lamps.length; }
+  const pools = new THREE.InstancedMesh(new THREE.PlaneGeometry(11, 11).rotateX(-Math.PI / 2), poolM, Math.max(1, lamps.length));
+  // v1.9.62 soft light cone under each head (additive, open cone, fades to nothing at the ground) — reads as a real street lamp at night
+  const coneG = new THREE.CylinderGeometry(.35, 3.2, 5.9, 14, 1, true); coneG.translate(0, -2.95, 0);
+  { const pos = coneG.attributes.position, n = pos.count, a = new Float32Array(n); for (let i = 0; i < n; i++) a[i] = Math.pow(Math.max(0, 1 + pos.getY(i) / 5.9), 1.6); coneG.setAttribute('fade', new THREE.BufferAttribute(a, 1)); }
+  const coneU = { uK: { value: 0 } };
+  const coneM = new THREE.ShaderMaterial({ uniforms: coneU, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
+    vertexShader: 'attribute float fade; varying float vF; varying vec3 vN; varying vec3 vV; void main(){ vF = fade; vec4 mv = modelViewMatrix * instanceMatrix * vec4(position,1.); vN = normalize(normalMatrix * mat3(instanceMatrix) * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+    fragmentShader: 'uniform float uK; varying float vF; varying vec3 vN; varying vec3 vV; void main(){ float rim = pow(abs(dot(normalize(vN), normalize(vV))), 1.4); gl_FragColor = vec4(vec3(1.,.78,.5) * vF * rim * .085 * uK, 1.); }' });
+  const cones = new THREE.InstancedMesh(coneG, coneM, Math.max(1, lamps.length));
+  { const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(1, 1, 1), p = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+    lamps.forEach(([x, z, side, ax], i) => { q.setFromAxisAngle(up, ax === 'x' ? Math.PI / 2 : 0); p.set(x, 6.1, z); m.compose(p, q, s); heads.setMatrixAt(i, m); p.set(x, 6.0, z); m.compose(p, q, s); cones.setMatrixAt(i, m); q.identity(); p.set(x, .04, z); m.compose(p, q, s); pools.setMatrixAt(i, m); });
+    heads.count = pools.count = cones.count = lamps.length; }
+  cones.frustumCulled = false; cones.renderOrder = 3; if (lamps.length) scene.add(cones);
   heads.frustumCulled = pools.frustumCulled = false; if (lamps.length) scene.add(heads, pools);
   let low = false; try { const qs = JSON.parse(localStorage.getItem('atq3.settings') || '{}').qual; low = qs === 'low' || ((!qs || qs === 'auto') && matchMedia('(pointer:coarse)').matches); } catch (e) { /* default */ }
   const pl = (low ? [] : [0, 1]).map(() => { const L = new THREE.PointLight('#ffc78a', 0, 16, 1.8); L.castShadow = false; scene.add(L); return L; });
@@ -41,7 +50,7 @@ export function townDayNight({ scene, renderer, sun, hemi, cam, W, Z, toast, fog
     if (scene.fog) { scene.fog.color.copy(S.fog); scene.fog.far = fogFar * (1 - .32 * S.nightK); scene.fog.near = 28 * (1 - .5 * S.nightK); }
     if (scene.background && scene.background.isColor) scene.background.copy(S.fog);
     renderer.toneMappingExposure = exp0 * S.exp;
-    headM.emissiveIntensity = 3.2 * S.lampK; poolM.opacity = S.lampK; winU.value = S.lampK;
+    headM.emissiveIntensity = 3.2 * S.lampK; poolM.opacity = S.lampK; coneU.uK.value = S.lampK; cones.visible = S.lampK > .01; winU.value = S.lampK; if (W && W.nightSigns) for (const m of W.nightSigns) m.emissiveIntensity = .75 * S.lampK;
     fl.intensity = 9 * S.flashK; cam.getWorldDirection(fwd); fwd.y = Math.max(-.35, Math.min(.2, fwd.y)); fwd.normalize();
     { const me = getMe && getMe(); // torch rides at the player's chest, just in front of them, so the beam lights the street and never the player's own back
       if (me && !me.drv) { fl.position.set(me.x, 1.35 + (me.y || 0), me.z).addScaledVector(fwd, .55); } else fl.position.copy(cam.position).addScaledVector(fwd, 2.5);

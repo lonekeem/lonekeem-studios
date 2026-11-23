@@ -150,7 +150,7 @@ function addSchool(W) {
   { const t = signTex(['QUIET FALLS', 'SCHOOL'], '#3a4a6a', '#f4efe4', 768, 160);
     const side = new THREE.MeshStandardMaterial({ color: '#3a4a6a', roughness: .8 });
     const band = new THREE.Mesh(new THREE.BoxGeometry(10, .85, .14), [side, side, side, side, new THREE.MeshStandardMaterial({ map: t, roughness: .7 }), side]);
-    band.position.set(0, (bd.Hh || 3.2) - .45, bd.cfg.d / 2 + .13); bd.grp.add(band); }
+    band.position.set(0, (bd.Hh || 3.2) - .45, bd.cfg.d / 2 + .32); bd.grp.add(band); } // v1.9.62: in front of the store-kit wall (was hidden inside it)
   // front walk + parking lot between the building and the new south road (z = -72)
   B.bounds('concrete', -18, 16, .03, .09, -67.5, -60.2, '#c5c1b6', 2);
   for (let k = -3; k <= 2; k++) B.bounds('paint', k * 4.2 - .06, k * 4.2 + .06, .09, .12, -67.2, -60.6, '#d8c15a', 1);
