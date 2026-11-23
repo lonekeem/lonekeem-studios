@@ -4,6 +4,7 @@ import { armSolve, camBlocked } from './camcol.js';
 import { useGlyph } from '../../ui/padnav.js';
 import { hitChar, capsOf, updateAimPose, placeShotFx, muzzleWorld, aimRayFrom, stepAimAssist } from '../../game/aim.js';
 import { goOnline, googleEnabled, getUser, getRole, signInGoogle, signOut } from '../online.js';
+import { myStatus, sendChat as sendChatRpc, recentChat, fileReport, deleteChat, listenStaff, emitStaff, isStaffRole, friendlyModError, chatNotAllowed, staffBadges, formatBan, kickPlayer, mutePlayer } from '../mod.js';
 import * as THREE from 'three';
 import { loadBase, Avatar } from '../avatar.js';
 import { dress } from '../dress.js';
@@ -36,7 +37,7 @@ import { attachInfest } from './infest.js';
 import { patchCutaway, setCutaway, occludingWalls, makeRoomLights, updateRoomLights, INDOOR_CAM } from './indoor.js';
 import { nameTagSprite, attachClanBadge } from '../clanBanner.js';
 
-function nameTag(text, clan) { return nameTagSprite(THREE, text, clan); }
+function nameTag(text, clan, role) { return nameTagSprite(THREE, text, clan, role); }
 
 /* v1.9.77: the shared input shim used to be built inside enterTown, so its skipLine() closed over the first town visit and kept that whole town (~190 MB: scene, cars, renderer) alive for the rest of the session */
 /* v1.9.77: same for the one-time audio-unlock listener (it was a closure inside the first town visit) */
@@ -111,7 +112,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   // online (Supabase Realtime) when reachable, otherwise solo (BroadcastChannel: other tabs of this browser only)
   const localNet = !!(solo || local || /^(w-test-|test-)/i.test(String(room || '')));
   const onl = localNet ? null : await goOnline(room); let online = !!onl; if (onl) onl.transport.onstatus = ok => { online = ok; };
-  const net = new Net(room, onl ? onl.transport : undefined); const clan = opts.clan || (look && look.clan) || (typeof window !== 'undefined' && window.__atqClanPreview) || null; net.me = { name: look.name || 'Survivor', look, clan }; net.hello();
+  const net = new Net(room, onl ? onl.transport : undefined); const clan = opts.clan || (look && look.clan) || (typeof window !== 'undefined' && window.__atqClanPreview) || null; net.me = { name: look.name || 'Survivor', look, clan, uid: null, role: null }; net.hello();
   const models = await loadCarModels(); const carMgr = createCars({ scene, W, models }); const cars = carMgr.cars; for (const c of cars) W.containers.push(c.cabin, c.trunk);
   // cars: no real shadow casting (10 meshes each in the shadow pass) -> one soft blob plane per car instead
   { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const g2 = cv.getContext('2d'); const gr = g2.createRadialGradient(32, 32, 4, 32, 32, 31); gr.addColorStop(0, 'rgba(0,0,0,.62)'); gr.addColorStop(.6, 'rgba(0,0,0,.4)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g2.fillStyle = gr; g2.fillRect(0, 0, 64, 64); const bt = new THREE.CanvasTexture(cv); const bm = new THREE.MeshBasicMaterial({ map: bt, transparent: true, depthWrite: false, fog: false }); bm.polygonOffset = true; bm.polygonOffsetFactor = -2;
@@ -119,7 +120,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   const carBy = id => cars.find(c => c.id === id);
   const S = { roll: 0, atk: 0, atkHit: 0, vy: 0, y: 0, crouch: false, aim: false, shotT: 0, stun: 0, combo: 0, spd: 0 }; const me = { av: null, y: 0, x: SPAWN.x, z: SPAWN.z, ry: SPAWN.ry, sp: 0, drv: null, hp: 100, swing: 0, dead: 0, hitCd: 0, prot: 0 }; const remotes = new Map();
   const mkAvatar = async lk => { const L = lk || {}; const bare = !L.exclusive && !L.skin && !L.v; /* v1.9.54: a look with no dress data (missing/old/partial save) shows Keem instead of an undressed base body */ if (L.exclusive === 'skin.keem_story' || bare) { try { return await makeKeemChar(); } catch (e) { console.warn('keem', e); } } const base = L.base || 'mp_m1'; const tpl = await loadBase(base); const av = new Avatar(tpl); try { dress(av, Object.assign({ base }, L, L.exclusive === 'skin.keem_story' ? {} : { exclusive: undefined })); } catch (e) { console.warn('dress', e); } try { av.motion = await makeMotion(av); } catch (e) { console.warn('motion', e); } return av; };
-  me.av = await mkAvatar(look); scene.add(me.av.root); try { attachClanBadge(me.av, clan, THREE); } catch (e) { console.warn('clan badge', e); } const myTag = nameTag(net.me.name, clan); scene.add(myTag);
+  me.av = await mkAvatar(look); scene.add(me.av.root); try { attachClanBadge(me.av, clan, THREE); } catch (e) { console.warn('clan badge', e); } let myTag = nameTag(net.me.name, clan, net.me.role); scene.add(myTag);
   // ---- bodies (persistent corpses, drawn by the zombies module if present) ----
   // sounds: the story game's AudioSys (samples + synth fallback); fails silent if audio is blocked
   const aud = (useG && G.audio) ? G.audio : (window.__atq && window.__atq.audio) || new AudioSys({ vol: .9, music: .5, sfxVol: 1, voiceVol: 1, voices: true }); // reuse the title's already-unlocked context when there is one (iOS) try { aud.init(); } catch (e) { /* no audio */ }
@@ -178,10 +179,28 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   net.onCar = (c, pid) => { const car = carBy(c.id); if (!car || car.driver === 'me') return; if (c.off) { car.driver = null; car.net = null; car.engine = false; return; } car.net = c; car.driver = pid; car.netAt = performance.now(); car.broken = car.broken || !!c.broken; };
   const chatLog = [];
   const escChat = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const renderChat = () => { const box = root.querySelector('.chatlog'); if (!box) return; box.innerHTML = chatLog.map(m => `<div class="${m.self ? 'me' : ''}"><b>${escChat(m.name)}:</b> ${escChat(m.text)}</div>`).join(''); box.scrollTop = box.scrollHeight; };
-  const pushChat = (name, text, self) => { const line = { name: String(name || 'Survivor').slice(0, 16), text: String(text || '').slice(0, 80), self: !!self }; if (!line.text) return; chatLog.push(line); if (chatLog.length > 8) chatLog.shift(); renderChat(); };
-  const sendChat = text => { text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 80); if (!text) return; pushChat(look.name || 'Survivor', text, true); net.evt({ t: 'chat', name: look.name || 'Survivor', text }); };
-  net.onEvt = (e) => { if (e.t === 'door') setDoor(doorBy(e.id), e.a, true); else if (e.t === 'loot') { const c = W.containers.find(k => k.id === e.id); if (c) setLooted(c, e.left, true); } else if (e.t === 'shot') { const ww = WEAPONS[e.g]; showTracer(e.x, e.z, e.ex, e.ez, e.y, ww && (ww.flame || ww.gl)); if (ww && ww.flame) flamePuff(e.x, e.z, Math.atan2(e.ex - e.x, e.ez - e.z), e.y); try { aud.at && aud.at({ x: e.x, y: 1, z: e.z }); aud.shot(e.g); } catch (e2) { /* ignore */ } } else if (e.t === 'boom') boomFx(e.x, e.z); else if (e.t === 'smash') { const c = carBy(e.id); if (c) c.smash(); } else if (e.t === 'chat') pushChat(e.name, e.text, false); };
+  const renderChat = () => {
+    const box = root.querySelector('.chatlog'); if (!box) return;
+    box.innerHTML = chatLog.map(m => {
+      if (m.deleted) return '<div class="gone"><i>Message removed</i></div>';
+      const acts = [];
+      if (!m.self && (m.id || m.uid)) acts.push('<button type="button" class="chrep" data-id="' + escChat(m.id || '') + '" data-uid="' + escChat(m.uid || '') + '">Report</button>');
+      if (isStaffRole(net.me.role) && m.id) acts.push('<button type="button" class="chdel" data-id="' + escChat(m.id) + '">Remove</button>');
+      return '<div class="' + (m.self ? 'me' : '') + '" data-id="' + escChat(m.id || '') + '"><b>' + escChat(m.name) + ':</b> ' + escChat(m.text) + (acts.length ? '<span class="chacts">' + acts.join('') + '</span>' : '') + '</div>';
+    }).join('');
+    box.scrollTop = box.scrollHeight;
+    box.querySelectorAll('.chrep').forEach(b => { b.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); fileReport({ type: 'chat', chat: b.dataset.id || null, user: b.dataset.uid || null, reason: 'chat' }).then(() => toast('Report sent')).catch(e => toast(friendlyModError(e))); }; });
+    box.querySelectorAll('.chdel').forEach(b => { b.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); deleteChat(b.dataset.id).then(() => { const line = chatLog.find(m => m.id === b.dataset.id); if (line) line.deleted = true; renderChat(); emitStaff({ t: 'chatdel', id: b.dataset.id, room }); toast('Message removed'); }).catch(e => toast(friendlyModError(e))); }; });
+  };
+  const pushChat = (name, text, self, extra) => { extra = extra || {}; const line = { name: String(name || 'Survivor').slice(0, 16), text: String(text || '').slice(0, 80), self: !!self, id: extra.id || null, uid: extra.uid || null }; if (!line.text) return; chatLog.push(line); if (chatLog.length > 8) chatLog.shift(); renderChat(); };
+  const sendChat = text => {
+    text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 80); if (!text) return;
+    if (chatNotAllowed(text)) { toast('That message is not allowed'); return; }
+    const post = (id, name, body, uid) => { pushChat(name, body, true, { id: id, uid: uid }); net.evt({ t: 'chat', id: id, name: name, text: body, uid: uid }); };
+    if (online) { sendChatRpc(room, text, look.name || 'Survivor').then(row => { if (row && row.text) post(row.id, row.name, row.text, row.user_id); }).catch(e => toast(friendlyModError(e))); }
+    else post(null, look.name || 'Survivor', text, net.me.uid || null);
+  };
+  net.onEvt = (e) => { if (e.t === 'door') setDoor(doorBy(e.id), e.a, true); else if (e.t === 'loot') { const c = W.containers.find(k => k.id === e.id); if (c) setLooted(c, e.left, true); } else if (e.t === 'shot') { const ww = WEAPONS[e.g]; showTracer(e.x, e.z, e.ex, e.ez, e.y, ww && (ww.flame || ww.gl)); if (ww && ww.flame) flamePuff(e.x, e.z, Math.atan2(e.ex - e.x, e.ez - e.z), e.y); try { aud.at && aud.at({ x: e.x, y: 1, z: e.z }); aud.shot(e.g); } catch (e2) { /* ignore */ } } else if (e.t === 'boom') boomFx(e.x, e.z); else if (e.t === 'smash') { const c = carBy(e.id); if (c) c.smash(); } else if (e.t === 'chat') { if (e.id && chatLog.some(m => m.id === e.id)) return; pushChat(e.name, e.text, false, { id: e.id, uid: e.uid }); } else if (e.t === 'chatdel' && e.id) { const line = chatLog.find(m => m.id === e.id); if (line) { line.deleted = true; renderChat(); } } };
   for (const c of cars) c.onCrash = sp => { if (c.driver === 'me') { try { if (sp > 8) aud.crash(); else aud.thud(); } catch (e) { /* ignore */ } hurt(Math.max(0, (sp - 6) * 1.6)); toast(sp > 9 ? 'Hard crash!' : 'Bump', .8); noise(c.x, c.z, 40); } };
   // ---- panels ----
   let panelKind = null, panelCtx = null; const closePanel = () => { if (panelKind === 'loot' && panelCtx) { setLooted(panelCtx, panelCtx.items); } panel.style.display = 'none'; panelKind = null; panelCtx = null; };
@@ -229,8 +248,50 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   // driving buttons (same four as the story's truck HUD)
   const drvBind = [['#dGas', 'gas'], ['#dBrake', 'brake'], ['#dL', 'l'], ['#dR', 'r']].map(([id, k]) => { const e = $q(id); if (!e) return null; const on = v => ev => { ev.preventDefault(); drv[k] = v ? 1 : 0; e.classList.toggle('on', v); }; const dn = on(true), up = on(false); e.addEventListener('pointerdown', dn); ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => e.addEventListener(t, up)); return [e, dn, up]; });
   // pause (story's II button / Esc): Resume, Change look, Exit
-  const acct = el('div', { style: 'font-size:12px;text-align:center;opacity:.9;display:flex;flex-direction:column;gap:6px' }); const refreshAcct = async () => { acct.innerHTML = ''; acct.append(el('div', {}, online ? '● Online' : '○ Solo (offline)')); const u = await getUser(); if (u) { const r = await getRole(); acct.append(el('div', {}, (u.user_metadata && u.user_metadata.name || u.email || 'Signed in') + (r === 'admin' ? ' · admin' : '')), el('button', { on: { click: async () => { await signOut(); refreshAcct(); } } }, 'Sign out')); } else if (onl) { if (await googleEnabled()) acct.append(el('button', { on: { click: () => signInGoogle().catch(e => toast('Sign-in unavailable: ' + e.message)) } }, 'Sign in with Google')); else acct.append(el('div', {}, 'Guest · Google sign-in coming soon')); } };
-  const fillPause = () => { pausePanel.innerHTML = ''; pausePanel.append(el('h3', {}, 'Paused'), el('button', { on: { click: () => { pausePanel.style.display = 'none'; try { aud.resumeAll(); } catch (e) { /* ignore */ } } } }, 'Resume'), /* v1.9.90: controller players can't reach the top bar, so the pause menu carries the main town panels too */ ...[['Jobs', () => { if (ACT) ACT.openPanel(); }], ['Bag', () => togglePanel('bag')], ['Shop', () => openArmory()]].map(([t, fn]) => el('button', { on: { click: () => { pausePanel.style.display = 'none'; try { aud.resumeAll(); } catch (e) { /* ignore */ } fn(); } } }, t)), el('button', { on: { click: () => { net.me.look.__edit = 1; exit(true); } } }, 'Change look'), el('button', { on: { click: () => exit() } }, 'Exit to menu'), acct); refreshAcct(); };
+  const acct = el('div', { style: 'font-size:12px;text-align:center;opacity:.9;display:flex;flex-direction:column;gap:6px' }); const refreshAcct = async () => { acct.innerHTML = ''; acct.append(el('div', {}, online ? '● Online' : '○ Solo (offline)')); const u = await getUser(); if (u) { const r = await getRole(); acct.append(el('div', {}, (u.user_metadata && u.user_metadata.name || u.email || 'Signed in') + (r === 'admin' ? ' · admin' : r === 'moderator' ? ' · mod' : '')), el('button', { on: { click: async () => { await signOut(); refreshAcct(); } } }, 'Sign out')); } else if (onl) { if (await googleEnabled()) acct.append(el('button', { on: { click: () => signInGoogle().catch(e => toast('Sign-in unavailable: ' + e.message)) } }, 'Sign in with Google')); else acct.append(el('div', {}, 'Guest · Google sign-in coming soon')); } };
+  const fillPause = () => {
+    pausePanel.innerHTML = '';
+    const btns = [el('h3', {}, 'Paused'), el('button', { on: { click: () => { pausePanel.style.display = 'none'; try { aud.resumeAll(); } catch (e) { /* ignore */ } } } }, 'Resume')];
+    /* v1.9.90: controller players can't reach the top bar, so the pause menu carries the main town panels too */
+    [['Jobs', () => { if (ACT) ACT.openPanel(); }], ['Bag', () => togglePanel('bag')], ['Shop', () => openArmory()]].forEach(([t, fn]) => {
+      btns.push(el('button', { on: { click: () => { pausePanel.style.display = 'none'; try { aud.resumeAll(); } catch (e) { /* ignore */ } fn(); } } }, t));
+    });
+    btns.push(el('button', { on: { click: () => { net.me.look.__edit = 1; exit(true); } } }, 'Change look'));
+    if (isStaffRole(net.me.role)) {
+      btns.push(el('button', { on: { click: () => { pausePanel.style.display = 'none'; openStaffSheet(); } } }, 'Staff tools'));
+    }
+    const others = [...remotes.values()].filter(r => r && r.uid);
+    if (others.length) btns.push(el('button', { on: { click: () => { pausePanel.style.display = 'none'; openReportSheet(others); } } }, 'Report a player'));
+    btns.push(el('button', { on: { click: () => exit() } }, 'Exit to menu'), acct);
+    pausePanel.append(...btns); refreshAcct();
+  };
+  const openSheet = (title, rows) => {
+    pausePanel.style.display = 'flex';
+    pausePanel.innerHTML = '';
+    pausePanel.append(el('h3', {}, title));
+    rows.forEach(r => pausePanel.append(r));
+    pausePanel.append(el('button', { on: { click: () => fillPause() } }, 'Back'));
+  };
+  const openReportSheet = (list) => {
+    const rows = list.map(r => el('button', { on: { click: () => { fileReport({ type: 'player', user: r.uid, reason: 'player' }).then(() => toast('Report sent')).catch(e => toast(friendlyModError(e))); fillPause(); } } }, 'Report ' + (r.name || 'player')));
+    openSheet('Report a player', rows);
+  };
+  const kickNearby = r => { kickPlayer(r.uid, room, '').then(() => { emitStaff({ t: 'kick', user: r.uid }); toast('Kicked ' + (r.name || '')); fillPause(); }).catch(e => toast(friendlyModError(e))); };
+  const muteNearby = r => { mutePlayer(r.uid, 60, '').then(() => toast('Muted')).catch(e => toast(friendlyModError(e))); };
+  const openStaffSheet = () => {
+    const list = [...remotes.values()].filter(r => r && r.uid);
+    const rows = list.length ? list.map(r => {
+      const wrap = el('div', { cls: 'stacts' });
+      wrap.append(
+        el('div', {}, r.name || 'Player'),
+        el('button', { on: { click: () => { kickNearby(r); } } }, 'Kick'),
+        el('button', { on: { click: () => { muteNearby(r); } } }, 'Mute 1h'),
+        el('button', { on: { click: () => { fileReport({ type: 'player', user: r.uid, reason: 'player' }).then(() => toast('Report sent')).catch(e => toast(friendlyModError(e))); } } }, 'Report')
+      );
+      return wrap;
+    }) : [el('div', { cls: 'small' }, 'No signed-in players nearby.')];
+    openSheet('Staff tools', rows);
+  };
   const openPause = () => { if (pausePanel.style.display === 'flex') return; pausePanel.style.display = 'flex'; fillPause(); };
   const togglePause = () => { const on = pausePanel.style.display !== 'flex'; if (on) openPause(); else { pausePanel.style.display = 'none'; try { aud.resumeAll(); } catch (e) { /* ignore */ } } };
   shim.onPause = togglePause; const pauseB = $q('#btnPause'); const pauseH = e => { e.preventDefault(); e.stopPropagation(); togglePause(); }; pauseB.addEventListener('touchstart', pauseH, { passive: false }); pauseB.addEventListener('click', pauseH);
@@ -392,7 +453,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
     if (H.frame) try { H.frame(dt, t); } catch (e) { console.warn('[coop]', e); }
     renderer.render(scene, cam);
   }
-  net.onHello = async p => { let r = remotes.get(p.id); if (!r) { r = { id: p.id, x: 0, z: 0, ry: 0, sp: 0 }; remotes.set(p.id, r); } if (!p.look) return; const av = await mkAvatar(p.look); if (r.av) { scene.remove(r.av.root); r.av.dispose(); } r.av = av; scene.add(av.root); try { attachClanBadge(av, p.clan, THREE); } catch (e) { /* badge */ } if (r.tag) scene.remove(r.tag); r.tag = nameTag(p.name || 'Player', p.clan); scene.add(r.tag); };
+  net.onHello = async p => { let r = remotes.get(p.id); if (!r) { r = { id: p.id, x: 0, z: 0, ry: 0, sp: 0 }; remotes.set(p.id, r); } r.uid = p.uid || r.uid || null; r.name = p.name || r.name; r.role = p.role || r.role || null; if (!p.look) return; const av = await mkAvatar(p.look); if (r.av) { scene.remove(r.av.root); r.av.dispose(); } r.av = av; scene.add(av.root); try { attachClanBadge(av, p.clan, THREE); } catch (e) { /* badge */ } if (r.tag) scene.remove(r.tag); r.tag = nameTag(p.name || 'Player', p.clan, r.role); scene.add(r.tag); if (r.uid) staffBadges([r.uid]).then(rows => { const hit = (rows || []).find(x => x.user_id === r.uid); if (hit && hit.role && hit.role !== r.role) { r.role = hit.role; if (r.tag) scene.remove(r.tag); r.tag = nameTag(p.name || 'Player', p.clan, r.role); scene.add(r.tag); } }).catch(() => {}); };
   net.onLeave = p => { const r = remotes.get(p.id); if (r) { r.av && (scene.remove(r.av.root), r.av.dispose()); r.tag && scene.remove(r.tag); remotes.delete(p.id); } };
 
   const applyArmor = () => { /* damage reduction is applied in hurt(); the equipped name is shown on the HUD */ };
@@ -414,7 +475,7 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   // on iPhone the next mode then fought the dead town for memory / GL contexts, froze on the old frame, or the OS killed the tab (= back to the loading screen).
   function freeGL() { try { scene.traverse(o => { if (o.geometry && o.geometry.dispose) o.geometry.dispose(); const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : []; for (const m of ms) { for (const k in m) { const v = m[k]; if (v && v.isTexture) v.dispose(); } m.dispose && m.dispose(); } }); scene.clear(); } catch (e) { /* scene */ }
     try { renderer.renderLists.dispose(); renderer.dispose(); renderer.forceContextLoss(); } catch (e) { /* gl */ } try { canvas.width = canvas.height = 1; canvas.remove(); } catch (e) { /* canvas */ } }
-  function exit(edit) { if (exit.done) return; exit.done = 1; townOn = false; running = false; try { WX.dispose(); } catch (e) { /* weather */ } try { ACT && ACT.dispose(); } catch (e) { /* activities */ } try { H.exit && H.exit(); } catch (e) { /* ignore */ } try { offLeave(); offReturn(); } catch (e) { /* ignore */ } try { document.exitPointerLock && document.pointerLockElement && document.exitPointerLock(); } catch (e) { /* ignore */ } try { aud.resumeAll(); aud.engine(false); aud.tires && aud.tires(false); aud.noKeem = false; aud.setMood('menu'); } catch (e) { /* ignore */ } removeEventListener('keydown', kd); removeEventListener('mouseup', mouseUp); shim.onPause = oldPause; shim.state.crouch = false; for (const [e, dn, up] of drvBind.filter(Boolean)) { e.classList.remove('on'); e.removeEventListener('pointerdown', dn); ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => e.removeEventListener(t, up)); } /* v1.9.72: the town's touchstart preventDefault on #btnPause stayed after exit and swallowed the story's pause tap (dead buttons until the app was closed) */ try { pauseB.removeEventListener('touchstart', pauseH, { passive: false }); pauseB.removeEventListener('click', pauseH); } catch (e) { /* pause */ } for (const [e, d] of saved) e.style.display = d; try { if (objEl && objHTML != null) { objEl.innerHTML = objHTML; objEl.style.display = ''; } } catch (e) { /* obj */ } glEl && (glEl.style.display = ''); hudr2.remove(); document.body.classList.remove('driving'); driveEl && driveEl.classList.add('hidden'); hudEl.classList.add('hidden'); touchEl.classList.add('hidden'); stage.classList.add('hidden'); try { net.close(); } catch (e) { /* net */ } freeGL(); root.remove(); try { detachWeaponBar('town'); if (G) attachGameWeaponBar(G); } catch (e) { /* ignore */ } delete window.__mpTown; delete window.__mpLobby; /* v1.9.77: window.__mpChat.send closed over the whole town (scene, W, renderer, ACT) and kept ~190 MB alive after every exit; the heap grew per visit until iOS reloaded the page */ if (window.__mpChat && window.__mpChat.send === sendChat) delete window.__mpChat; if (edit === true) { import('../creator.js').then(m => m.openCreator({ onClose: onExit, onPlay: l => enterTown({ look: l, onExit, room }) })).then(c => { window.__mpCreator = c; }); } else onExit && onExit(); }
+  function exit(edit) { if (exit.done) return; exit.done = 1; townOn = false; running = false; try { WX.dispose(); } catch (e) { /* weather */ } try { ACT && ACT.dispose(); } catch (e) { /* activities */ } try { H.exit && H.exit(); } catch (e) { /* ignore */ } try { offLeave(); offReturn(); } catch (e) { /* ignore */ } try { document.exitPointerLock && document.pointerLockElement && document.exitPointerLock(); } catch (e) { /* ignore */ } try { aud.resumeAll(); aud.engine(false); aud.tires && aud.tires(false); aud.noKeem = false; aud.setMood('menu'); } catch (e) { /* ignore */ } removeEventListener('keydown', kd); removeEventListener('mouseup', mouseUp); shim.onPause = oldPause; shim.state.crouch = false; for (const [e, dn, up] of drvBind.filter(Boolean)) { e.classList.remove('on'); e.removeEventListener('pointerdown', dn); ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => e.removeEventListener(t, up)); } /* v1.9.72: the town's touchstart preventDefault on #btnPause stayed after exit and swallowed the story's pause tap (dead buttons until the app was closed) */ try { pauseB.removeEventListener('touchstart', pauseH, { passive: false }); pauseB.removeEventListener('click', pauseH); } catch (e) { /* pause */ } for (const [e, d] of saved) e.style.display = d; try { if (objEl && objHTML != null) { objEl.innerHTML = objHTML; objEl.style.display = ''; } } catch (e) { /* obj */ } glEl && (glEl.style.display = ''); hudr2.remove(); document.body.classList.remove('driving'); driveEl && driveEl.classList.add('hidden'); hudEl.classList.add('hidden'); touchEl.classList.add('hidden'); stage.classList.add('hidden'); try { if (statusIv) clearInterval(statusIv); } catch (e) { /* status */ } try { staffOff && staffOff(); } catch (e) { /* staff */ } try { net.close(); } catch (e) { /* net */ } freeGL(); root.remove(); try { detachWeaponBar('town'); if (G) attachGameWeaponBar(G); } catch (e) { /* ignore */ } delete window.__mpTown; delete window.__mpLobby; /* v1.9.77: window.__mpChat.send closed over the whole town (scene, W, renderer, ACT) and kept ~190 MB alive after every exit; the heap grew per visit until iOS reloaded the page */ if (window.__mpChat && window.__mpChat.send === sendChat) delete window.__mpChat; if (edit === true) { import('../creator.js').then(m => m.openCreator({ onClose: onExit, onPlay: l => enterTown({ look: l, onExit, room }) })).then(c => { window.__mpCreator = c; }); } else onExit && onExit(); }
   W.closed.update(me.x, me.z); renderer.compile(scene, cam);
   INF = attachInfest({ W, net, me, bag, toast, scene, remotes, Z: () => Z });
   const api = { H, deadEl: dead, room, solo, online: () => online, exit: () => exit(), W, me, S, GS, AG, infest: INF, insideB, fireGun, startReload, swingHit, meleeLand, aud, CTX, net, cars, bag, seedLoadout, syncBagToSave, wearLook, applyArmor, throwGren, gather, scene, cam, remotes, equipWeapon, swapWeapon, get Z() { return Z; }, inp, shim, openPause, togglePause, acts: () => acts.map(a => a.label), toast, hurt, die, respawn, spawnPoint,
@@ -425,6 +486,39 @@ export async function enterTown({ look, onExit, room = 'town', solo = false, loc
   root.append(chat);
   if (!solo && !online && !localNet) try { toast("Couldn't reach other players — you're in solo mode.", 3.2); } catch (e) { /* ignore */ }
   if (mission) { try { const cm = await import('../coop/coop.js'); await cm.startCoop(api, mission); } catch (e) { console.warn('[coop] could not start the mission', e); try { toast("Couldn't start the mission — free roam instead.", 3); } catch (e2) { /* ignore */ } } }
+  // Staff/status: starts after exit/toast exist so kicked or banned players leave cleanly.
+  let staffOff = null;
+  const applyStaffMe = async () => {
+    try {
+      const u = await getUser();
+      const st = await myStatus();
+      net.me.uid = (u && u.id) || (st && st.user_id) || null;
+      net.me.role = (st && st.role) || null;
+      if (st && st.banned && online) { toast('Your account is ' + (formatBan(st) || 'banned') + '.'); exit(); return; }
+      if (st && st.kicked && online) { toast(st.kick_reason ? ('Kicked: ' + st.kick_reason) : 'You were kicked from the game.'); exit(); return; }
+      net.hello();
+      try { if (myTag) { scene.remove(myTag); myTag = nameTag(net.me.name, clan, net.me.role); scene.add(myTag); } } catch (e) { /* tag */ }
+      renderChat();
+    } catch (e) { /* role */ }
+  };
+  applyStaffMe();
+  listenStaff(msg => {
+    if (!msg) return;
+    if (msg.t === 'chatdel' && msg.id) { const line = chatLog.find(m => m.id === msg.id); if (line) { line.deleted = true; renderChat(); } }
+    if (msg.t === 'kick' && net.me.uid && msg.user === net.me.uid) {
+      myStatus().then(st => { if (st && (st.kicked || st.banned)) { toast(st.banned ? ('Your account is ' + (formatBan(st) || 'banned') + '.') : (st.kick_reason ? ('Kicked: ' + st.kick_reason) : 'You were kicked from the game.')); exit(); } }).catch(() => {});
+    }
+  }).then(off => { staffOff = off; }).catch(() => {});
+  const statusIv = setInterval(() => {
+    if (!online) return;
+    myStatus().then(st => {
+      if (!st) return;
+      net.me.role = st.role || net.me.role;
+      if (st.banned || st.kicked) { toast(st.banned ? ('Your account is ' + (formatBan(st) || 'banned') + '.') : (st.kick_reason ? ('Kicked: ' + st.kick_reason) : 'You were kicked from the game.')); exit(); }
+    }).catch(() => {});
+  }, 12000);
+  if (online) recentChat(room).then(rows => { if (!Array.isArray(rows)) return; rows.forEach(r => { if (r && r.text && !chatLog.some(m => m.id === r.id)) pushChat(r.name, r.text, !!(r.user_id && net.me.uid === r.user_id), { id: r.id, uid: r.user_id }); }); }).catch(() => {});
+
   window.__mpTown = api; window.__mpLobby = api; window.__mpChat = { send: sendChat, log: () => chatLog.slice() };
  try { aud.setMood('day'); } catch (e) { /* ignore */ } try { window.__atq && window.__atq.hideLoading && window.__atq.hideLoading(); } catch (e) { /* ignore */ } requestAnimationFrame(frame); return api;
 }

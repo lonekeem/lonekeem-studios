@@ -9,6 +9,8 @@ import { profiles, openProfileScreen, syncOnSignIn, signedOut, onSyncStatus, wat
 import { getActiveId, getPlayLook, getChar, KEEM_ID } from './chars.js';
 import { pickMode, missionLabel, COOP_MAX } from './coop/picker.js';
 import { attachClans } from './clanui.js';
+import { attachStaff } from './modui.js';
+import { myStatus, isStaffRole, formatBan } from './mod.js';
 import { refreshMine, myClanBrief } from './clans.js';
 const roomMax = r => (r && r.mission ? COOP_MAX : MAX_PLAYERS);
 const $ = s => document.querySelector(s);
@@ -101,6 +103,12 @@ async function joinRoom(room, title, ui, opts = {}) {
   try {
     if (!PR.hasProfile()) { const made = await openProfileScreen('auto'); if (!made) return; }
     const picked = await chooseLook(opts); if (!picked) return; // stay on the lobby
+    if (!test) {
+      try {
+        const st = await myStatus();
+        if (st && st.banned) { back('Your account is ' + (formatBan(st) || 'banned from online play') + '.'); return; }
+      } catch (e) { /* status unavailable: still try to join; RPCs will reject banned accounts */ }
+    }
     if (ui) ui.hide(); $('#title').classList.add('hidden');
     const p = PR.getProfile(); try { await refreshMine(); } catch (e) { /* offline / guest */ }
     const clan = myClanBrief();
@@ -124,7 +132,7 @@ function buildUI() {
     <div class="wprof" id="wProf"></div>
     <div class="wflash hidden" id="wFlash" role="status"></div>
     <div class="wwel hidden" id="wWel"></div>
-    <div class="wseg" id="wTabs" role="tablist"><button data-t="games" role="tab">World Lobby</button><button data-t="board" role="tab">Leaderboard</button><button data-t="clans" role="tab">Clans</button></div>
+    <div class="wseg" id="wTabs" role="tablist"><button data-t="games" role="tab">World Lobby</button><button data-t="board" role="tab">Leaderboard</button><button data-t="clans" role="tab">Clans</button><button data-t="staff" role="tab" id="wStaffTab" class="hidden">Staff</button></div>
     <div class="wbody" id="wGames">
       <div class="wact"><button class="primary wbig" id="btnQuickJoin">Quick Join</button><button class="wbig" id="btnCreateGame">Create Game</button><button class="wbig" id="btnPractice">Practice Alone</button></div>
       <div class="wsub small" id="wGamesInfo">Open games from players anywhere in the world</div>
@@ -140,6 +148,16 @@ function buildUI() {
     <div class="wbody hidden" id="wClans">
       <div id="cInbox" class="cinbox hidden"></div>
       <div id="cMain" class="cmain"></div>
+    </div>
+    <div class="wbody hidden" id="wStaff">
+      <div class="sthead"><h3 id="stTitle">Staff</h3><p class="small" id="stBlurb"></p></div>
+      <div class="wseg wsort stviews" id="stViews">
+        <button data-v="reports" class="sel">Reports</button>
+        <button data-v="players">Players</button>
+        <button data-v="mods" id="stModsTab" class="hidden">Moderators</button>
+        <button data-v="log" id="stLogTab" class="hidden">Log</button>
+      </div>
+      <div id="stMain" class="stmain"></div>
     </div></div>`;
   document.body.append(root);
   const q = s => root.querySelector(s); let tab = 'games', sort = 'wave', prof = null;
@@ -152,7 +170,7 @@ function buildUI() {
   q('.wback').onclick = () => { ui.hide(); $('#title').classList.remove('hidden'); };
   root.querySelectorAll('.wseg:not(.wsort) button').forEach(b => b.onclick = () => setTab(b.dataset.t));
   root.querySelectorAll('.wsort button[data-s]').forEach(b => b.onclick = () => { sort = b.dataset.s; loadBoard(); });
-  function setTab(t) { tab = (t === 'board' || t === 'clans') ? t : 'games'; root.querySelectorAll('.wseg:not(.wsort) button').forEach(b => b.classList.toggle('sel', b.dataset.t === tab)); const games = q('#wGames'), board = q('#wBoard'), clans = q('#wClans'); if (games) games.classList.toggle('hidden', tab !== 'games'); if (board) board.classList.toggle('hidden', tab !== 'board'); if (clans) clans.classList.toggle('hidden', tab !== 'clans'); if (tab === 'board') loadBoard(); if (tab === 'clans' && ui._clans) ui._clans.show(); }
+  function setTab(t) { tab = (t === 'board' || t === 'clans' || t === 'staff') ? t : 'games'; root.querySelectorAll('.wseg:not(.wsort) button').forEach(b => b.classList.toggle('sel', b.dataset.t === tab)); const games = q('#wGames'), board = q('#wBoard'), clans = q('#wClans'), staff = q('#wStaff'); if (games) games.classList.toggle('hidden', tab !== 'games'); if (board) board.classList.toggle('hidden', tab !== 'board'); if (clans) clans.classList.toggle('hidden', tab !== 'clans'); if (staff) staff.classList.toggle('hidden', tab !== 'staff'); if (tab === 'board') loadBoard(); if (tab === 'clans' && ui._clans) ui._clans.show(); if (tab === 'staff' && ui._staff) ui._staff.show(); }
   let syncing = false, pendingNew = null;
   onSyncStatus(w => { const e = q('#wSync'); if (e && w === 'saving') e.textContent = '☁ Saving…'; if (e && w === 'saved') e.textContent = '☁ Signed in with Google · synced'; if (w === 'conflict') flash('Loaded newer progress from your other device'); });
   function markOwner(id) { if (!id) return; try { localStorage.setItem('atq.profile.owner', id); } catch (e) { /* ignore */ } }
@@ -186,6 +204,7 @@ function buildUI() {
           <div class="wpb">${gOn ? '<button id="wGoogle" class="wg"><span class="gdot">G</span> Sign in</button>' : ''}<button id="wMakeProf" class="primary">Create profile</button></div>`;
         const go = q('#wGoogle'); if (go) go.onclick = () => google(go);
         const mk = q('#wMakeProf'); if (mk) mk.onclick = () => welcome(prof.kind === 'google' ? 'new' : 'first', gOn);
+        try { ui._staff && ui._staff.refresh(); } catch (e3) { /* staff tab */ }
         return;
       }
       q('#wWel') && q('#wWel').classList.add('hidden'); root.classList.remove('wfirst');
@@ -196,6 +215,7 @@ function buildUI() {
       const chBtn = q('#wChar'); if (chBtn) chBtn.onclick = () => makeCharacter();
       const go = q('#wGoogle'); if (go) go.onclick = () => google(go);
       const out = q('#wOut'); if (out) out.onclick = async () => { clearOwner(); await signedOut(); await signOut().catch(() => {}); refreshProf(); };
+      try { ui._staff && ui._staff.refresh(); } catch (e3) { /* staff tab */ }
     } catch (e) {
       syncing = false;
       try {
@@ -312,6 +332,7 @@ function buildUI() {
     profile: () => profile(),
     onBoardKind: kind => { loadBoard(); },
   });
+  ui._staff = attachStaff(root, { flash: (msg) => flash(msg) });
   return ui;
 }
 

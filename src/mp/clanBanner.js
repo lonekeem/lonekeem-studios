@@ -372,31 +372,58 @@ export function attachClanBadge(av, clan, THREE) {
 }
 
 // Head nametag canvas: name plus optional [TAG] and a tiny banner.
-export function drawNameTag(g, w, h, name, clan) {
+function drawStaffBadge(g, x, y, role) {
+  const admin = role === 'admin';
+  g.save(); g.translate(x, y);
+  g.fillStyle = admin ? '#f0c14b' : '#c5d0dc';
+  g.strokeStyle = admin ? '#8a5a12' : '#5b6570';
+  g.lineWidth = 1.2;
+  if (admin) {
+    // small crown
+    g.beginPath();
+    g.moveTo(-8, 6); g.lineTo(-8, -1); g.lineTo(-4, 3); g.lineTo(0, -6); g.lineTo(4, 3); g.lineTo(8, -1); g.lineTo(8, 6);
+    g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.arc(0, -7, 1.6, 0, Math.PI * 2); g.fill();
+  } else {
+    // small shield
+    g.beginPath();
+    g.moveTo(0, -7); g.lineTo(7, -4); g.lineTo(6, 3); g.lineTo(0, 8); g.lineTo(-6, 3); g.lineTo(-7, -4);
+    g.closePath(); g.fill(); g.stroke();
+  }
+  g.restore();
+}
+
+export function drawNameTag(g, w, h, name, clan, role) {
   g.clearRect(0, 0, w, h);
   const tag = clan && String(clan.tag || '').slice(0, 5);
   const two = !!tag;
+  const staff = role === 'admin' || role === 'moderator';
   const nm = String(name || 'Player').slice(0, 16);
   g.fillStyle = '#000c';
   const y0 = two ? Math.max(4, (h - 70) / 2) : 10, hh = two ? 70 : 44, rr = 14;
   if (g.roundRect) { g.beginPath(); g.roundRect(8, y0, w - 16, hh, rr); g.fill(); } else g.fillRect(8, y0, w - 16, hh);
   g.textAlign = 'center'; g.textBaseline = 'middle';
+  const shift = staff ? 10 : 0;
   if (two) {
     if (clan.banner) {
       g.save(); g.translate(16, y0 + 10); drawBanner(g, clan.banner, 28, 36); g.restore();
     }
-    g.fillStyle = '#d9b44a'; g.font = '700 22px system-ui,sans-serif'; g.fillText('[' + tag + ']', w / 2 + 10, y0 + 24);
-    g.fillStyle = '#fff'; g.font = '600 26px system-ui,sans-serif'; g.fillText(nm, w / 2 + 10, y0 + 50);
+    if (staff) drawStaffBadge(g, 28, y0 + 22, role);
+    g.fillStyle = '#d9b44a'; g.font = '700 22px system-ui,sans-serif'; g.fillText('[' + tag + ']', w / 2 + 10 + shift, y0 + 24);
+    g.fillStyle = role === 'admin' ? '#f6d36a' : (role === 'moderator' ? '#d5e4f2' : '#fff');
+    g.font = '600 26px system-ui,sans-serif'; g.fillText(nm, w / 2 + 10 + shift, y0 + 50);
   } else {
-    g.fillStyle = '#fff'; g.font = '600 28px system-ui,sans-serif'; g.fillText(nm, w / 2, y0 + hh / 2 + 1);
+    if (staff) drawStaffBadge(g, 28, y0 + hh / 2, role);
+    g.fillStyle = role === 'admin' ? '#f6d36a' : (role === 'moderator' ? '#d5e4f2' : '#fff');
+    g.font = '600 28px system-ui,sans-serif'; g.fillText(nm, w / 2 + shift, y0 + hh / 2 + 1);
   }
 }
 
-export function nameTagSprite(THREE, name, clan) {
-  const two = !!(clan && clan.tag);
+export function nameTagSprite(THREE, name, clan, role) {
+  const two = !!(clan && clan.tag) || role === 'admin' || role === 'moderator';
   const c = document.createElement('canvas'); c.width = 256; c.height = two ? 80 : 64;
-  drawNameTag(c.getContext('2d'), c.width, c.height, name, clan);
+  drawNameTag(c.getContext('2d'), c.width, c.height, name, clan, role);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
-  s.scale.set(.55, two ? .172 : .125, 1); s.renderOrder = 20; s.userData.clanTag = two; return s;
+  s.scale.set(.55, two ? .172 : .125, 1); s.renderOrder = 20; s.userData.clanTag = two; s.userData.role = role || null; return s;
 }

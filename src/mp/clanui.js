@@ -106,7 +106,7 @@ function bindBannerActions(root, ctx) {
     };
   });
   getRole().then(role => {
-    if (role !== 'admin') return;
+    if (role !== 'admin' && role !== 'moderator') return;
     root.querySelectorAll('.cAdminReset').forEach(b => {
       b.classList.remove('hidden');
       b.onclick = () => {

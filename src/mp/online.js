@@ -69,7 +69,7 @@ export async function installNativeAuth(onDone) {
   try { const l = await App.getLaunchUrl(); if (l && l.url) finish(l.url); } catch (e) { /* ignore */ }
 }
 export async function signOut() { const f = FAKE(); if (f) { window.__MP_FAKE_AUTH = {}; return; } const c = await sb(); await c.auth.signOut(); }
-/** 'admin' | 'player' | null (signed out / unreachable). Reads the caller's own row (RLS: own role read). */
+/** 'admin' | 'moderator' | 'player' | null (signed out / unreachable). Reads the caller's own row via the server RPC. */
 export async function getRole() { const f = FAKE(); if (f) return f.email ? (f.role || 'player') : null; try { const c = await sb(); const u = await getUser(); if (!u) return null; const { data, error } = await c.schema('public').rpc('mp_my_role'); if (error) return null; return data; } catch (e) { return null; } }
 /** Is the Google provider switched on in the Supabase dashboard? (button stays hidden until Keem finishes the OAuth setup) */
 export async function googleEnabled() { try { const r = await withTimeout(fetch(SB_URL + '/auth/v1/settings', { headers: { apikey: SB_KEY } }), 4000, 'settings'); const j = await r.json(); return !!(j.external && j.external.google); } catch (e) { return false; } }
