@@ -31,7 +31,7 @@ export const CONTROLS = [
   { id: 'crouch', title: 'Crouch', what: 'Sneak low and quiet. Press again to stand.', touch: { sel: '#tCrouch', name: 'CRCH', how: 'Tap CRCH.' }, pad: pg('R3') + ' <span class="or">(press the right stick)</span>', kbd: kk('C') },
   { id: 'run', title: 'Sprint', what: 'Run faster while moving.', touch: { sel: '#tRun', name: 'RUN', how: 'Tap RUN while you move (or push the joystick all the way).' }, pad: pg('L3') + ' <span class="or">(press the left stick while moving)</span>', kbd: 'Hold ' + kk('Shift') },
   { id: 'reload', title: 'Reload', what: 'Refill your gun’s magazine.', touch: { sel: '#tReload', name: '⟳ Reload', how: 'Tap ⟳.' }, pad: pg('Y'), kbd: kk('R') },
-  { id: 'swap', title: 'Switch weapon', what: 'Cycle to your next weapon.', touch: { sel: '#tSwap, #btnSwap, #wbar', name: '⇄ Swap', how: 'Tap ⇄ (or open the weapon bar).' }, pad: pg('RB') + or + pg('D-pad ◀ ▶'), kbd: kk('Q') },
+  { id: 'swap', title: 'Switch weapon', what: 'Cycle to your next weapon.', touch: { sel: '#tSwap, #btnSwap, #wbar', name: '⇄ Swap', how: 'Tap ⇄.', alt: { wbar: { name: 'Weapon bar', how: 'Tap another weapon in the weapon bar.' } } }, pad: pg('RB') + or + pg('D-pad ◀ ▶'), kbd: kk('Q') },
   { id: 'gren', title: 'Grenade', what: 'Throw a grenade at a crowd.', touch: { sel: '#tGren, #btnGren', name: '💣', how: 'Tap 💣.' }, pad: pg('LB'), kbd: kk('G') },
   { id: 'use', title: 'Use / talk', what: 'Open doors, pick things up, get in vehicles and talk. Also skips a dialogue line.', touch: { sel: '#tUse', name: '✋ Hand', how: 'Tap the ✋ hand button.' }, pad: pg('X') + or + pg('D-pad ▲'), kbd: kk('E') + or + kk('F') },
   { id: 'heal', title: 'Heal', what: 'Use a med kit for +50 health.', touch: { sel: '#pfp', name: 'Your portrait', how: 'Tap your portrait (top left).' }, pad: pg('D-pad ▼'), kbd: kk('H') },
@@ -39,8 +39,10 @@ export const CONTROLS = [
   { id: 'pause', title: 'Pause', what: 'Open the pause menu (shop, settings, controls).', touch: { sel: '#btnPause', name: 'II', how: 'Tap II (top right).' }, pad: pg('Start'), kbd: kk('Esc') + or + kk('P') },
 ];
 const MENUS = { pad: pg('D-pad') + ' move · ' + pg('A') + ' select · ' + pg('B') + ' back · ' + pg('LB') + pg('RB') + ' tabs', kbd: 'Mouse · ' + kk('Esc') + ' back', touch: 'Tap' };
-export const controlHtml = (c, d = device()) => d === 'touch' ? (c.touch.name) : d === 'pad' ? c.pad : c.kbd;
-export const howHtml = (c, d = device()) => d === 'touch' ? c.touch.how : d === 'pad' ? 'Press ' + c.pad + '.' : 'Press ' + c.kbd + '.';
+const tAlt = c => { if (!c.touch.alt) return c.touch; const t = touchTarget(c); return (t && c.touch.alt[t.id]) || c.touch; };
+export const touchName = c => tAlt(c).name;
+export const controlHtml = (c, d = device()) => d === 'touch' ? tAlt(c).name : d === 'pad' ? c.pad : c.kbd;
+export const howHtml = (c, d = device()) => d === 'touch' ? tAlt(c).how : d === 'pad' ? 'Press ' + c.pad + '.' : 'Press ' + c.kbd + '.';
 // first visible element for a touch control (falls back to null if that button isn't on this HUD layout)
 export function touchTarget(c) { if (!c.touch.sel) return null; for (const s of c.touch.sel.split(',')) { const e = document.querySelector(s.trim()); if (!e) continue; const r = e.getBoundingClientRect(); if (r.width > 4 && r.height > 4 && getComputedStyle(e).visibility !== 'hidden') return e; } return null; }
 

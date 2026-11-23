@@ -1,7 +1,7 @@
 // Short first-time tutorial: optional, skippable, remembered in localStorage, replayable from Settings.
 // Hooks the running game from the outside — no game.js / animation-file changes.
 import { WEAPONS } from '../game/data.js';
-import { CONTROLS, DEVICES, device, controlHtml, howHtml, touchTarget } from './controls.js';
+import { CONTROLS, DEVICES, device, controlHtml, howHtml, touchTarget, touchName } from './controls.js';
 
 const SEEN = 'atq.tut.seen';
 const $ = s => document.querySelector(s);
@@ -44,14 +44,14 @@ function setObjHidden(on) {
 function ring() {
   const r = $('#tutRing'); if (!r) return;
   const s = active && STEPS[step]; const d = device();
-  if (!s || d !== 'touch' || doneFlash) { r.classList.add('hidden'); return; }
+  if (!s || d !== 'touch' || doneFlash || (window.__atq && window.__atq.state !== 'play')) { r.classList.add('hidden'); return; }
   const c = s.c; let box = null;
   if (c.touch.area === 'look') { const W = innerWidth, H = innerHeight; box = { left: W * .52, top: H * .3, width: W * .26, height: H * .36, area: true }; }
   else { const t = touchTarget(c); if (t) { const q = t.getBoundingClientRect(); const pad = 7; box = { left: q.left - pad, top: q.top - pad, width: q.width + pad * 2, height: q.height + pad * 2 }; } }
   if (!box) { r.classList.add('hidden'); return; }
   r.classList.remove('hidden'); r.classList.toggle('area', !!box.area);
   Object.assign(r.style, { left: box.left + 'px', top: box.top + 'px', width: box.width + 'px', height: box.height + 'px' });
-  const lab = r.querySelector('b'); lab.textContent = box.area ? 'drag here' : c.touch.name;
+  const lab = r.querySelector('b'); lab.textContent = box.area ? 'drag here' : touchName(c);
   // label sits on whichever side has room (never under the finger, never off-screen)
   const above = box.top > 40; lab.style.top = above ? '-24px' : 'auto'; lab.style.bottom = above ? 'auto' : '-24px';
 }
@@ -225,6 +225,7 @@ function startPoll(g) {
     if (id === 'crouch' && S.crouch) complete('crouch');
     if (id === 'reload' && S.reload > 0) complete('reload');
     if (id === 'swap') { try { const bar = document.getElementById('wbar'); if (bar && bar.classList.contains('open')) complete('swap'); } catch (e) { /* ignore */ } }
+    if (id === 'pause' && st === 'paused') pauseSeen = true;
     if (id === 'pause' && pauseSeen && st === 'play') { pauseSeen = false; complete('pause'); }
     ring(); // buttons can move (HUD editor, rotation, safe areas)
   }, 120);
