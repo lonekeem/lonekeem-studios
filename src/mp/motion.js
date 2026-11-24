@@ -5,6 +5,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { Char, CharLib } from '../game/chars.js';
 import { attachRig, loadRigs } from '../game/avatar.js';
 import { BASE_URL } from './avatar.js';
+import { applyStoryTints } from './keemStory.js';
 
 let _lib = null;
 export function getLib() {
@@ -32,8 +33,10 @@ export function driveRemote(P, dt, s) {
 }
 
 // Original Keem (admin account only): the real story character - same model, look and animations as story mode (no Avatar morph body).
-export async function makeKeemChar() {
+// v1.9.103: an optional look applies the admin's colour edits (jacket / sleeves / pants / shoes / cap) on a private copy of the material.
+export async function makeKeemChar(look) {
   const lib = await getLib(); if (!lib.rigs || !lib.rigs.keem) lib.rigs = Object.assign(lib.rigs || {}, await loadRigs(BASE_URL, ['keem']));
   const { DEFAULT_LOOK } = await import('../game/looks.js'); const P = new Char(lib, Object.assign({}, DEFAULT_LOOK, { rig: 'keem' }), STORY_SCALE);
-  P.motion = P; P.isKeem = true; P.dispose = () => {}; return P; // a Char already has root / bones / play / locomote / mixer; `.motion` points at itself so the town drives it like an avatar
+  P.motion = P; P.isKeem = true; P.dispose = () => { try { if (P._lkOrigMat && P.skin && P.skin.material !== P._lkOrigMat) P.skin.material.dispose(); } catch (e) { /* ignore */ } };
+  if (look) { try { applyStoryTints(P, look); } catch (e) { console.warn('story tints', e); } } return P; // a Char already has root / bones / play / locomote / mixer; `.motion` points at itself so the town drives it like an avatar
 }

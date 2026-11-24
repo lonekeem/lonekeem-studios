@@ -91,7 +91,7 @@ export function pickCharacter() {
         card.append(
           el('div', { cls: 'av', style: { background: skinBg(c) } }, (c.name || '?').trim()[0].toUpperCase()),
           el('div', { cls: 'nm' }, c.name || 'Survivor'),
-          el('div', { cls: 'tag' }, c.kind === 'keem' ? 'Story look' : 'Your character')
+          el('div', { cls: 'tag' }, c.kind === 'keem' ? 'Story look' : c.story ? 'Story Keem body' : 'Your character')
         );
         if (c.kind === 'keem') {
           card.append(el('div', { cls: 'row' }, el('span', { cls: 'tag', style: { opacity: '1', color: '#f0c070' } }, 'Play as Keem')));

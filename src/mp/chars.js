@@ -4,6 +4,7 @@ import * as K from './look.js';
 import { applySel, ALL_PARTS } from './storeLook.js';
 import { OUTFIT } from '../game/looks.js';
 import { DEFAULT_SEL, hasProfile, getProfile, saveProfile } from './profile.js';
+import { KEEM_SKIN, storyTints } from './keemStory.js';
 
 export const KEEM_ID = 'keem';
 export const MAX_CHARS = 8;
@@ -17,6 +18,13 @@ const rid = () => 'c-' + Math.random().toString(36).slice(2, 10) + Date.now().to
 export function keemLook() { return { exclusive: 'skin.keem_story', name: 'Keem', base: 'mp_m1' }; }
 
 function clone(o) { try { return JSON.parse(JSON.stringify(o)); } catch (e) { return o; } }
+// v1.9.103: a saved character can use the real Story Keem model as its body (sel.story, admin's Character screen only; the server
+// still locks the flag to the admin account). Its colour edits live in sel.sk. The regular-body look stays in the slot, so switching back is lossless.
+function withStory(L, sel) {
+  if (sel && sel.story) { L.exclusive = KEEM_SKIN; const t = storyTints({ sk: sel.sk }); if (Object.keys(t).length) L.sk = t; else delete L.sk; }
+  else { delete L.exclusive; delete L.sk; }
+  return L;
+}
 
 function readRoster() {
   const r = rd(ROSTER);
@@ -30,7 +38,7 @@ function lookFromSel(sel, name, baseLook) {
   const base = clone(baseLook || K.defaultLook('mp_m1'));
   const L = applySel(base, Object.assign({}, DEFAULT_SEL, sel || {}), ALL_PARTS, OUTFIT);
   L.name = name || L.name || 'Survivor';
-  delete L.exclusive; // custom slots are never Story Keem
+  withStory(L, sel); // custom slots are Story Keem only when the admin picked that body for them
   if (!L.base) L.base = 'mp_m1';
   return L;
 }
@@ -76,7 +84,7 @@ export function listSlots() { return roster().slots.slice(); }
 export function listPlayable() {
   const r = roster();
   const keem = { id: KEEM_ID, kind: 'keem', name: 'Keem', look: keemLook() };
-  return [keem, ...r.slots.map(s => ({ id: s.id, kind: 'custom', name: s.name, sel: s.sel, look: s.look }))];
+  return [keem, ...r.slots.map(s => ({ id: s.id, kind: 'custom', story: !!(s.sel && s.sel.story), name: s.name, sel: s.sel, look: s.look }))];
 }
 
 export function getActiveId() {
@@ -115,7 +123,7 @@ export function getPlayLook(id) {
   const name = s.name || 'Survivor';
   const L = s.sel ? lookFromSel(s.sel, name, s.look) : K.normalize(clone(s.look || K.defaultLook('mp_m1')));
   L.name = name;
-  delete L.exclusive;
+  withStory(L, s.sel);
   if (!L.base) L.base = 'mp_m1';
   return L;
 }
@@ -125,7 +133,8 @@ export function upsertChar({ id, name, sel, look } = {}) {
   const n = String(name || 'Survivor').replace(/[<>]/g, '').trim().slice(0, 18) || 'Survivor';
   const L = look ? clone(look) : lookFromSel(sel, n, null);
   L.name = n;
-  delete L.exclusive;
+  const prev = id && id !== KEEM_ID ? r.slots.find(x => x.id === id) : null;
+  withStory(L, sel || (prev && prev.sel));
   if (!L.base) L.base = 'mp_m1';
   if (id && id !== KEEM_ID) {
     const i = r.slots.findIndex(s => s.id === id);

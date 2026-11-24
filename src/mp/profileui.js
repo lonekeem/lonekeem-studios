@@ -14,6 +14,7 @@ import { OUTFITS, OUTFIT, HAIRS, HAIR_COLORS, SKINS, FACES, BEARDS, EYES } from 
 import * as COS from './cosmetics.js';
 import * as C from './catalog.js';
 import { poseChair } from './chair.js';
+import { KEEM_SKIN, STORY_TINTS, STORY_SWATCHES, storyTints, applyStoryTints } from './keemStory.js';
 
 const CSS = `
 #prof{position:fixed;inset:0;z-index:70;display:flex;flex-direction:column;background:radial-gradient(120% 100% at 30% 20%,#23332b 0%,#0d1411 70%);color:#eef2ee;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;user-select:none}
@@ -61,8 +62,10 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
     if (mode === 'auto' && !asNew && !slotId) mode = hasProfile() ? 'edit' : 'welcome';
     const P0 = getProfile(); let sel = Object.assign({}, DEFAULT_SEL, (P0 && P0.sel) || readOldSel()); let name = (P0 && P0.name) || ''; let base = (P0 && P0.look) || K.loadLook() || K.defaultLook('mp_m1');
     let touched = new Set(P0 && K.loadLook() ? [] : ALL_PARTS); let step = 0; const done = new Set();
+    let storyAdmin = false; // v1.9.103: the admin may give a saved character the real Story Keem body (set once the role is known)
     if (asNew) { mode = 'create'; sel = Object.assign({}, DEFAULT_SEL); name = ''; base = K.defaultLook('mp_m1'); touched = new Set(ALL_PARTS); }
     else if (slotId && slotId !== KEEM_ID) { const ch = getChar(slotId); if (ch) { mode = mode === 'auto' ? 'edit' : mode; sel = Object.assign({}, DEFAULT_SEL, ch.sel || {}); name = ch.name || name; base = ch.look || base; touched = new Set(ALL_PARTS); } }
+    const storyAtOpen = !!sel.story; const storyOK = () => storyAdmin || storyAtOpen;
     const wallet = () => { const s = (window.__atq && window.__atq.save) || {}; return s; };
     const root = el('div', { id: 'prof' }); document.body.append(root);
     let renderer = null, scene, cam, av = null, gen = 0, running = true, rot = 0, swayT = 0, drag = null, zoom = 0, t = 0, last = performance.now(), auto = true;
@@ -85,7 +88,7 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
         const kb = el('button', { cls: 'keemBtn', style: 'display:none;background:#b8741c;border:1px solid #e0a050;color:#fff;border-radius:8px;padding:6px 12px;font-weight:700;margin-left:auto;margin-right:8px', on: { click: () => { const p = saveProfile({ name: name || 'Survivor', sel, look: look() }); finish(Object.assign({}, p, { playAsKeem: true, look: Object.assign({}, p.look, { exclusive: 'skin.keem_story', name: 'Keem' }) })); } } }, '★ Play as Keem');
         top.insertBefore(kb, top.lastChild); window.__profKeemBtn = kb;
         import('./online.js').then(async o => { const u = await o.getUser().catch(() => null); const r = u ? await o.getRole().catch(() => null) : null; const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
-          if (r === 'admin' || (local && window.__MP_FORCE_ADMIN)) kb.style.display = ''; }).catch(() => {}); }
+          if (r === 'admin' || (local && window.__MP_FORCE_ADMIN)) { kb.style.display = ''; storyAdmin = true; if (running && STEPS[step][0] === 'skin') render(); } }).catch(() => {}); }
       const stepsEl = el('div', { cls: 'steps' }); const stage = el('div', { cls: 'stage' }); const canvas = el('canvas'); const nm = el('div', { cls: 'nm' }); stage.append(canvas, nm, el('div', { cls: 'hint' }, 'Drag to turn'));
       const side = el('div', { cls: 'side' }); const h3 = el('h3'); const sub = el('div', { cls: 'sub' }); const body = el('div', { cls: 'body' }); const foot = el('div', { cls: 'foot' }); side.append(h3, sub, body, foot);
       root.append(top, stepsEl, el('div', { cls: 'main' }, stage, side));
@@ -96,11 +99,13 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
       canvas.addEventListener('pointerdown', e => { drag = e.clientX; auto = false; canvas.setPointerCapture(e.pointerId); }); canvas.addEventListener('pointermove', e => { if (drag != null) { rot += (e.clientX - drag) * .012; drag = e.clientX; } }); canvas.addEventListener('pointerup', () => { drag = null; });
       const frame = (now) => { if (!running) return; requestAnimationFrame(frame); const dt = Math.min(.05, (now - last) / 1000); last = now; t += dt; const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return;
         if (canvas.width !== Math.floor(w * renderer.getPixelRatio())) { renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
-        if (auto) { swayT += dt; rot = .45 * Math.sin(swayT * .5); } /* gentle sway around the FRONT: never drifts to the back, even after a slow load / Google redirect */ const zf = CLOSE[STEPS[step][0]] ? 1 : 0; zoom += (zf - zoom) * Math.min(1, dt * 5); const s = av ? av.root.scale.y : 1; const fit = Math.max(1, .9 / cam.aspect);
-        if (av) { av.root.rotation.y = rot; try { animate(av, t, 0); } catch (e) { /* ignore */ } try { if (look().acc && look().acc.chair) poseChair(av, t); } catch (e) { /* ignore */ } } cam.position.set(0, (1.0 + zoom * .56) * s, (3.9 - zoom * 2.0) * fit); cam.lookAt(0, (.9 + zoom * .6) * s, 0); renderer.render(scene, cam); };
+        if (auto) { swayT += dt; rot = .45 * Math.sin(swayT * .5); } /* gentle sway around the FRONT: never drifts to the back, even after a slow load / Google redirect */ const zf = CLOSE[STEPS[step][0]] && !(av && av.isKeem && STEPS[step][0] === 'skin') ? 1 : 0; /* Story Keem colours: show the whole outfit */ zoom += (zf - zoom) * Math.min(1, dt * 5); const s = av ? av.root.scale.y : 1; const fit = Math.max(1, .9 / cam.aspect);
+        if (av) { av.root.rotation.y = rot; if (av.isKeem) { try { av.mixer.update(dt); } catch (e) { /* ignore */ } } else { try { animate(av, t, 0); } catch (e) { /* ignore */ } try { if (look().acc && look().acc.chair) poseChair(av, t); } catch (e) { /* ignore */ } } } cam.position.set(0, (1.0 + zoom * .56) * s, (3.9 - zoom * 2.0) * fit); cam.lookAt(0, (.9 + zoom * .6) * s, 0); renderer.render(scene, cam); };
       requestAnimationFrame(frame);
-      const look = () => { const L = applySel(base, sel, [...touched], OUTFIT); L.name = name || 'Survivor'; return L; };
-      const rebuild = async () => { const L = look(); const g = ++gen; const tpl = await loadBase(L.base); if (g !== gen || !running) return; if (!av || av.tpl !== tpl) { if (av) { scene.remove(av.root); av.dispose(); } av = new Avatar(tpl); scene.add(av.root); } try { dress(av, L); } catch (e) { console.error('dress', e); } };
+      const look = () => { const L = applySel(base, sel, [...touched], OUTFIT); L.name = name || 'Survivor'; if (sel.story && storyOK()) { L.exclusive = KEEM_SKIN; const tt = storyTints({ sk: sel.sk }); if (Object.keys(tt).length) L.sk = tt; else delete L.sk; } else { delete L.exclusive; delete L.sk; } return L; };
+      const rebuild = async () => { const L = look(); const g = ++gen;
+        if (L.exclusive === KEEM_SKIN) { if (av && av.isKeem) { applyStoryTints(av, L); return; } const { makeKeemChar } = await import('./motion.js'); const P = await makeKeemChar(L); if (g !== gen || !running) { P.dispose(); return; } if (av) { scene.remove(av.root); av.dispose(); } av = P; P.play('Idle_Loop', { fade: 0 }); scene.add(av.root); return; }
+        const tpl = await loadBase(L.base); if (g !== gen || !running) return; if (!av || av.isKeem || av.tpl !== tpl) { if (av) { scene.remove(av.root); av.dispose(); } av = new Avatar(tpl); scene.add(av.root); } try { dress(av, L); } catch (e) { console.error('dress', e); } };
       const set = (part, fn) => { if (fn() === false) return; touched.add(part); rebuild(); render(); };
       const card = (title, { on, tag, tagCls = '', chips, lock, click }) => el('button', { cls: 'card' + (on ? ' on' : '') + (lock ? ' lock' : ''), on: { click } }, chips ? el('div', { cls: 'chips' }, chips.map(c => el('i', { style: 'background:' + c }))) : null, el('b', {}, title), tag ? el('span', { cls: 'tag ' + tagCls }, tag) : null);
       const swatches = (key, arr, part) => el('div', { cls: 'sws' }, arr.map(c => el('button', { cls: 'sw' + (sel[key] === c ? ' on' : ''), style: 'background:' + c, title: c, on: { click: () => set(part, () => { sel[key] = c; }) } })));
@@ -123,8 +128,16 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
       const PAGES = {
         name: () => { const inp = el('input', { cls: 'name', value: name, maxLength: 18, placeholder: 'Your name', on: { input: e => { name = e.target.value; nm.textContent = name; } } }); setTimeout(() => { try { inp.focus(); } catch (e) { /* ignore */ } }, 50);
           return [inp, el('div', { cls: 'lbl' }, 'Ideas'), el('div', { cls: 'grid' }, NAMES.slice(0, 8).map(n => card(n, { click: () => { name = n; inp.value = n; nm.textContent = n; } })))]; },
-        skin: () => [el('div', { cls: 'lbl' }, 'Body'), el('div', { cls: 'grid' }, [['mp_m1', 'Guy'], ['mp_f1', 'Girl']].map(([id, n]) => card(n, { on: (sel.base || 'mp_m1') === id, click: () => set('skin', () => { sel.base = id; base = Object.assign({}, base, { base: id }); }) }))),
-          el('div', { cls: 'lbl' }, 'Skin tone'), swatches('skin', SKINS, 'skin'), el('div', { cls: 'lbl' }, 'Eye colour'), swatches('eyes', EYES, 'skin')],
+        skin: () => { const story = !!(sel.story && storyOK());
+          const bodies = el('div', { cls: 'grid' }, [['mp_m1', 'Guy'], ['mp_f1', 'Girl']].map(([id, n]) => card(n, { on: !story && (sel.base || 'mp_m1') === id, click: () => set('skin', () => { sel.story = false; sel.base = id; base = Object.assign({}, base, { base: id }); }) })),
+            storyOK() ? card('Story Keem', { on: story, tag: story ? 'Wearing' : 'Real model', tagCls: story ? 'wear' : 'own', click: () => set('skin', () => { sel.story = true; }) }) : null);
+          if (!story) return [el('div', { cls: 'lbl' }, 'Body'), bodies, el('div', { cls: 'lbl' }, 'Skin tone'), swatches('skin', SKINS, 'skin'), el('div', { cls: 'lbl' }, 'Eye colour'), swatches('eyes', EYES, 'skin')];
+          const sk = sel.sk || {}; const out = [el('div', { cls: 'lbl' }, 'Body'), bodies, el('div', { cls: 'note storyNote', style: 'font-size:12px;opacity:.85;margin:6px 0' }, "The real Story Mode Keem. His face, hair, beard, cap and glasses are sculpted into the model, so you change his colours here.")];
+          for (const [k, label, def] of STORY_TINTS) {
+            out.push(el('div', { cls: 'lbl' }, label), el('div', { cls: 'sws sk-' + k }, [el('button', { cls: 'sw' + (!sk[k] ? ' on' : ''), style: 'background:' + def + ';outline:1px dashed #9ab', title: 'Original', on: { click: () => set('skin', () => { const n = Object.assign({}, sel.sk || {}); delete n[k]; sel.sk = n; }) } }),
+              ...STORY_SWATCHES.filter(c => c !== def).map(c => el('button', { cls: 'sw' + (sk[k] === c ? ' on' : ''), style: 'background:' + c, title: c, on: { click: () => set('skin', () => { sel.sk = Object.assign({}, sel.sk || {}, { [k]: c }); }) } }))]));
+          }
+          return out; },
         face: () => { const tabs = [['shape', 'Shape'], ['eyes', 'Eyes'], ['brows', 'Brows'], ['nose', 'Nose'], ['mouth', 'Mouth'], ['makeup', 'Makeup'], ['hairf', 'Facial hair']];
           const faceIdx = () => ({ keem: 0, soft: 1, strong: 2, narrow: 3, round: 4, sharp: 5, elder: 6 }[sel.face] );
           const curEye = sel.eyeShape != null ? sel.eyeShape : ({ keem: 0, soft: 1, strong: 11, narrow: 3, round: 7, sharp: 9, elder: 6 }[sel.face] || 0);
@@ -184,6 +197,7 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
         const clean = look(); clean.name = name || 'Survivor'; return clean;
       };
       const save = () => {
+        if (sel.story && !storyOK()) sel.story = false;
         const L = dropUnpaid(); L.name = name || 'Survivor';
         const slot = upsertChar({ id: (slotId && slotId !== KEEM_ID) ? slotId : undefined, name: L.name, sel, look: L });
         if (slot) setActiveId(slot.id);
@@ -193,7 +207,7 @@ export function openProfile({ mode = 'auto', onSignIn, slotId, asNew } = {}) {
       };
       function render() { const [key, label] = STEPS[step]; const W = wallet(); document.getElementById('profCash').textContent = '$' + (W.cash | 0); nm.textContent = name;
         stepsEl.innerHTML = ''; STEPS.forEach(([k, n], i) => stepsEl.append(el('button', { cls: (i === step ? 'on' : '') + (done.has(i) ? ' done' : ''), on: { click: () => { if (mode === 'create' && i > step && !name.trim()) return; step = i; render(); } } }, (mode === 'create' ? (i + 1) + '. ' : '') + n)));
-        h3.textContent = (mode === 'create' ? `Step ${step + 1} of ${STEPS.length} · ` : '') + label; sub.textContent = SUB[key]; const sc = body.scrollTop; body.innerHTML = ''; body.append(...PAGES[key]()); body.scrollTop = sc; foot.innerHTML = '';
+        h3.textContent = (mode === 'create' ? `Step ${step + 1} of ${STEPS.length} · ` : '') + label; sub.textContent = SUB[key]; const sc = body.scrollTop; body.innerHTML = ''; if (sel.story && storyOK() && !/^(skin|name)$/.test(key)) body.append(el('div', { cls: 'note storyNote', style: 'font-size:12px;color:#f0c070;margin:2px 0 8px' }, 'Wearing the Story Keem body: these choices are kept for the Guy / Girl body. Change Story Keem\'s colours in Skin & eyes.')); body.append(...PAGES[key]()); body.scrollTop = sc; foot.innerHTML = '';
         const pid = previewId && isUnpaid(previewId) ? previewId : null;
         if (pid) foot.append(el('button', { cls: 'pri', on: { click: () => { if (buyPiece(pid)) { previewId = null; render(); } } } }, 'Buy ' + COS.itemName(pid) + ' · $' + COS.priceOf(pid)));
         if (mode === 'create') { foot.append(el('button', { on: { click: () => { if (step) { step--; body.scrollTop = 0; render(); } else finish(null); } } }, step ? '‹ Back' : 'Cancel'),
