@@ -142,7 +142,18 @@ export class Game {
     setLoad(1);
     try { if (this.audio) { this.audio._sfxHold = false; this.audio._pumpSfx && this.audio._pumpSfx(); } } catch (e) { /* ignore */ }
   }
-  resize() { const w = innerWidth, h = innerHeight; this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); if (this.composer) this.composer.setSize(w, h); if (this._grade) this._grade.uniforms.uAsp.value = w / Math.max(1, h); this._xh = null; }
+  // v1.9.104: while the online town runs, the story game sits idle but kept its GPU copy of every texture/mesh plus full-screen
+  // render targets (~190 textures, 20 rigs). On iPhone that left the town with too little memory and iOS restarted the page (players saw
+  // themselves dropped out of the game, usually on a death/respawn spike). park() frees the GPU side only (images stay in memory, three
+  // re-uploads them on the next story frame); unpark() puts the screen size back.
+  park() { if (this._parked) return; this._parked = true; const seen = new Set(), r = this.renderer;
+    const free = o => { if (!o) return; if (o.geometry && o.geometry.dispose && !seen.has(o.geometry)) { seen.add(o.geometry); try { o.geometry.dispose(); } catch (e) { /* ignore */ } }
+      const ms = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []); for (const m of ms) for (const k in m) { const v = m[k]; if (v && v.isTexture && !seen.has(v)) { seen.add(v); try { v.dispose(); } catch (e) { /* ignore */ } } } };
+    try { this.scene && this.scene.traverse(free); } catch (e) { /* ignore */ }
+    try { r.renderLists.dispose(); r.setSize(1, 1, false); if (this.composer) this.composer.setSize(1, 1); } catch (e) { /* ignore */ }
+    this._parkFreed = seen.size; return seen.size; }
+  unpark() { if (!this._parked) return; this._parked = false; this._needTex = true; try { this.resize(); } catch (e) { /* ignore */ } }
+  resize() { if (this._parked) return; const w = innerWidth, h = innerHeight; this.renderer.setSize(w, h, false); this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); if (this.composer) this.composer.setSize(w, h); if (this._grade) this._grade.uniforms.uAsp.value = w / Math.max(1, h); this._xh = null; }
 
   // ---------- run state ----------
   makePlayer() { const L = playerLook(), old = this.player; this._lookKey = JSON.stringify(L);
@@ -151,7 +162,7 @@ export class Game {
     P.attach('DEF-spine.003', this.pack); this.pack.position.set(0, 0.12, -0.2); this.pack.rotation.set(0.1, 0, 0); if (P.skin) { this.pack.scale.setScalar(.6); this.pack.position.set(0, -0.03, -0.05); } else this.pack.scale.setScalar(1);
     mountHeld(P, this.hand, (this.save && this.save.cur) || 'fists');
     this.pack.visible = !!(P.wantsPack || (this.save && this.save.items.includes('backpack'))); return P; }
-  async start(step, opts = {}) { if (this._lookKey !== JSON.stringify(playerLook())) this.makePlayer(); step = step || 0; if (!this.holdSave && !this.replay && !(STORY[step] && STORY[step].survival)) this.save.step = step; this.beginRun(step); await this.loadStep(step, { overlay: opts.overlay !== false }); this.paused = !!(typeof window !== 'undefined' && window.__atq && window.__atq.isAway && window.__atq.isAway()); if (!this.running) { this.running = true; this.last = performance.now(); requestAnimationFrame((t) => this.frame(t)); } await yieldOnce(); }
+  async start(step, opts = {}) { if (this._parked) this.unpark(); if (this._needTex) { this._needTex = false; try { initAllTextures(this.renderer, this.scene); } catch (e) { /* ignore */ } } if (this._lookKey !== JSON.stringify(playerLook())) this.makePlayer(); step = step || 0; if (!this.holdSave && !this.replay && !(STORY[step] && STORY[step].survival)) this.save.step = step; this.beginRun(step); await this.loadStep(step, { overlay: opts.overlay !== false }); this.paused = !!(typeof window !== 'undefined' && window.__atq && window.__atq.isAway && window.__atq.isAway()); if (!this.running) { this.running = true; this.last = performance.now(); requestAnimationFrame((t) => this.frame(t)); } await yieldOnce(); }
   // v1.9.85: chapter run stats for star ratings (time in play, damage taken, deaths, lowest difficulty used)
   beginRun(step) { const st = STORY[step]; if (!st || st.survival || this.holdSave) { this.run = null; return; } const ch = chOf(step), d = diffId(this.save), RANK = { easy: 0, normal: 1, hard: 2 };
     let r = this.run || loadRun(this.LS); if (!r || r.ch !== ch || step === CH_START[ch] || !!r.replay !== !!this.replay) r = newRun(ch, d, this.replay); else if (RANK[d] < RANK[r.diff]) r.diff = d;

@@ -22,9 +22,12 @@ export class Net {
     if (!m || m.id === this.id) return; if (m.to && m.to !== this.id) return; let p = this.peers.get(m.id);
     if (m.k === 'hello') { const fresh = !p; if (!p) { p = { id: m.id, seen: 0 }; this.peers.set(m.id, p); } p.name = m.name; p.clan = m.clan || null; p.uid = m.uid || p.uid || null; p.role = m.role || p.role || null; p.seen = performance.now(); const changed = JSON.stringify(p.look) !== JSON.stringify(m.look) || JSON.stringify(p._clanSig) !== JSON.stringify(m.clan || null); p.look = m.look; p._clanSig = m.clan || null; if (fresh) this.hello(m.id); if ((fresh || changed || !p.ann) && this.onHello) { p.ann = true; this.onHello(p); } } // p.ann: a hello that arrived before the town finished loading (onHello not set yet) is replayed by the next periodic hello
     else if (m.k === 'st') { if (!p) { this.hello(m.id); return; } p.seen = performance.now(); p.s = m.s; p.sAt = performance.now(); }
+    else if (m.k === 'bye') { if (p) { this.peers.delete(m.id); this.onLeave && this.onLeave(p); } }
     else if (m.k === 'car') { this.onCar && this.onCar(m.c, m.id); }
     else if (m.k === 'ev') { this.onEvt && this.onEvt(m.e, m.id); }
   }
-  prune() { const now = performance.now(); for (const [id, p] of this.peers) if (now - p.seen > 6000) { this.peers.delete(id); this.onLeave && this.onLeave(p); } }
-  close() { clearInterval(this._hello); clearInterval(this._prune); this.t.close && this.t.close(); }
+  // v1.9.104: 15 s (was 6 s). A phone that hitches for a few seconds (death / respawn, a big load, iOS throttling) used to be dropped from
+  // everyone's room and re-added as a stranger. A real leave now says 'bye' (close()), so it still disappears at once.
+  prune() { const now = performance.now(); for (const [id, p] of this.peers) if (now - p.seen > 15000) { this.peers.delete(id); this.onLeave && this.onLeave(p); } }
+  close() { try { this.t.send({ k: 'bye', id: this.id }); } catch (e) { /* ignore */ } clearInterval(this._hello); clearInterval(this._prune); this.t.close && this.t.close(); }
 }
