@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { V, PI, rnd, dist2, $q, follow, goto, afterBoss, clearThen, fam, dadGun, dadTick, boss, raiders, rnd2, bindStory } from './chapters/helpers.js';
+import { V, PI, rnd, dist2, $q, follow, goto, afterBoss, clearThen, fam, dadGun, dadTick, boss, raiders, rnd2, bindStory, ensureAllyGun } from './chapters/helpers.js';
 import { runPrologue } from './prologue.js';
 import { NEW_STEPS, NEW_LOOT, SPEAKER_NAMES as NEW_SPEAKERS, CHAPTER_LIST } from './chapters/index.js';
 import { mixSurvivalKind } from './zedKinds.js';
@@ -203,7 +203,7 @@ export const STORY = [
       g.say([['nia', "I got a Cinnabon here one time. It was the GOAT. Best day of my whole life."], ['keem', "Cinnabon is a corpse now, Nia. Let it go."]]); },
     update(g) { if (dist2(g, 0, -606) < 6 && !g.stepData.go) { g.stepData.go = true; goto(g, 24, 200); } } },
   { id: 'c5_pharm', ch: 5, cp: [0, -604, PI], obj: 'Find 3 antiviral packs (0/3)', hint: 'Dr. Reyes says: the kiosk, the van, the ambulance.', mood: 'tense', beat: 2,
-    enter(g) { const D = g.stepData; fam(g, D, -604); dadGun(g, D); D.n = 0; const R = g.npc('reyes', null, 3, -608, PI, 'Idle_Loop'); const T = g.npc('tuck', null, 5, -607, PI, 'Pistol_Aim_Neutral');
+    enter(g) { const D = g.stepData; fam(g, D, -604); dadGun(g, D); D.n = 0; const R = g.npc('reyes', null, 3, -608, PI, 'Idle_Loop'); const T = g.npc('tuck', null, 5, -607, PI, 'Pistol_Aim_Neutral'); ensureAllyGun(T, 'pistol');
       g.say([['reyes', "Imani Reyes. Veterinarian. Let me see the arm— oh. Oh, sir."], ['tuck', "Tuck. I sold phone cases at the kiosk. Now I sell headshots."], ['reyes', 'Antivirals won\'t cure it. They slow it. There\'s three packs out there in the lot.'], ['marcus', "Slow is good. Slow I'll take."]]);
       const got = () => { D.n++; g.audio.pickup(); g.objective('Find 3 antiviral packs (' + D.n + '/3)', 'Kiosk, van, ambulance.'); g.horde(4, [[g.player.root.position.x + 10, g.player.root.position.z + 8]], { runner: true, aggro: 30 }); if (D.n === 3) { g.wpTarget = [0, 1.2, -604]; g.say([['reyes', 'Bring them here. Then we hold the food court.']], () => goto(g, 25, 300)); } };
       D.uses = [[-24, -600, 'Search the kiosk'], [22, -566, 'Search the van'], [-26, -552, 'Search the ambulance']].map(([x, z, label]) => ({ x, z, label, fn: () => { D.uses = D.uses.filter(u => u.x !== x); got(); } }));

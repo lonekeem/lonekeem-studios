@@ -135,7 +135,7 @@ export const steps = [
         if (D.n === 3) { D.won = true; bulbs(true); g.say([['marcus', "Lights are on. Now they can't sneak up on us."], ['keem', "Now they can see us too. Back to the gym."]], () => { D.go2 = true; }); } };
       refresh(); grayHorde(g, 5, W.north); g.say([['marcus', "Stay close. I'll take the ones that get near you."]]);
     },
-    update(g, dt) { const D = g.stepData; hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 28, cd: 1.5 }); allyTick(g, D, 'dube', dt, { dmg: 44, cd: 1.8, sound: 'shotgun' });
+    update(g, dt) { const D = g.stepData; hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 28, cd: 1.5 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 }); allyTick(g, D, 'dube', dt, { dmg: 44, cd: 1.8, sound: 'shotgun' });
       if (!D.won) keepUp(g, D, dt, 3, () => grayHorde(g, 3, [W.north[0], W.west[0], W.east[1]]), 3.2);
       if (D.go2 && g.alive().length === 0) clearThen(g, D, 'c21_gym', 300, 'Get to the gym doors'); } },
 
@@ -146,7 +146,7 @@ export const steps = [
       D.holdHint = 'Everyone is inside. Keep the Gray off the front door.';
       g.say([['dube', "Tuck's got the door bolted behind us. It's just us out here."], ['marcus', "Then nobody gets past us."]]);
     },
-    update(g, dt) { const D = g.stepData; hammerTick(g, D, dt, { home: [0, -6850] }); allyTick(g, D, 'reyes', dt, { dmg: 28, cd: 1.5 }); allyTick(g, D, 'dube', dt, { dmg: 44, cd: 1.8, sound: 'shotgun' });
+    update(g, dt) { const D = g.stepData; hammerTick(g, D, dt, { home: [0, -6850] }); allyTick(g, D, 'reyes', dt, { dmg: 28, cd: 1.5 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 }); allyTick(g, D, 'dube', dt, { dmg: 44, cd: 1.8, sound: 'shotgun' });
       D.ping -= dt; if (!D.held && D.ping <= 0) { D.ping = 9; const k = D.wave % 3; const pts = k === 0 ? W.north : k === 1 ? W.west : W.east;
         g.toast(['Main Street!', 'West side!', 'East side!'][k], 1.6); grayHorde(g, k === 0 ? 7 : 5, pts, { runner: D.wave > 1 }); D.wave++;
         if (D.wave === 2) g.say([['reyes', "I hit that one with a full dose. Nothing. The cure doesn't touch them."], ['marcus', "Then what are they?"]]);
@@ -171,7 +171,7 @@ export const steps = [
         (g) => { place(D.nia, -1, -6870, PI); D.nia.root.visible = false; g.cut = null; b.st = 'chase'; D.on = true; followAll(g, D, FIGHT); },
       ]);
     },
-    update(g, dt) { const D = g.stepData, b = D.b; tickRings(g, D, dt); if (A.bell) A.bell.rotation.z *= .94; if (!D.on) return; hammerTick(g, D, dt, { dmg: 60 }); allyTick(g, D, 'reyes', dt, { dmg: 24, cd: 1.6 }); allyTick(g, D, 'dube', dt, { dmg: 40, cd: 1.9, sound: 'shotgun' });
+    update(g, dt) { const D = g.stepData, b = D.b; tickRings(g, D, dt); if (A.bell) A.bell.rotation.z *= .94; if (!D.on) return; hammerTick(g, D, dt, { dmg: 60 }); allyTick(g, D, 'reyes', dt, { dmg: 24, cd: 1.6 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 }); allyTick(g, D, 'dube', dt, { dmg: 40, cd: 1.9, sound: 'shotgun' });
       if (!b || b.dead || b.hp <= 0) { if (b && (b.dead || b.hp <= 0) && !D.won) { D.won = true; D.rings && D.rings.forEach(r => g.scene.remove(r.m)); D.rings = []; afterBoss(g, () => goto(g, 'c21_end', 400)); } return; }
       if (g.cut) return;
       D.cd -= dt; if (D.cd <= 0) { D.cd = b.hp < b.maxHp * .5 ? 3.6 : 4.8; const p = b.root.position; g.toast('STOP! — get clear!', 1.1); b.st = 'script'; b.play && b.play('Idle_Loop'); ring(g, D, p.x, p.z, { r: 4.2, life: 1.15, color: '#f2d020', dmg: 26, boom: true }); setTimeout(() => { if (b && !b.dead) b.st = 'chase'; }, 1150); }

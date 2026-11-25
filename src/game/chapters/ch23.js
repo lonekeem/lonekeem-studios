@@ -117,7 +117,7 @@ export const steps = [
       const D = g.stepData; g.openGate(true); D.lobster = false; cast(g, D, 0, -7514, ALL); followAll(g, D, ALL); giveHammer(D.dad, false); spots(g, D); g.wpTarget = [0, 1.2, -7600];
       g.say([['marcus', "Low and slow, son. Wait for the light to pass."]]);
     },
-    update(g, dt) { const D = g.stepData; spotsTick(g, D, dt); hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 28, cd: 1.5 });
+    update(g, dt) { const D = g.stepData; spotsTick(g, D, dt); hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 28, cd: 1.5 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 });
       if (!D.go && dist2(g, 0, -7600) < 3 && g.alive().length === 0) { D.go = true; if (!D.seen) { g.toast('Not seen. Ghost.', 2); g.addXP(300); } goto(g, 'c23_deck', 200); }
       else if (!D.go && dist2(g, 0, -7600) < 3 && !D.wait) { D.wait = true; g.objective('Deal with them first', 'Clear the troopers, then go up the gangway.'); } } },
 
@@ -127,7 +127,7 @@ export const steps = [
       squad(g, [[-6, -7628], [6, -7632], [0, -7636]], { hp: 100 }); g.audio.staticBurst && g.audio.staticBurst(1);
       g.say([['hale', "This is Commodore Hale. To the boy on my deck: the Director was a romantic. I am not."], ['keem', "Cool. I'm here for my doctor."]]);
     },
-    update(g, dt) { const D = g.stepData; hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 28, cd: 1.5 }); const al = g.alive().length;
+    update(g, dt) { const D = g.stepData; hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 28, cd: 1.5 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 }); const al = g.alive().length;
       if (D.ph === 0 && al === 0) { D.ph = 1; grayHorde(g, 7, DECKPTS, { runner: true }); g.toast('A container burst open', 1.6); g.say([['reyes', "They keep the gray on deck in boxes!"]]); }
       else if (D.ph === 1 && al === 0) { D.ph = 2; const q = spawnAuth(g, 0, -7712, { hp: 260, big: true, gun: 'shotgun' }); q.scale && (q.root.scale.setScalar(1.15)); D.q = q; squad(g, [[-6, -7706], [6, -7706]], { hp: 100 }); g.wpTarget = [0, 1.2, -7706]; g.toast('The Quartermaster', 1.6); g.objective('Take the keycard from the Quartermaster', 'Big shield, near the stern.'); }
       else if (D.ph === 2 && al === 0) { D.ph = 3; const P = D.q ? D.q.root.position : { x: 0, z: -7712 }; const kx = Math.max(-10, Math.min(10, P.x)), kz = Math.max(-7728, Math.min(-7702, P.z)); D.uses = [{ x: kx, z: kz, r: 2.4, label: 'Take the hold keycard', fn: () => { g.audio.click && g.audio.click(); g.toast('Hold keycard', 1.6); goto(g, 'c23_hold', 300); } }]; g.wpTarget = [kx, 1.2, kz]; g.objective('Take the hold keycard', 'He dropped it.'); } } },
@@ -176,7 +176,7 @@ export const steps = [
         (g) => { g.cut = null; b.st = 'chase'; D.on = true; followAll(g, D, FIGHT); },
       ]);
     },
-    update(g, dt) { const D = g.stepData, b = D.b; tickRings(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: 60 }); allyTick(g, D, 'reyes', dt, { dmg: 24, cd: 1.6 }); dartTick(g, D, 'vance', dt, { cd: 2.4 });
+    update(g, dt) { const D = g.stepData, b = D.b; tickRings(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: 60 }); allyTick(g, D, 'reyes', dt, { dmg: 24, cd: 1.6 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 }); dartTick(g, D, 'vance', dt, { cd: 2.4 });
       if (!b || b.dead || b.hp <= 0) { if (b && (b.dead || b.hp <= 0) && !D.won) { D.won = true; D.rings && D.rings.forEach(r => g.scene.remove(r.m)); D.rings = []; g.say([['vance', "He was a good sailor once. Lab. Now."]]); afterBoss(g, () => goto(g, 'c23_lab', 500)); } return; }
       if (g.cut) return;
       D.cd -= dt; if (D.cd <= 0) { D.cd = b.hp < b.maxHp * .5 ? 4 : 5.4; const p = b.root.position; g.toast('Chain swing — get clear!', 1.1); b.st = 'script'; b.play && b.play('Sword_Attack', { once: true }); ring(g, D, p.x, p.z, { r: 4.8, life: 1.3, color: '#e8f0ff', dmg: 28 }); setTimeout(() => { if (b && !b.dead) b.st = 'chase'; }, 1300); }

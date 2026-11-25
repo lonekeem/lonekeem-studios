@@ -1,7 +1,7 @@
 // Shared helpers for Chapters 15-20 (owned by the ch15-20 builder). Story-side only: cutscene walking, cast placement,
 // Harbor Authority troopers, ally gunfire, telegraphed blast rings, a hold timer, and small props (lobster suit, helicopter).
 import * as THREE from 'three';
-import { PI, V, dist2, follow } from './helpers.js';
+import { PI, V, dist2, follow, ensureAllyGun, allyShotFx, gunIdFor } from './helpers.js';
 import { act } from './ch12_acting.js';
 import { dnState } from '../daynight.js';
 export { act };
@@ -56,11 +56,13 @@ export function spawnAuth(g, x, z, o = {}) { const r = g.spawnZ(x, z, { raider: 
 export function squad(g, pts, o = {}) { const guns = ['rifle', 'smg', 'shotgun', 'rifle', 'smg', 'pistol']; return pts.map(([x, z], i) => spawnAuth(g, x, z, Object.assign({ gun: guns[i % guns.length], shield: i % 2 === 0 }, o))); }
 
 // ---------- allies that shoot (Dad, Reyes, Tuck...) ----------
-export function allyTick(g, D, key, dt, { dmg = 40, cd = 1, range = 20, stun = 0, sound = 'pistol', anim = 'Pistol_Aim_Neutral' } = {}) {
+export function allyTick(g, D, key, dt, { dmg = 40, cd = 1, range = 20, stun = 0, sound = 'pistol', anim = 'Pistol_Aim_Neutral', gun } = {}) {
   const c = D[key]; if (!c || !c.root || g.cut) return; const k = '_acd_' + key; if ((D[k] = (D[k] || 0) - dt) > 0) return; D[k] = cd;
   const cp = c.root.position; let best = null, bd = range; g.alive().forEach(z => { if (z === c || z.ally) return; const d = z.root.position.distanceTo(cp); if (d < bd) { bd = d; best = z; } }); if (!best) return;
   const dir = best.root.position.clone().sub(cp).normalize(); c.root.rotation.y = Math.atan2(dir.x, dir.z); if (anim && c.lib && c.lib.clips && c.lib.clips[anim]) c.play(anim);
-  g.damageZ(best, best.boss ? dmg * .35 : dmg, dir, { ai: true, head: Math.random() < .25 }); if (stun && !best.boss) best.stun = Math.max(best.stun || 0, stun); g.audio.shot && g.audio.shot(sound); }
+  ensureAllyGun(c, gun || gunIdFor(sound));
+  g.damageZ(best, best.boss ? dmg * .35 : dmg, dir, { ai: true, head: Math.random() < .25 }); if (stun && !best.boss) best.stun = Math.max(best.stun || 0, stun); g.audio.shot && g.audio.shot(sound);
+  const aim = best.root.position.clone(); aim.y += 1.2 * (best.scale || 1); allyShotFx(g, c, aim); }
 
 // ---------- telegraphed blast ring: shows for `life`s then hits whoever is inside ----------
 export function ring(g, D, x, z, { r = 2.2, life = 1.4, color = '#ff3a28', dmg = 22, onHit, boom = false } = {}) {

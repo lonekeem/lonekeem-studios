@@ -346,6 +346,7 @@ export function giveHammer(dad, alsoPlank = true) {
     mountHeld(dad, hg, 'hammer'); dad._hammer = hg;
   }
   dad._hammer.visible = true;
+  if (dad.gunM) dad.gunM.visible = false;
   if (alsoPlank) {
     if (!dad._plank) {
       const pg = new THREE.Group();

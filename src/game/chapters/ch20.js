@@ -81,7 +81,7 @@ export const steps = [
       g.horde(10, [[-5, -6280], [5, -6286], [0, -6296], [-6, -6304], [6, -6310]]); D.next = -6300;
       g.wpTarget = [0, 1.2, -6430]; g.say([['dana', "Stay together. Nia, hold my hand."]]);
     },
-    update(g, dt) { const D = g.stepData; morning(g, D, dt, .7); hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 30, cd: 1.4 }); allyTick(g, D, 'dube', dt, { dmg: 46, cd: 1.7, sound: 'shotgun' });
+    update(g, dt) { const D = g.stepData; morning(g, D, dt, .7); hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 30, cd: 1.4 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 }); allyTick(g, D, 'dube', dt, { dmg: 46, cd: 1.7, sound: 'shotgun' });
       const pz = g.player.root.position.z;
       if (D.next && pz < D.next + 30) { const z = D.next - 30; g.horde(8, [[-6, z], [6, z - 4], [0, z - 8], [-4, z - 12]], { runner: D.next < -6340 }); if (D.next === -6340) { squad(g, [[-4, -6400], [4, -6400], [0, -6406]], { hp: 100 }); g.say([['nia', "There's so many!"], ['marcus', "Then we keep walking."]]); }
         D.next = D.next > -6380 ? D.next - 40 : null; }
@@ -102,7 +102,7 @@ export const steps = [
         (g) => { g.cut = null; b.st = 'chase'; D.cd = 3.5; D.sq = 12; D.on = true; followAll(g, D, ['dad', 'reyes', 'dube']); },
       ]);
     },
-    update(g, dt) { const D = g.stepData, b = D.b; morning(g, D, dt, .8); tickRings(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: 60 }); allyTick(g, D, 'reyes', dt, { dmg: 24, cd: 1.6 }); allyTick(g, D, 'dube', dt, { dmg: 40, cd: 1.9, sound: 'shotgun' });
+    update(g, dt) { const D = g.stepData, b = D.b; morning(g, D, dt, .8); tickRings(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: 60 }); allyTick(g, D, 'reyes', dt, { dmg: 24, cd: 1.6 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 }); allyTick(g, D, 'dube', dt, { dmg: 40, cd: 1.9, sound: 'shotgun' });
       if (!b || b.dead) { if (b && b.dead && !D.won) { D.won = true; D.rings && D.rings.forEach(r => g.scene.remove(r.m)); D.rings = []; afterBoss(g, () => goto(g, 'c20_zero', 400), 2.5); } return; }
       if (g.cut) return;
       D.cd -= dt; if (D.cd <= 0) { D.cd = b.hp < b.maxHp * .5 ? 3.4 : 4.6; const P = g.player.root.position; g.toast('Mortar — roll!', 1.1); ring(g, D, P.x, P.z, { r: 2.4, life: 1.3, color: '#ff8a20', dmg: 20 }); if (b.hp < b.maxHp * .5) ring(g, D, P.x + rnd(-4, 4), P.z + rnd(-4, 4), { r: 2.2, life: 1.6, color: '#ff8a20', dmg: 16 }); }
@@ -124,7 +124,7 @@ export const steps = [
         (g) => { act(D.dad, null); g.cut = null; b.st = 'chase'; D.cd = 3; D.on = true; followAll(g, D, ['dad', 'reyes', 'dube']); },
       ]);
     },
-    update(g, dt) { const D = g.stepData, b = D.b; morning(g, D, dt, .85); tickRings(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: 80, cd: 1 }); allyTick(g, D, 'reyes', dt, { dmg: 26, cd: 1.5 }); allyTick(g, D, 'dube', dt, { dmg: 42, cd: 1.8, sound: 'shotgun' });
+    update(g, dt) { const D = g.stepData, b = D.b; morning(g, D, dt, .85); tickRings(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: 80, cd: 1 }); allyTick(g, D, 'reyes', dt, { dmg: 26, cd: 1.5 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 }); allyTick(g, D, 'dube', dt, { dmg: 42, cd: 1.8, sound: 'shotgun' });
       if (!b || b.dead) { if (b && b.dead && !D.won) { D.won = true; D.rings && D.rings.forEach(r => g.scene.remove(r.m)); D.rings = []; g.say([['marcus', "That's for my family."]]); afterBoss(g, () => goto(g, 'c20_jets', 500)); } return; }
       if (g.cut) return;
       D.cd -= dt; if (D.cd <= 0) { D.cd = b.hp < b.maxHp * .4 ? 2.8 : 3.8; const P = g.player.root.position; ring(g, D, P.x, P.z, { r: 2.5, life: 1.15, dmg: 24 }); b.speed = 4.6; setTimeout(() => { if (b && !b.dead) b.speed = 1.6; }, 1200); }

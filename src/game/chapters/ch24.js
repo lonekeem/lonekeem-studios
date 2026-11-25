@@ -3,7 +3,7 @@
 // the Gray, the first carrier, with Vance's Biscuit-dose darts and Dad's hammer. Sunrise at the lighthouse. THE END.
 // World band z -7900..-8200.
 import * as THREE from 'three';
-import { PI, V, dist2, goto, afterBoss, clearThen, boss, pg, rnd, $q } from './helpers.js';
+import { PI, V, dist2, goto, afterBoss, clearThen, boss, pg, rnd, $q, ensureAllyGun, allyShotFx } from './helpers.js';
 import { walk, tickMv, cam, snap, cast, followAll, place, face, act, allyTick, holdTick, keepUp, ring, tickRings, squad, spawnAuth, paintAuth, shieldOn, helmOn, dawn, card, hideCard } from './ch15_kit.js';
 import { mats, floor, prop, lamp, wallX, wallZ, crate } from './kit/common.js';
 import { tree, house } from './kit/town.js';
@@ -130,7 +130,7 @@ export const steps = [
       { const fv = D.vance; fv.update = null; D._vf = true; } grayHorde(g, 7, [[-4, -7956], [4, -7960], [0, -7966]]); D.next = -7966; g.wpTarget = [0, 1.2, -8012];
       g.say([['marcus', "Right next to me, Keem. Every step."]]);
     },
-    update(g, dt) { const D = g.stepData; sun(g, D, dt, .4); hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 30, cd: 1.4 }); dartTick(g, D, 'vance', dt, { cd: 2.6 });
+    update(g, dt) { const D = g.stepData; sun(g, D, dt, .4); hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 30, cd: 1.4 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 }); dartTick(g, D, 'vance', dt, { cd: 2.6 });
       if (D.vance) { const P = g.player.root.position, v = D.vance.root.position, dx = P.x + 2.4 - v.x, dz = P.z + 2.2 - v.z, d = Math.hypot(dx, dz); if (d > 1.4) { const s = Math.min(d, (d > 5 ? 5 : 2.8) * dt); v.x += dx / d * s; v.z += dz / d * s; D.vance.root.rotation.y = Math.atan2(dx, dz); D.vance.play(d > 4 ? 'Jog_Fwd_Loop' : 'Walk_Loop'); } else if (!g.cut) D.vance.play('Idle_Loop'); }
       const pz = g.player.root.position.z;
       if (D.next && pz < D.next + 26) { const z = D.next - 26; grayHorde(g, 7, [[-4, z], [4, z - 4], [0, z - 8]], { runner: D.next < -7990 }); if (D.next === -7992) { squad(g, [[-4, -8030], [4, -8030], [0, -8036]], { hp: 100 }); g.say([['dana', "Troopers up top! By the old fort!"]]); } D.next = D.next > -8000 ? D.next - 26 : null; }
@@ -147,7 +147,7 @@ export const steps = [
       A.tanks.forEach(t => { t.gone = false; }); refresh(); squad(g, [[6, -8096], [16, -8100]], { hp: 100 }); grayHorde(g, 5, [[-10, -8090], [0, -8110]]);
       g.say([['vance', "Open the valves. Every drop on the ground is a drop not in the air."]]);
     },
-    update(g, dt) { const D = g.stepData; sun(g, D, dt, .55); hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 28, cd: 1.5 }); dartTick(g, D, 'vance', dt, { cd: 2.6 });
+    update(g, dt) { const D = g.stepData; sun(g, D, dt, .55); hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 28, cd: 1.5 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 }); dartTick(g, D, 'vance', dt, { cd: 2.6 });
       if (!D.won) keepUp(g, D, dt, 3, () => grayHorde(g, 3, [[-28, -8070], [28, -8080], [0, -8146]]), 3.4);
       if (D.won && g.t - D.wonT > 3 && g.alive().length === 0 && !D.go) { D.go = true; goto(g, 'c24_hale', 300); } } },
 
@@ -169,7 +169,7 @@ export const steps = [
         (g) => { act(D.dad, null); g.cut = null; b.st = 'chase'; D.guards.forEach(r => { r.st = 'chase'; }); D.on = true; followAll(g, D, ['dad', 'reyes']); },
       ]);
     },
-    update(g, dt) { const D = g.stepData, b = D.b; sun(g, D, dt, .65); tickRings(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: 60 }); allyTick(g, D, 'reyes', dt, { dmg: 24, cd: 1.6 }); dartTick(g, D, 'vance', dt, { cd: 2.8 });
+    update(g, dt) { const D = g.stepData, b = D.b; sun(g, D, dt, .65); tickRings(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: 60 }); allyTick(g, D, 'reyes', dt, { dmg: 24, cd: 1.6 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 }); dartTick(g, D, 'vance', dt, { cd: 2.8 });
       if (!b || b.dead || b.hp <= 0) { if (b && (b.dead || b.hp <= 0) && !D.won) { D.won = true; D.rings && D.rings.forEach(r => g.scene.remove(r.m)); D.rings = []; afterBoss(g, () => goto(g, 'c24_cage', 400), 3); } return; }
       if (g.cut) return;
       D.cd -= dt; if (D.cd <= 0) { D.cd = b.hp < b.maxHp * .5 ? 3.4 : 4.4; const P = g.player.root.position; g.toast('Flare — roll!', 1.1); ring(g, D, P.x, P.z, { r: 2.4, life: 1.3, color: '#ff8a20', dmg: 20, boom: true }); if (b.hp < b.maxHp * .5) ring(g, D, P.x + rnd(-4, 4), P.z + rnd(-4, 4), { r: 2.2, life: 1.6, color: '#ff8a20', dmg: 16 }); }
@@ -210,13 +210,14 @@ export const steps = [
         (g) => { act(D.dad, null); g.cut = null; b.st = 'chase'; D.on = true; followAll(g, D, ['dad', 'reyes']); },
       ]);
     },
-    update(g, dt) { const D = g.stepData, b = D.b; sun(g, D, dt, .85); tickRings(g, D, dt); grayTick(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: D.low ? 90 : 70, cd: 1 }); allyTick(g, D, 'reyes', dt, { dmg: 26, cd: 1.5 });
+    update(g, dt) { const D = g.stepData, b = D.b; sun(g, D, dt, .85); tickRings(g, D, dt); grayTick(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: D.low ? 90 : 70, cd: 1 }); allyTick(g, D, 'reyes', dt, { dmg: 26, cd: 1.5 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 });
       if (D.vance && !g.cut) { const v = D.vance.root.position, P = g.player.root.position, dx = P.x + 3 - v.x, dz = P.z + 3 - v.z, d = Math.hypot(dx, dz); if (d > 2) { const s = Math.min(d, 3.2 * dt); v.x += dx / d * s; v.z += dz / d * s; D.vance.play('Walk_Loop'); } }
       const u = b && b.mat && b.mat.userData && b.mat.userData.u;
       if (!b || b.dead || b.hp <= 0) { if (b && (b.dead || b.hp <= 0) && !D.won) { D.won = true; D.rings && D.rings.forEach(r => g.scene.remove(r.m)); D.rings = []; g.say([['marcus', "That's for my family. All of them."]]); afterBoss(g, () => goto(g, 'c24_dawn', 800), 5); } return; }
       if (g.cut) return;
       if (D.weak > 0) { D.weak -= dt; if (D.weak <= 0) { D.tint(false); b.speed = 1.6; g.toast('The dose wore off', 1); } }
-      D.dart -= dt; if (D.dart <= 0 && D.weak <= 0) { D.dart = 7.5; const dir = b.root.position.clone().sub(D.vance.root.position).normalize(); D.vance.root.rotation.y = Math.atan2(dir.x, dir.z); D.vance.play && D.vance.play('Pistol_Aim_Neutral'); g.audio.shot && g.audio.shot('pistol');
+      D.dart -= dt; if (D.dart <= 0 && D.weak <= 0) { D.dart = 7.5; const dir = b.root.position.clone().sub(D.vance.root.position).normalize(); D.vance.root.rotation.y = Math.atan2(dir.x, dir.z); D.vance.play && D.vance.play('Pistol_Aim_Neutral');
+        ensureAllyGun(D.vance, 'pistol'); g.audio.shot && g.audio.shot('pistol'); const aim = b.root.position.clone(); aim.y += 1.2 * (b.scale || 1); allyShotFx(g, D.vance, aim);
         D.weak = 4.5; b.speed = 1.0; D.tint(true); g.toast('Biscuit dose! It\'s weak — hit it NOW!', 2); if (!D.said) { D.said = true; g.say([['vance', "Dart's in! Now, Keem, now!"]]); } }
       D.cd -= dt; if (D.cd <= 0) { D.cd = b.hp < b.maxHp * .4 ? 2.9 : 3.8; const P = g.player.root.position; ring(g, D, P.x, P.z, { r: 2.5, life: 1.15, dmg: 26 }); if (D.weak <= 0) { b.speed = 4.4; setTimeout(() => { if (b && !b.dead && !(D.weak > 0)) b.speed = 1.6; }, 1200); } }
       if (!D.half && b.hp < b.maxHp * .55) { D.half = true; g.toast('It is calling them', 2); grayHorde(g, 8, [[-28, -8080], [28, -8090], [-20, -8140], [20, -8140]], { runner: true }); g.say([['reyes', "It's calling the others. Keep it on the dart!"]]); }

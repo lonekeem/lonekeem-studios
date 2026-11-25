@@ -1,7 +1,7 @@
 // Chapter 14 · Every Bite — the family reaches Vance's research floor after the cafeteria alarm.
 // Blood work, a result nobody is ready for, a lab breach, and the Warden. World band z -3700..-4000.
 import * as THREE from 'three';
-import { PI, V, dist2, follow, goto, afterBoss, clearThen, fam, dadGun, dadTick, boss, raiders, pg, rnd, $q } from './helpers.js';
+import { PI, V, dist2, follow, goto, afterBoss, clearThen, fam, dadGun, dadTick, boss, raiders, pg, rnd, $q, ensureAllyGun, allyShotFx } from './helpers.js';
 import { act } from './ch12_acting.js';
 import { spawnBiscuit, hopTo, tickBiscuit } from './ch13_rabbit.js';
 import { buildCh14Lab } from './kit/ch14_lab.js';
@@ -72,9 +72,11 @@ function vanceTick(g, D, dt) {
   const dir = best.root.position.clone().sub(vp).normalize();
   D.vance.root.rotation.y = Math.atan2(dir.x, dir.z);
   D.vance.play('Pistol_Aim_Neutral');
+  ensureAllyGun(D.vance, 'pistol');
   if (!best.boss) { g.damageZ(best, 22, dir, { ai: true }); best.stun = Math.max(best.stun || 0, 2.4); }
   else g.damageZ(best, 14, dir, { ai: true });
   g.audio.click && g.audio.click();
+  const aim = best.root.position.clone(); aim.y += 1.2 * (best.scale || 1); allyShotFx(g, D.vance, aim);
 }
 function ringAt(g, D, x, z, r = 2.1, color = '#ff3a28') {
   const m = new THREE.Mesh(new THREE.RingGeometry(r * .72, r, 40), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .8, side: THREE.DoubleSide, depthWrite: false }));

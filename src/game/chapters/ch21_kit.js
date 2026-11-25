@@ -1,7 +1,7 @@
 // Shared helpers for Chapters 21-24 (the Gray arc). Story-side only: the Gray infected (the Director's unfinished strain),
 // Vance's Biscuit-dose dart rifle, small props (stop sign, lantern, strain tanks, floodlight generators, searchlights).
 import * as THREE from 'three';
-import { PI, rnd, dist2 } from './helpers.js';
+import { PI, rnd, dist2, ensureAllyGun, allyShotFx } from './helpers.js';
 import { ring, script as script0 } from './ch15_kit.js';
 import { bodyFor, speakTarget } from '../dialogueFace.js';
 
@@ -61,7 +61,9 @@ export function grayHorde(g, n, pts, o = {}) { const out = []; for (let i = 0; i
 export function dartTick(g, D, key, dt, { cd = 2.2, range = 22, stun = 2.2, dmg = 18, onBoss } = {}) { const c = D[key]; if (!c || !c.root || g.cut) return; const k = '_dcd_' + key; if ((D[k] = (D[k] || 0) - dt) > 0) return; D[k] = cd;
   const cp = c.root.position; let best = null, bd = range; g.alive().forEach(z => { if (z.ally) return; if (z.boss && !onBoss) return; const d = z.root.position.distanceTo(cp); if (d < bd) { bd = d; best = z; } }); if (!best) return;
   const dir = best.root.position.clone().sub(cp).normalize(); c.root.rotation.y = Math.atan2(dir.x, dir.z); if (c.lib && c.lib.clips && c.lib.clips.Pistol_Aim_Neutral) c.play('Pistol_Aim_Neutral');
-  g.audio.shot && g.audio.shot('pistol'); if (best.boss) { onBoss && onBoss(best); return; } best.stun = Math.max(best.stun || 0, stun); g.damageZ(best, dmg, dir, { ai: true }); }
+  ensureAllyGun(c, 'pistol');
+  g.audio.shot && g.audio.shot('pistol'); const aim = best.root.position.clone(); aim.y += 1.2 * (best.scale || 1); allyShotFx(g, c, aim);
+  if (best.boss) { onBoss && onBoss(best); return; } best.stun = Math.max(best.stun || 0, stun); g.damageZ(best, dmg, dir, { ai: true }); }
 
 // ---------- props ----------
 export function stopSign(c) { const T = THREE, G = new T.Group(); const pole = new T.Mesh(new T.CylinderGeometry(.012, .012, .9, 6), new T.MeshStandardMaterial({ color: '#c8c8c0', metalness: .5, roughness: .4 })); pole.position.y = .25; G.add(pole);

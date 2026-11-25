@@ -133,7 +133,7 @@ export const steps = [
       refresh(); grayHorde(g, 5, [[-6, -7150], [6, -7158], [0, -7166]]);
       g.say([['marcus', "I'll keep them off you. You find the parts."]]);
     },
-    update(g, dt) { const D = g.stepData; hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 28, cd: 1.5 });
+    update(g, dt) { const D = g.stepData; hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 28, cd: 1.5 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 });
       if (!D.won) keepUp(g, D, dt, 3, () => grayHorde(g, 3, [BOX[(Math.random() * BOX.length) | 0], [0, -7130]]), 3.4);
       if (D.won && g.t - D.wonT > 3 && g.alive().length === 0) clearThen(g, D, 'c22_switch', 320, 'Take the parts to the engine'); } },
 
@@ -146,7 +146,7 @@ export const steps = [
         if (D.n === 2) { D.won = true; D.wonT = g.t; horn(g); g.shake(.3); g.say([['reyes', "Was that the train?"], ['danny', "That wasn't me! I didn't touch the horn!"]]); } };
       refresh(); g.say([['danny', "I'm in the cab! I found the throttle! I think! Throw those switches!"]]);
     },
-    update(g, dt) { const D = g.stepData; hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 28, cd: 1.5 });
+    update(g, dt) { const D = g.stepData; hammerTick(g, D, dt); allyTick(g, D, 'reyes', dt, { dmg: 28, cd: 1.5 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 });
       if (!D.won) keepUp(g, D, dt, 4, () => grayHorde(g, 3, [[-30, -7270], [30, -7276], [0, -7360]]), 3);
       if (D.won && g.t - D.wonT > 3.5 && !D.go) { D.go = true; goto(g, 'c22_yard', 300); } } },
 
@@ -167,7 +167,7 @@ export const steps = [
         (g) => { g.cut = null; b.st = 'chase'; D.on = true; followAll(g, D, FIGHT); },
       ]);
     },
-    update(g, dt) { const D = g.stepData, b = D.b; tickRings(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: 60 }); allyTick(g, D, 'reyes', dt, { dmg: 24, cd: 1.6 });
+    update(g, dt) { const D = g.stepData, b = D.b; tickRings(g, D, dt); if (!D.on) return; hammerTick(g, D, dt, { dmg: 60 }); allyTick(g, D, 'reyes', dt, { dmg: 24, cd: 1.6 }); allyTick(g, D, 'mom', dt, { dmg: 26, cd: 1.4 });
       if (!b || b.dead || b.hp <= 0) { if (b && (b.dead || b.hp <= 0) && !D.won) { D.won = true; D.dash = null; D.rings && D.rings.forEach(r => g.scene.remove(r.m)); D.rings = []; g.say([['marcus', "End of the line, Mr. Pike. Rest easy."]]); afterBoss(g, () => goto(g, 'c22_depart', 500)); } return; }
       if (g.cut) return;
       if (D.winded > 0) { D.winded -= dt; if (D.winded <= 0) { b.st = 'chase'; b.speed = 1.5; } }
