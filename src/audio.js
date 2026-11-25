@@ -243,6 +243,8 @@ export class AudioSys {
 // Recorded/rendered samples in public/sfx (Kenney CC0, procedurally synthesized SFX, ElevenLabs gunshots / screams / voices — see CREDITS.md).
 // Every method falls back to the synthesized version above if its sample has not loaded yet.
 export const vhash = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0; return h.toString(36); };
+// Bump SFX_VER whenever public/sfx gun/flame/saw files change so phones fetch the new bytes.
+export const SFX_VER = '1908';
 const BASE = (import.meta.env && import.meta.env.BASE_URL || '/') + 'sfx/';
 const FAM = { thunder: 3, z_growl: 6, z_moan: 4, z_attack: 3, z_eat: 3, z_chew: 4, z_tear: 3, scream: 4, acid_spit: 2, acid_sizzle: 2, acid_splat: 2, tank_charge: 2, tank_stomp: 2,
   step_concrete: 5, step_grass: 5, step_wood: 5, punch: 5, bat: 5, flesh: 5, metal: 5, shell: 5, plank: 5, glass: 5, cloth: 2, step_mud: 5, step_asphalt: 5, z_shuffle: 4, breath: 4, jump: 2, land: 2, squelch: 3 };
@@ -272,7 +274,7 @@ const NO_SHELL = { shotgun: 1, auto12: 1, flamer: 1, crossbow: 1, harpoon: 1, la
 const RELOAD_OF = { pistol: 'pistol', handcannon: 'pistol', revolver: 'revolver', smg: 'smg', shotgun: 'shotgun', auto12: 'shotgun', rifle: 'rifle', sniper: 'rifle', saw: 'heavy', minigun: 'heavy', lever: 'lever', crossbow: 'crossbow', flamer: 'flamer', launcher: 'launcher', harpoon: 'harpoon' };
 const CLICK_OF = { pistol: 'pistol', smg: 'pistol', handcannon: 'pistol', revolver: 'revolver', shotgun: 'shotgun', auto12: 'shotgun', rifle: 'rifle', saw: 'rifle', minigun: 'rifle', lever: 'rifle', sniper: 'rifle', crossbow: 'pistol', flamer: 'rifle', launcher: 'shotgun', harpoon: 'rifle' };
 const ONE = ['explosion', 'rain_loop', 'truck_loop', 'boss_roar', 'reload_out', 'reload_in', 'door_open', 'creak', 'knife', 'coins', 'chop', 'roll', 'alarm_loop', 'wind_loop', 'tire_loop',
-  ...GUN_IDS.map(id => 'gun_' + id), 'reload_pistol', 'reload_revolver', 'reload_smg', 'reload_shotgun', 'reload_rifle', 'reload_lever', 'reload_heavy', 'reload_crossbow', 'reload_flamer', 'reload_launcher', 'reload_harpoon',
+  ...GUN_IDS.map(id => 'gun_' + id), 'flame_loop', 'melee_saw', 'reload_pistol', 'reload_revolver', 'reload_smg', 'reload_shotgun', 'reload_rifle', 'reload_lever', 'reload_heavy', 'reload_crossbow', 'reload_flamer', 'reload_launcher', 'reload_harpoon',
   'click_pistol', 'click_revolver', 'click_shotgun', 'click_rifle'];
 const P = AudioSys.prototype, O = {};
 ['init', 'applyVolumes', 'setMood', 'ambientTick', 'shot', 'hit', 'swing', 'hurt', 'groan', 'thud', 'crash', 'explode', 'pickup', 'engine', 'scream', 'click', 'splat', 'glass'].forEach(k => O[k] = P[k]);
@@ -281,10 +283,11 @@ P.init = function () { const first = !this.ctx; O.init.call(this); if (!first ||
   this.gunBus = this.ctx.createDynamicsCompressor(); this.gunBus.threshold.value = -10; this.gunBus.knee.value = 10; this.gunBus.ratio.value = 5; this.gunBus.attack.value = 0.002; this.gunBus.release.value = 0.15; this.gunBus.connect(this.sfx);
   this.lastBark = 0; this.applyVolumes();
   const names = ONE.slice(); for (const f in FAM) for (let i = 0; i < FAM[f]; i++) names.push(f + i);
-  fetch(BASE + 'manifest.json').then(r => r.json()).then(m => { this.man = m; }).catch(() => {});
+  fetch(BASE + 'manifest.json?v=' + SFX_VER).then(r => r.json()).then(m => { this.man = m; }).catch(() => {});
   // Decode a small core set now; the rest pump in idle time so chapter load / shader compile is not fighting 200+ decodes.
+  this.SFX_VER = SFX_VER;
   const CORE = new Set(['explosion', 'rain_loop', 'truck_loop', 'boss_roar', 'reload_out', 'reload_in', 'door_open', 'creak', 'knife', 'coins', 'chop', 'roll',
-    'gun_pistol', 'gun_rifle', 'gun_shotgun', 'gun_smg', 'reload_pistol', 'reload_rifle', 'reload_shotgun', 'click_pistol', 'click_rifle',
+    'gun_pistol', 'gun_rifle', 'gun_shotgun', 'gun_smg', 'gun_flamer', 'gun_saw', 'flame_loop', 'melee_saw', 'reload_pistol', 'reload_rifle', 'reload_shotgun', 'click_pistol', 'click_rifle',
     'step_concrete0', 'step_concrete1', 'step_grass0', 'step_grass1', 'punch0', 'punch1', 'flesh0', 'flesh1', 'bat0',
     'z_growl0', 'z_growl1', 'z_attack0', 'z_moan0', 'scream0', 'scream1']);
   const core = names.filter(n => CORE.has(n));
@@ -294,7 +297,7 @@ P.init = function () { const first = !this.ctx; O.init.call(this); if (!first ||
 };
 P.applyVolumes = function () { O.applyVolumes.call(this); if (!this.ctx) return; this.sfx.gain.value = this.s.sfxVol ?? 1; if (this.voiceBus) this.voiceBus.gain.value = this.s.voices === false ? 0 : (this.s.voiceVol ?? 1); };
 P.load = function (name) { if (this.bufs[name]) return Promise.resolve(this.bufs[name]); if (this.loading[name]) return this.loading[name];
-  return this.loading[name] = fetch(BASE + name + '.mp3').then(r => { if (!r.ok || /html/.test(r.headers.get('content-type') || '')) throw 0; return r.arrayBuffer(); })
+  return this.loading[name] = fetch(BASE + name + '.mp3?v=' + SFX_VER).then(r => { if (!r.ok || /html/.test(r.headers.get('content-type') || '')) throw 0; return r.arrayBuffer(); })
     .then(a => new Promise((res, rej) => { const q = this.ctx.decodeAudioData(a, res, rej); if (q && q.catch) q.catch(rej); })).then(b => (this.bufs[name] = b)).catch(() => null); };
 P._pumpSfx = function () {
   if (this._sfxPump) return;
@@ -351,11 +354,42 @@ P.land = function (vol = .6) { this.play('land', { vol, flat: true }); this.play
 P.rollS = function () { if (!this.play('roll', { vol: .6, flat: true })) this.swing(); this.play('cloth', { vol: .35, rate: .8, flat: true }); };
 P.squelch = function (vol = .7) { if (!this.play('squelch', { vol, jit: .12 })) this.splat(); };
 P.tires = function (on, amt = 0) { if (!this.ctx) return; if (on && !this.tireSrc) this.tireSrc = this.play('tire_loop', { loop: true, vol: 0, jit: 0, flat: true }); if (this.tireSrc) this.tireSrc.g.gain.setTargetAtTime(on ? Math.min(.5, amt) : 0, this.ctx.currentTime, .08); };
-P.shot = function (kind = 'pistol') { if (this._bgSuspended) return; const id = kind, vol = GUN_VOL[id] ?? 1, verb = id !== 'flamer' && id !== 'crossbow';
-  if (this.play('gun_' + id, { vol, verb, jit: .05, bus: this.gunBus || this.sfx })) { if (!NO_SHELL[id]) this.play('shell', { vol: .35, delay: .35 + Math.random() * .2 }); return; }
-  const fam = { saw: 'rifle', lever: 'sniper', auto12: 'shotgun', handcannon: 'revolver', crossbow: 'pistol', flamer: 'smg', launcher: 'shotgun', harpoon: 'sniper', minigun: 'rifle' }[id] || id;
-  if (!this.play('gun_' + (FAM['gun_' + fam] ? fam : 'pistol'), { vol, verb: true, jit: .04, bus: this.gunBus || this.sfx })) return O.shot.call(this, fam);
-  if (!NO_SHELL[id]) this.play('shell', { vol: .35, delay: .35 + Math.random() * .2 }); };
+P.shot = function (kind = 'pistol') { if (this._bgSuspended) return; const id = kind;
+  if (id === 'flamer') { this.flame(true); return; }
+  const vol = GUN_VOL[id] ?? 1, verb = id !== 'crossbow';
+  const opts = { vol, verb, jit: .05, bus: this.gunBus || this.sfx };
+  const bang = (name) => this.play(name, opts);
+  if (bang('gun_' + id)) { if (!NO_SHELL[id]) this.play('shell', { vol: .35, delay: .35 + Math.random() * .2 }); return; }
+  // Family fallback uses another CURRENT gun sample only. Never the oscillator (O.shot) and never
+  // the old FAM['gun_'+fam] bug, which always resolved to pistol (or synth) for every missing gun.
+  const fam = { saw: 'minigun', lever: 'sniper', auto12: 'shotgun', handcannon: 'revolver', crossbow: 'pistol', launcher: 'shotgun', harpoon: 'sniper', minigun: 'rifle' }[id] || id;
+  for (const alt of [fam, 'rifle', 'shotgun', 'smg', 'pistol']) {
+    if (alt === id) continue;
+    if (bang('gun_' + alt)) { if (!NO_SHELL[id]) this.play('shell', { vol: .35, delay: .35 + Math.random() * .2 }); return; }
+  }
+  this.load('gun_' + id); };
+P.flame = function (on) {
+  if (!this.ctx) return;
+  if (this._bgSuspended) on = false;
+  const vol = GUN_VOL.flamer ?? .8;
+  if (on) {
+    if (!this.flameSrc || this.flameSrc.dummy) {
+      this.flameSrc = this.play('flame_loop', { loop: true, vol: 0, jit: 0, bus: this.gunBus || this.sfx, flat: true });
+      if (!this.flameSrc || this.flameSrc.dummy) { this.flameSrc = null; this.load('flame_loop'); return; }
+    }
+    this.flameSrc.g.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.04);
+    return;
+  }
+  if (!this.flameSrc) return;
+  const src = this.flameSrc; this.flameSrc = null;
+  src.g.gain.setTargetAtTime(0, this.ctx.currentTime, 0.07);
+  setTimeout(() => { try { src.stop(); } catch (e) { /* already ended */ } }, 280);
+};
+P.sawMotor = function (o = {}) {
+  if (this._bgSuspended) return;
+  if (this.play('melee_saw', { vol: o.vol ?? .95, jit: .04, rate: o.rate || 1, bus: this.sfx, flat: true })) return;
+  this.load('melee_saw');
+};
 P.hit = function () { if (!this.play(Math.random() < .5 ? 'punch' : 'bat', { vol: .9 })) O.hit.call(this); this.play('flesh', { vol: .5 }); };
 P.swing = function () { if (!this.play('cloth', { vol: .5, rate: 1.4 })) O.swing.call(this); };
 P.hurt = function () { O.hurt.call(this); this.play('punch', { vol: .6, rate: .8 }); if (Math.random() < .4) this.shout('keem_hurt'); };
@@ -446,7 +480,7 @@ P.engine = function (on, rpm = 0) { if (!this.ctx) return; const t = this.ctx.cu
   if (!this.truckSrc) return O.engine.call(this, on, rpm);
   this.truckSrc.g.gain.setTargetAtTime(on ? .45 + rpm * .35 : 0, t, .15); this.truckSrc.playbackRate.setTargetAtTime(.8 + rpm * .9, t, .2);
   if (!on) { const s = this.truckSrc; this.truckSrc = null; setTimeout(() => { try { s.stop(); } catch {} }, 600); } };
-P.ambientTick = function () { O.ambientTick.call(this); if (!this.ctx || this.ctx.state !== 'running') return; if (this._session !== 'story') return; if (this.lpos && Math.random() < .035) { const an = Math.random() * 6.283, d = 45 + Math.random() * 60, p = { x: this.lpos.x + Math.cos(an) * d, y: 2, z: this.lpos.z + Math.sin(an) * d }; if (Math.random() < .5) this.play('scream', { vol: .5, pos: p, maxD: 200 }); else { const n = 1 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) setTimeout(() => { if (this._session !== 'story') return; this.play(FAM.gun_rifle ? 'gun_rifle' : 'gun_pistol', { vol: .45, pos: p, maxD: 200 }); }, i * (120 + Math.random() * 200)); } }
+P.ambientTick = function () { O.ambientTick.call(this); if (!this.ctx || this.ctx.state !== 'running') return; if (this._session !== 'story') return; if (this.lpos && Math.random() < .035) { const an = Math.random() * 6.283, d = 45 + Math.random() * 60, p = { x: this.lpos.x + Math.cos(an) * d, y: 2, z: this.lpos.z + Math.sin(an) * d }; if (Math.random() < .5) this.play('scream', { vol: .5, pos: p, maxD: 200 }); else { const n = 1 + (Math.random() * 3 | 0); for (let i = 0; i < n; i++) setTimeout(() => { if (this._session !== 'story') return; this.play(this.bufs.gun_rifle ? 'gun_rifle' : 'gun_pistol', { vol: .45, pos: p, maxD: 200 }); }, i * (120 + Math.random() * 200)); } }
   if ((this.mode === 'night' || this.mode === 'tense') && Math.random() < .035) this.thunder(.5 + Math.random() * .4); };
 // ---- voices ----
 P.voice = function (who, text, bleeps) { this.stopVoice(); if (this.noKeem && /keem/i.test(who)) return Promise.resolve(0); if (!this.ctx || this.s.voices === false || who === 'note') return Promise.resolve(0); if (!/[A-Za-z0-9]/.test(text || '')) return Promise.resolve(0);

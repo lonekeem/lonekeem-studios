@@ -70,8 +70,9 @@ const result = await p.evaluate(async ({ GUNS, RELOAD_OF, CLICK_OF }) => {
   for (const id of GUNS) {
     played.length = 0;
     audio.shot(id);
-    const gunPlays = played.filter(x => String(x.asked).startsWith('gun_'));
-    const ok = gunPlays.some(x => x.asked === 'gun_' + id && x.started);
+    const gunPlays = played.filter(x => String(x.asked).startsWith('gun_') || x.asked === 'flame_loop');
+    const expect = id === 'flamer' ? 'flame_loop' : 'gun_' + id;
+    const ok = gunPlays.some(x => x.asked === expect && x.started);
     shots.push({ id, ok, plays: played.map(x => x.asked) });
   }
   const clicks = [];

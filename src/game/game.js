@@ -326,7 +326,7 @@ export class Game {
     mountHeld(this.player, this.hand, id);
     this.vm.clear(); if (m) { const vmm = m.clone(); const hold = getHold(id); const vg = new THREE.Group(); vg.add(vmm); if (hold.vmPos) vg.position.set(...hold.vmPos); if (hold.vmRot) vg.rotation.set(...hold.vmRot); this.vm.add(vg); this.vmMesh = vmm; }
     if (w.type === 'gun' && this.save.mags[id] == null) this.save.mags[id] = stat(this.save, id).mag;
-    this.ws = stat(this.save, id); if (!silent) { this.toast(w.name, 1.1, 'wep'); this.audio.click(); } this.state && (this.state.reload = 0); this.rldSync && this.rldSync(); try { syncWeaponBar(); } catch (e) { /* ignore */ } }
+    this.ws = stat(this.save, id); if (!silent) { this.toast(w.name, 1.1, 'wep'); this.audio.click(); } this.state && (this.state.reload = 0); this.rldSync && this.rldSync(); if (this.audio && this.audio.flame && !(w && w.flame)) this.audio.flame(false); try { syncWeaponBar(); } catch (e) { /* ignore */ } }
   swap(dir = 1) { const o = WEAPON_ORDER.filter(k => this.save.owned.includes(k)); const i = o.indexOf(this.save.cur); this.equip(o[(i + dir + o.length) % o.length]); this.audio.play('cloth', { vol: .35, flat: true }); this.audio.play('reload_in', { vol: .4, delay: .18, rate: 1.2, flat: true }); }
   give(id) { if (!this.save.owned.includes(id)) this.save.owned.push(id); this.equip(id); }
   addXP(n, why) { const s = this.save; s.xp += n; let up = false; while (s.xp >= xpFor(s.level)) { s.xp -= xpFor(s.level); s.level++; up = true; }
@@ -617,7 +617,7 @@ export class Game {
     this.alive().forEach(z => { const d = z.root.position.clone().sub(P.root.position); const dy = Math.abs(d.y); d.y = 0; const dist = d.length(); if (dist > reach + (z.boss ? .5 : 0) + Math.max(0, (z.scale || 1) - 1) * .5 || dy > 1.3) return; if (dist > .01) d.normalize(); if (dist > .45 && d.dot(fwd) < .5) return;
       const heavy = WEAPONS[this.save.cur].type === 'melee' && this.save.cur !== 'fists'; const fin = this.state.combo >= 2 && heavy && z.hp <= ws.dmg * 1.6;
       this.damageZ(z, ws.dmg * (fin ? 1.6 : 1) * (1 + this.state.combo * .1), d, { sever: WEAPONS[this.save.cur].sever, blade: WEAPONS[this.save.cur].blade, finisher: fin, head: fin && WEAPONS[this.save.cur].sever }); hit++; });
-    if (hit) { this.audio.hit(); if (Math.random() < .3) this.audio.shout('keem_melee'); if (WEAPONS[this.save.cur].bonk) { this.audio.bonk(); this.floatText('BONK!', '#ffd35a'); } this.hitstop = 0.07; this.shake(.18); this.state.combo++; this.state.comboT = 2; } else this.audio.swing();
+    if (hit) { if (this.save.cur === 'chainsaw') this.audio.play('flesh', { vol: .7 }); else this.audio.hit(); if (Math.random() < .3) this.audio.shout('keem_melee'); if (WEAPONS[this.save.cur].bonk) { this.audio.bonk(); this.floatText('BONK!', '#ffd35a'); } this.hitstop = 0.07; this.shake(.18); this.state.combo++; this.state.comboT = 2; } else if (this.save.cur !== 'chainsaw') this.audio.swing();
     // tanker can be smashed too? no — only shot
   }
   // skip hidden chapter-zone walls (Raycaster does not honour parent.visible when given a flat mesh list)
@@ -668,7 +668,7 @@ export class Game {
     let best = null, bd = this.meleeReach() + .9; this.alive().forEach(z => { const d = z.root.position.distanceTo(P.root.position); if (d < bd) { bd = d; best = z; } }); if (best) P.root.rotation.y = Math.atan2(best.root.position.x - P.root.position.x, best.root.position.z - P.root.position.z);
     const rate = this.ws.rate; s.atk = rate; P._meleeReal = 0; P._meleeT0 = performance.now(); const anim = this.save.cur === 'fists' ? (s.combo % 2 ? 'Punch_Cross' : 'Punch_Jab') : 'Sword_Attack';
     s.atkHit = rate * (this.save.cur === 'fists' ? .34 : .38); // v1.9.11: contact lands when the arm/weapon is at full extension (clip peaks ~30% in; was .45)
-    P.play(anim, { once: true, force: true, fade: 0, speed: (this.lib.clips[anim].duration / rate) * .8, cb: () => { P.restoreBaseClip ? P.restoreBaseClip() : (P.curName = ''); } }); this.audio.swing(); }
+    P.play(anim, { once: true, force: true, fade: 0, speed: (this.lib.clips[anim].duration / rate) * .8, cb: () => { P.restoreBaseClip ? P.restoreBaseClip() : (P.curName = ''); } }); if (this.save.cur === 'chainsaw' && this.audio.sawMotor) this.audio.sawMotor(); else this.audio.swing(); }
   roll() { const s = this.state; if (s.roll > 0 || this.truck.driving || this.cut) return; startRoll({ P: this.player, s, I: this.input, yaw: this.cam.yaw, audio: this.audio }); }
   jump() { const s = this.state; if (s.y > 0.01 || this.truck.driving || this.cut) return; startJump({ P: this.player, s, audio: this.audio }); }
   grenade() { if (this.save.grenades <= 0) { this.toast('No grenades'); return; } if (this.truck.driving || this.cut) return; this.save.grenades--; const P = this.player;
@@ -736,6 +736,7 @@ export class Game {
     if (this.stepData.tankerBoom && !this.stepData.tankerDone) { this.stepData.tankerDone = true; const tp = this.world.tanker.position.clone(); tp.y = 1.5; this.explode(tp, 12, 500); this.world.tanker.children.forEach(c => c.material && c.material.color && c.material.color.set('#151210')); this.world.tankCol.x0 = 999; this.world.tanker.rotation.z = 0.25; }
     this.world.env.pl = (this.truck && this.truck.driving) ? this.truck.g.position : this.player.root.position; this.world.update(dt, this.t, this.camera.position); }
   updatePlayer(dt, rdt = dt) { const P = this.player, s = this.state, I = this.input, w = WEAPONS[this.save.cur], gun = w.type === 'gun';
+    if (this.audio && this.audio.flame) this.audio.flame(!!(w && w.flame && !this.cut && !this.dying && !(this.truck && this.truck.driving) && (this.save.mags[this.save.cur] || 0) > 0 && (s.fireCd > 0 || I.atk)));
     if (I.pressed('swap')) this.swap(1); if (I.pressed('reload')) this.reload(); if (I.pressed('gren')) this.grenade(); if (I.pressed('heal')) this.heal(); if (I.pressed('jump')) this.jump(); if (I.pressed('roll')) this.roll(); if (I.pressed('use')) this.use();
     if (I.pressed('crouch')) s.crouch = !s.crouch; if (I.pressed('view')) { this.cam.fp = !this.cam.fp; this.settings.fp = this.cam.fp; }
     s.aim = I.aim && gun; { const tap = I.pressed('atk'); if (tap || (I.atk && (!gun || w.auto)) || (gun && I.atk && tap)) this.attack(); }
