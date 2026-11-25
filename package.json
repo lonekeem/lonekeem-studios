@@ -1,7 +1,7 @@
 {
   "name": "lonekeem-studios",
   "private": true,
-  "version": "1.9.105",
+  "version": "1.9.106",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,8 @@
     "android:sync": "npm run build:native && cap sync android",
     "android:debug": "npm run android:sync && cd android && ./gradlew assembleDebug",
     "android:release": "npm run android:sync && cd android && ./gradlew bundleRelease",
-    "smoke": "node tools/smoke.mjs"
+    "smoke": "node tools/smoke.mjs",
+    "test:ctl": "node tools/ctl_classic_lock.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",

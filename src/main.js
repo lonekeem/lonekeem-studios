@@ -22,12 +22,13 @@ const LS = (() => { try { const k = '__t'; localStorage.setItem(k, 1); localStor
 let _saved = {}; try { _saved = JSON.parse(LS.getItem('atq3.settings') || '{}') || {}; } catch {}
 const S = Object.assign({}, DEF, _saved); const saveS = () => LS.setItem('atq3.settings', JSON.stringify(S));
 // v1.9.10: controls go back to exactly how v1.9.7 played (classic HUD layout, stick, aim button, movement). One-time reset of every control setting saved by v1.9.8/v1.9.9; the new layout / smooth movement / schemes are opt-in under Settings -> Control scheme. Look sensitivity is kept.
-if (S.ctlRev !== 2) { Object.assign(S, { ctl: 'twin', autoFire: false, assist: 0, stick: 'float', hand: 'right', btnScale: 1, btnOp: 1, invertY: false, padSens: 1, padDead: 0.15, btnLay: {}, hudv2: false, smoothMove: false, ctlRev: 2 }); try { saveS(); } catch (e) { } }
+// v1.9.106: bump ctlRev to 3. Cloud settings sync could re-apply hudv2:true after the v1.9.10 reset because reloadSettings kept ctlRev but not hudv2 — that is what moved Keem's iPhone buttons. Locked by Keem's request: restore the classic v1.9.7 layout and do not let cloud (or an update) turn thumb-arc back on. The Settings checkbox still works if he turns it on himself.
+if (S.ctlRev !== 3) { Object.assign(S, { btnLay: {}, hudv2: false, ctlRev: 3 }); try { saveS(); } catch (e) { } }
 const audio = new AudioSys(S);
 let save = loadSave(LS) || defaultSave(); let game = null, gamePromise = null; let state = 'boot', back = '#title';
 window.__atq = { get story() { return STORY; }, get audio() { return audio; }, get game() { return game; }, get state() { return state; }, get save() { return save; }, showLoading, hideLoading, setProgress,
   leaveApp, returnApp, isAway,
-  reloadSave: () => { save = loadSave(LS) || save; if (state === 'title') refreshTitleProgress(); }, reloadSettings: o => { if (!o || typeof o !== 'object') return; const keep = { qual: S.qual, btnLay: S.btnLay, ctlRev: S.ctlRev }; Object.assign(S, o, keep); saveS(); }, /* v1.9.85 cloud saves: synced settings (quality + button layout stay per device) */ openTownShop, closeTownShop }; // cloud sync: refresh in-memory save + Continue. Never call toTitle()/showScreen here — #online is a .screen, so that would hide the lobby and kick a signed-in player back to the menu.
+  reloadSave: () => { save = loadSave(LS) || save; if (state === 'title') refreshTitleProgress(); }, reloadSettings: o => { if (!o || typeof o !== 'object') return; const keep = { qual: S.qual, btnLay: S.btnLay, ctlRev: S.ctlRev, hudv2: S.hudv2 }; Object.assign(S, o, keep); saveS(); try { applyCtl(); } catch (e) { } }, /* v1.9.85/v1.9.106 cloud saves: quality, button layout, and hudv2 stay per device */ openTownShop, closeTownShop }; // cloud sync: refresh in-memory save + Continue. Never call toTitle()/showScreen here — #online is a .screen, so that would hide the lobby and kick a signed-in player back to the menu.
 try { audio.loadTracks(); } catch (e) { /* ignore */ }
 
 function showScreen(id) { $$('.screen').forEach(s => s.classList.add('hidden')); if (id) $(id).classList.remove('hidden'); }
@@ -311,7 +312,7 @@ $('#btnEndNext').onclick = () => { save = loadSave(LS) || save; const nc = Math.
 var CHN = CHAPTERS.map(c => (c ? c.title : '')), CHS = CHAPTERS.map(c => (c ? c.start : 0)); // derived from the chapter registry
 const unlockedCh = (s) => Math.max(s.maxCh || 1, s.done || (s.step || 0) >= 7 ? 2 : 1, s.done2 ? 3 : 1, CHS.findLastIndex(v => (s.step || 0) >= v) || 1);
 // chapter-select buttons are generated from the registry (src/game/chapters), so adding a chapter needs no HTML/menu edits
-{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.105 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
+{ const ft = $('#foot'); if (ft) ft.textContent = 'v1.9.106 · Story Mode · Chapters 1–' + LAST_CH + ' · ' + CHAPTERS[LAST_CH].title + ' · Multiplayer (Beta)'; }
 const chList = $('#chList'); for (let c = 1; c <= LAST_CH; c++) { const b = document.createElement('button'); b.id = 'btnCh' + c; b.className = 'chb'; b.innerHTML = '<span class="cht"></span><span class="chs"></span>'; b.querySelector('.cht').textContent = 'Chapter ' + c + ' · ' + CHN[c]; chList.appendChild(b); }
 // v1.9.85: difficulty picker + star ratings; chapters behind your story progress start as replays (story progress untouched)
 const progCh = (s) => (s.step || 0) >= LAST_STORY_STEP && s.done ? LAST_CH + 1 : chOf(s.step || 0);

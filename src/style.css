@@ -294,12 +294,12 @@ body.hudv2 #dlg:not(.on){pointer-events:none}body.hudv2 #dlg{z-index:4}
 #layEdit .ledbar{width:max-content;max-width:96vw}#layEdit .ledbar b{min-width:92px}
 #layEdit .hint{top:64px;max-width:60vw}
 
-/* v1.9.10: classic v1.9.7 touch HUD is the default again; the thumb-arc layout (body.hudv2) is opt-in */
+/* Locked by Keem's request (v1.9.106): classic v1.9.7 touch HUD positions. Do not change these rules unless Keem asks. body.hudv2 stays an explicit Settings opt-in. --atq-safe-* lets tests simulate iPhone safe-area insets (env() is 0 in Playwright). */
 body:not(.hudv2) #tSwap,body:not(.hudv2) #tGren,body:not(.hudv2) #lookRing{display:none!important}
-body:not(.hudv2) #stickBase{position:absolute;left:max(40px,env(safe-area-inset-left));bottom:28px}
-body:not(.hudv2) #lbtns{position:absolute;left:max(12px,env(safe-area-inset-left));top:112px;display:flex;flex-direction:column;gap:26px;pointer-events:none;z-index:4}
+body:not(.hudv2) #stickBase{position:absolute;left:max(40px, env(safe-area-inset-left, 0px), var(--atq-safe-left, 0px));bottom:28px}
+body:not(.hudv2) #lbtns{position:absolute;left:max(12px, env(safe-area-inset-left, 0px), var(--atq-safe-left, 0px));top:112px;display:flex;flex-direction:column;gap:26px;pointer-events:none;z-index:4}
 @media (max-height:420px){body:not(.hudv2) #lbtns{gap:22px;top:104px}}
-body:not(.hudv2) #tbtns{position:absolute;right:max(14px,env(safe-area-inset-right));bottom:26px;width:240px;height:220px;pointer-events:none}
+body:not(.hudv2) #tbtns{position:absolute;right:max(14px, env(safe-area-inset-right, 0px), var(--atq-safe-right, 0px));bottom:26px;width:240px;height:220px;pointer-events:none}
 body:not(.hudv2) #tbtns .rb{position:absolute;pointer-events:auto}
 body:not(.hudv2) #tAtk{right:40px;bottom:40px}body:not(.hudv2) #tAim{right:0;bottom:-8px;width:44px!important;height:44px!important}
 body:not(.hudv2) #tReload{right:140px;bottom:20px}body:not(.hudv2) #tRoll{right:132px;bottom:84px}body:not(.hudv2) #tJump{right:82px;bottom:140px}body:not(.hudv2) #tUse{right:12px;bottom:150px}
