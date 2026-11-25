@@ -74,11 +74,18 @@ export function buildCh14Lab(ctx, { x = 0, z = -3704 } = {}) {
   scr.position.set(ax, 2.15, az + .95); ctx.scene.add(scr);
   drawScreen('STANDBY', 'Awaiting samples.');
   A.analyzer = { pos: [ax, az], screen: scr, draw: drawScreen };
+  // Sealed glass bay (built below): closed door, not part of the sample objective.
+  const sealedCx = x - 16, sealedCz = LAB_S + 12, sealedHw = 6.5, sealedHd = 8;
+  const inSealed = (vx, vz, pad = 1.6) =>
+    vx > sealedCx - sealedHw - pad && vx < sealedCx + sealedHw + pad &&
+    vz > sealedCz - sealedHd - pad && vz < sealedCz + sealedHd + pad;
   A.vials = [
     { id: 'keem', x: ax - 6.5, z: az + 8, label: "Give Keem's sample" },
     { id: 'dana', x: ax + 7.5, z: az + 8, label: "Give Mom's sample" },
-    { id: 'biscuit', x: ax, z: az - 6, label: "Give Biscuit's sample" },
+    // v1.9.105: was (ax, az - 6), which sat inside the sealed glass bay so the last sample was unreachable.
+    { id: 'biscuit', x: ax + 8, z: az - 6, label: "Give Biscuit's sample" },
   ];
+  A.vials.forEach(v => { if (inSealed(v.x, v.z)) v.x = sealedCx + sealedHw + 2.8; });
   A.vials.forEach(v => {
     prop(ctx, .7, 1.05, .7, K.steel, v.x, .55, v.z, true);
     const tube = new T.Mesh(new T.CylinderGeometry(.07, .07, .42, 8), glowBlue);
